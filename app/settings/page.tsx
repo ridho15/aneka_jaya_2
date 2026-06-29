@@ -35,7 +35,7 @@ export default async function SettingsPage() {
           {isOwner && (
             <>
               <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-emerald-400 hover:bg-emerald-50" href="/settings/tipe">
-                <div><p className="font-semibold text-slate-800">Tipe Pembukuan</p><p className="mt-0.5 text-xs text-slate-500">Kelola tipe transaksi (AJ, LSM, Online, …)</p></div>
+                <div><p className="font-semibold text-slate-800">Tipe Pembukuan</p><p className="mt-0.5 text-xs text-slate-500">Kelola tipe transaksi (AJ, W, Online, …)</p></div>
               </Link>
               <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-emerald-400 hover:bg-emerald-50" href="/settings/rekening">
                 <div><p className="font-semibold text-slate-800">Rekening</p><p className="mt-0.5 text-xs text-slate-500">Kelola rekening bank / kas per tipe</p></div>

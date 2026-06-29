@@ -11,9 +11,11 @@ async function main() {
   await prisma.$transaction(async (tx) => {
     const types = [
       { id: "W", code: "W", name: "Walk In", rekeningId: "cash-w", rekeningName: "Kas Walk In", sortOrder: 1 },
-      { id: "AJ", code: "AJ", name: "Aneka Jaya", rekeningId: "cash-aj", rekeningName: "Kas AJ", sortOrder: 2 },
-      { id: "LSM", code: "LSM", name: "LSM", rekeningId: "cash-lsm", rekeningName: "Kas LSM", sortOrder: 3 }
+      { id: "AJ", code: "AJ", name: "Aneka Jaya", rekeningId: "cash-aj", rekeningName: "Kas AJ", sortOrder: 2 }
     ];
+    await tx.rekeningAccountBookkeepingType.deleteMany({ where: { OR: [{ bookkeepingTypeId: "LSM" }, { rekeningAccountId: "cash-lsm" }] } });
+    await tx.bookkeepingType.deleteMany({ where: { OR: [{ id: "LSM" }, { code: "LSM" }] } });
+    await tx.rekeningAccount.deleteMany({ where: { id: "cash-lsm" } });
     for (const tipe of types) {
       await tx.bookkeepingType.upsert({
         where: { id: tipe.id },
@@ -33,7 +35,7 @@ async function main() {
     }
   });
 
-  console.log(JSON.stringify({ ok: true, bookkeepingTypes: ["W", "AJ", "LSM"], rekenings: ["cash-w", "cash-aj", "cash-lsm"] }, null, 2));
+  console.log(JSON.stringify({ ok: true, bookkeepingTypes: ["W", "AJ"], removedBookkeepingTypes: ["LSM"], rekenings: ["cash-w", "cash-aj"], removedRekenings: ["cash-lsm"] }, null, 2));
 }
 
 main()

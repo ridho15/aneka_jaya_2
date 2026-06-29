@@ -11,7 +11,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Product } from "@/lib/types/product";
 import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
-import { EXTERNAL_ERP_NAME } from "@/lib/appBrand";
+import { APP_BRAND_NAME, EXTERNAL_ERP_NAME } from "@/lib/appBrand";
 
 const draftKey = "aneka-jaya-draft-penjualan";
 const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
@@ -129,7 +129,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     });
     const defaultRek = defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
     reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }] });
-    setNotice({ type: "success", message: result.data?.target === "erp" ? `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.` : result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : "Data penjualan berhasil disimpan di sistem LSM." });
+    setNotice({ type: "success", message: result.data?.target === "erp" ? `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.` : result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.` });
   };
 
   return (
@@ -149,7 +149,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
         </div>
       )}
       <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-        Tujuan transaksi: {targetsErp ? <><b>{EXTERNAL_ERP_NAME}</b> sebagai Invoice Penjualan untuk tipe AJ.</> : <><b>Sistem LSM</b>. Tipe LSM dan tipe non-AJ disimpan lokal.</>}
+        Tujuan transaksi: {targetsErp ? <><b>{EXTERNAL_ERP_NAME}</b> sebagai Invoice Penjualan untuk tipe AJ.</> : <><b>Sistem {APP_BRAND_NAME}</b>. Tipe non-AJ disimpan lokal.</>}
       </p>
       {activeTipes.length === 0 && (
         <DependencyNotice message="Tipe pembukuan aktif belum tersedia. Jalankan seed master data atau atur tipe di Pengaturan." />

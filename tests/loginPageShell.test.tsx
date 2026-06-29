@@ -6,8 +6,8 @@ describe("login page shell", () => {
   it("renders a focused operational login page without auth diagnostics", () => {
     const html = renderToStaticMarkup(<LoginPageShell />);
 
-    expect(html).toContain("LSM");
-    expect(html).toContain("LSM Internal App");
+    expect(html).toContain("SLM");
+    expect(html).toContain("SLM Internal App");
     expect(html).toContain("Masuk ke sistem");
     expect(html).toContain("Email atau username");
     expect(html).toContain("Password");

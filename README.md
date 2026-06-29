@@ -1,4 +1,4 @@
-# LSM Internal App
+# SLM Internal App
 
 Aplikasi operasional internal berbahasa Indonesia untuk input penjualan, pengeluaran, dan data barang. Dibangun dengan Next.js 16 App Router, TypeScript, Tailwind CSS, React Hook Form, Zod, Vitest, dan fondasi PostgreSQL/Prisma.
 
@@ -56,7 +56,7 @@ Target penjualan ditentukan terpisah dari mode aplikasi:
 SALES_ERP_TYPE_CODES=AJ
 ```
 
-Dengan konfigurasi default tersebut, hanya tipe AJ yang dikirim ke Neo/Anika ERP. Tipe LSM dan tipe lain disimpan di sistem lokal. Owner dapat menandai transaksi tipe ERP sebagai transaksi pengujian; sistem menambahkan referensi `TEST-AJ-*` pada customer dan catatan agar mudah ditemukan untuk penghapusan manual di ERP.
+Dengan konfigurasi default tersebut, hanya tipe AJ yang dikirim ke Neo/Anika ERP. Tipe non-AJ disimpan di sistem lokal. Owner dapat menandai transaksi tipe ERP sebagai transaksi pengujian; sistem menambahkan referensi `TEST-AJ-*` pada customer dan catatan agar mudah ditemukan untuk penghapusan manual di ERP.
 
 Adapter Neo memakai envelope `NeoCommandRequest` yang didokumentasikan (`text`, `message_id`, `source`, dan `parsed_intent`). Pembuatan barang dikirim sebagai `import_products` dengan referensi kategori, satuan, gudang, dan rak yang dapat dibaca manusia, sesuai skema Neo.
 

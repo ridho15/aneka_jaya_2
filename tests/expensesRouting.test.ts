@@ -24,11 +24,11 @@ import { createExpense } from "@/lib/api/expenses";
 
 const expenseInput = {
   expenseDate: "2026-06-29",
-  tipeId: "LSM",
-  tipeCodeSnapshot: "LSM",
-  tipeNameSnapshot: "LSM",
-  rekeningId: "cash-lsm",
-  rekeningNameSnapshot: "Kas LSM",
+  tipeId: "W",
+  tipeCodeSnapshot: "W",
+  tipeNameSnapshot: "Walk In",
+  rekeningId: "cash-w",
+  rekeningNameSnapshot: "Kas Walk In",
   coaId: "Kas",
   coaNameSnapshot: "Kas",
   category: "Operasional",
@@ -64,8 +64,8 @@ describe("expense routing by tipe", () => {
     }));
   });
 
-  it("keeps LSM expenses local without calling ERP", async () => {
-    mocks.findTipe.mockResolvedValue({ id: "LSM", code: "LSM", name: "LSM" });
+  it("keeps non-AJ expenses local without calling ERP", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
 
     await expect(createExpense(expenseInput)).resolves.toMatchObject({
       success: true,

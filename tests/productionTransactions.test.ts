@@ -87,7 +87,7 @@ describe("production Prisma transactions", () => {
     }));
   });
 
-  it.each(["LSM", "W", "ONLINE"])("keeps %s sales local without calling ERP", async (code) => {
+  it.each(["W", "ONLINE"])("keeps %s sales local without calling ERP", async (code) => {
     mocks.findTipe.mockResolvedValue({ id: code, code, name: code });
 
     await expect(createSale({ ...saleInput, tipeId: code, tipeCodeSnapshot: code, tipeNameSnapshot: code, paymentMethod: "Other", dueDate: undefined }))
