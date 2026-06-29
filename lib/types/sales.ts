@@ -1,0 +1,13 @@
+export type SalesItem = { productRef: string; quantity: number; unitPrice: number; discount?: number };
+export type Sale = {
+  id: string; saleDate: string; tipeId?: string; tipeCodeSnapshot?: string; tipeNameSnapshot?: string; rekeningId?: string; rekeningNameSnapshot?: string; customerName: string; customerLocation?: string;
+  deliveryDate?: string; shippingMethod?: string; notes?: string; items: SalesItem[]; total: number;
+  paymentMethod: "Cash" | "TF" | "Tempo" | "Other";
+  dueDate?: string;
+  transferAccount?: string;
+  approvalStatus?: "draft" | "pending_approval" | "approved" | "rejected" | "cancelled";
+  createdByUserId?: string;
+  createdByNameSnapshot?: string;
+  createdByRoleSnapshot?: string;
+  createdAt?: string;
+};

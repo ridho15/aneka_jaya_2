@@ -1,0 +1,647 @@
+openapi: 3.1.0
+info:
+  title: Aneka Jaya Internal API
+  version: 1.0.0
+  description: API internal untuk operasional Aneka Jaya. Semua response JSON bisnis memakai wrapper success/data/message.
+servers:
+  - url: http://localhost:3000
+security:
+  - demoRoleCookie: []
+  - trustedHeaders: []
+components:
+  securitySchemes:
+    demoRoleCookie:
+      type: apiKey
+      in: cookie
+      name: aneka_jaya_role
+      description: Cookie role demo untuk mode non-production.
+    trustedHeaders:
+      type: apiKey
+      in: header
+      name: x-aneka-user-id
+      description: Header user dari reverse proxy atau SSO terpercaya.
+    cronSecret:
+      type: apiKey
+      in: header
+      name: x-cron-secret
+  schemas:
+    ApiSuccess:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data: {}
+    ApiError:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          const: false
+        message:
+          type: string
+        code:
+          type: string
+        details: {}
+    SalesItem:
+      type: object
+      required: [productRef, quantity, unitPrice]
+      properties:
+        productRef:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        discount:
+          type: number
+    SaleInput:
+      type: object
+      required: [saleDate, customerName, customerLocation, shippingMethod, paymentMethod, items]
+      properties:
+        saleDate:
+          type: string
+          format: date
+        tipeId:
+          type: string
+        customerName:
+          type: string
+        customerLocation:
+          type: string
+        shippingMethod:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [Cash, TF, Tempo, Other]
+        dueDate:
+          type: string
+          format: date
+        rekeningId:
+          type: string
+        transferAccount:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesItem"
+    ExpenseInput:
+      type: object
+      required: [expenseDate, category, vendorName, description, amount, paymentMethod, rekeningId, rekeningNameSnapshot]
+      properties:
+        expenseDate:
+          type: string
+          format: date
+        tipeId:
+          type: string
+        category:
+          type: string
+        vendorName:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        paymentMethod:
+          type: string
+        rekeningId:
+          type: string
+        rekeningNameSnapshot:
+          type: string
+        coaId:
+          type: string
+          default: Kas
+        coaNameSnapshot:
+          type: string
+          default: Kas
+        attachmentUrl:
+          type: string
+        notes:
+          type: string
+    ProductInput:
+      type: object
+      required: [code, name, category, unit, sellingPrice, costPrice]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        unit:
+          type: string
+        sellingPrice:
+          type: number
+        costPrice:
+          type: number
+        brand:
+          type: string
+        initialStock:
+          type: number
+        warehouse:
+          type: string
+        rack:
+          type: string
+        minimumStock:
+          type: number
+    ApprovalAction:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [approve, reject]
+        reason:
+          type: string
+    TempoPaymentInput:
+      type: object
+      required: [amountPaid]
+      properties:
+        paymentDate:
+          type: string
+          format: date
+        amountPaid:
+          type: number
+        paymentMethod:
+          type: string
+          enum: [Cash, TF, Other]
+        rekeningId:
+          type: string
+        rekeningNameSnapshot:
+          type: string
+        attachmentUrl:
+          type: string
+        notes:
+          type: string
+    UserInput:
+      type: object
+      required: [externalId, name, role]
+      properties:
+        externalId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, ADMIN, FINANCE, MANAGER, VIEWER]
+        isActive:
+          type: boolean
+  responses:
+    BadRequest:
+      description: Request tidak valid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Forbidden:
+      description: Role tidak memiliki permission.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Data tidak ditemukan.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    BadGateway:
+      description: Adapter upstream gagal.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+paths:
+  /api/health:
+    get:
+      summary: Cek koneksi ERP dan OpenCloud.
+      security: []
+      responses:
+        "200":
+          description: Status integrasi.
+  /api/docs:
+    get:
+      summary: Halaman dokumentasi API untuk Owner.
+      responses:
+        "200":
+          description: HTML dokumentasi.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/docs/openapi.json:
+    get:
+      summary: OpenAPI JSON untuk Owner.
+      responses:
+        "200":
+          description: Dokumen OpenAPI JSON.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales:
+    post:
+      summary: Membuat transaksi penjualan.
+      description: Permission penjualan.create.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleInput"
+      responses:
+        "201":
+          description: Penjualan dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/expenses:
+    post:
+      summary: Membuat transaksi pengeluaran.
+      description: Permission pengeluaran.create.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Pengeluaran dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/products:
+    get:
+      summary: Daftar produk.
+      description: Permission stock.view.
+      responses:
+        "200":
+          description: Daftar produk.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+    post:
+      summary: Membuat produk.
+      description: Permission stock.create.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Produk dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/products/{id}:
+    get:
+      summary: Detail produk.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail produk.
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update produk.
+      description: Permission stock.create.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "200":
+          description: Produk diupdate.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/stocks:
+    get:
+      summary: Daftar stok ERP.
+      description: Permission stock.view.
+      responses:
+        "200":
+          description: Daftar stok.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/approval/{id}:
+    post:
+      summary: Approve atau reject approval pending.
+      description: Permission approval.approve.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalAction"
+      responses:
+        "200":
+          description: Approval diproses.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/tempo/{id}/pay:
+    post:
+      summary: Membayar piutang tempo.
+      description: Permission tempo.mark_paid.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TempoPaymentInput"
+      responses:
+        "200":
+          description: Pembayaran tempo berhasil.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/upload:
+    post:
+      summary: Upload lampiran transaksi.
+      description: Permission upload lampiran untuk Owner/Admin/Finance.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: File terunggah atau URL mock dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/tipe:
+    get:
+      summary: Daftar tipe pembukuan.
+      responses:
+        "200":
+          description: Daftar tipe.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Membuat tipe pembukuan.
+      description: Permission settings.tipe.manage.
+      responses:
+        "201":
+          description: Tipe dibuat.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      summary: Update tipe pembukuan.
+      description: Permission settings.tipe.manage.
+      responses:
+        "200":
+          description: Tipe diupdate.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/rekening:
+    get:
+      summary: Daftar rekening pembayaran.
+      responses:
+        "200":
+          description: Daftar rekening.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Membuat rekening.
+      description: Permission settings.rekening.manage.
+      responses:
+        "201":
+          description: Rekening dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      summary: Update rekening.
+      description: Permission settings.rekening.manage.
+      responses:
+        "200":
+          description: Rekening diupdate.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/session/role:
+    post:
+      summary: Mengubah role demo development teknis.
+      description: Hanya aktif ketika mode demo dan `AUTH_ENABLE_DEMO_ROLE_SELECTOR=true`; ditolak pada auth operasional trusted-header.
+      responses:
+        "200":
+          description: Role demo tersimpan di cookie.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/session/logout:
+    post:
+      summary: Menghapus cookie role demo development teknis.
+      description: Hanya aktif ketika mode demo dan `AUTH_ENABLE_DEMO_ROLE_SELECTOR=true`; ditolak pada auth operasional trusted-header.
+      responses:
+        "200":
+          description: Cookie role demo dihapus.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/users:
+    get:
+      summary: Daftar user.
+      description: Permission users.manage.
+      responses:
+        "200":
+          description: Daftar user.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Membuat user.
+      description: Permission users.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: User dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/users/{id}:
+    put:
+      summary: Update user.
+      description: Permission users.manage.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "200":
+          description: User diupdate.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/whatsapp/test:
+    post:
+      summary: Mengirim pesan WhatsApp test.
+      description: Permission settings.whatsapp.manage.
+      responses:
+        "200":
+          description: Pesan test dikirim.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/jobs/send-daily-report:
+    post:
+      summary: Cron kirim laporan harian WhatsApp.
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: Job selesai.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/jobs/send-tempo-reminder:
+    post:
+      summary: Cron kirim pengingat tempo.
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: Job selesai.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/jobs/check-stock-alert:
+    post:
+      summary: Cron cek minimum stock.
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: Job selesai.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/jobs/retry-erp-sync:
+    post:
+      summary: Cron retry sinkron ERP.
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: Job selesai.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/print/sales/{id}:
+    get:
+      summary: Preview cetak dot matrix penjualan.
+      description: Mengembalikan text/plain fixed-width 80 kolom.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Teks nota penjualan.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/print/tempo/{id}:
+    get:
+      summary: Preview cetak dot matrix pembayaran tempo.
+      description: Mengembalikan text/plain fixed-width 80 kolom.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Teks bukti pembayaran tempo.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"

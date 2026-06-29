@@ -1,0 +1,158 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+const mocks = vi.hoisted(() => {
+  const tx = {
+    salesRecord: { create: vi.fn(), update: vi.fn() },
+    approvalRequest: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    tempoReceivable: { create: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    tempoPayment: { create: vi.fn() },
+    auditLog: { create: vi.fn() }
+  };
+  return {
+    tx,
+    prisma: {
+      $transaction: vi.fn(async (callback: (transactionClient: unknown) => unknown) => callback(tx))
+    },
+    user: { id: "actor-1", name: "Actor", role: "OWNER" },
+    sendNeoCommand: vi.fn(),
+    findTipe: vi.fn()
+  };
+});
+
+vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
+vi.mock("@/lib/auth/session", () => ({
+  getCurrentUser: vi.fn(async () => mocks.user),
+  getCurrentRole: vi.fn(async () => mocks.user.role)
+}));
+vi.mock("@/lib/api/neo", () => ({ sendNeoCommand: mocks.sendNeoCommand }));
+vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe }));
+
+import { createSale } from "@/lib/api/sales";
+import { updateApprovalStatus } from "@/lib/approval/store";
+import { payTempo } from "@/lib/tempo/store";
+
+const saleInput = {
+  saleDate: "2026-06-27",
+  tipeId: "W",
+  tipeCodeSnapshot: "W",
+  tipeNameSnapshot: "Walk In",
+  customerName: "Budi",
+  customerLocation: "Toko",
+  shippingMethod: "di Tempat",
+  paymentMethod: "Tempo" as const,
+  dueDate: "2026-07-27",
+  items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }]
+};
+
+describe("production Prisma transactions", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_APP_MODE", "production");
+    mocks.user = { id: "actor-1", name: "Actor", role: "OWNER" };
+    mocks.sendNeoCommand.mockResolvedValue({ success: true, data: { ok: true } });
+    mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
+    mocks.prisma.$transaction.mockClear();
+    Object.values(mocks.tx).forEach((model) => Object.values(model).forEach((fn) => "mockReset" in fn && fn.mockReset()));
+  });
+
+  it("creates approved production Tempo sales atomically with receivable and audit rows", async () => {
+    await expect(createSale(saleInput)).resolves.toEqual({ success: true, data: { ok: true } });
+
+    expect(mocks.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mocks.tx.salesRecord.create).toHaveBeenCalledOnce();
+    expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        items: { create: [expect.objectContaining({ productRef: "P-1", sortOrder: 0 })] }
+      })
+    }));
+    expect(mocks.tx.tempoReceivable.create).toHaveBeenCalledOnce();
+    expect(mocks.tx.approvalRequest.create).not.toHaveBeenCalled();
+    expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ entityType: "sales", action: "create" })
+    }));
+  });
+
+  it("does not create a Tempo payment when a concurrent update consumes the remaining amount", async () => {
+    mocks.tx.tempoReceivable.findUnique.mockResolvedValue({
+      id: "TMP-1",
+      salesId: "S-1",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      originalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      transactionDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27"),
+      status: "open",
+      createdByUserId: "u-1",
+      createdByNameSnapshot: "User",
+      createdAt: new Date("2026-06-27"),
+      updatedAt: new Date("2026-06-27")
+    });
+    mocks.tx.tempoReceivable.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(payTempo("TMP-1", {
+      paymentDate: "2026-06-28",
+      amountPaid: 80,
+      paymentMethod: "Cash",
+      rekeningId: "cash",
+      rekeningNameSnapshot: "Cash"
+    })).rejects.toThrow("Nominal dibayar tidak boleh lebih dari sisa Tempo.");
+
+    expect(mocks.tx.tempoPayment.create).not.toHaveBeenCalled();
+    expect(mocks.tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("does not create duplicate Tempo receivables when approving an already-linked Tempo sale", async () => {
+    const beforeApproval = {
+      id: "APR-1",
+      module: "penjualan",
+      entityId: "S-1",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      amount: 100,
+      status: "pending_approval",
+      createdByUserId: "admin-1",
+      createdByNameSnapshot: "Admin",
+      createdByRoleSnapshot: "ADMIN",
+      createdAt: new Date("2026-06-27"),
+      approvedByUserId: null,
+      approvedByNameSnapshot: null,
+      approvedAt: null,
+      rejectedByUserId: null,
+      rejectedByNameSnapshot: null,
+      rejectedAt: null,
+      rejectionReason: null
+    };
+    mocks.tx.approvalRequest.findUnique.mockResolvedValue(beforeApproval);
+    mocks.tx.approvalRequest.update.mockResolvedValue({
+      ...beforeApproval,
+      status: "approved",
+      approvedByUserId: "actor-1",
+      approvedByNameSnapshot: "Actor",
+      approvedAt: new Date("2026-06-28")
+    });
+    mocks.tx.salesRecord.update.mockResolvedValue({
+      id: "S-1",
+      paymentMethod: "Tempo",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      total: 100,
+      saleDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27")
+    });
+    mocks.tx.tempoReceivable.findUnique.mockResolvedValue({ id: "TMP-existing" });
+
+    await expect(updateApprovalStatus("APR-1", "approve")).resolves.toMatchObject({ status: "approved" });
+
+    expect(mocks.tx.tempoReceivable.create).not.toHaveBeenCalled();
+    expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ entityType: "approval", action: "approve" })
+    }));
+  });
+});

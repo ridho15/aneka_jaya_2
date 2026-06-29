@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  FINANCE
+  MANAGER
+  VIEWER
+}
+
+enum ApprovalStatus {
+  draft
+  pending_approval
+  approved
+  rejected
+  cancelled
+}
+
+enum TempoStatus {
+  open
+  paid
+  partial_paid
+  overdue
+  cancelled
+  written_off
+}
+
+model User {
+  id          String    @id
+  externalId  String    @unique
+  email       String?   @unique
+  name        String
+  role        Role
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model AuditLog {
+  id               String   @id
+  entityType       String
+  entityId         String
+  action           String
+  beforeValue      Json?
+  afterValue       Json?
+  userId           String
+  userNameSnapshot String
+  userRoleSnapshot Role
+  ipAddress        String?
+  userAgent        String?
+  reason           String?
+  createdAt        DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model ApprovalRequest {
+  id                     String         @id
+  module                 String
+  entityId               String
+  tipeCodeSnapshot       String?
+  tipeNameSnapshot       String?
+  amount                 Decimal?       @db.Decimal(18, 2)
+  status                 ApprovalStatus
+  createdByUserId        String
+  createdByNameSnapshot  String
+  createdByRoleSnapshot  Role
+  createdAt              DateTime
+  approvedByUserId       String?
+  approvedByNameSnapshot String?
+  approvedAt             DateTime?
+  rejectedByUserId       String?
+  rejectedByNameSnapshot String?
+  rejectedAt             DateTime?
+  rejectionReason        String?
+
+  @@index([status])
+  @@index([module, entityId])
+}
+
+model TempoReceivable {
+  id                    String         @id
+  salesId               String         @unique
+  tipeId                String
+  tipeCodeSnapshot      String
+  tipeNameSnapshot      String
+  customerName          String
+  originalAmount        Decimal        @db.Decimal(18, 2)
+  paidAmount            Decimal        @db.Decimal(18, 2)
+  remainingAmount       Decimal        @db.Decimal(18, 2)
+  transactionDate       DateTime
+  dueDate               DateTime
+  status                TempoStatus
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime
+  updatedAt             DateTime
+  payments              TempoPayment[]
+
+  @@index([status])
+  @@index([dueDate])
+}
+
+model TempoPayment {
+  id                    String          @id
+  tempoReceivableId     String
+  tempoReceivable       TempoReceivable @relation(fields: [tempoReceivableId], references: [id], onDelete: Cascade)
+  paymentDate           DateTime
+  amountPaid            Decimal         @db.Decimal(18, 2)
+  paymentMethod         String
+  rekeningId            String
+  rekeningNameSnapshot  String
+  attachmentUrl         String?
+  notes                 String?
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime
+
+  @@index([tempoReceivableId])
+  @@index([paymentDate])
+}
+
+model SalesRecord {
+  id                    String    @id
+  saleDate              DateTime
+  tipeId                String
+  tipeCodeSnapshot      String
+  tipeNameSnapshot      String
+  customerName          String
+  customerLocation      String?
+  shippingMethod        String?
+  paymentMethod         String
+  dueDate               DateTime?
+  rekeningId            String?
+  transferAccount       String?
+  notes                 String?
+  total                 Decimal   @db.Decimal(18, 2)
+  approvalStatus        String
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdByRoleSnapshot Role
+  createdAt             DateTime
+  items                 SalesRecordItem[]
+
+  @@index([saleDate])
+  @@index([approvalStatus])
+  @@index([customerName])
+}
+
+model BookkeepingType {
+  id            String   @id
+  code          String   @unique
+  name          String
+  description   String?
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rekeningLinks RekeningAccountBookkeepingType[]
+}
+
+model RekeningAccount {
+  id            String   @id
+  name          String
+  accountNumber String?
+  bankName      String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tipeLinks     RekeningAccountBookkeepingType[]
+}
+
+model SalesRecordItem {
+  id            String      @id
+  salesRecordId String
+  salesRecord   SalesRecord @relation(fields: [salesRecordId], references: [id], onDelete: Cascade)
+  productRef    String
+  quantity      Decimal     @db.Decimal(18, 2)
+  unitPrice     Decimal     @db.Decimal(18, 2)
+  discount      Decimal     @default(0) @db.Decimal(18, 2)
+  sortOrder     Int
+
+  @@index([salesRecordId])
+  @@index([productRef])
+}
+
+model RekeningAccountBookkeepingType {
+  rekeningAccountId String
+  bookkeepingTypeId String
+  rekeningAccount   RekeningAccount @relation(fields: [rekeningAccountId], references: [id], onDelete: Cascade)
+  bookkeepingType   BookkeepingType @relation(fields: [bookkeepingTypeId], references: [id], onDelete: Cascade)
+
+  @@id([rekeningAccountId, bookkeepingTypeId])
+  @@index([bookkeepingTypeId])
+}
+
+model WhatsAppRecipient {
+  id        String   @id
+  name      String
+  phone     String
+  role      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WhatsAppMessageLog {
+  id          String   @id
+  recipientId String?
+  recipient   String
+  messageType String
+  status      String
+  payload     Json?
+  response    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model StockAlertLog {
+  id              String   @id
+  productRef      String
+  productName     String
+  currentQuantity Int
+  minimumQuantity Int
+  status          String
+  sentTo          String?
+  createdAt       DateTime @default(now())
+
+  @@index([productRef])
+  @@index([createdAt])
+}

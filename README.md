@@ -92,7 +92,7 @@ Identity dipusatkan di `lib/auth/session.ts` melalui `getCurrentUser()` dan `get
 - `AUTH_PROVIDER=trusted_header` membaca header user yang sudah diverifikasi oleh reverse proxy/SSO upstream: `x-aneka-user-id`, `x-aneka-user-name`, dan `x-aneka-user-role`.
 - Di production, demo role otomatis jatuh ke Viewer kecuali `AUTH_ALLOW_DEMO_IN_PRODUCTION=true`, yang tidak disarankan.
 - Untuk production trusted header, `AUTH_TRUSTED_HEADER_SECRET` wajib diisi dan upstream wajib mengirim `x-aneka-auth-secret` yang sama.
-- `/login` adalah landing autentikasi production. Tombol "Masuk melalui SSO" memakai `AUTH_SSO_LOGIN_URL`, atau fallback ke `/` agar reverse proxy memicu auth challenge.
+- `/` dan `/login` adalah landing autentikasi internal. Tombol "Masuk melalui SSO" hanya tampil jika `AUTH_SSO_LOGIN_URL` diisi; jika kosong, halaman menampilkan pesan konfigurasi SSO.
 - User management production memakai Prisma `User`; role database mengalahkan role header dan hanya user aktif yang dapat memakai aplikasi.
 
 Audit trail bersifat append-only di PostgreSQL untuk production dan di `data/audit-trail.json` untuk mock/local mode. JSON store tetap dipertahankan untuk mock/local fallback dan legacy import, bukan source of truth transaksi finansial production. Fondasi database produksi tersedia di `prisma/schema.prisma` dan migration untuk user management serta data operasional:

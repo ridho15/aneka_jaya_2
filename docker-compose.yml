@@ -1,0 +1,89 @@
+services:
+  aneka-jaya:
+    image: aneka-jaya-internal-app:local
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - aneka_jaya_audit:/app/data
+  db-migrate:
+    image: aneka-jaya-internal-app:local
+    build: .
+    command: npm run db:migrate:deploy
+    profiles:
+      - tools
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - aneka_jaya_audit:/app/data
+  db-seed-owner:
+    image: aneka-jaya-internal-app:local
+    build: .
+    command: npm run db:seed-owner
+    profiles:
+      - tools
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+  db-import:
+    image: aneka-jaya-internal-app:local
+    build: .
+    command: npm run db:migrate:json
+    profiles:
+      - tools
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - aneka_jaya_audit:/app/data
+  db-verify:
+    image: aneka-jaya-internal-app:local
+    build: .
+    command: npm run db:verify
+    profiles:
+      - tools
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aneka_jaya
+      POSTGRES_USER: aneka_jaya
+      POSTGRES_PASSWORD: aneka_jaya
+    ports:
+      - "5432:5432"
+    volumes:
+      - aneka_jaya_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aneka_jaya -d aneka_jaya"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  aneka_jaya_audit:
+  aneka_jaya_postgres:
