@@ -22,7 +22,7 @@ export default async function ApprovalPage() {
   return (
     <AppShell>
       <div className="mb-7">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-blue-600">Manager / Super Admin</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Manager / Super Admin</p>
         <h2 className="aj-page-title text-3xl font-bold">Approval</h2>
         <p className="mt-2 text-sm text-slate-600">Approve atau reject transaksi yang menunggu pemeriksaan.</p>
       </div>
@@ -45,7 +45,7 @@ export default async function ApprovalPage() {
                   <td className="px-5 py-4">{row.tipeCodeSnapshot || "-"}</td>
                   <td className="px-5 py-4">{row.createdByNameSnapshot}<span className="ml-2 text-xs text-slate-500">{row.createdByRoleSnapshot}</span></td>
                   <td className="px-5 py-4 font-semibold">{rupiah(row.amount)}</td>
-                  <td className="px-5 py-4"><a className="text-sm font-semibold text-blue-600 hover:text-blue-800" href={`/approval/${row.id}`}>Approve / Reject →</a></td>
+                  <td className="px-5 py-4"><a className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href={`/approval/${row.id}`}>Approve / Reject →</a></td>
                 </tr>
               ))}
               {pending.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-500">Tidak ada transaksi yang menunggu approval.</td></tr>}
@@ -70,7 +70,7 @@ export default async function ApprovalPage() {
                   <td className="px-5 py-4">{row.createdByNameSnapshot}<span className="ml-2 text-xs text-slate-500">{row.createdByRoleSnapshot}</span></td>
                   <td className="px-5 py-4">{rupiah(row.amount)}</td>
                   <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge(row.status)}`}>{row.status}</span></td>
-                  <td className="px-5 py-4"><a className="text-sm font-semibold text-blue-600" href={`/approval/${row.id}`}>Lihat →</a></td>
+                  <td className="px-5 py-4"><a className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href={`/approval/${row.id}`}>Lihat →</a></td>
                 </tr>
               ))}
               {history.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-500">Belum ada riwayat approval.</td></tr>}

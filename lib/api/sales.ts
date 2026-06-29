@@ -7,44 +7,74 @@ import { recordAudit } from "@/lib/audit/store";
 import { createApprovalRequest, approvalIsEnabled } from "@/lib/approval/store";
 import { createTempoReceivable } from "@/lib/tempo/store";
 import { getCurrentUser } from "@/lib/auth/session";
-import { findTipe } from "@/lib/business/masterData";
+import { findTipe, MasterDataError, rekeningForTipe } from "@/lib/business/masterData";
 import { saveSalesRecord } from "@/lib/sales/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 
-const usesLocalDataStore = () => process.env.NEXT_PUBLIC_APP_MODE !== "production";
-
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
+}
+
+export function erpSalesTypeCodes(env: NodeJS.ProcessEnv = process.env) {
+  return new Set((env.SALES_ERP_TYPE_CODES || "SLM").split(",").map((code) => code.trim().toUpperCase()).filter(Boolean));
+}
+
+export function salesTargetForType(code: string, env: NodeJS.ProcessEnv = process.env): "erp" | "local" {
+  return erpSalesTypeCodes(env).has(code.trim().toUpperCase()) ? "erp" : "local";
+}
+
+function erpReferenceFrom(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const row = value as Record<string, unknown>;
+  const nested = row.data && typeof row.data === "object" ? row.data as Record<string, unknown> : undefined;
+  const reference = row.reference ?? row.id ?? row.invoice_id ?? nested?.reference ?? nested?.id ?? nested?.invoice_id;
+  return reference === undefined || reference === null ? undefined : String(reference);
 }
 
 export async function createSale(input: PenjualanInput): Promise<ApiResponse<unknown>> {
   const total = input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
   const user = await getCurrentUser();
   const tipe = await findTipe(input.tipeId);
+  if (["Cash", "TF"].includes(input.paymentMethod)) {
+    const rekenings = await rekeningForTipe(tipe.id);
+    if (!input.rekeningId || !rekenings.some((rekening) => rekening.id === input.rekeningId)) {
+      throw new MasterDataError("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.", "REKENING_NOT_FOUND");
+    }
+  }
   const approvalStatus = user.role === "ADMIN" && approvalIsEnabled("penjualan") ? "pending_approval" : "approved";
-  if (usesLocalDataStore()) {
-    const sale: Sale = { id: `S-${Date.now()}`, ...input, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+  const target = salesTargetForType(tipe.code);
+  const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
+  const testReference = isTestTransaction ? `TEST-AJ-SLM-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
+  const customerName = testReference ? `[TEST AJ SLM] ${input.customerName}` : input.customerName;
+  const notes = [input.notes, testReference ? `Transaksi pengujian ${testReference}` : ""].filter(Boolean).join(" • ") || undefined;
+  const effectiveInput = { ...input, customerName, notes, isTestTransaction };
+
+  if (target === "local") {
+    const sale: Sale = { id: `S-${Date.now()}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "local", syncStatus: "local", createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await saveSalesRecord(sale);
     if (approvalStatus === "pending_approval") await createApprovalRequest({ module: "penjualan", entityId: sale.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, amount: total });
     if (approvalStatus === "approved" && input.paymentMethod === "Tempo") await createTempoReceivable({ salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, customerName: input.customerName, originalAmount: total, transactionDate: input.saleDate, dueDate: input.dueDate || input.saleDate });
     await recordAudit({ entityType: "sales", entityId: sale.id, action: "create", afterValue: sale, reason: `Invoice Penjualan lokal • ${approvalStatus} • ${input.paymentMethod}` });
-    return { success: true, data: sale };
+    return { success: true, data: { ...sale, target: "local" } };
   }
   const response = await sendNeoCommand({
-    text: `Buat penjualan dan invoice penjualan untuk ${input.customerName} tanggal ${input.saleDate}.`,
+    text: `${testReference ? `[TEST AJ SLM] ${testReference}. ` : ""}Buat penjualan dan invoice penjualan untuk ${customerName} tanggal ${input.saleDate}.`,
     parsedIntent: {
-      action: "create_sales", customer_name: input.customerName, date: input.saleDate,
+      action: "create_sales", customer_name: customerName, date: input.saleDate,
       tipe_id: tipe.id, tipe_code_snapshot: tipe.code, tipe_name_snapshot: tipe.name,
       payment_status: input.paymentMethod, due_date: input.dueDate || undefined, rekening_id: input.rekeningId || undefined,
       delivery_date: input.deliveryDate || undefined, delivery_method: input.shippingMethod || undefined,
       auto_create_invoice: true,
       items: input.items.map((item) => ({ product_ref: item.productRef, quantity: item.quantity, unit_price: item.unitPrice, discount: item.discount || 0 })),
-      message: [`Lokasi customer: ${input.customerLocation}`, `Pembayaran: ${input.paymentMethod}${input.transferAccount ? ` - ${input.transferAccount}` : ""}`, input.notes || ""].filter(Boolean).join(". ")
+      test_reference: testReference,
+      is_test_transaction: isTestTransaction,
+      message: [`Lokasi customer: ${input.customerLocation}`, `Pembayaran: ${input.paymentMethod}${input.transferAccount ? ` - ${input.transferAccount}` : ""}`, notes || ""].filter(Boolean).join(". ")
     }
   });
   if (response.success) {
-    const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...input, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+    const erpReference = erpReferenceFrom(response.data);
+    const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "synced", erpReference, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.salesRecord.create({
         data: {
@@ -63,6 +93,11 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
           notes: sale.notes,
           total,
           approvalStatus,
+          syncTarget: "erp",
+          syncStatus: "synced",
+          erpReference,
+          testReference,
+          isTestTransaction,
           createdByUserId: user.id,
           createdByNameSnapshot: user.name,
           createdByRoleSnapshot: user.role,
@@ -117,7 +152,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
             tipeId: tipe.id,
             tipeCodeSnapshot: tipe.code,
             tipeNameSnapshot: tipe.name,
-            customerName: input.customerName,
+            customerName,
             originalAmount: total,
             paidAmount: 0,
             remainingAmount: total,
@@ -141,10 +176,11 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
           userId: user.id,
           userNameSnapshot: user.name,
           userRoleSnapshot: user.role,
-          reason: `Invoice Penjualan • Terkirim • ${input.paymentMethod}`
+          reason: `Invoice Penjualan SLM • Terkirim ke ERP • ${input.paymentMethod}${testReference ? ` • ${testReference}` : ""}`
         }
       });
     });
+    return { success: true, data: { ...sale, target: "erp", erpReference, testReference } };
   }
   return response;
 }

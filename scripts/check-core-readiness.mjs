@@ -1,11 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import { existsSync, readFileSync } from "node:fs";
-import path from "node:path";
+import { loadEnvFiles } from "./load-env.mjs";
 
 const REQUIRED_ENV = [
-  ["AUTH_PROVIDER", "trusted_header", "Set AUTH_PROVIDER=trusted_header untuk login operasional."],
-  ["AUTH_TRUSTED_HEADER_SECRET", null, "Isi AUTH_TRUSTED_HEADER_SECRET dengan secret kuat."],
-  ["AUTH_SSO_LOGIN_URL", null, "Isi AUTH_SSO_LOGIN_URL dengan URL gateway/SSO."],
+  ["AUTH_PROVIDER", "local_credentials", "Set AUTH_PROVIDER=local_credentials untuk login internal."],
+  ["AUTH_SESSION_SECRET", null, "Isi AUTH_SESSION_SECRET dengan secret kuat untuk session login internal."],
   ["ANIKA_ERP_API_BASE_URL", null, "Isi ANIKA_ERP_API_BASE_URL untuk ERP asli."],
   ["ANIKA_ERP_API_TOKEN", null, "Isi ANIKA_ERP_API_TOKEN untuk ERP asli."]
 ];
@@ -33,14 +31,16 @@ export async function checkCoreReadiness(env = process.env, prisma = new PrismaC
     addCheck("database:DATABASE_URL", true, null);
     try {
       await prisma.$queryRaw`SELECT 1`;
-      const [ownerCount, activeTipeCount, activeRekeningCount, rekeningTipeLinkCount] = await Promise.all([
+      const [ownerCount, ownerWithPasswordCount, activeTipeCount, activeRekeningCount, rekeningTipeLinkCount] = await Promise.all([
         prisma.user.count({ where: { role: "OWNER", isActive: true } }),
+        prisma.user.count({ where: { role: "OWNER", isActive: true, passwordHash: { not: null } } }),
         prisma.bookkeepingType.count({ where: { isActive: true } }),
         prisma.rekeningAccount.count({ where: { isActive: true } }),
         prisma.rekeningAccountBookkeepingType.count()
       ]);
 
       addCheck("data:active-owner", ownerCount > 0, "Jalankan npm run db:seed-owner atau buat Super Admin aktif.", { count: ownerCount });
+      addCheck("data:active-owner-password", ownerWithPasswordCount > 0, "Set password Owner dengan seed atau reset password dari Super Admin.", { count: ownerWithPasswordCount });
       addCheck("data:active-bookkeeping-type", activeTipeCount > 0, "Super Admin wajib membuat minimal satu tipe pembukuan nyata.", { count: activeTipeCount });
       addCheck("data:active-rekening", activeRekeningCount > 0, "Super Admin wajib membuat minimal satu rekening kas/bank nyata.", { count: activeRekeningCount });
       addCheck("data:rekening-tipe-link", rekeningTipeLinkCount > 0, "Hubungkan minimal satu rekening ke tipe pembukuan.", { count: rekeningTipeLinkCount });
@@ -60,19 +60,7 @@ export async function checkCoreReadiness(env = process.env, prisma = new PrismaC
 }
 
 function loadLocalEnv(env = process.env) {
-  const filePath = path.join(process.cwd(), ".env.local");
-  if (!existsSync(filePath)) return env;
-  const raw = readFileSync(filePath, "utf8");
-  for (const line of raw.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const index = trimmed.indexOf("=");
-    if (index <= 0) continue;
-    const key = trimmed.slice(0, index).trim();
-    const value = trimmed.slice(index + 1).trim().replace(/^["']|["']$/g, "");
-    if (!env[key]) env[key] = value;
-  }
-  return env;
+  return loadEnvFiles(env);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

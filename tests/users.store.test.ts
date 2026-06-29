@@ -10,6 +10,10 @@ type FakeUser = {
   name: string;
   role: Role;
   isActive: boolean;
+  passwordHash: string | null;
+  passwordUpdatedAt: Date | null;
+  failedLoginCount: number;
+  lockedUntil: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -34,7 +38,21 @@ const mocks = vi.hoisted(() => {
         findMany: vi.fn(async () => state.users),
         findUnique: vi.fn(async ({ where }: { where: { id?: string; externalId?: string } }) => state.users.find((user) => user.id === where.id || user.externalId === where.externalId) || null),
         create: vi.fn(async ({ data }: { data: Partial<FakeUser> }) => {
-          const user = { id: String(data.id), externalId: String(data.externalId), email: data.email ?? null, name: String(data.name), role: data.role as Role, isActive: data.isActive ?? true, lastLoginAt: null, createdAt: now(), updatedAt: now() };
+          const user = {
+            id: String(data.id),
+            externalId: String(data.externalId),
+            email: data.email ?? null,
+            name: String(data.name),
+            role: data.role as Role,
+            isActive: data.isActive ?? true,
+            passwordHash: data.passwordHash ?? null,
+            passwordUpdatedAt: data.passwordUpdatedAt ?? null,
+            failedLoginCount: data.failedLoginCount ?? 0,
+            lockedUntil: data.lockedUntil ?? null,
+            lastLoginAt: null,
+            createdAt: now(),
+            updatedAt: now()
+          };
           state.users.push(user);
           return user;
         }),
@@ -59,7 +77,7 @@ import { createUser, listUsers, updateUser } from "@/lib/users/store";
 
 function fakeUser(input: Partial<FakeUser> & Pick<FakeUser, "id" | "externalId" | "role">): FakeUser {
   const date = new Date("2026-06-27T00:00:00.000Z");
-  return { email: null, name: input.externalId, isActive: true, lastLoginAt: null, createdAt: date, updatedAt: date, ...input };
+  return { email: null, name: input.externalId, isActive: true, passwordHash: null, passwordUpdatedAt: null, failedLoginCount: 0, lockedUntil: null, lastLoginAt: null, createdAt: date, updatedAt: date, ...input };
 }
 
 describe("user management store", () => {
@@ -76,10 +94,15 @@ describe("user management store", () => {
   });
 
   it("allows owner to create users and records audit", async () => {
-    const user = await createUser({ externalId: "finance-sso", email: "FINANCE@EXAMPLE.COM", name: "Finance", role: "FINANCE" });
+    const user = await createUser({ externalId: "finance-sso", email: "FINANCE@EXAMPLE.COM", name: "Finance", role: "FINANCE", password: "secret123" });
 
-    expect(user).toMatchObject({ externalId: "finance-sso", email: "finance@example.com", name: "Finance", role: "FINANCE", isActive: true });
+    expect(user).toMatchObject({ externalId: "finance-sso", email: "finance@example.com", name: "Finance", role: "FINANCE", isActive: true, hasPassword: true });
+    expect("passwordHash" in user).toBe(false);
     expect(mocks.recordAudit).toHaveBeenCalledWith(expect.objectContaining({ entityType: "user", action: "create" }));
+  });
+
+  it("requires an initial password when creating users", async () => {
+    await expect(createUser({ externalId: "finance-sso", email: "FINANCE@EXAMPLE.COM", name: "Finance", role: "FINANCE" })).rejects.toThrow("Password awal wajib diisi.");
   });
 
   it("allows owner to change roles", async () => {

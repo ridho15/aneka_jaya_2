@@ -16,11 +16,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 
-import { listBookkeepingTypes, listRekeningAccounts, saveRekeningAccounts } from "@/lib/business/masterData";
+import { findTipe, listBookkeepingTypes, listRekeningAccounts, saveRekeningAccounts } from "@/lib/business/masterData";
 
 describe("master data normalized persistence", () => {
   beforeEach(() => {
-    vi.stubEnv("NEXT_PUBLIC_APP_MODE", "production");
     mocks.prisma.bookkeepingType.findMany.mockReset();
     mocks.prisma.bookkeepingType.upsert.mockReset();
     mocks.prisma.rekeningAccount.findMany.mockReset();
@@ -40,6 +39,16 @@ describe("master data normalized persistence", () => {
     ]);
   });
 
+  it("uses Prisma in local development and returns a stable missing-type error", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_MODE", "development");
+    mocks.prisma.bookkeepingType.findMany.mockResolvedValue([]);
+
+    await expect(findTipe("W")).rejects.toMatchObject({
+      code: "BOOKKEEPING_TYPE_NOT_FOUND",
+      message: "Tipe pembukuan belum dikonfigurasi atau tidak ditemukan."
+    });
+  });
+
   it("derives RekeningAccount.tipeIds from the junction table for UI compatibility", async () => {
     mocks.prisma.rekeningAccount.findMany.mockResolvedValue([
       {
@@ -47,6 +56,7 @@ describe("master data normalized persistence", () => {
         bankName: "Cash",
         name: "Cash W",
         accountNumber: "-",
+        isActive: true,
         tipeLinks: [{ bookkeepingTypeId: "W" }]
       }
     ]);
@@ -54,6 +64,7 @@ describe("master data normalized persistence", () => {
     await expect(listRekeningAccounts()).resolves.toEqual([
       { id: "cash-w", bank: "Cash", name: "Cash W", accountNumber: "-", isCash: true, tipeIds: ["W"] }
     ]);
+    expect(mocks.prisma.rekeningAccount.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { isActive: true } }));
   });
 
   it("writes rekening-to-tipe assignments through the junction table", async () => {

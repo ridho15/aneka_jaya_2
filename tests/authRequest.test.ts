@@ -106,4 +106,22 @@ describe("request auth resolver", () => {
 
     expect(role).toBe("VIEWER");
   });
+
+  it("ignores demo role cookies when local credentials auth is active", () => {
+    const role = resolveRequestRole(
+      { headers: new Headers({ cookie: "aneka_jaya_role=OWNER" }) },
+      { AUTH_PROVIDER: "local_credentials", NODE_ENV: "development" }
+    );
+
+    expect(role).toBe("VIEWER");
+  });
+
+  it("requires a signed session when Anika ERP auth is active", () => {
+    const role = resolveRequestRole(
+      { headers: new Headers({ cookie: "aneka_jaya_role=OWNER" }) },
+      { AUTH_PROVIDER: "anika_erp", NODE_ENV: "development" }
+    );
+
+    expect(role).toBe("VIEWER");
+  });
 });

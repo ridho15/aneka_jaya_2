@@ -1,0 +1,33 @@
+[
+  {
+    "id": "S-1782729047060",
+    "saleDate": "2026-06-29",
+    "tipeId": "W",
+    "tipeCodeSnapshot": "W",
+    "tipeNameSnapshot": "W",
+    "rekeningId": "cash-w",
+    "rekeningNameSnapshot": "Kas Walk In",
+    "customerName": "Walk In",
+    "customerLocation": "Toko",
+    "deliveryDate": "2026-06-29",
+    "shippingMethod": "di Tempat",
+    "paymentMethod": "Cash",
+    "items": [
+      {
+        "productRef": "Ubr120H",
+        "quantity": 1,
+        "unitPrice": 0,
+        "discount": 0
+      }
+    ],
+    "isTestTransaction": false,
+    "total": 0,
+    "approvalStatus": "approved",
+    "syncTarget": "local",
+    "syncStatus": "local",
+    "createdByUserId": "anika:1",
+    "createdByNameSnapshot": "Ridho Al Amzah",
+    "createdByRoleSnapshot": "OWNER",
+    "createdAt": "2026-06-29T10:30:47.060Z"
+  }
+]

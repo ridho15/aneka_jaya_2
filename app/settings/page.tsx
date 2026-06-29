@@ -34,24 +34,24 @@ export default async function SettingsPage() {
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {isOwner && (
             <>
-              <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-blue-400 hover:bg-blue-50" href="/settings/tipe">
+              <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-emerald-400 hover:bg-emerald-50" href="/settings/tipe">
                 <div><p className="font-semibold text-slate-800">Tipe Pembukuan</p><p className="mt-0.5 text-xs text-slate-500">Kelola tipe transaksi (W, SLM, Online, …)</p></div>
               </Link>
               <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-emerald-400 hover:bg-emerald-50" href="/settings/rekening">
                 <div><p className="font-semibold text-slate-800">Rekening</p><p className="mt-0.5 text-xs text-slate-500">Kelola rekening bank / kas per tipe</p></div>
               </Link>
               <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-400 hover:bg-slate-50" href="/settings/users">
-                <div><p className="font-semibold text-slate-800">Users</p><p className="mt-0.5 text-xs text-slate-500">Kelola user SSO dan role database</p></div>
+                <div><p className="font-semibold text-slate-800">Users</p><p className="mt-0.5 text-xs text-slate-500">Kelola login internal dan role database</p></div>
               </Link>
             </>
           )}
-          <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-violet-400 hover:bg-violet-50" href="/settings/whatsapp">
+          <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-emerald-400 hover:bg-emerald-50" href="/settings/whatsapp">
             <div><p className="font-semibold text-slate-800">WhatsApp</p><p className="mt-0.5 text-xs text-slate-500">Konfigurasi provider dan nomor tujuan</p></div>
           </Link>
           <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-amber-400 hover:bg-amber-50" href="/approval">
             <div><p className="font-semibold text-slate-800">Approval</p><p className="mt-0.5 text-xs text-slate-500">Approve / reject transaksi tertunda</p></div>
           </Link>
-          <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-fuchsia-400 hover:bg-fuchsia-50" href="/tempo">
+          <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-emerald-400 hover:bg-emerald-50" href="/tempo">
             <div><p className="font-semibold text-slate-800">Tempo</p><p className="mt-0.5 text-xs text-slate-500">Kelola piutang tempo pelanggan</p></div>
           </Link>
           <Link className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-slate-400 hover:bg-slate-50" href="/audit-trail">

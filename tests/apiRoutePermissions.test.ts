@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
     role: "OWNER",
     getProduct: vi.fn(),
     listProducts: vi.fn(),
+    listProductTableItems: vi.fn(),
     listStocks: vi.fn(),
     listBookkeepingTypes: vi.fn(),
     listRekeningAccounts: vi.fn(),
@@ -29,7 +30,8 @@ vi.mock("@/lib/auth/session", () => ({
 
 vi.mock("@/lib/api/products", () => ({
   getProduct: mocks.getProduct,
-  listProducts: mocks.listProducts
+  listProducts: mocks.listProducts,
+  listProductTableItems: mocks.listProductTableItems
 }));
 
 vi.mock("@/lib/api/stocks", () => ({
@@ -63,6 +65,7 @@ vi.mock("@/lib/approval/store", () => ({
 
 import { POST as approveApproval } from "@/app/api/approval/[id]/route";
 import { GET as getHealth } from "@/app/api/health/route";
+import { GET as getProducts } from "@/app/api/products/route";
 import { GET as getProductDetail } from "@/app/api/products/[id]/route";
 import { GET as getRekening } from "@/app/api/rekening/route";
 import { GET as getStocks } from "@/app/api/stocks/route";
@@ -73,6 +76,7 @@ describe("api route permission enforcement", () => {
     mocks.role = "OWNER";
     mocks.getProduct.mockReset();
     mocks.listProducts.mockReset();
+    mocks.listProductTableItems.mockReset();
     mocks.listStocks.mockReset();
     mocks.listBookkeepingTypes.mockReset();
     mocks.listRekeningAccounts.mockReset();
@@ -99,6 +103,23 @@ describe("api route permission enforcement", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.getProduct).toHaveBeenCalledWith("P-1");
+  });
+
+  it("returns table-scoped products from the list endpoint", async () => {
+    mocks.role = "ADMIN";
+    mocks.listProductTableItems.mockResolvedValue({
+      success: true,
+      data: [{ id: "P-1", code: "P-1", name: "Produk", category: null, sellingPrice: null, minimumStock: null, isActive: null, updatedAt: "2026-06-29T10:00:00.000Z" }]
+    });
+
+    const response = await getProducts();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      success: true,
+      data: [{ id: "P-1", code: "P-1", name: "Produk", category: null, sellingPrice: null, minimumStock: null, isActive: null, updatedAt: "2026-06-29T10:00:00.000Z" }]
+    });
+    expect(mocks.listProductTableItems).toHaveBeenCalled();
   });
 
   it("uses the shared current-role resolver for stocks, so trusted-header roles work", async () => {

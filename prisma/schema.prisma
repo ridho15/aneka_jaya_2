@@ -33,18 +33,23 @@ enum TempoStatus {
 }
 
 model User {
-  id          String    @id
-  externalId  String    @unique
-  email       String?   @unique
-  name        String
-  role        Role
-  isActive    Boolean   @default(true)
-  lastLoginAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id
+  externalId       String    @unique
+  email            String?   @unique
+  name             String
+  role             Role
+  isActive         Boolean   @default(true)
+  passwordHash     String?
+  passwordUpdatedAt DateTime?
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([role])
   @@index([isActive])
+  @@index([lockedUntil])
 }
 
 model AuditLog {
@@ -148,6 +153,11 @@ model SalesRecord {
   notes                 String?
   total                 Decimal   @db.Decimal(18, 2)
   approvalStatus        String
+  syncTarget            String    @default("local")
+  syncStatus            String    @default("local")
+  erpReference          String?
+  testReference         String?
+  isTestTransaction     Boolean   @default(false)
   createdByUserId       String
   createdByNameSnapshot String
   createdByRoleSnapshot Role
@@ -157,6 +167,8 @@ model SalesRecord {
   @@index([saleDate])
   @@index([approvalStatus])
   @@index([customerName])
+  @@index([syncTarget, syncStatus])
+  @@index([testReference])
 }
 
 model BookkeepingType {

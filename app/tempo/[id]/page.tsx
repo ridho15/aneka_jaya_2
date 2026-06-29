@@ -22,13 +22,13 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
     <AppShell>
       <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-fuchsia-600">Tempo</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Tempo</p>
           <h2 className="aj-page-title text-3xl font-bold">Bayar Tempo</h2>
           <p className="mt-2 text-sm text-slate-600">{tempo.customerName} • Sisa {rupiah(tempo.remainingAmount)}</p>
         </div>
         <Link
           href={`/print/tempo/${tempo.id}`}
-          className="inline-flex items-center justify-center border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-50"
+          className="inline-flex items-center justify-center border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800"
         >
           Cetak
         </Link>

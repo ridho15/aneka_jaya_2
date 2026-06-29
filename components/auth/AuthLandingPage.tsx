@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RoleSelector } from "@/components/settings/RoleSelector";
+import { LoginForm } from "@/components/auth/LoginForm";
 import { isDemoRoleSelectorEnabled } from "@/lib/auth/demoUi";
 import { resolveAuthProvider } from "@/lib/auth/request";
 import { roleLabel, type Role } from "@/lib/auth/roles";
@@ -55,6 +56,7 @@ export function AuthLandingPage({ currentRole }: { currentRole: Role }) {
   const showRoleSelector = isDemoRoleSelectorEnabled();
   const loginUrl = ssoLoginUrl();
   const isTrustedHeader = provider === "trusted_header";
+  const isLocalCredentials = provider === "local_credentials";
   const ssoReady = isTrustedHeader && Boolean(loginUrl);
   const loginHref = loginUrl || "";
   const appMode = process.env.NEXT_PUBLIC_APP_MODE === "production" ? "Production" : "Development";
@@ -91,7 +93,11 @@ export function AuthLandingPage({ currentRole }: { currentRole: Role }) {
               </div>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                {ssoReady ? (
+                {isLocalCredentials ? (
+                  <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <LoginForm />
+                  </div>
+                ) : ssoReady ? (
                   <Link href={loginHref} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700">
                     Masuk ke Sistem
                   </Link>
@@ -148,11 +154,16 @@ export function AuthLandingPage({ currentRole }: { currentRole: Role }) {
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Akses masuk</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  {showRoleSelector ? "Gunakan role development untuk menguji alur kerja lokal." : "Gunakan akses perusahaan untuk masuk ke sistem."}
+                  {isLocalCredentials ? "Masuk memakai email atau username yang dibuat Super Admin." : showRoleSelector ? "Gunakan role development untuk menguji alur kerja lokal." : "Gunakan akses perusahaan untuk masuk ke sistem."}
                 </p>
               </div>
 
-              {isTrustedHeader && !loginUrl ? (
+              {isLocalCredentials ? (
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
+                  <p className="font-bold">Login internal aktif</p>
+                  <p className="mt-1 text-xs leading-5">Role dan permission mengikuti data user yang tersimpan di database.</p>
+                </div>
+              ) : isTrustedHeader && !loginUrl ? (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                   <p className="font-bold">Login belum tersedia</p>
                   <p className="mt-1 text-xs leading-5">Operator perlu mengisi <code className="font-semibold">AUTH_SSO_LOGIN_URL</code> sebelum user dapat masuk melalui SSO.</p>

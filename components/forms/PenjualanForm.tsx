@@ -16,22 +16,28 @@ const draftKey = "aneka-jaya-draft-penjualan";
 const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
 const today = new Date().toISOString().slice(0, 10);
 
-type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[] };
-type CreatedSale = { id: string; approvalStatus?: string };
+type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; allowTestTransaction?: boolean; erpTypeCodes?: string[] };
+type CreatedSale = { id: string; approvalStatus?: string; target?: "erp" | "local"; testReference?: string; erpReference?: string };
+type ProductState =
+  | { status: "loading" }
+  | { status: "ready" }
+  | { status: "empty"; message: string }
+  | { status: "error"; message: string; code?: string };
 
-export function PenjualanForm({ tipes, rekenings }: Props) {
+export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, erpTypeCodes = ["SLM"] }: Props) {
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
-  const defaultTipe = useMemo(() => activeTipes[0] ?? { id: "W", code: "W", name: "W", isActive: true, sortOrder: 1 }, [activeTipes]);
+  const defaultTipe = activeTipes[0];
   const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
-  const defaultRekening = useMemo(() => rekeningForTipe(defaultTipe.id)[0], [defaultTipe.id, rekeningForTipe]);
+  const defaultRekening = useMemo(() => defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined, [defaultTipe, rekeningForTipe]);
 
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string }>();
   const [createdSale, setCreatedSale] = useState<CreatedSale>();
   const [products, setProducts] = useState<Product[]>([]);
+  const [productState, setProductState] = useState<ProductState>({ status: "loading" });
   const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
-      saleDate: today, tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name,
+      saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "",
       rekeningId: defaultRekening?.id || "", rekeningNameSnapshot: defaultRekening?.name || "",
       customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash",
       items: [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }]
@@ -41,9 +47,14 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
   const values = watch("items");
   const paymentMethod = watch("paymentMethod");
   const tipeId = watch("tipeId");
+  const selectedTipe = activeTipes.find((tipe) => tipe.id === tipeId);
+  const targetsErp = Boolean(selectedTipe && erpTypeCodes.includes(selectedTipe.code.toUpperCase()));
   const total = values.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unitPrice || 0) - Number(item.discount || 0)), 0);
   const subtotal = values.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
   const discountTotal = values.reduce((sum, item) => sum + Number(item.discount || 0), 0);
+  const filteredRekenings = useMemo(() => rekeningForTipe(tipeId), [rekeningForTipe, tipeId]);
+  const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || filteredRekenings.length > 0);
+  const dependenciesReady = productState.status === "ready" && masterDataReady;
 
   const addItem = () => {
     const newIndex = fields.length;
@@ -51,20 +62,35 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
     window.setTimeout(() => document.getElementById(`sale-item-${newIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   };
 
-  useEffect(() => {
-    const refreshProducts = async () => {
+  const refreshProducts = useCallback(async () => {
+    setProductState({ status: "loading" });
+    try {
       const response = await fetch("/api/products", { cache: "no-store" });
       const result = await response.json().catch(() => null);
-      if (response.ok && result?.success) setProducts(result.data);
-    };
-    refreshProducts();
-    const interval = window.setInterval(refreshProducts, 30_000);
+      if (!response.ok || !result?.success) {
+        setProducts([]);
+        setProductState({ status: "error", message: result?.message || "Produk ERP gagal dimuat.", code: result?.code });
+        return;
+      }
+      const rows = Array.isArray(result.data) ? result.data : [];
+      setProducts(rows);
+      setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP belum memiliki produk aktif untuk dipilih." });
+    } catch {
+      setProducts([]);
+      setProductState({ status: "error", message: "Koneksi ke layanan produk bermasalah." });
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshProducts();
+  }, [refreshProducts]);
+
+  useEffect(() => {
     const saved = localStorage.getItem(draftKey);
     if (saved) {
       try { reset(JSON.parse(saved)); setNotice({ type: "error", message: "Draf yang belum terkirim telah dipulihkan." }); }
       catch { localStorage.removeItem(draftKey); }
     }
-    return () => window.clearInterval(interval);
   }, [reset]);
 
   useEffect(() => {
@@ -74,12 +100,17 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
     setValue("tipeNameSnapshot", tipe.name);
     const reks = rekeningForTipe(tipe.id);
     const first = reks[0];
-    if (first) { setValue("rekeningId", first.id); setValue("rekeningNameSnapshot", first.name); }
+    setValue("rekeningId", first?.id || "");
+    setValue("rekeningNameSnapshot", first?.name || "");
   }, [activeTipes, rekeningForTipe, setValue, tipeId]);
 
   const submit = async (data: PenjualanInput) => {
     setNotice(undefined);
     setCreatedSale(undefined);
+    if (!dependenciesReady) {
+      setNotice({ type: "error", message: "Form belum siap. Pastikan produk, tipe pembukuan, dan rekening telah tersedia." });
+      return;
+    }
     const response = await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -88,19 +119,25 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
       return;
     }
     localStorage.removeItem(draftKey);
-    if (result.data?.id) setCreatedSale({ id: String(result.data.id), approvalStatus: result.data.approvalStatus });
-    const defaultRek = rekeningForTipe(defaultTipe.id)[0];
-    reset({ saleDate: today, tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name, rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }] });
-    setNotice({ type: "success", message: result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : "Data penjualan berhasil disimpan." });
+    if (result.data?.id) setCreatedSale({
+      id: String(result.data.id),
+      approvalStatus: result.data.approvalStatus,
+      target: result.data.target,
+      testReference: result.data.testReference,
+      erpReference: result.data.erpReference
+    });
+    const defaultRek = defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
+    reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }] });
+    setNotice({ type: "success", message: result.data?.target === "erp" ? "Data penjualan SLM berhasil dikirim ke Anika ERP." : result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : "Data penjualan berhasil disimpan lokal." });
   };
-
-  const filteredRekenings = useMemo(() => rekeningForTipe(tipeId), [rekeningForTipe, tipeId]);
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-5">
       {notice && <Toast {...notice} />}
       {createdSale && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {createdSale.testReference && <p className="mb-2 font-semibold">Referensi pengujian: <code>{createdSale.testReference}</code></p>}
+          {createdSale.erpReference && <p className="mb-2">Referensi ERP: <code>{createdSale.erpReference}</code></p>}
           {createdSale.approvalStatus === "approved" ? (
             <Link href={`/print/sales/${createdSale.id}`} className="font-bold underline underline-offset-4">
               Cetak Penjualan
@@ -110,7 +147,12 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
           )}
         </div>
       )}
-      <p className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">Tujuan ERP: transaksi ini akan dibuat sebagai <b>Invoice Penjualan</b>.</p>
+      <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        Tujuan transaksi: {targetsErp ? <><b>Anika ERP</b> sebagai Invoice Penjualan.</> : <><b>Penyimpanan lokal</b>. Hanya tipe SLM yang dikirim ke ERP.</>}
+      </p>
+      {activeTipes.length === 0 && (
+        <DependencyNotice message="Tipe pembukuan aktif belum tersedia. Jalankan seed master data atau atur tipe di Pengaturan." />
+      )}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-4">
           <section className="aj-surface overflow-hidden">
@@ -118,7 +160,8 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
             <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
               <Field label="Tanggal penjualan" error={errors.saleDate?.message}><Input type="date" {...register("saleDate")} /></Field>
               <Field label="Tipe" error={errors.tipeId?.message}>
-                <Select {...register("tipeId")}>
+                <Select {...register("tipeId")} disabled={activeTipes.length === 0}>
+                  {activeTipes.length === 0 && <option value="">— tipe belum tersedia —</option>}
                   {activeTipes.map((t) => <option key={t.id} value={t.id}>{t.code}</option>)}
                 </Select>
               </Field>
@@ -131,7 +174,7 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
                   {["Cash", "TF", "Tempo", "Other"].map((method, i) => (
                     <label key={method} className={`cursor-pointer${i > 0 ? " border-l border-neutral-300" : ""}`}>
                       <input className="peer sr-only" type="radio" value={method} {...register("paymentMethod")} />
-                      <span className={`block min-w-24 px-5 py-2 text-center text-sm font-semibold text-neutral-600 ${method === "Cash" ? "peer-checked:bg-neutral-950 peer-checked:text-white" : method === "TF" ? "peer-checked:bg-blue-600 peer-checked:text-white" : method === "Tempo" ? "peer-checked:bg-fuchsia-600 peer-checked:text-white" : "peer-checked:bg-amber-500 peer-checked:text-white"}`}>{method}</span>
+                      <span className="block min-w-24 px-5 py-2 text-center text-sm font-semibold text-neutral-600 peer-checked:bg-emerald-600 peer-checked:text-white">{method}</span>
                     </label>
                   ))}
                 </div>
@@ -149,19 +192,26 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
               {paymentMethod === "Tempo" && <Field label="Tanggal Jatuh Tempo" error={errors.dueDate?.message}><Input type="date" {...register("dueDate")} /></Field>}
               <Field label="Tanggal kirim"><Input type="date" {...register("deliveryDate")} /></Field>
               <div className="sm:col-span-2"><Field label="Catatan"><Textarea rows={1} placeholder="Opsional" {...register("notes")} /></Field></div>
+              {allowTestTransaction && targetsErp && (
+                <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-emerald-600" {...register("isTestTransaction")} />
+                  <span><b>Transaksi pengujian</b><span className="mt-0.5 block text-xs">Nama customer dan catatan akan diberi referensi TEST agar mudah ditemukan dan dihapus manual di ERP.</span></span>
+                </label>
+              )}
             </div>
           </section>
           <section className="aj-surface overflow-hidden">
             <div className="sticky top-2 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
               <div><h2 className="text-base font-bold tracking-tight">Barang</h2><p className="mt-0.5 text-xs text-neutral-500">{fields.length} item</p></div>
-              <Button type="button" variant="secondary" onClick={addItem}>+ Tambah barang</Button>
+              <Button type="button" variant="secondary" onClick={addItem} disabled={productState.status !== "ready"}>+ Tambah barang</Button>
             </div>
+            <ProductDependencyState state={productState} onRetry={refreshProducts} />
             <div className="hidden grid-cols-[minmax(0,2fr)_78px_120px_100px_120px] gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 md:grid sm:px-6"><span>Barang</span><span>Qty</span><span>Harga satuan</span><span>Diskon</span><span>Subtotal</span></div>
             <div className="divide-y divide-neutral-200">
               {fields.map((field, index) => (
                 <div id={`sale-item-${index}`} key={field.id} className="scroll-mt-24 p-5 sm:p-6">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
-                    <Field label="Barang" error={errors.items?.[index]?.productRef?.message}><Input list="erp-products" placeholder="Kode / nama barang" {...register(`items.${index}.productRef`)} /></Field>
+                    <Field label="Barang" error={errors.items?.[index]?.productRef?.message}><Input list="erp-products" placeholder="Kode / nama barang" disabled={productState.status !== "ready"} {...register(`items.${index}.productRef`)} /></Field>
                     <Field label="Qty" error={errors.items?.[index]?.quantity?.message}><Input type="number" min="1" step="1" {...register(`items.${index}.quantity`, { valueAsNumber: true })} /></Field>
                     <Field label="Harga" error={errors.items?.[index]?.unitPrice?.message}><Input type="number" min="0" {...register(`items.${index}.unitPrice`, { valueAsNumber: true })} /></Field>
                     <Field label="Diskon"><Input type="number" min="0" {...register(`items.${index}.discount`, { valueAsNumber: true })} /></Field>
@@ -182,13 +232,29 @@ export function PenjualanForm({ tipes, rekenings }: Props) {
               <div className="flex justify-between"><dt className="text-neutral-500">Diskon</dt><dd>{rupiah(discountTotal)}</dd></div>
               <div className="border-t border-neutral-300 pt-4"><dt className="text-sm font-semibold">Total</dt><dd className="mt-1 text-3xl font-bold tracking-tight">{rupiah(total)}</dd></div>
             </dl>
-            <Button type="submit" className="mt-6 w-full" disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan Penjualan"}</Button>
+            <Button type="submit" className="mt-6 w-full" disabled={isSubmitting || !dependenciesReady}>{isSubmitting ? "Menyimpan..." : "Simpan Penjualan"}</Button>
+            {!dependenciesReady && <p className="mt-2 text-center text-xs text-slate-500">Lengkapi konfigurasi master data dan pastikan produk ERP berhasil dimuat.</p>}
           </section>
         </aside>
       </div>
       <datalist id="erp-products">{products.map((product) => <option key={product.id} value={product.code}>{product.name}</option>)}</datalist>
-      <p className="flex items-center gap-2 text-xs text-neutral-500"><span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-400 text-[10px]">i</span> Data barang ditarik dari ERP dan diperbarui tiap 30 detik. Pastikan data penjualan sudah benar sebelum disimpan.</p>
+      <p className="flex items-center gap-2 text-xs text-neutral-500"><span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-400 text-[10px]">i</span> Data barang ditarik langsung dari ERP saat halaman dibuka. Pastikan data penjualan sudah benar sebelum disimpan.</p>
     </form>
+  );
+}
+
+function DependencyNotice({ message }: { message: string }) {
+  return <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{message}</div>;
+}
+
+function ProductDependencyState({ state, onRetry }: { state: ProductState; onRetry: () => Promise<void> }) {
+  if (state.status === "ready") return <p className="border-b border-emerald-100 bg-emerald-50 px-5 py-2 text-xs text-emerald-800 sm:px-6">Produk ERP siap digunakan.</p>;
+  if (state.status === "loading") return <p className="border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-sm text-neutral-600 sm:px-6">Memuat produk dari ERP...</p>;
+  return (
+    <div className="flex flex-col gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div><p className="font-semibold">{state.status === "empty" ? "Produk belum tersedia" : "Produk gagal dimuat"}</p><p className="mt-0.5 text-xs">{state.message}</p></div>
+      <Button type="button" variant="secondary" onClick={() => void onRetry()}>Muat ulang</Button>
+    </div>
   );
 }
 

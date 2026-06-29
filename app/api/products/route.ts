@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { barangSchema } from "@/lib/validation/barangSchema";
-import { createProduct, listProducts } from "@/lib/api/products";
+import { createProduct, listProductTableItems } from "@/lib/api/products";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { canListProducts } from "@/lib/auth/apiPermissions";
+import { productErrorStatus } from "@/lib/api/productErrorStatus";
 
 export async function GET() {
   if (!canListProducts(await getCurrentRole())) return NextResponse.json({ success: false, message: "Tidak punya akses Stock Barang." }, { status: 403 });
-  const response = await listProducts();
-  return NextResponse.json(response, { status: response.success ? 200 : 502 });
+  const response = await listProductTableItems();
+  return NextResponse.json(response, { status: response.success ? 200 : productErrorStatus(response.code) });
 }
 export async function POST(request: Request) {
   if (!can(await getCurrentRole(), "stock.create")) return NextResponse.json({ success: false, message: "Tidak punya akses Input Stock Barang." }, { status: 403 });

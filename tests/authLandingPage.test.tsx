@@ -7,6 +7,19 @@ describe("auth landing page CTA", () => {
     vi.unstubAllEnvs();
   });
 
+  it("shows the internal login form when local credentials auth is active", () => {
+    vi.stubEnv("AUTH_PROVIDER", "local_credentials");
+    vi.stubEnv("AUTH_ENABLE_DEMO_ROLE_SELECTOR", "false");
+
+    const html = renderToStaticMarkup(<AuthLandingPage currentRole="VIEWER" />);
+
+    expect(html).toContain("Email atau username");
+    expect(html).toContain("Password");
+    expect(html).toContain("Masuk ke Sistem");
+    expect(html).toContain("Login internal aktif");
+    expect(html).not.toContain("SSO perusahaan belum dikonfigurasi");
+  });
+
   it("shows an active SSO login CTA when the login URL is configured", () => {
     vi.stubEnv("AUTH_PROVIDER", "trusted_header");
     vi.stubEnv("AUTH_SSO_LOGIN_URL", "https://sso.example.test/login");

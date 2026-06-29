@@ -105,9 +105,9 @@ Lapisan utama:
 ### 5.1 Alur Login/Role dan Akses Halaman
 
 1. User masuk ke aplikasi.
-2. Jika production trusted-header belum memiliki identity, user diarahkan ke `/login`.
-3. `/` dan `/login` menampilkan entry autentikasi. Tombol "Masuk melalui SSO" memakai `AUTH_SSO_LOGIN_URL`; jika belum diisi, halaman menampilkan pesan konfigurasi SSO.
-4. Setelah SSO/reverse proxy atau auth gateway sementara mengirim trusted header, sistem membaca role dari Prisma `User`; mode demo hanya untuk development teknis eksplisit.
+2. Jika belum memiliki session login internal, user diarahkan ke `/login`.
+3. `/login` menampilkan form email/username dan password.
+4. Setelah credential valid, sistem membuat session cookie httpOnly dan membaca role dari Prisma `User`.
 5. `proxy.ts`, server page, dan API mengecek permission.
 6. Jika role memiliki permission, halaman dibuka.
 7. Jika tidak, user diarahkan ke landing page role tersebut atau `/no-access`.
@@ -115,9 +115,9 @@ Lapisan utama:
 Mode identity:
 
 - `AUTH_PROVIDER=demo`: memakai cookie role internal khusus development teknis.
-- `AUTH_PROVIDER=trusted_header`: memakai header dari reverse proxy/SSO upstream atau auth gateway sementara.
-- `AUTH_SSO_LOGIN_URL`: URL upstream untuk tombol login SSO di `/login`.
-- Auth gateway sementara tersedia melalui `npm run auth:gateway`; lihat `docs/auth-gateway-runbook.md`.
+- `AUTH_PROVIDER=local_credentials`: login operasional utama memakai email/username dan password.
+- `AUTH_SESSION_SECRET`: secret server-side untuk menandatangani session cookie.
+- `AUTH_PROVIDER=trusted_header`: opsi teknis lama untuk reverse proxy/SSO, bukan jalur utama operasional saat ini.
 - `AUTH_ENABLE_DEMO_ROLE_SELECTOR=true`: hanya untuk menampilkan selector role development; jangan aktifkan untuk UAT operasional.
 - Pada jalur operasional, role selalu berasal dari user aktif di database, bukan pilihan manual.
 
@@ -821,9 +821,8 @@ Checklist sebelum deploy:
 - `NEXT_PUBLIC_APP_MODE` sesuai target.
 - `ANIKA_ERP_API_TOKEN` tidak terekspos ke client.
 - `CRON_SECRET` diganti dari default.
-- `AUTH_PROVIDER=trusted_header` dan `AUTH_TRUSTED_HEADER_SECRET` dikonfigurasi untuk SSO/reverse proxy operasional atau auth gateway sementara.
-- `AUTH_SSO_LOGIN_URL` dikonfigurasi untuk tombol login SSO di `/login`.
-- Akun Super Admin pertama dibuat di tabel `User` dengan `externalId` yang sama dengan identity header SSO/gateway.
+- `AUTH_PROVIDER=local_credentials` dan `AUTH_SESSION_SECRET` dikonfigurasi untuk login internal.
+- Akun Super Admin pertama dibuat di tabel `User` dengan `externalId`/email dan password awal.
 - Tipe pembukuan, rekening, dan relasi rekening-tipe dibuat manual dari Settings.
 - `npm run app:check-core-readiness` lulus sebelum UAT transaksi.
 - `data/` menjadi persistent volume jika JSON store masih dipakai.
@@ -834,9 +833,8 @@ Verifikasi otomatis:
 
 ```bash
 APP_BASE_URL=http://localhost:3000 \
-AUTH_TRUSTED_HEADER_SECRET=... \
-AUTH_SSO_LOGIN_URL=... \
-INITIAL_OWNER_EXTERNAL_ID=... \
+SMOKE_LOGIN_IDENTIFIER=... \
+SMOKE_LOGIN_PASSWORD=... \
 npm run deploy:check-env
 npm run deploy:smoke-auth
 npm run lint

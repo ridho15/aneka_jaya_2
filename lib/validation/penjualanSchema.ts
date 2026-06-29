@@ -16,6 +16,7 @@ export const penjualanSchema = z.object({
   dueDate: z.string().optional(),
   transferAccount: z.string().trim().max(150).optional(),
   notes: z.string().trim().max(1000).optional(),
+  isTestTransaction: z.boolean().optional(),
   items: z.array(z.object({
     productRef: z.string().trim().min(1, "Kode atau nama barang wajib diisi").max(150),
     quantity: z.coerce.number().positive("Quantity harus lebih dari 0"),

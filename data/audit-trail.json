@@ -1,5 +1,49 @@
 [
   {
+    "id": "84b28e0c-501b-4386-8a2e-4117790eca98",
+    "createdAt": "2026-06-29T10:30:47.063Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "sales",
+    "entityId": "S-1782729047060",
+    "action": "create",
+    "afterValue": {
+      "id": "S-1782729047060",
+      "saleDate": "2026-06-29",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "W",
+      "rekeningId": "cash-w",
+      "rekeningNameSnapshot": "Kas Walk In",
+      "customerName": "Walk In",
+      "customerLocation": "Toko",
+      "deliveryDate": "2026-06-29",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "items": [
+        {
+          "productRef": "Ubr120H",
+          "quantity": 1,
+          "unitPrice": 0,
+          "discount": 0
+        }
+      ],
+      "isTestTransaction": false,
+      "total": 0,
+      "approvalStatus": "approved",
+      "syncTarget": "local",
+      "syncStatus": "local",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-29T10:30:47.060Z"
+    },
+    "reason": "Invoice Penjualan lokal • approved • Cash"
+  },
+  {
     "id": "22e03344-350e-4b43-9079-80ee9f043025",
     "createdAt": "2026-06-27T07:47:11.899Z",
     "userId": "local-owner",

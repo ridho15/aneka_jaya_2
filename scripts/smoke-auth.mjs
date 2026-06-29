@@ -1,8 +1,7 @@
 const REQUIRED = [
   "APP_BASE_URL",
-  "AUTH_TRUSTED_HEADER_SECRET",
-  "AUTH_SSO_LOGIN_URL",
-  "INITIAL_OWNER_EXTERNAL_ID"
+  "SMOKE_LOGIN_IDENTIFIER",
+  "SMOKE_LOGIN_PASSWORD"
 ];
 
 function trimTrailingSlash(value) {
@@ -13,16 +12,6 @@ export function appUrl(path, env = process.env) {
   const baseUrl = env.APP_BASE_URL?.trim();
   if (!baseUrl) throw new Error("APP_BASE_URL wajib diisi untuk smoke auth.");
   return `${trimTrailingSlash(baseUrl)}${path.startsWith("/") ? path : `/${path}`}`;
-}
-
-export function smokeHeaders(externalId, env = process.env, overrides = {}) {
-  return {
-    "x-aneka-auth-secret": env.AUTH_TRUSTED_HEADER_SECRET || "",
-    "x-aneka-user-id": externalId,
-    "x-aneka-user-name": externalId,
-    "x-aneka-user-role": "OWNER",
-    ...overrides
-  };
 }
 
 function isRedirectTo(response, targetPath, env) {
@@ -43,42 +32,36 @@ function assertRequiredEnv(env) {
 export async function runAuthSmoke(env = process.env, fetchImpl = fetch) {
   assertRequiredEnv(env);
   const result = [];
-  const ownerExternalId = env.INITIAL_OWNER_EXTERNAL_ID;
-  const unregisteredExternalId = env.SMOKE_UNREGISTERED_EXTERNAL_ID || `smoke-unregistered-${Date.now()}`;
-  const disabledExternalId = env.SMOKE_DISABLED_EXTERNAL_ID;
 
-  const noHeader = await fetchManual("/dashboard", {}, env, fetchImpl);
-  if (!isRedirectTo(noHeader, "/login", env)) throw new Error(`Tanpa trusted header harus redirect ke /login, status=${noHeader.status}`);
-  result.push("no-header-redirect-login");
-
-  const wrongSecret = await fetchManual("/dashboard", { headers: smokeHeaders(ownerExternalId, env, { "x-aneka-auth-secret": "wrong-secret" }) }, env, fetchImpl);
-  if (!isRedirectTo(wrongSecret, "/login", env)) throw new Error(`Secret salah harus redirect ke /login, status=${wrongSecret.status}`);
-  result.push("wrong-secret-redirect-login");
+  const noSession = await fetchManual("/dashboard", {}, env, fetchImpl);
+  if (!isRedirectTo(noSession, "/login", env)) throw new Error(`Tanpa session harus redirect ke /login, status=${noSession.status}`);
+  result.push("no-session-redirect-login");
 
   const login = await fetchManual("/login", {}, env, fetchImpl);
   const loginHtml = await login.text();
-  if (!loginHtml.includes(env.AUTH_SSO_LOGIN_URL)) throw new Error("/login tidak memuat AUTH_SSO_LOGIN_URL.");
-  result.push("login-page-sso-url");
+  if (!loginHtml.includes("Email") || !loginHtml.includes("Password")) throw new Error("/login tidak memuat form login internal.");
+  result.push("login-page-internal-form");
 
-  const ownerUsers = await fetchManual("/settings/users", { headers: smokeHeaders(ownerExternalId, env, { "x-aneka-user-role": "VIEWER" }) }, env, fetchImpl);
-  if (ownerUsers.status !== 200) throw new Error(`Owner seeded harus bisa membuka /settings/users walau role header palsu, status=${ownerUsers.status}`);
-  result.push("owner-db-role-wins");
-
-  const unregisteredLanding = await fetchManual("/", { headers: smokeHeaders(unregisteredExternalId, env) }, env, fetchImpl);
-  if (unregisteredLanding.status !== 200) throw new Error(`User SSO belum terdaftar harus melihat auth landing di /, status=${unregisteredLanding.status}`);
-  result.push("unregistered-root-auth-landing");
-
-  const unregistered = await fetchManual("/dashboard", { headers: smokeHeaders(unregisteredExternalId, env) }, env, fetchImpl);
-  if (!isRedirectTo(unregistered, "/no-access", env)) throw new Error(`User SSO belum terdaftar harus ditolak dari protected page, status=${unregistered.status}`);
-  result.push("unregistered-user-no-access");
-
-  if (disabledExternalId) {
-    const disabled = await fetchManual("/dashboard", { headers: smokeHeaders(disabledExternalId, env) }, env, fetchImpl);
-    if (!isRedirectTo(disabled, "/no-access", env)) throw new Error(`User nonaktif harus ditolak dari protected page, status=${disabled.status}`);
-    result.push("disabled-user-no-access");
-  } else {
-    result.push("disabled-user-check-skipped");
+  const authResponse = await fetchManual("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: env.SMOKE_LOGIN_IDENTIFIER, password: env.SMOKE_LOGIN_PASSWORD })
+  }, env, fetchImpl);
+  if (authResponse.status !== 200) throw new Error(`Login smoke gagal, status=${authResponse.status}`);
+  let rawCookie = authResponse.headers.get("set-cookie")
+    || authResponse.headers.get("Set-Cookie")
+    || authResponse.headers.getSetCookie?.()[0];
+  if (!rawCookie) {
+    const body = await authResponse.clone().json().catch(() => null);
+    rawCookie = body?.sessionCookie;
   }
+  const cookie = rawCookie?.split(";")[0];
+  if (!cookie) throw new Error("Login smoke tidak menerima session cookie.");
+  result.push("login-success-session-cookie");
+
+  const ownerUsers = await fetchManual("/settings/users", { headers: { cookie } }, env, fetchImpl);
+  if (ownerUsers.status !== 200) throw new Error(`User login harus bisa membuka /settings/users sesuai role database, status=${ownerUsers.status}`);
+  result.push("owner-db-role-wins");
 
   return { ok: true, checks: result };
 }

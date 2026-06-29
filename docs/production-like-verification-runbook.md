@@ -7,11 +7,11 @@ Gunakan runbook ini sebelum deploy production atau saat uji staging yang meniru 
 Isi environment berikut dan jangan commit nilai secret:
 
 - `NEXT_PUBLIC_APP_MODE=production`
-- `AUTH_PROVIDER=trusted_header`
-- `AUTH_TRUSTED_HEADER_SECRET`
-- `AUTH_SSO_LOGIN_URL`
+- `AUTH_PROVIDER=local_credentials`
+- `AUTH_SESSION_SECRET`
 - `DATABASE_URL`
 - `INITIAL_OWNER_EXTERNAL_ID`
+- `INITIAL_OWNER_PASSWORD` atau `INITIAL_OWNER_PASSWORD_HASH`
 - `CRON_SECRET`
 
 Validasi otomatis:
@@ -54,13 +54,7 @@ Acceptance:
 
 ## 3. Reverse Proxy / SSO
 
-Proxy atau SSO upstream wajib:
-
-- Menghapus header client palsu sebelum forward.
-- Inject `x-aneka-auth-secret` sesuai `AUTH_TRUSTED_HEADER_SECRET`.
-- Inject `x-aneka-user-id` yang stabil.
-- Opsional inject `x-aneka-user-name`.
-- Menutup akses publik langsung ke app tanpa proxy.
+Reverse proxy/SSO tidak menjadi syarat jalur utama. Login production-like memakai form internal di `/login`; pastikan HTTPS aktif di layer platform/reverse proxy dan akses langsung ke app mengikuti kebijakan deployment.
 
 ## 4. Smoke Test Auth
 
@@ -68,27 +62,17 @@ Jalankan smoke test otomatis setelah app production-like berjalan. Untuk verifik
 
 ```bash
 APP_BASE_URL=http://localhost:3000 \
-AUTH_TRUSTED_HEADER_SECRET=... \
-AUTH_SSO_LOGIN_URL=https://sso.example.com/login \
-INITIAL_OWNER_EXTERNAL_ID=... \
+SMOKE_LOGIN_IDENTIFIER=... \
+SMOKE_LOGIN_PASSWORD=... \
 npm run deploy:smoke-auth
-```
-
-Jika ada user nonaktif yang disiapkan untuk test, tambahkan:
-
-```bash
-SMOKE_DISABLED_EXTERNAL_ID=...
 ```
 
 Skenario yang dicek:
 
-- Tanpa trusted header -> diarahkan ke `/login`.
-- Secret salah -> diarahkan ke `/login`.
-- Tombol SSO di `/login` memakai `AUTH_SSO_LOGIN_URL`.
-- User SSO belum ada di Prisma -> Viewer/no access.
-- Owner seeded dapat membuka `/settings/users`.
-- Role header palsu tidak mengubah akses; role database tetap menang.
-- User nonaktif tidak bisa akses.
+- Tanpa session -> diarahkan ke `/login`.
+- `/login` menampilkan form email/username dan password.
+- Credential smoke berhasil membuat session cookie.
+- User login dapat membuka `/settings/users` sesuai role database.
 
 ## 5. Security Acceptance
 
@@ -98,11 +82,11 @@ Sebelum go-live:
 - `/app/data` persistent selama JSON store masih dipakai.
 - Cron endpoint hanya dipanggil dengan `CRON_SECRET`.
 - Health/API docs tetap dibatasi sesuai role.
-- Token ERP, WhatsApp, OpenCloud, dan secret SSO hanya server-side.
+- Token ERP, WhatsApp, OpenCloud, dan session secret hanya server-side.
 
 ## 6. Next Phase
 
-Setelah auth/SSO production-like stabil, lanjut migrasi JSON store ke Prisma:
+Setelah login internal production-like stabil, lanjut migrasi JSON store ke Prisma:
 
 1. Master data `BookkeepingType` dan `RekeningAccount`.
 2. Audit trail full Prisma.

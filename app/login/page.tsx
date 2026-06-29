@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { AuthLandingPage } from "@/components/auth/AuthLandingPage";
+import { LoginPageShell } from "@/components/auth/LoginPageShell";
 import { authenticatedLoginTarget, shouldRedirectAuthenticatedLogin } from "@/lib/auth/login";
-import { getCurrentRole } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
-  const role = await getCurrentRole();
-  if (shouldRedirectAuthenticatedLogin(role)) redirect(authenticatedLoginTarget(role));
-  return <AuthLandingPage currentRole={role} />;
+  const user = await getCurrentUser();
+  if (user.id !== "unauthenticated" && shouldRedirectAuthenticatedLogin(user.role)) redirect(authenticatedLoginTarget(user.role));
+  return <LoginPageShell />;
 }

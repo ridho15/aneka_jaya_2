@@ -1,13 +1,10 @@
 const REQUIRED = [
   "NEXT_PUBLIC_APP_MODE",
   "AUTH_PROVIDER",
-  "AUTH_TRUSTED_HEADER_SECRET",
-  "AUTH_SSO_LOGIN_URL",
+  "AUTH_SESSION_SECRET",
   "DATABASE_URL",
-  "INITIAL_OWNER_EXTERNAL_ID",
   "CRON_SECRET",
-  "ANIKA_ERP_API_BASE_URL",
-  "ANIKA_ERP_API_TOKEN"
+  "ANIKA_ERP_API_BASE_URL"
 ];
 
 const SECRET_NAME_PATTERN = /(SECRET|TOKEN|PASSWORD|API_KEY|PRIVATE_KEY)/i;
@@ -17,11 +14,15 @@ export function validateProductionEnv(env = process.env) {
   for (const key of REQUIRED) {
     if (!env[key]?.trim()) errors.push(`${key} wajib diisi.`);
   }
+  if (env.AUTH_PROVIDER !== "anika_erp") {
+    if (!env.INITIAL_OWNER_EXTERNAL_ID?.trim()) errors.push("INITIAL_OWNER_EXTERNAL_ID wajib diisi.");
+    if (!env.ANIKA_ERP_API_TOKEN?.trim()) errors.push("ANIKA_ERP_API_TOKEN wajib diisi.");
+  }
   if (env.NEXT_PUBLIC_APP_MODE && env.NEXT_PUBLIC_APP_MODE !== "production") {
     errors.push("NEXT_PUBLIC_APP_MODE harus bernilai production.");
   }
-  if (env.AUTH_PROVIDER && env.AUTH_PROVIDER !== "trusted_header") {
-    errors.push("AUTH_PROVIDER harus bernilai trusted_header untuk production.");
+  if (env.AUTH_PROVIDER && !["local_credentials", "anika_erp"].includes(env.AUTH_PROVIDER)) {
+    errors.push("AUTH_PROVIDER harus bernilai local_credentials atau anika_erp untuk production.");
   }
   if (env.AUTH_ALLOW_DEMO_IN_PRODUCTION === "true") {
     errors.push("AUTH_ALLOW_DEMO_IN_PRODUCTION tidak boleh true di production.");
