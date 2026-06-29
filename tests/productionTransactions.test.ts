@@ -97,14 +97,21 @@ describe("production Prisma transactions", () => {
     expect(mocks.saveSalesRecord).toHaveBeenCalledOnce();
   });
 
-  it("does not persist an AJ sale when ERP rejects it", async () => {
+  it("keeps an AJ sale locally as failed/retryable when ERP rejects it", async () => {
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
     mocks.sendNeoCommand.mockResolvedValue({ success: false, code: "ERP_UPSTREAM", message: "ERP gagal." });
 
     await expect(createSale({ ...saleInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ" }))
-      .resolves.toEqual({ success: false, code: "ERP_UPSTREAM", message: "ERP gagal." });
+      .resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "failed", retryable: true } });
 
-    expect(mocks.prisma.$transaction).not.toHaveBeenCalled();
+    expect(mocks.prisma.$transaction).toHaveBeenCalledOnce();
+    expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        syncTarget: "erp",
+        syncStatus: "failed",
+        syncError: "ERP gagal."
+      })
+    }));
     expect(mocks.saveSalesRecord).not.toHaveBeenCalled();
   });
 

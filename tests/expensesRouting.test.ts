@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   findTipe: vi.fn(),
   createApprovalRequest: vi.fn(),
   approvalIsEnabled: vi.fn()
+  ,
+  saveExpenseRecord: vi.fn()
 }));
 
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn(async () => mocks.user) }));
@@ -19,6 +21,7 @@ vi.mock("@/lib/approval/store", () => ({
   createApprovalRequest: mocks.createApprovalRequest,
   approvalIsEnabled: mocks.approvalIsEnabled
 }));
+vi.mock("@/lib/expenses/store", () => ({ saveExpenseRecord: mocks.saveExpenseRecord }));
 
 import { createExpense } from "@/lib/api/expenses";
 
@@ -52,15 +55,31 @@ describe("expense routing by tipe", () => {
     mocks.createApprovalRequest.mockReset();
     mocks.approvalIsEnabled.mockReset();
     mocks.approvalIsEnabled.mockReturnValue(false);
+    mocks.saveExpenseRecord.mockReset();
+    mocks.saveExpenseRecord.mockImplementation(async (expense) => expense);
   });
 
   it("sends AJ expenses to ERP", async () => {
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
 
-    await expect(createExpense({ ...expenseInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ" })).resolves.toMatchObject({ success: true });
+    await expect(createExpense({ ...expenseInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ" })).resolves.toMatchObject({ success: true, data: { erpSyncStatus: "synced" } });
 
     expect(mocks.sendNeoCommand).toHaveBeenCalledWith(expect.objectContaining({
       text: expect.stringContaining("Tipe AJ")
+    }));
+    expect(mocks.saveExpenseRecord).toHaveBeenCalledWith(expect.objectContaining({ erpSyncTarget: "erp", erpSyncStatus: "synced" }));
+  });
+
+  it("keeps AJ expenses as failed/retryable when ERP rejects it", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
+    mocks.sendNeoCommand.mockResolvedValue({ success: false, code: "ERP_TIMEOUT", message: "raw timeout" });
+
+    await expect(createExpense({ ...expenseInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ" })).resolves.toMatchObject({ success: true, data: { erpSyncStatus: "failed", retryable: true } });
+
+    expect(mocks.saveExpenseRecord).toHaveBeenCalledWith(expect.objectContaining({
+      erpSyncTarget: "erp",
+      erpSyncStatus: "failed",
+      erpSyncError: "ERP timeout saat sinkronisasi."
     }));
   });
 
@@ -69,9 +88,10 @@ describe("expense routing by tipe", () => {
 
     await expect(createExpense(expenseInput)).resolves.toMatchObject({
       success: true,
-      data: { erpSyncStatus: "not_required" }
+      data: { erpSyncTarget: "local", erpSyncStatus: "not_required" }
     });
 
     expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
+    expect(mocks.saveExpenseRecord).toHaveBeenCalledWith(expect.objectContaining({ erpSyncTarget: "local", erpSyncStatus: "not_required" }));
   });
 });

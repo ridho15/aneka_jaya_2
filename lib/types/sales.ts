@@ -11,7 +11,10 @@ export type Sale = {
   createdByRoleSnapshot?: string;
   createdAt?: string;
   syncTarget?: "local" | "erp";
-  syncStatus?: "local" | "synced" | "failed";
+  syncStatus?: "local" | "pending" | "synced" | "failed";
+  syncError?: string;
+  syncAttemptedAt?: string;
+  syncedAt?: string;
   erpReference?: string;
   testReference?: string;
   isTestTransaction?: boolean;

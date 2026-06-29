@@ -155,6 +155,9 @@ model SalesRecord {
   approvalStatus        String
   syncTarget            String    @default("local")
   syncStatus            String    @default("local")
+  syncError             String?
+  syncAttemptedAt       DateTime?
+  syncedAt              DateTime?
   erpReference          String?
   testReference         String?
   isTestTransaction     Boolean   @default(false)
@@ -168,6 +171,7 @@ model SalesRecord {
   @@index([approvalStatus])
   @@index([customerName])
   @@index([syncTarget, syncStatus])
+  @@index([syncAttemptedAt])
   @@index([testReference])
 }
 
@@ -206,6 +210,41 @@ model SalesRecordItem {
 
   @@index([salesRecordId])
   @@index([productRef])
+}
+
+model ExpenseRecord {
+  id                    String    @id
+  expenseDate           DateTime
+  tipeId                String
+  tipeCodeSnapshot      String
+  tipeNameSnapshot      String
+  rekeningId            String
+  rekeningNameSnapshot  String
+  coaId                 String
+  coaNameSnapshot       String
+  category              String
+  vendorName            String
+  description           String
+  amount                Decimal   @db.Decimal(18, 2)
+  paymentMethod         String
+  attachmentUrl         String?
+  notes                 String?
+  approvalStatus        String
+  erpSyncTarget         String    @default("local")
+  erpSyncStatus         String    @default("not_required")
+  erpSyncError          String?
+  erpSyncAttemptedAt    DateTime?
+  erpSyncedAt           DateTime?
+  erpReference          String?
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdByRoleSnapshot Role
+  createdAt             DateTime
+
+  @@index([expenseDate])
+  @@index([approvalStatus])
+  @@index([erpSyncTarget, erpSyncStatus])
+  @@index([erpSyncAttemptedAt])
 }
 
 model RekeningAccountBookkeepingType {

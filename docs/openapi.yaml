@@ -735,6 +735,40 @@ paths:
           description: Job selesai.
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/erp-sync/sales/{id}/retry:
+    post:
+      summary: Retry manual sinkron ERP untuk satu transaksi penjualan.
+      description: Permission erp_sync.retry. Mengirim ulang transaksi AJ pending/failed ke ERP dan memperbarui status sinkronisasi.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Retry berhasil atau transaksi sudah tersinkron.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          description: Retry gagal dengan pesan operasional aman.
+  /api/erp-sync/expenses/{id}/retry:
+    post:
+      summary: Retry manual sinkron ERP untuk satu transaksi pengeluaran.
+      description: Permission erp_sync.retry. Mengirim ulang pengeluaran AJ pending/failed ke ERP Kas & Bank dan memperbarui status sinkronisasi.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Retry berhasil atau pengeluaran sudah tersinkron.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          description: Retry gagal dengan pesan operasional aman.
   /api/print/sales/{id}:
     get:
       summary: Preview cetak dot matrix penjualan.
