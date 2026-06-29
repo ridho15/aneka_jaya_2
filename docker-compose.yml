@@ -1,20 +1,37 @@
 services:
-  aneka-jaya:
-    image: aneka-jaya-internal-app:local
-    build: .
+  slm-gateway:
+    container_name: slm-gateway
+    image: slm-app:local
+    command: node scripts/auth-gateway.mjs
     ports:
-      - "3000:3000"
+      - "8086:3001"
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+      AUTH_GATEWAY_APP_ORIGIN: http://slm-app:3000
+      AUTH_GATEWAY_PORT: "3001"
     depends_on:
-      postgres:
+      slm-app:
+        condition: service_started
+
+  slm-app:
+    container_name: slm-app
+    image: slm-app:local
+    build: .
+    expose:
+      - "3000"
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
+    depends_on:
+      slm-postgres:
         condition: service_healthy
     volumes:
-      - aneka_jaya_audit:/app/data
+      - slm_data:/app/data
+
   db-migrate:
-    image: aneka-jaya-internal-app:local
+    image: slm-app:local
     build: .
     command: npm run db:migrate:deploy
     profiles:
@@ -22,14 +39,15 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
     depends_on:
-      postgres:
+      slm-postgres:
         condition: service_healthy
     volumes:
-      - aneka_jaya_audit:/app/data
+      - slm_data:/app/data
+
   db-seed-owner:
-    image: aneka-jaya-internal-app:local
+    image: slm-app:local
     build: .
     command: npm run db:seed-owner
     profiles:
@@ -37,12 +55,13 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
     depends_on:
-      postgres:
+      slm-postgres:
         condition: service_healthy
+
   db-import:
-    image: aneka-jaya-internal-app:local
+    image: slm-app:local
     build: .
     command: npm run db:migrate:json
     profiles:
@@ -50,14 +69,15 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
     depends_on:
-      postgres:
+      slm-postgres:
         condition: service_healthy
     volumes:
-      - aneka_jaya_audit:/app/data
+      - slm_data:/app/data
+
   db-verify:
-    image: aneka-jaya-internal-app:local
+    image: slm-app:local
     build: .
     command: npm run db:verify
     profiles:
@@ -65,25 +85,26 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://aneka_jaya:aneka_jaya@postgres:5432/aneka_jaya?schema=public
+      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
     depends_on:
-      postgres:
+      slm-postgres:
         condition: service_healthy
-  postgres:
+
+  slm-postgres:
+    container_name: slm-postgres
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: aneka_jaya
-      POSTGRES_USER: aneka_jaya
-      POSTGRES_PASSWORD: aneka_jaya
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: slm
+      POSTGRES_USER: slm
+      POSTGRES_PASSWORD: slm
     volumes:
-      - aneka_jaya_postgres:/var/lib/postgresql/data
+      - slm_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aneka_jaya -d aneka_jaya"]
+      test: ["CMD-SHELL", "pg_isready -U slm -d slm"]
       interval: 5s
       timeout: 5s
       retries: 10
+
 volumes:
-  aneka_jaya_audit:
-  aneka_jaya_postgres:
+  slm_data:
+  slm_postgres:
