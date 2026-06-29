@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { APP_BRAND_INITIALS, APP_BRAND_NAME, APP_BRAND_TITLE } from "@/lib/appBrand";
 
 export function LoginPageShell() {
   return (
@@ -7,15 +8,15 @@ export function LoginPageShell() {
       <section className="mx-auto grid min-h-screen w-full max-w-6xl gap-0 px-5 py-6 sm:px-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,0.75fr)] lg:items-center lg:gap-12 lg:px-10">
         <div className="order-2 hidden pb-8 pt-8 lg:order-1 lg:block">
           <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-sm bg-emerald-600 text-lg font-black tracking-tight text-white">AJ</span>
+            <span className="grid h-12 w-12 place-items-center rounded-sm bg-emerald-600 text-base font-black tracking-tight text-white">{APP_BRAND_INITIALS}</span>
             <div>
-              <p className="text-sm font-bold text-neutral-950">Aneka Jaya Internal App</p>
+              <p className="text-sm font-bold text-neutral-950">{APP_BRAND_TITLE}</p>
               <p className="mt-0.5 text-xs font-medium text-neutral-500">Sistem operasional internal</p>
             </div>
           </div>
 
           <div className="mt-12 max-w-xl">
-            <p className="text-sm font-semibold text-emerald-700">Aneka Jaya</p>
+            <p className="text-sm font-semibold text-emerald-700">{APP_BRAND_NAME}</p>
             <h1 className="mt-3 text-4xl font-bold leading-tight text-neutral-950 sm:text-5xl">Akses kerja yang rapi untuk tim internal.</h1>
             <p className="mt-5 max-w-lg text-base leading-8 text-neutral-600">
               Masuk dengan akun yang sudah dibuat Super Admin untuk melanjutkan pekerjaan penjualan, tempo, approval, stok, dan laporan sesuai permission Anda.
@@ -41,15 +42,15 @@ export function LoginPageShell() {
         <div className="order-1 flex min-h-[calc(100vh-3rem)] items-center lg:order-2 lg:min-h-0">
           <div className="w-full rounded-sm border border-neutral-200 bg-white p-5 shadow-[0_24px_70px_rgba(23,23,23,0.08)] sm:p-7">
             <div className="flex items-center gap-3 lg:hidden">
-              <span className="grid h-11 w-11 place-items-center rounded-sm bg-emerald-600 text-base font-black tracking-tight text-white">AJ</span>
+              <span className="grid h-11 w-11 place-items-center rounded-sm bg-emerald-600 text-sm font-black tracking-tight text-white">{APP_BRAND_INITIALS}</span>
               <div>
-                <p className="text-sm font-bold text-neutral-950">Aneka Jaya Internal App</p>
+                <p className="text-sm font-bold text-neutral-950">{APP_BRAND_TITLE}</p>
                 <p className="mt-0.5 text-xs font-medium text-neutral-500">Sistem operasional internal</p>
               </div>
             </div>
 
             <div className="mt-7 lg:mt-0">
-              <p className="hidden text-sm font-bold text-neutral-950 lg:block">Aneka Jaya Internal App</p>
+              <p className="hidden text-sm font-bold text-neutral-950 lg:block">{APP_BRAND_TITLE}</p>
               <h2 className="mt-2 text-2xl font-bold leading-tight text-neutral-950">Masuk ke sistem</h2>
               <p className="mt-2 text-sm leading-6 text-neutral-500">Gunakan email dan password akun Anika ERP Anda.</p>
             </div>

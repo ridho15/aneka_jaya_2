@@ -1,6 +1,7 @@
 import "server-only";
 import { listTempoReceivables, type TempoReceivable } from "@/lib/tempo/store";
 import { listSalesRecords } from "@/lib/sales/store";
+import { APP_BRAND_NAME } from "@/lib/appBrand";
 
 const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 const ddmmyyyy = (value: string | Date) => new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value));
@@ -21,7 +22,7 @@ export async function formatDailyReport(date = new Date()) {
     byTipe.set(key, current);
   }
   const openTempo = (await listTempoReceivables()).filter((tempo) => !["paid", "cancelled", "written_off"].includes(tempo.status));
-  const sections = [`Laporan Harian Aneka Jaya - ${ddmmyyyy(date)}`, "", `Grand Total: ${rupiah(grandTotal)}`, "(exclude tempo)", ""];
+  const sections = [`Laporan Harian ${APP_BRAND_NAME} - ${ddmmyyyy(date)}`, "", `Grand Total: ${rupiah(grandTotal)}`, "(exclude tempo)", ""];
   if (!paidSales.length) sections.push("Tidak ada transaksi paid hari ini", "");
   byTipe.forEach((totals, tipe) => sections.push(tipe, `Cash: ${rupiah(totals.Cash)}`, `TF: ${rupiah(totals.TF)}`, ""));
   sections.push("Tempo:");
