@@ -69,7 +69,7 @@ describe("master data normalized persistence", () => {
 
   it("writes rekening-to-tipe assignments through the junction table", async () => {
     await saveRekeningAccounts([
-      { id: "cash-w", bank: "Cash", name: "Cash W", accountNumber: "-", isCash: true, tipeIds: ["W", "SLM"] }
+      { id: "cash-w", bank: "Cash", name: "Cash W", accountNumber: "-", isCash: true, tipeIds: ["W", "AJ"] }
     ]);
 
     expect(mocks.prisma.rekeningAccount.upsert).toHaveBeenCalledWith(expect.objectContaining({
@@ -81,7 +81,7 @@ describe("master data normalized persistence", () => {
     expect(mocks.prisma.rekeningAccountBookkeepingType.createMany).toHaveBeenCalledWith({
       data: [
         { rekeningAccountId: "cash-w", bookkeepingTypeId: "W" },
-        { rekeningAccountId: "cash-w", bookkeepingTypeId: "SLM" }
+        { rekeningAccountId: "cash-w", bookkeepingTypeId: "AJ" }
       ],
       skipDuplicates: true
     });

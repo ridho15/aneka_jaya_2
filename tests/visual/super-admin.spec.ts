@@ -65,7 +65,7 @@ test("Input Penjualan exposes dependency failures and stays within the viewport"
   await expect(page.getByRole("button", { name: "Simpan Penjualan" })).toBeDisabled();
   await expect(page.getByLabel("Tipe")).toHaveValue("W");
   await expect(page.getByLabel("Rekening penerima")).toHaveValue("cash-w");
-  await page.getByLabel("Tipe").selectOption("SLM");
+  await page.getByLabel("Tipe").selectOption("AJ");
   await expect(page.getByLabel("Transaksi pengujian", { exact: false })).toBeVisible();
   const accountMenu = page.locator("summary");
   await expect(accountMenu).toHaveCount(1);

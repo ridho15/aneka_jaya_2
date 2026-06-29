@@ -4,7 +4,7 @@ test.describe("login visual QA", () => {
   test("/login renders focused operational login without overflow", async ({ page }, testInfo) => {
     await page.goto("/login", { waitUntil: "networkidle" });
 
-    await expect(page.locator("body")).toContainText("Aneka Jaya Internal App");
+    await expect(page.locator("body")).toContainText("LSM Internal App");
     await expect(page.getByRole("heading", { name: "Masuk ke sistem" })).toBeVisible();
     await expect(page.getByLabel("Email atau username")).toBeVisible();
     await expect(page.getByLabel("Password")).toBeVisible();
@@ -34,7 +34,7 @@ test.describe("login visual QA", () => {
       const submit = document.querySelector('button[type="submit"]');
       const submitClasses = submit?.getAttribute("class") || "";
       const monogramClasses = Array.from(document.querySelectorAll("span"))
-        .find((element) => element.textContent === "AJ" && element.getAttribute("class")?.includes("bg-emerald"))
+        .find((element) => element.textContent === "LSM" && element.getAttribute("class")?.includes("bg-emerald"))
         ?.getAttribute("class") || "";
       return {
         innerWidth,
