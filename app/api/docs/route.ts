@@ -11,7 +11,7 @@ export async function GET() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Aneka Jaya API Docs</title>
+  <title>LSM API Docs</title>
   <style>
     body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; }
     main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; }
@@ -27,7 +27,7 @@ export async function GET() {
 </head>
 <body>
   <main>
-    <h1>Aneka Jaya Internal API</h1>
+    <h1>LSM Internal API</h1>
     <p>Dokumentasi ringkas dari <a href="/api/docs/openapi.json">OpenAPI JSON</a>. Akses dibatasi untuk Super Admin.</p>
     <section>
       <h2>Endpoint</h2>

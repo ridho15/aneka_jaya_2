@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Aneka Jaya Internal API
+  title: LSM Internal API
   version: 1.0.0
-  description: API internal untuk operasional Aneka Jaya. Semua response JSON bisnis memakai wrapper success/data/message.
+  description: API internal untuk operasional LSM. Semua response JSON bisnis memakai wrapper success/data/message.
 servers:
   - url: http://localhost:3000
 security:
@@ -90,7 +90,7 @@ components:
           type: string
         isTestTransaction:
           type: boolean
-          description: Hanya Owner; menandai transaksi SLM sebagai UAT dengan referensi TEST yang unik.
+          description: Hanya Owner; menandai transaksi tipe ERP seperti AJ sebagai UAT dengan referensi TEST yang unik.
         items:
           type: array
           items:

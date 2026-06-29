@@ -11,17 +11,18 @@ import { findTipe, MasterDataError, rekeningForTipe } from "@/lib/business/maste
 import { saveSalesRecord } from "@/lib/sales/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
+import { erpTransactionTypeCodes, transactionTargetForType } from "@/lib/api/transactionRouting";
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
 }
 
 export function erpSalesTypeCodes(env: NodeJS.ProcessEnv = process.env) {
-  return new Set((env.SALES_ERP_TYPE_CODES || "SLM").split(",").map((code) => code.trim().toUpperCase()).filter(Boolean));
+  return erpTransactionTypeCodes(env);
 }
 
 export function salesTargetForType(code: string, env: NodeJS.ProcessEnv = process.env): "erp" | "local" {
-  return erpSalesTypeCodes(env).has(code.trim().toUpperCase()) ? "erp" : "local";
+  return transactionTargetForType(code, env);
 }
 
 function erpReferenceFrom(value: unknown): string | undefined {
@@ -45,8 +46,8 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const approvalStatus = user.role === "ADMIN" && approvalIsEnabled("penjualan") ? "pending_approval" : "approved";
   const target = salesTargetForType(tipe.code);
   const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
-  const testReference = isTestTransaction ? `TEST-AJ-SLM-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
-  const customerName = testReference ? `[TEST AJ SLM] ${input.customerName}` : input.customerName;
+  const testReference = isTestTransaction ? `TEST-${tipe.code.toUpperCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
+  const customerName = testReference ? `[TEST ${tipe.code.toUpperCase()}] ${input.customerName}` : input.customerName;
   const notes = [input.notes, testReference ? `Transaksi pengujian ${testReference}` : ""].filter(Boolean).join(" • ") || undefined;
   const effectiveInput = { ...input, customerName, notes, isTestTransaction };
 
@@ -59,7 +60,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     return { success: true, data: { ...sale, target: "local" } };
   }
   const response = await sendNeoCommand({
-    text: `${testReference ? `[TEST AJ SLM] ${testReference}. ` : ""}Buat penjualan dan invoice penjualan untuk ${customerName} tanggal ${input.saleDate}.`,
+    text: `${testReference ? `[TEST ${tipe.code.toUpperCase()}] ${testReference}. ` : ""}Buat penjualan dan invoice penjualan untuk ${customerName} tanggal ${input.saleDate}.`,
     parsedIntent: {
       action: "create_sales", customer_name: customerName, date: input.saleDate,
       tipe_id: tipe.id, tipe_code_snapshot: tipe.code, tipe_name_snapshot: tipe.name,
@@ -176,7 +177,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
           userId: user.id,
           userNameSnapshot: user.name,
           userRoleSnapshot: user.role,
-          reason: `Invoice Penjualan SLM • Terkirim ke ERP • ${input.paymentMethod}${testReference ? ` • ${testReference}` : ""}`
+          reason: `Invoice Penjualan ${tipe.code} • Terkirim ke ERP • ${input.paymentMethod}${testReference ? ` • ${testReference}` : ""}`
         }
       });
     });

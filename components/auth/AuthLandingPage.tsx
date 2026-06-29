@@ -5,6 +5,7 @@ import { isDemoRoleSelectorEnabled } from "@/lib/auth/demoUi";
 import { resolveAuthProvider } from "@/lib/auth/request";
 import { roleLabel, type Role } from "@/lib/auth/roles";
 import { ssoLoginUrl } from "@/lib/auth/login";
+import { APP_BRAND_INITIALS, APP_BRAND_NAME, APP_BRAND_TITLE } from "@/lib/appBrand";
 
 type IconName = "sales" | "tempo" | "approval" | "stock" | "report";
 
@@ -85,8 +86,8 @@ export function AuthLandingPage({ currentRole }: { currentRole: Role }) {
               </div>
 
               <div className="mt-10 max-w-3xl">
-                <p className="text-sm font-semibold text-emerald-700">Aneka Jaya</p>
-                <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">Aneka Jaya Internal App</h1>
+                <p className="text-sm font-semibold text-emerald-700">{APP_BRAND_NAME}</p>
+                <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">{APP_BRAND_TITLE}</h1>
                 <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
                   Pusat kerja operasional untuk penjualan, tempo, approval, stok, dan laporan harian. Masuk sesuai peran untuk melanjutkan pekerjaan dengan data yang rapi dan terkontrol.
                 </p>
@@ -135,7 +136,7 @@ export function AuthLandingPage({ currentRole }: { currentRole: Role }) {
 
           <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.07)] sm:p-7">
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-600 text-lg font-black tracking-tighter text-white">AJ</span>
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-600 text-sm font-black tracking-tighter text-white">{APP_BRAND_INITIALS}</span>
               <div>
                 <p className="text-sm font-bold text-slate-950">Status Akses</p>
                 <p className="mt-0.5 text-xs text-slate-500">Kontrol masuk aplikasi internal</p>

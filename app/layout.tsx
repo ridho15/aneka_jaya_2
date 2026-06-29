@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { APP_BRAND_TITLE, APP_BRAND_NAME } from "@/lib/appBrand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME || "Aneka Jaya Internal App",
-  description: "Aplikasi operasional internal Aneka Jaya"
+  title: APP_BRAND_TITLE,
+  description: `Aplikasi operasional internal ${APP_BRAND_NAME}`
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -3,9 +3,10 @@ import Link from "next/link";
 import { DemoLogoutButton } from "./DemoLogoutButton";
 import { LogoutButton } from "./LogoutButton";
 import type { UserProfile } from "@/lib/users/profile";
+import { APP_BRAND_INITIALS, APP_BRAND_TITLE } from "@/lib/appBrand";
 
 function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "AJ";
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || APP_BRAND_INITIALS;
 }
 
 export function Header({ user, showDemoLogout = false, showLogout = false }: { user: UserProfile; showDemoLogout?: boolean; showLogout?: boolean }) {
@@ -14,7 +15,7 @@ export function Header({ user, showDemoLogout = false, showLogout = false }: { u
     <header className="mb-8 flex flex-col gap-4 border-b border-neutral-300 pb-5 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-neutral-500">Operasional internal</p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight text-neutral-900">Aneka Jaya Internal App</h1>
+        <h1 className="mt-1 text-xl font-bold tracking-tight text-neutral-900">{APP_BRAND_TITLE}</h1>
       </div>
       <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600 sm:justify-end">
         <span className="hidden border-r border-neutral-200 pr-4 sm:block">{date}</span>
