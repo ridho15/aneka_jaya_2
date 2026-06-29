@@ -18,12 +18,18 @@ Mode awal adalah `mock`, sehingga seluruh alur dapat dicoba tanpa ERP, OpenCloud
 
 ## Konfigurasi ERP produksi
 
+Untuk memakai akun Anika ERP langsung pada halaman login, gunakan `AUTH_PROVIDER=anika_erp`.
+Email dan password diteruskan server-side ke `/api/integrations/auth/login`; aplikasi tidak menyimpan password.
+Bearer token hasil login disimpan dalam cookie `HttpOnly` selama masa berlakunya dan digunakan untuk request ERP user tersebut.
+
 Untuk produksi, atur variabel berikut di `.env.local` atau di platform deployment:
 
 ```env
 NEXT_PUBLIC_APP_MODE=production
+AUTH_PROVIDER=anika_erp
 ANIKA_ERP_API_BASE_URL=https://ankjy.playgo.id/api/integrations
-ANIKA_ERP_API_TOKEN=token_erp_anda
+# Opsional untuk proses server tanpa sesi user:
+ANIKA_ERP_API_TOKEN=
 ```
 
 `ANIKA_ERP_API_TOKEN` hanya dibaca pada server. Browser tidak pernah memanggil URL ERP langsung; semua permintaan diproses melalui route handler Next.js di `app/api` dan pembungkus server di `lib/api`.
@@ -43,6 +49,14 @@ Endpoint ERP yang dipakai atau disiapkan:
 - pengeluaran pada produksi juga tidak akan berpura-pura berhasil, karena endpoint finance belum ada di cuplikan dokumentasi yang diberikan.
 
 Payload penjualan dan barang terisolasi di `lib/api/sales.ts` dan `lib/api/products.ts`. Jika skema OpenAPI final tersedia, ubah hanya adapter tersebut dan `lib/api/expenses.ts`—form UI tidak perlu ditulis ulang.
+
+Target penjualan ditentukan terpisah dari mode aplikasi:
+
+```env
+SALES_ERP_TYPE_CODES=SLM
+```
+
+Dengan konfigurasi default tersebut, hanya tipe SLM yang dikirim ke Neo/Anika ERP. Tipe lain disimpan melalui data store lokal. Owner dapat menandai transaksi SLM sebagai transaksi pengujian; sistem menambahkan referensi `TEST-AJ-SLM-*` pada customer dan catatan agar mudah ditemukan untuk penghapusan manual di ERP.
 
 Adapter Neo memakai envelope `NeoCommandRequest` yang didokumentasikan (`text`, `message_id`, `source`, dan `parsed_intent`). Pembuatan barang dikirim sebagai `import_products` dengan referensi kategori, satuan, gudang, dan rak yang dapat dibaca manusia, sesuai skema Neo.
 

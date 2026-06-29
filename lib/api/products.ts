@@ -3,26 +3,10 @@ import { anikaRequest } from "./anikaClient";
 import { sendNeoCommand } from "./neo";
 import type { ApiResponse } from "@/lib/types/api";
 import { failure } from "@/lib/types/api";
-import type { Product } from "@/lib/types/product";
+import type { Product, ProductListItem } from "@/lib/types/product";
 import type { BarangInput } from "@/lib/validation/barangSchema";
 import { recordAudit } from "@/lib/audit/store";
-
-function toProduct(raw: Record<string, unknown>): Product {
-  const categoryObject = raw.product_category as Record<string, unknown> | undefined;
-  const uomObject = raw.uom as Record<string, unknown> | undefined;
-  return {
-    id: String(raw.id ?? raw.product_id ?? ""), code: String(raw.sku ?? raw.code ?? ""), name: String(raw.name ?? ""),
-    category: String(categoryObject?.name ?? raw.category ?? "-"), unit: String(uomObject?.name ?? raw.unit ?? "PCS"),
-    sellingPrice: Number(raw.sell_price ?? raw.selling_price ?? raw.price ?? 0), costPrice: Number(raw.cost_price ?? raw.cost ?? 0),
-    brand: raw.brand ? String(raw.brand) : undefined, initialStock: raw.initial_stock === undefined ? undefined : Number(raw.initial_stock), minimumStock: raw.minimum_stock === undefined ? undefined : Number(raw.minimum_stock),
-    warehouse: raw.warehouse ? String(raw.warehouse) : undefined, rack: raw.rack ? String(raw.rack) : undefined,
-    isActive: raw.is_active === undefined ? true : Boolean(raw.is_active), notes: raw.notes ? String(raw.notes) : undefined,
-    updatedAt: String(raw.updated_at ?? new Date().toISOString()),
-    productCategoryId: raw.product_category_id === undefined ? undefined : Number(raw.product_category_id),
-    uomId: raw.uom_id === undefined ? undefined : Number(raw.uom_id),
-    brandCode: raw.kode_merk ? String(raw.kode_merk) : undefined
-  };
-}
+import { toProduct, toProductListItem } from "@/lib/api/erpMappers";
 
 export async function listProducts(): Promise<ApiResponse<Product[]>> {
   const response = await anikaRequest<unknown>("/products");
@@ -30,6 +14,12 @@ export async function listProducts(): Promise<ApiResponse<Product[]>> {
   const rows = Array.isArray(response.data) ? response.data : (response.data as { data?: unknown[] }).data;
   if (!Array.isArray(rows)) return failure("Format data produk dari ERP tidak dikenali.", "ERP_SCHEMA");
   return { success: true, data: rows.map((row) => toProduct(row as Record<string, unknown>)) };
+}
+
+export async function listProductTableItems(): Promise<ApiResponse<ProductListItem[]>> {
+  const products = await listProducts();
+  if (!products.success) return products;
+  return { success: true, data: products.data.map(toProductListItem) };
 }
 
 export async function getProduct(id: string): Promise<ApiResponse<Product>> {

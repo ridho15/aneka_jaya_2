@@ -48,7 +48,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                 <td className="px-5 py-4 font-semibold">{rek.name}</td>
                 <td className="px-5 py-4">{rek.bank}</td>
                 <td className="px-5 py-4 font-mono text-slate-600">{rek.accountNumber}</td>
-                <td className="px-5 py-4">{rek.tipeIds.length > 0 ? rek.tipeIds.map((id) => <span key={id} className="mr-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">{id}</span>) : <span className="text-slate-400">—</span>}</td>
+                <td className="px-5 py-4">{rek.tipeIds.length > 0 ? rek.tipeIds.map((id) => <span key={id} className="mr-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{id}</span>) : <span className="text-slate-400">—</span>}</td>
               </tr>
             ))}
           </tbody>
@@ -64,7 +64,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
             <p className="mb-2 text-sm font-medium text-slate-700">Assign ke tipe</p>
             <div className="flex flex-wrap gap-2">
               {types.filter((t) => t.isActive).map((tipe) => (
-                <button key={tipe.id} type="button" onClick={() => toggleTipe(tipe.id)} className={`rounded-full px-3 py-1 text-sm font-semibold transition ${selectedTipeIds.includes(tipe.id) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>{tipe.code}</button>
+                <button key={tipe.id} type="button" onClick={() => toggleTipe(tipe.id)} className={`rounded-full px-3 py-1 text-sm font-semibold transition ${selectedTipeIds.includes(tipe.id) ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"}`}>{tipe.code}</button>
               ))}
             </div>
             <p className="mt-2 text-xs text-slate-500">Pilih tipe yang dapat menggunakan rekening ini.</p>

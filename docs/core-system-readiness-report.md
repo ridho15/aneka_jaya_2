@@ -6,15 +6,15 @@ Tanggal pemeriksaan: 29 Juni 2026
 
 **Siap untuk UAT bisnis setelah login operasional, ERP, dan master data asli dikonfigurasi. Belum dapat dinyatakan siap operasional final.**
 
-Implementasi aplikasi, kontrol akses, empty/error state, dan pencegahan mock telah lulus verifikasi otomatis. UAT live yang memakai produk dan stok asli belum dapat dilakukan karena `ANIKA_ERP_API_BASE_URL` dan `ANIKA_ERP_API_TOKEN` belum tersedia. Login operasional juga harus memakai `AUTH_PROVIDER=trusted_header` dengan SSO/reverse proxy atau auth gateway sementara dan user aktif di database; role selector demo bukan jalur masuk operasional. Tipe pembukuan dan rekening asli juga belum dibuat.
+Implementasi aplikasi, kontrol akses, empty/error state, dan pencegahan mock telah lulus verifikasi otomatis. UAT live yang memakai produk dan stok asli belum dapat dilakukan karena `ANIKA_ERP_API_BASE_URL` dan `ANIKA_ERP_API_TOKEN` belum tersedia. Login operasional sekarang memakai `AUTH_PROVIDER=local_credentials` dengan user aktif dan password hash di database; role selector demo bukan jalur masuk operasional. Tipe pembukuan dan rekening asli juga belum dibuat.
 
 OpenCloud, WhatsApp, cron, dan deployment production tidak menjadi bagian keputusan kesiapan fase ini.
 
 ## Eksekusi Plan Lanjutan
 
-Status eksekusi: **Terblokir pada aktivasi login operasional dan ERP asli**.
+Status eksekusi: **Terblokir pada aktivasi ERP asli dan master data bisnis**.
 
-Plan lanjutan telah dijalankan sampai batas yang memungkinkan di workspace development. Environment saat ini belum memiliki `ANIKA_ERP_API_BASE_URL` dan `ANIKA_ERP_API_TOKEN`, sehingga UAT produk, stok, penjualan, pengeluaran, approval, tempo, dashboard, laporan, cetak, dan audit trail dengan data ERP asli belum boleh dilanjutkan. Login operasional juga harus melewati SSO/reverse proxy atau auth gateway sementara yang mengirim trusted header dan cocok dengan user aktif pada tabel `User`. Sesuai kriteria plan, kondisi ini menjadi blocker utama sebelum transaksi UAT dibuat.
+Plan lanjutan telah dijalankan sampai batas yang memungkinkan di workspace development. Environment saat ini belum memiliki `ANIKA_ERP_API_BASE_URL` dan `ANIKA_ERP_API_TOKEN`, sehingga UAT produk, stok, penjualan, pengeluaran, approval, tempo, dashboard, laporan, cetak, dan audit trail dengan data ERP asli belum boleh dilanjutkan. Login operasional harus memakai akun `User` aktif dengan password internal. Sesuai kriteria plan, ERP dan master data menjadi blocker utama sebelum transaksi UAT dibuat.
 
 Data lokal juga belum berisi master data bisnis atau transaksi UAT. Super Admin perlu membuat tipe pembukuan dan rekening resmi setelah ERP aktif. Tidak ada data master atau transaksi otomatis yang dibuat oleh sistem.
 
@@ -24,7 +24,7 @@ Seeder lengkap semua tabel tidak disediakan karena akan berisiko membuat data co
 
 | Data | Status | Cara tersedia |
 | --- | --- | --- |
-| User OWNER | Diseed minimal | `npm run db:seed-owner` memakai `INITIAL_OWNER_EXTERNAL_ID` |
+| User OWNER | Diseed minimal | `npm run db:seed-owner` memakai `INITIAL_OWNER_EXTERNAL_ID` dan password awal |
 | BookkeepingType | Manual | Dibuat Super Admin dari Settings Tipe |
 | RekeningAccount | Manual | Dibuat Super Admin dari Settings Rekening |
 | RekeningAccountBookkeepingType | Manual | Terbuat dari assignment rekening ke tipe |
@@ -46,10 +46,10 @@ Gunakan `npm run db:verify` untuk memastikan semua model Prisma tersedia. Gunaka
 | ERP error state | Lulus | Produk dan stok mengembalikan error konfigurasi tanpa data pengganti |
 | Dashboard | Lulus otomatis | KPI, grafik, kategori, dan aktivitas menggunakan transaksi/audit tersimpan |
 | Role lain | Lulus otomatis | Permission server dan proxy tetap membatasi akses |
-| Unit test | Lulus | 27 file, 88 test |
+| Unit test | Lulus | 31 file, 112 test |
 | Browser UAT | Lulus otomatis | 6 skenario desktop/mobile, termasuk Super Admin dan route Pembelian 404 |
 | Lint dan build | Lulus | ESLint, TypeScript, dan Next.js production build berhasil |
-| Login operasional | Terblokir | Auth gateway sementara disiapkan, tetapi user gateway dan user database asli belum dibuat |
+| Login operasional | Lulus teknis | Jalur final memakai email/username dan password internal; Owner pertama perlu diseed dengan password |
 | Readiness data inti | Terblokir | Menunggu Owner aktif, tipe, rekening, relasi rekening-tipe, ERP, dan auth operasional lengkap |
 | ERP live | Terblokir | Credential ERP belum tersedia |
 | Master data bisnis | Terblokir | Tipe dan rekening asli belum diinput |
@@ -57,10 +57,10 @@ Gunakan `npm run db:verify` untuk memastikan semua model Prisma tersedia. Gunaka
 
 ## UAT Bisnis yang Harus Diselesaikan
 
-1. Konfigurasi SSO/reverse proxy atau auth gateway sementara, trusted header secret, dan URL login.
-2. Buat user gateway dan user Super Admin aktif di tabel `User` dengan `externalId` yang sama dengan header login.
+1. Isi `AUTH_PROVIDER=local_credentials`, `AUTH_SESSION_SECRET`, `INITIAL_OWNER_EXTERNAL_ID`, `INITIAL_OWNER_EMAIL`, dan `INITIAL_OWNER_PASSWORD`.
+2. Jalankan migrasi dan `npm run db:seed-owner`, lalu login sebagai Super Admin dari `/login`.
 3. Isi credential ERP pada environment development/staging.
-4. Login sebagai Super Admin dari jalur SSO/reverse proxy atau auth gateway sementara dan buat tipe pembukuan serta rekening kas/bank asli.
+4. Login sebagai Super Admin dari `/login` dan buat tipe pembukuan serta rekening kas/bank asli.
 5. Jalankan `npm run app:check-core-readiness` sampai lulus.
 6. Cocokkan daftar produk dan stok aplikasi dengan respons ERP.
 7. Tambah dan edit satu barang uji yang telah disetujui untuk staging ERP.

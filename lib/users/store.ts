@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { recordAudit } from "@/lib/audit/store";
 import { can, parseRole, type Role } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
+import { hashPassword } from "@/lib/auth/password";
 
 export type ManagedUser = {
   id: string;
@@ -11,6 +12,7 @@ export type ManagedUser = {
   name: string;
   role: Role;
   isActive: boolean;
+  hasPassword: boolean;
   lastLoginAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -22,6 +24,7 @@ export type UserInput = {
   name?: unknown;
   role?: unknown;
   isActive?: unknown;
+  password?: unknown;
 };
 
 export class UserForbiddenError extends Error {
@@ -52,6 +55,36 @@ function normalizeUserInput(input: UserInput, options?: { requireExternalId?: bo
   };
 }
 
+function normalizePasswordInput(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function toManagedUser(user: {
+  id: string;
+  externalId: string;
+  email: string | null;
+  name: string;
+  role: Role;
+  isActive: boolean;
+  passwordHash?: string | null;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): ManagedUser {
+  return {
+    id: user.id,
+    externalId: user.externalId,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    isActive: user.isActive,
+    hasPassword: Boolean(user.passwordHash),
+    lastLoginAt: user.lastLoginAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
+}
+
 async function assertCanManageUsers() {
   const actor = await getCurrentUser();
   if (!can(actor.role, "users.manage")) throw new UserForbiddenError();
@@ -70,12 +103,16 @@ async function ownerCountExcluding(userId?: string) {
 
 export async function listUsers(): Promise<ManagedUser[]> {
   await assertCanManageUsers();
-  return prisma.user.findMany({ orderBy: [{ role: "asc" }, { name: "asc" }] });
+  const users = await prisma.user.findMany({ orderBy: [{ role: "asc" }, { name: "asc" }] });
+  return users.map(toManagedUser);
 }
 
 export async function createUser(input: UserInput | null): Promise<ManagedUser> {
   await assertCanManageUsers();
   const data = normalizeUserInput(input || {}, { requireExternalId: true, requireRole: true });
+  const password = normalizePasswordInput(input?.password);
+  if (!password) throw new Error("Password awal wajib diisi.");
+  const passwordHash = hashPassword(password);
   const user = await prisma.user.create({
     data: {
       id: crypto.randomUUID(),
@@ -83,11 +120,16 @@ export async function createUser(input: UserInput | null): Promise<ManagedUser> 
       email: data.email,
       name: data.name,
       role: data.role,
-      isActive: data.isActive
+      isActive: data.isActive,
+      passwordHash,
+      passwordUpdatedAt: new Date(),
+      failedLoginCount: 0,
+      lockedUntil: null
     }
   });
-  await recordAudit({ entityType: "user", entityId: user.id, action: "create", afterValue: user, reason: "User baru ditambahkan" });
-  return user;
+  const safeUser = toManagedUser(user);
+  await recordAudit({ entityType: "user", entityId: user.id, action: "create", afterValue: safeUser, reason: "User baru ditambahkan" });
+  return safeUser;
 }
 
 export async function updateUser(id: string, input: UserInput | null): Promise<ManagedUser> {
@@ -96,6 +138,7 @@ export async function updateUser(id: string, input: UserInput | null): Promise<M
   if (!before) throw new Error("User tidak ditemukan.");
   const body = input || {};
   const data = normalizeUserInput({ ...before, ...body }, { requireRole: true });
+  const password = normalizePasswordInput(body.password);
   const nextIsActive = typeof body.isActive === "boolean" ? body.isActive : before.isActive;
   const nextRole = body.role ? data.role : before.role;
   if (before.externalId === actor.id && before.isActive && !nextIsActive) throw new Error("User tidak boleh menonaktifkan dirinya sendiri.");
@@ -109,10 +152,18 @@ export async function updateUser(id: string, input: UserInput | null): Promise<M
       email: data.email,
       name: data.name,
       role: nextRole,
-      isActive: nextIsActive
+      isActive: nextIsActive,
+      ...(password ? {
+        passwordHash: hashPassword(password),
+        passwordUpdatedAt: new Date(),
+        failedLoginCount: 0,
+        lockedUntil: null
+      } : {})
     }
   });
   const action = before.isActive !== after.isActive ? (after.isActive ? "enable" : "disable") : "update";
-  await recordAudit({ entityType: "user", entityId: after.id, action, beforeValue: before, afterValue: after, reason: "User management update" });
-  return after;
+  const safeBefore = toManagedUser(before);
+  const safeAfter = toManagedUser(after);
+  await recordAudit({ entityType: "user", entityId: after.id, action, beforeValue: safeBefore, afterValue: safeAfter, reason: password ? "User password direset" : "User management update" });
+  return safeAfter;
 }

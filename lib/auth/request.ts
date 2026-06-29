@@ -1,6 +1,6 @@
 import { parseRole, ROLE_COOKIE, roleLabel, type Role } from "./roles";
 
-export type AuthProvider = "demo" | "trusted_header";
+export type AuthProvider = "demo" | "trusted_header" | "local_credentials" | "anika_erp";
 
 export type ResolvedUser = {
   id: string;
@@ -38,8 +38,8 @@ export function isProductionAuthRuntime(env: AuthEnv = process.env): boolean {
 }
 
 export function resolveAuthProvider(env: AuthEnv = process.env): AuthProvider {
-  if (env.AUTH_PROVIDER === "demo" || env.AUTH_PROVIDER === "trusted_header") return env.AUTH_PROVIDER;
-  return isProductionAuthRuntime(env) ? "trusted_header" : "demo";
+  if (env.AUTH_PROVIDER === "demo" || env.AUTH_PROVIDER === "trusted_header" || env.AUTH_PROVIDER === "local_credentials" || env.AUTH_PROVIDER === "anika_erp") return env.AUTH_PROVIDER;
+  return isProductionAuthRuntime(env) ? "local_credentials" : "demo";
 }
 
 export function unauthenticatedUser(): ResolvedUser {
@@ -95,9 +95,10 @@ function resolveTrustedHeaderUser(request: RequestLike, env: AuthEnv): ResolvedU
 }
 
 export function resolveRequestUser(request: RequestLike, env: AuthEnv = process.env): ResolvedUser {
-  return resolveAuthProvider(env) === "trusted_header"
-    ? resolveTrustedHeaderUser(request, env)
-    : resolveDemoUser(request, env);
+  const provider = resolveAuthProvider(env);
+  if (provider === "trusted_header") return resolveTrustedHeaderUser(request, env);
+  if (provider === "local_credentials" || provider === "anika_erp") return unauthenticatedUser();
+  return resolveDemoUser(request, env);
 }
 
 export function resolveRequestRole(request: RequestLike, env: AuthEnv = process.env): Role {

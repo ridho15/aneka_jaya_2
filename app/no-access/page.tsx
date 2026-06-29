@@ -8,7 +8,8 @@ import Link from "next/link";
 export default async function NoAccessPage() {
   const role = await getCurrentRole();
   const showRoleSelector = isDemoRoleSelectorEnabled();
-  const showLoginLink = !showRoleSelector && resolveAuthProvider() === "trusted_header";
+  const provider = resolveAuthProvider();
+  const showLoginLink = !showRoleSelector && (provider === "trusted_header" || provider === "local_credentials" || provider === "anika_erp");
   return (
     <AppShell>
       <section className="aj-surface max-w-xl p-8">
@@ -17,7 +18,7 @@ export default async function NoAccessPage() {
         <p className="mt-3 text-sm text-slate-600">
           Role ini belum memiliki halaman yang boleh dibuka. {showRoleSelector ? "Untuk mode development, pilih role demo di bawah ini." : "Hubungi Super Admin untuk konfigurasi akses Viewer."}
         </p>
-        {showLoginLink ? <Link href="/login" className="mt-5 inline-flex min-h-10 items-center justify-center rounded-sm bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-700">Kembali ke login</Link> : null}
+        {showLoginLink ? <Link href="/login" className="mt-5 inline-flex min-h-10 items-center justify-center rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">Kembali ke login</Link> : null}
       </section>
       {showRoleSelector ? <RoleSelector currentRole={role} /> : null}
     </AppShell>

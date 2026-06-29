@@ -18,6 +18,8 @@ vi.mock("@/lib/users/authLookup", () => ({
 }));
 
 import { getCurrentUser } from "@/lib/auth/session";
+import { createSessionToken, LOCAL_SESSION_COOKIE } from "@/lib/auth/localSession";
+import { ANIKA_ERP_TOKEN_COOKIE } from "@/lib/auth/anikaErp";
 
 describe("trusted-header session users", () => {
   beforeEach(() => {
@@ -67,5 +69,62 @@ describe("trusted-header session users", () => {
 
     await expect(getCurrentUser()).resolves.toMatchObject({ id: "unauthenticated", role: "VIEWER" });
     expect(mocks.findActiveUserByExternalId).not.toHaveBeenCalled();
+  });
+
+  it("uses local credential session cookies to load the database user", async () => {
+    vi.stubEnv("AUTH_PROVIDER", "local_credentials");
+    vi.stubEnv("AUTH_SESSION_SECRET", "local-secret");
+    const token = createSessionToken("owner-login");
+    mocks.cookies.mockResolvedValue({ get: vi.fn((name: string) => name === LOCAL_SESSION_COOKIE ? { value: token } : undefined) });
+    mocks.findActiveUserByExternalId.mockResolvedValue({ id: "owner-login", name: "Owner", role: "OWNER" });
+
+    await expect(getCurrentUser()).resolves.toEqual({ id: "owner-login", name: "Owner", role: "OWNER" });
+    expect(mocks.findActiveUserByExternalId).toHaveBeenCalledWith("owner-login", { touchLastLogin: false });
+  });
+
+  it("returns viewer when local credential session is missing", async () => {
+    vi.stubEnv("AUTH_PROVIDER", "local_credentials");
+    vi.stubEnv("AUTH_SESSION_SECRET", "local-secret");
+    mocks.cookies.mockResolvedValue({ get: vi.fn() });
+    mocks.findActiveUserByExternalId.mockReset();
+
+    await expect(getCurrentUser()).resolves.toMatchObject({ id: "unauthenticated", role: "VIEWER" });
+    expect(mocks.findActiveUserByExternalId).not.toHaveBeenCalled();
+  });
+
+  it("rejects an Anika session that is missing its ERP token cookie", async () => {
+    vi.stubEnv("AUTH_PROVIDER", "anika_erp");
+    vi.stubEnv("AUTH_SESSION_SECRET", "local-secret");
+    const token = createSessionToken("anika:1");
+    mocks.cookies.mockResolvedValue({ get: vi.fn((name: string) => name === LOCAL_SESSION_COOKIE ? { value: token } : undefined) });
+
+    await expect(getCurrentUser()).resolves.toMatchObject({ id: "unauthenticated", role: "VIEWER" });
+    expect(mocks.findActiveUserByExternalId).not.toHaveBeenCalled();
+  });
+
+  it("loads an Anika user when both session cookies are present", async () => {
+    vi.stubEnv("AUTH_PROVIDER", "anika_erp");
+    vi.stubEnv("AUTH_SESSION_SECRET", "local-secret");
+    const token = createSessionToken("anika:1");
+    mocks.cookies.mockResolvedValue({
+      get: vi.fn((name: string) => {
+        if (name === LOCAL_SESSION_COOKIE) return { value: token };
+        if (name === ANIKA_ERP_TOKEN_COOKIE) return { value: "erp-token" };
+        return undefined;
+      })
+    });
+    mocks.findActiveUserByExternalId.mockResolvedValue({ id: "anika:1", name: "ERP Owner", role: "OWNER" });
+
+    await expect(getCurrentUser()).resolves.toEqual({ id: "anika:1", name: "ERP Owner", role: "OWNER" });
+  });
+
+  it("does not use embedded local session role without the visual fallback flag", async () => {
+    vi.stubEnv("AUTH_PROVIDER", "local_credentials");
+    vi.stubEnv("AUTH_SESSION_SECRET", "local-secret");
+    const token = createSessionToken("owner-login");
+    mocks.cookies.mockResolvedValue({ get: vi.fn((name: string) => name === LOCAL_SESSION_COOKIE ? { value: token } : undefined) });
+    mocks.findActiveUserByExternalId.mockResolvedValue(null);
+
+    await expect(getCurrentUser()).resolves.toMatchObject({ id: "unauthenticated", role: "VIEWER" });
   });
 });

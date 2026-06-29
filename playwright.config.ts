@@ -1,4 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+
+function envValue(key: string, fallback: string) {
+  if (process.env[key]) return process.env[key] as string;
+  if (!existsSync(".env.local")) return fallback;
+  const line = readFileSync(".env.local", "utf8").split(/\r?\n/).find((item) => item.startsWith(`${key}=`));
+  return line?.slice(key.length + 1).trim() || fallback;
+}
+
+const visualSessionSecret = envValue("AUTH_SESSION_SECRET", "visual-secret");
 
 export default defineConfig({
   testDir: "./tests/visual",
@@ -11,9 +21,9 @@ export default defineConfig({
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "env NEXT_PUBLIC_APP_MODE=development AUTH_PROVIDER=trusted_header AUTH_TRUSTED_HEADER_SECRET=visual-secret AUTH_TRUSTED_HEADER_ALLOW_ROLE_HEADER=true AUTH_SSO_LOGIN_URL= AUTH_ENABLE_DEMO_ROLE_SELECTOR=false APP_DEFAULT_ROLE=VIEWER npm run start -- -p 3010",
+    command: `env NEXT_PUBLIC_APP_MODE=development AUTH_PROVIDER=local_credentials AUTH_SESSION_SECRET=${visualSessionSecret} AUTH_LOCAL_CREDENTIALS_ALLOW_VISUAL_FALLBACK=true AUTH_ENABLE_DEMO_ROLE_SELECTOR=false APP_DEFAULT_ROLE=VIEWER npm run start -- -p 3010`,
     url: "http://127.0.0.1:3010",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 30_000
   },
   projects: [

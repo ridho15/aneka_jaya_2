@@ -6,10 +6,14 @@ info:
 servers:
   - url: http://localhost:3000
 security:
-  - demoRoleCookie: []
-  - trustedHeaders: []
+  - localSessionCookie: []
 components:
   securitySchemes:
+    localSessionCookie:
+      type: apiKey
+      in: cookie
+      name: aneka_jaya_session
+      description: Session httpOnly hasil login internal di /login.
     demoRoleCookie:
       type: apiKey
       in: cookie
@@ -84,6 +88,9 @@ components:
           type: string
         notes:
           type: string
+        isTestTransaction:
+          type: boolean
+          description: Hanya Owner; menandai transaksi SLM sebagai UAT dengan referensi TEST yang unik.
         items:
           type: array
           items:
@@ -147,6 +154,58 @@ components:
           type: string
         minimumStock:
           type: number
+    ProductListItem:
+      type: object
+      required: [id, code, name, updatedAt]
+      description: Field daftar produk untuk tabel Stock Barang. Field nullable berarti ERP tidak mengirim nilai valid dan UI harus menampilkan "—".
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: [string, "null"]
+        sellingPrice:
+          type: [number, "null"]
+        minimumStock:
+          type: [number, "null"]
+        isActive:
+          type: [boolean, "null"]
+        updatedAt:
+          type: string
+        dataQualityWarnings:
+          type: array
+          items:
+            type: string
+    StockItem:
+      type: object
+      required: [id, productCode, productName]
+      description: Field stok ERP. Qty/minimum nullable dibedakan dari angka 0 agar kegagalan sinkronisasi tidak terlihat sebagai stok nol.
+      properties:
+        id:
+          type: string
+        productCode:
+          type: string
+        productName:
+          type: string
+        warehouse:
+          type: [string, "null"]
+        quantity:
+          type: [number, "null"]
+        unit:
+          type: [string, "null"]
+        minimumStock:
+          type: [number, "null"]
+        rack:
+          type: string
+        updatedAt:
+          type: string
+        dataQualityWarnings:
+          type: array
+          items:
+            type: string
     ApprovalAction:
       type: object
       required: [action]
@@ -191,6 +250,10 @@ components:
           enum: [OWNER, ADMIN, FINANCE, MANAGER, VIEWER]
         isActive:
           type: boolean
+        password:
+          type: string
+          format: password
+          description: Wajib saat create user; opsional saat update untuk reset password.
   responses:
     BadRequest:
       description: Request tidak valid.
@@ -217,6 +280,19 @@ components:
           schema:
             $ref: "#/components/schemas/ApiError"
 paths:
+  /api/debug/erp-stock-shape:
+    get:
+      summary: Audit aman bentuk field ERP produk dan stok.
+      description: Development-only untuk OWNER. Output hanya daftar field, tipe data, dan sample pendek tersanitasi; tidak menampilkan token atau payload penuh.
+      responses:
+        "200":
+          description: Shape ERP produk dan stok.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Tidak tersedia di production.
+        "502":
+          $ref: "#/components/responses/BadGateway"
   /api/health:
     get:
       summary: Cek koneksi ERP dan OpenCloud.
@@ -281,10 +357,21 @@ paths:
   /api/products:
     get:
       summary: Daftar produk.
-      description: Permission stock.view.
+      description: Permission stock.view. Respons daftar hanya berisi field tabel; detail internal seperti harga modal dan ID referensi tersedia melalui /api/products/{id}. Field nullable ditampilkan sebagai "—" di UI.
       responses:
         "200":
           description: Daftar produk.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ProductListItem"
         "403":
           $ref: "#/components/responses/Forbidden"
         "502":
@@ -348,10 +435,21 @@ paths:
   /api/stocks:
     get:
       summary: Daftar stok ERP.
-      description: Permission stock.view.
+      description: Permission stock.view. Jika refresh gagal, halaman mempertahankan data valid terakhir dan menampilkan status data stale; detail teknis ERP tidak diekspos ke pengguna.
       responses:
         "200":
           description: Daftar stok.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/StockItem"
         "403":
           $ref: "#/components/responses/Forbidden"
         "502":
@@ -484,10 +582,44 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/auth/login:
+    post:
+      summary: Login internal.
+      description: Menerima email/username dan password, lalu membuat session cookie httpOnly jika credential valid.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, password]
+              properties:
+                identifier:
+                  type: string
+                  description: Email atau externalId/username user.
+                password:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Login berhasil dan session cookie dibuat.
+        "401":
+          description: Credential tidak valid atau akun terkunci.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/auth/logout:
+    post:
+      summary: Logout internal.
+      description: Menghapus session cookie login internal.
+      responses:
+        "200":
+          description: Session cookie dihapus.
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/session/role:
     post:
       summary: Mengubah role demo development teknis.
-      description: Hanya aktif ketika mode demo dan `AUTH_ENABLE_DEMO_ROLE_SELECTOR=true`; ditolak pada auth operasional trusted-header.
+      description: Hanya aktif ketika mode demo dan `AUTH_ENABLE_DEMO_ROLE_SELECTOR=true`; ditolak pada auth operasional local_credentials.
       responses:
         "200":
           description: Role demo tersimpan di cookie.
@@ -498,7 +630,7 @@ paths:
   /api/session/logout:
     post:
       summary: Menghapus cookie role demo development teknis.
-      description: Hanya aktif ketika mode demo dan `AUTH_ENABLE_DEMO_ROLE_SELECTOR=true`; ditolak pada auth operasional trusted-header.
+      description: Hanya aktif ketika mode demo dan `AUTH_ENABLE_DEMO_ROLE_SELECTOR=true`; ditolak pada auth operasional local_credentials.
       responses:
         "200":
           description: Cookie role demo dihapus.

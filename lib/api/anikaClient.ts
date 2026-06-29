@@ -1,13 +1,20 @@
 import "server-only";
 import type { ApiResponse } from "@/lib/types/api";
 import { failure } from "@/lib/types/api";
+import { currentAnikaErpToken } from "@/lib/auth/anikaErp";
+import { resolveAuthProvider } from "@/lib/auth/request";
 
 const TIMEOUT_MS = 12_000;
 
 export async function anikaRequest<T>(path: string, init: RequestInit = {}): Promise<ApiResponse<T>> {
   const baseUrl = process.env.ANIKA_ERP_API_BASE_URL;
-  const token = process.env.ANIKA_ERP_API_TOKEN;
-  if (!baseUrl || !token) return failure("Konfigurasi ERP belum lengkap.", "ERP_NOT_CONFIGURED");
+  const token = process.env.ANIKA_ERP_API_TOKEN || await currentAnikaErpToken();
+  if (!baseUrl) return failure("Konfigurasi ERP belum lengkap.", "ERP_NOT_CONFIGURED");
+  if (!token) {
+    return resolveAuthProvider() === "anika_erp"
+      ? failure("Sesi ERP tidak tersedia. Silakan masuk kembali.", "ERP_SESSION_REQUIRED")
+      : failure("Konfigurasi ERP belum lengkap.", "ERP_NOT_CONFIGURED");
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -20,7 +27,10 @@ export async function anikaRequest<T>(path: string, init: RequestInit = {}): Pro
     });
     const body = await response.json().catch(() => null);
     if (!response.ok) {
-      return failure("Permintaan ke ERP gagal. Silakan coba lagi atau hubungi admin.", `ERP_${response.status}`, body?.message ? { message: body.message } : undefined);
+      if (response.status === 401 || response.status === 403) {
+        return failure("Akses ke ERP ditolak. Hubungi Super Admin.", "ERP_AUTH");
+      }
+      return failure("ERP sedang tidak dapat melayani permintaan.", "ERP_UPSTREAM");
     }
     return { success: true, data: body as T };
   } catch (error) {

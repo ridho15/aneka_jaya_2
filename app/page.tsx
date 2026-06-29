@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { AuthLandingPage } from "@/components/auth/AuthLandingPage";
 import { landingPageForRole } from "@/lib/auth/roles";
-import { getCurrentRole } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export default async function Home() {
-  const role = await getCurrentRole();
+  const user = await getCurrentUser();
+  if (user.id === "unauthenticated") redirect("/login");
+  const role = user.role;
   const landing = landingPageForRole(role);
-  if (landing !== "/no-access") redirect(landing);
-  return <AuthLandingPage currentRole={role} />;
+  redirect(landing);
 }

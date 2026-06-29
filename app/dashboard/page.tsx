@@ -47,7 +47,7 @@ export default async function DashboardPage() {
     <AppShell>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.13em] text-blue-600">Ringkasan operasional</p>
+          <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Ringkasan operasional</p>
           <h2 className="aj-page-title mt-2 text-3xl font-bold">Halo, {user.name}</h2>
           <p className="mt-2 text-sm text-slate-600">Pantau penjualan, pengeluaran, dan stok dalam satu tampilan.</p>
         </div>
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
         <section className="aj-surface overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
             <div><p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Aktivitas</p><h2 className="mt-1 text-lg font-bold tracking-tight">Aktivitas terbaru</h2></div>
-            <Link className="text-sm font-semibold text-blue-600" href="/barang">Lihat barang →</Link>
+            <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href="/barang">Lihat barang →</Link>
           </div>
           <div className="divide-y divide-slate-100">
             {activities.map((activity) => (
@@ -83,14 +83,14 @@ export default async function DashboardPage() {
           </div>
         </section>
         <section className="aj-surface p-5 sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-[0.13em] text-cyan-600">Koneksi</p>
+          <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Koneksi</p>
           <h2 className="mt-1 text-lg font-bold tracking-tight">Status sistem</h2>
           <Status label="ERP Integration API" ok={products.success} text={products.success ? "Terhubung dan siap digunakan" : products.message} />
           <Status label="OpenCloud Storage" ok={cloud.configured} text={cloud.message} />
           <Status label="WhatsApp" ok={Boolean(whatsappProvider)} text={whatsappProvider ? `Provider ${whatsappProvider} siap digunakan` : "Provider WhatsApp belum dikonfigurasi"} />
-          <div className="mt-5 rounded-xl bg-slate-950 p-4 text-white">
+          <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-emerald-950">
             <p className="text-sm font-semibold">Butuh transaksi cepat?</p>
-            <Link href="/pengeluaran/input" className="mt-2 inline-block text-sm font-semibold text-cyan-300">Input pengeluaran →</Link>
+            <Link href="/pengeluaran/input" className="mt-2 inline-block text-sm font-semibold text-emerald-700 hover:text-emerald-800">Input pengeluaran →</Link>
           </div>
         </section>
       </div>

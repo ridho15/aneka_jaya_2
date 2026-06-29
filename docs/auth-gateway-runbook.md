@@ -1,5 +1,7 @@
 # Auth Gateway Sementara
 
+Status: **opsional/legacy**. Jalur operasional utama sekarang adalah login internal `AUTH_PROVIDER=local_credentials` di `/login`. Gunakan dokumen ini hanya jika suatu saat mode `trusted_header` diaktifkan kembali untuk reverse proxy/SSO.
+
 Dokumen ini menjelaskan cara memakai login sementara yang aman sebelum SSO perusahaan tersedia. Gateway meminta username/password, membuat session cookie httpOnly, lalu meneruskan request ke aplikasi dengan trusted header. Role tetap diambil dari tabel `User` aplikasi.
 
 ## 1. Environment

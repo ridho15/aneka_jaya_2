@@ -53,7 +53,7 @@ export function TipeManager({ types: initial, rekenings }: Props) {
                 <td className="px-5 py-4">{tipe.name}</td>
                 <td className="px-5 py-4 text-slate-500">{rekeningsForTipe(tipe.id).map((r) => r.name).join(", ") || "-"}</td>
                 <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tipe.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{tipe.isActive ? "Aktif" : "Nonaktif"}</span></td>
-                <td className="px-5 py-4"><button onClick={() => toggleActive(tipe)} className="text-sm font-semibold text-blue-600 hover:text-blue-800">{tipe.isActive ? "Nonaktifkan" : "Aktifkan"}</button></td>
+                <td className="px-5 py-4"><button onClick={() => toggleActive(tipe)} className="text-sm font-semibold text-emerald-700 hover:text-emerald-800">{tipe.isActive ? "Nonaktifkan" : "Aktifkan"}</button></td>
               </tr>
             ))}
           </tbody>

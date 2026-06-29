@@ -65,7 +65,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           type="button"
           onClick={() => window.print()}
           disabled={loading || Boolean(error)}
-          className="border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Print
         </button>

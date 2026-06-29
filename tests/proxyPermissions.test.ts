@@ -119,4 +119,40 @@ describe("proxy permission enforcement", () => {
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("http://local/login");
   });
+
+  it("redirects local credential requests without a session cookie to login", () => {
+    vi.stubEnv("AUTH_PROVIDER", "local_credentials");
+
+    const response = proxy(makeRequest("/dashboard"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://local/login");
+  });
+
+  it("allows local credential requests with a session cookie to reach server-side auth", () => {
+    vi.stubEnv("AUTH_PROVIDER", "local_credentials");
+
+    const response = proxy(makeRequest("/dashboard", { cookie: "aneka_jaya_session=session-token" }));
+
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("redirects stale Anika sessions without an ERP token cookie to login", () => {
+    vi.stubEnv("AUTH_PROVIDER", "anika_erp");
+
+    const response = proxy(makeRequest("/penjualan/input", { cookie: "aneka_jaya_session=session-token" }));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://local/login");
+  });
+
+  it("allows Anika sessions with both signed session and ERP token cookies", () => {
+    vi.stubEnv("AUTH_PROVIDER", "anika_erp");
+
+    const response = proxy(makeRequest("/penjualan/input", {
+      cookie: "aneka_jaya_session=session-token; aneka_jaya_erp_token=erp-token"
+    }));
+
+    expect(response.headers.get("location")).toBeNull();
+  });
 });

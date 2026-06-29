@@ -1,0 +1,23 @@
+import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { LoginPageShell } from "@/components/auth/LoginPageShell";
+
+describe("login page shell", () => {
+  it("renders a focused operational login page without auth diagnostics", () => {
+    const html = renderToStaticMarkup(<LoginPageShell />);
+
+    expect(html).toContain("AJ");
+    expect(html).toContain("Aneka Jaya Internal App");
+    expect(html).toContain("Masuk ke sistem");
+    expect(html).toContain("Email atau username");
+    expect(html).toContain("Password");
+    expect(html).toContain("Hubungi Super Admin jika tidak bisa masuk.");
+    expect(html).not.toContain("Internal Operations");
+    expect(html).not.toContain("Role-based Access");
+    expect(html).not.toContain("ERP-ready");
+    expect(html).not.toContain("Login internal aktif");
+    expect(html).not.toContain("Mode aplikasi");
+    expect(html).not.toContain("SSO");
+    expect(html).not.toContain("Pilih role demo");
+  });
+});

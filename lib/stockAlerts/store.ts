@@ -27,12 +27,12 @@ export async function listStockAlertLogs() {
 }
 
 export async function checkStockMinimumAlert(input: Product | StockItem) {
-  const currentStock = "quantity" in input ? input.quantity : input.initialStock || 0;
-  const minimumStock = input.minimumStock || 0;
+  const currentStock = "quantity" in input ? input.quantity : input.initialStock ?? null;
+  const minimumStock = input.minimumStock ?? null;
   const productCode = "productCode" in input ? input.productCode : input.code;
   const productName = "productName" in input ? input.productName : input.name;
   const productId = input.id;
-  if (minimumStock <= 0) return null;
+  if (currentStock === null || minimumStock === null || !Number.isFinite(currentStock) || !Number.isFinite(minimumStock) || minimumStock <= 0) return null;
   const rows = await readJsonArray<StockAlertLog>(fileName);
   const openAlertIndex = rows.findIndex((row) => row.productCodeSnapshot === productCode && row.status !== "resolved");
   if (currentStock > minimumStock) {
@@ -50,7 +50,7 @@ export async function checkStockMinimumAlert(input: Product | StockItem) {
     productNameSnapshot: productName,
     currentStock,
     minimumStock,
-    warehouseSnapshot: input.warehouse,
+    warehouseSnapshot: input.warehouse ?? undefined,
     rackSnapshot: "rack" in input ? input.rack : undefined,
     status: "failed",
     createdAt: new Date().toISOString()

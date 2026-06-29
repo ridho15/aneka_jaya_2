@@ -10,4 +10,9 @@ export type Sale = {
   createdByNameSnapshot?: string;
   createdByRoleSnapshot?: string;
   createdAt?: string;
+  syncTarget?: "local" | "erp";
+  syncStatus?: "local" | "synced" | "failed";
+  erpReference?: string;
+  testReference?: string;
+  isTestTransaction?: boolean;
 };

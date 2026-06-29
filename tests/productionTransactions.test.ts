@@ -17,7 +17,9 @@ const mocks = vi.hoisted(() => {
     },
     user: { id: "actor-1", name: "Actor", role: "OWNER" },
     sendNeoCommand: vi.fn(),
-    findTipe: vi.fn()
+    findTipe: vi.fn(),
+    rekeningForTipe: vi.fn(),
+    saveSalesRecord: vi.fn()
   };
 });
 
@@ -27,7 +29,13 @@ vi.mock("@/lib/auth/session", () => ({
   getCurrentRole: vi.fn(async () => mocks.user.role)
 }));
 vi.mock("@/lib/api/neo", () => ({ sendNeoCommand: mocks.sendNeoCommand }));
-vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe }));
+vi.mock("@/lib/business/masterData", () => ({
+  findTipe: mocks.findTipe,
+  rekeningForTipe: mocks.rekeningForTipe,
+  MasterDataError: class MasterDataError extends Error {}
+}));
+vi.mock("@/lib/sales/store", () => ({ saveSalesRecord: mocks.saveSalesRecord }));
+vi.mock("@/lib/audit/store", () => ({ recordAudit: vi.fn() }));
 
 import { createSale } from "@/lib/api/sales";
 import { updateApprovalStatus } from "@/lib/approval/store";
@@ -49,15 +57,21 @@ const saleInput = {
 describe("production Prisma transactions", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_APP_MODE", "production");
+    vi.stubEnv("SALES_ERP_TYPE_CODES", "SLM");
     mocks.user = { id: "actor-1", name: "Actor", role: "OWNER" };
+    mocks.sendNeoCommand.mockReset();
     mocks.sendNeoCommand.mockResolvedValue({ success: true, data: { ok: true } });
     mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
+    mocks.rekeningForTipe.mockResolvedValue([]);
+    mocks.saveSalesRecord.mockReset();
     mocks.prisma.$transaction.mockClear();
     Object.values(mocks.tx).forEach((model) => Object.values(model).forEach((fn) => "mockReset" in fn && fn.mockReset()));
   });
 
   it("creates approved production Tempo sales atomically with receivable and audit rows", async () => {
-    await expect(createSale(saleInput)).resolves.toEqual({ success: true, data: { ok: true } });
+    mocks.findTipe.mockResolvedValue({ id: "SLM", code: "SLM", name: "SLM" });
+    const input = { ...saleInput, tipeId: "SLM", tipeCodeSnapshot: "SLM", tipeNameSnapshot: "SLM" };
+    await expect(createSale(input)).resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "synced" } });
 
     expect(mocks.prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(mocks.tx.salesRecord.create).toHaveBeenCalledOnce();
@@ -70,6 +84,94 @@ describe("production Prisma transactions", () => {
     expect(mocks.tx.approvalRequest.create).not.toHaveBeenCalled();
     expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ entityType: "sales", action: "create" })
+    }));
+  });
+
+  it.each(["W", "ONLINE"])("keeps %s sales local without calling ERP", async (code) => {
+    mocks.findTipe.mockResolvedValue({ id: code, code, name: code });
+
+    await expect(createSale({ ...saleInput, tipeId: code, tipeCodeSnapshot: code, tipeNameSnapshot: code, paymentMethod: "Other", dueDate: undefined }))
+      .resolves.toMatchObject({ success: true, data: { target: "local", syncTarget: "local" } });
+
+    expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
+    expect(mocks.saveSalesRecord).toHaveBeenCalledOnce();
+  });
+
+  it("does not persist an SLM sale when ERP rejects it", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "SLM", code: "SLM", name: "SLM" });
+    mocks.sendNeoCommand.mockResolvedValue({ success: false, code: "ERP_UPSTREAM", message: "ERP gagal." });
+
+    await expect(createSale({ ...saleInput, tipeId: "SLM", tipeCodeSnapshot: "SLM", tipeNameSnapshot: "SLM" }))
+      .resolves.toEqual({ success: false, code: "ERP_UPSTREAM", message: "ERP gagal." });
+
+    expect(mocks.prisma.$transaction).not.toHaveBeenCalled();
+    expect(mocks.saveSalesRecord).not.toHaveBeenCalled();
+  });
+
+  it("marks Owner SLM test transactions in the Neo payload and response", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "SLM", code: "SLM", name: "SLM" });
+
+    const result = await createSale({ ...saleInput, tipeId: "SLM", tipeCodeSnapshot: "SLM", tipeNameSnapshot: "SLM", isTestTransaction: true });
+
+    expect(result).toMatchObject({ success: true, data: { target: "erp", isTestTransaction: true } });
+    expect((result as { data: { testReference: string } }).data.testReference).toMatch(/^TEST-AJ-SLM-/);
+    expect(mocks.sendNeoCommand).toHaveBeenCalledWith(expect.objectContaining({
+      text: expect.stringContaining("[TEST AJ SLM]"),
+      parsedIntent: expect.objectContaining({
+        tipe_code_snapshot: "SLM",
+        auto_create_invoice: true,
+        is_test_transaction: true,
+        test_reference: expect.stringMatching(/^TEST-AJ-SLM-/)
+      })
+    }));
+  });
+
+  it("ignores the test flag from non-Owner users", async () => {
+    mocks.user = { id: "actor-2", name: "Admin", role: "ADMIN" };
+    mocks.findTipe.mockResolvedValue({ id: "SLM", code: "SLM", name: "SLM" });
+
+    const result = await createSale({ ...saleInput, tipeId: "SLM", tipeCodeSnapshot: "SLM", tipeNameSnapshot: "SLM", isTestTransaction: true });
+
+    expect(result).toMatchObject({ success: true, data: { target: "erp", isTestTransaction: false } });
+    expect(mocks.sendNeoCommand).toHaveBeenCalledWith(expect.objectContaining({
+      parsedIntent: expect.objectContaining({ is_test_transaction: false, test_reference: undefined })
+    }));
+  });
+
+  it("rejects Cash SLM when the selected rekening is not assigned to SLM", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "SLM", code: "SLM", name: "SLM" });
+    mocks.rekeningForTipe.mockResolvedValue([]);
+
+    await expect(createSale({
+      ...saleInput,
+      tipeId: "SLM",
+      tipeCodeSnapshot: "SLM",
+      tipeNameSnapshot: "SLM",
+      paymentMethod: "Cash",
+      dueDate: undefined,
+      rekeningId: "cash-slm"
+    })).rejects.toThrow("Rekening penerima tidak tersedia");
+
+    expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
+  });
+
+  it("sends Cash SLM when a real assigned rekening is available", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "SLM", code: "SLM", name: "SLM" });
+    mocks.rekeningForTipe.mockResolvedValue([{ id: "cash-slm", name: "Kas SLM", tipeIds: ["SLM"] }]);
+
+    await expect(createSale({
+      ...saleInput,
+      tipeId: "SLM",
+      tipeCodeSnapshot: "SLM",
+      tipeNameSnapshot: "SLM",
+      paymentMethod: "Cash",
+      dueDate: undefined,
+      rekeningId: "cash-slm",
+      rekeningNameSnapshot: "Kas SLM"
+    })).resolves.toMatchObject({ success: true, data: { target: "erp" } });
+
+    expect(mocks.sendNeoCommand).toHaveBeenCalledWith(expect.objectContaining({
+      parsedIntent: expect.objectContaining({ rekening_id: "cash-slm", tipe_code_snapshot: "SLM" })
     }));
   });
 

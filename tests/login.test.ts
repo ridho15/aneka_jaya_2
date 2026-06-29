@@ -10,9 +10,10 @@ describe("login auth landing helpers", () => {
     expect(ssoLoginUrl({ AUTH_SSO_LOGIN_URL: "" } as unknown as NodeJS.ProcessEnv)).toBeNull();
   });
 
-  it("redirects authenticated non-viewer roles to their landing page", () => {
+  it("redirects authenticated roles to their landing page", () => {
     expect(shouldRedirectAuthenticatedLogin("OWNER")).toBe(true);
     expect(authenticatedLoginTarget("FINANCE")).toBe("/tempo");
-    expect(shouldRedirectAuthenticatedLogin("VIEWER")).toBe(false);
+    expect(authenticatedLoginTarget("VIEWER")).toBe("/no-access");
+    expect(shouldRedirectAuthenticatedLogin("VIEWER")).toBe(true);
   });
 });

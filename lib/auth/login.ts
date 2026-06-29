@@ -5,7 +5,7 @@ export function ssoLoginUrl(env: NodeJS.ProcessEnv = process.env) {
 }
 
 export function shouldRedirectAuthenticatedLogin(role: Role) {
-  return role !== "VIEWER";
+  return role.length > 0;
 }
 
 export function authenticatedLoginTarget(role: Role) {
