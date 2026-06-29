@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const mocks = vi.hoisted(() => {
   class UserForbiddenError extends Error {
     constructor(message = "Tidak punya akses kelola user.") {
@@ -8,12 +10,17 @@ const mocks = vi.hoisted(() => {
     }
   }
   return {
+    role: "OWNER",
     UserForbiddenError,
     listUsers: vi.fn(),
     createUser: vi.fn(),
     updateUser: vi.fn()
   };
 });
+
+vi.mock("@/lib/auth/session", () => ({
+  getCurrentRole: vi.fn(async () => mocks.role)
+}));
 
 vi.mock("@/lib/users/store", () => ({
   UserForbiddenError: mocks.UserForbiddenError,
@@ -27,9 +34,19 @@ import { PUT } from "@/app/api/users/[id]/route";
 
 describe("users api routes", () => {
   beforeEach(() => {
+    mocks.role = "OWNER";
     mocks.listUsers.mockReset();
     mocks.createUser.mockReset();
     mocks.updateUser.mockReset();
+  });
+
+  it("returns 403 before store access when role lacks users.manage", async () => {
+    mocks.role = "ADMIN";
+
+    const response = await GET();
+
+    expect(response.status).toBe(403);
+    expect(mocks.listUsers).not.toHaveBeenCalled();
   });
 
   it("returns 403 when list users is forbidden", async () => {

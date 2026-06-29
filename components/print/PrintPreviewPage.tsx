@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { loadPrintPreviewText, type PrintPreviewKind } from "@/lib/print/preview";
+import { loadPrintPreviewText, printPreviewEndpoint, printPreviewListPath, type PrintPreviewKind } from "@/lib/print/preview";
 
 type Props = {
   kind: PrintPreviewKind;
@@ -43,8 +43,23 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
     return () => window.clearTimeout(timer);
   }, [autoPrint, error, loading, text]);
 
+  const downloadText = () => {
+    if (!text) return;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${kind}-${id}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+  const paperSize = kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
+  const sheetSize = kind === "sales" ? "h-[12.2cm] w-[14cm]" : "h-[14cm] w-[12.2cm]";
+
   return (
-    <main className="min-h-screen bg-white px-4 py-5 text-slate-950 sm:px-6 print:p-0">
+    <main className="min-h-screen bg-slate-100 px-4 py-5 text-slate-950 sm:px-6 print:bg-white print:p-0">
       <style>{`
         @media print {
           body {
@@ -56,7 +71,12 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           }
 
           @page {
-            margin: 10mm;
+            margin: 0;
+            size: ${paperSize};
+          }
+
+          .print-sheet {
+            box-shadow: none !important;
           }
         }
       `}</style>
@@ -67,8 +87,23 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           disabled={loading || Boolean(error)}
           className="border border-emerald-600 bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Print
+          Print Browser
         </button>
+        <button
+          type="button"
+          onClick={downloadText}
+          disabled={loading || Boolean(error) || !text}
+          className="border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Download .txt
+        </button>
+        <a
+          href={printPreviewEndpoint(kind, id, "prn")}
+          download={`${kind}-${id}.prn`}
+          className={`border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 ${loading || error ? "pointer-events-none opacity-50" : ""}`}
+        >
+          Download .prn
+        </a>
         <button
           type="button"
           onClick={() => history.back()}
@@ -77,7 +112,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           Back
         </button>
         <Link
-          href={kind === "sales" ? "/penjualan" : "/tempo"}
+          href={printPreviewListPath(kind)}
           className="border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800"
         >
           Daftar
@@ -85,6 +120,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
         <div className="ml-0 text-sm text-slate-600 sm:ml-3">
           <b className="text-slate-950">{title}</b>
           <span className="ml-2">{id}</span>
+          <span className="ml-2 text-xs text-slate-500">.prn untuk raw dot matrix printer</span>
         </div>
       </div>
 
@@ -96,9 +132,11 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
         </div>
       )}
       {!loading && !error && (
-        <pre className="m-0 w-[80ch] max-w-full overflow-x-auto whitespace-pre bg-white font-mono text-[12px] leading-tight text-slate-950 print:max-w-none print:overflow-visible">
-          {text}
-        </pre>
+        <div className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[1.5cm] pt-[1cm] print:max-w-none print:overflow-visible`}>
+          <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
+            {text}
+          </pre>
+        </div>
       )}
     </main>
   );

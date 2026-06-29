@@ -1,11 +1,20 @@
-export type PrintPreviewKind = "sales" | "tempo";
+export type PrintPreviewKind = "sales" | "tempo" | "expenses";
 
-export function printPreviewEndpoint(kind: PrintPreviewKind, id: string) {
-  return `/api/print/${kind}/${encodeURIComponent(id)}`;
+export type PrintPreviewFormat = "txt" | "prn";
+
+export function printPreviewEndpoint(kind: PrintPreviewKind, id: string, format: PrintPreviewFormat = "txt") {
+  const suffix = format === "prn" ? "?format=prn" : "";
+  return `/api/print/${kind}/${encodeURIComponent(id)}${suffix}`;
 }
 
 export function printPreviewPath(kind: PrintPreviewKind, id: string, auto = false) {
   return `/print/${kind}/${encodeURIComponent(id)}${auto ? "?auto=1" : ""}`;
+}
+
+export function printPreviewListPath(kind: PrintPreviewKind) {
+  if (kind === "sales") return "/penjualan";
+  if (kind === "expenses") return "/pengeluaran";
+  return "/tempo";
 }
 
 export async function loadPrintPreviewText(

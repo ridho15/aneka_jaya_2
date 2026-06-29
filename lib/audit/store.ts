@@ -31,6 +31,24 @@ export type AuditLog = {
   createdAt: string;
 };
 
+export type AuditListFilters = {
+  role?: Role;
+  from?: string;
+  to?: string;
+  entityType?: string;
+  action?: string;
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type AuditListResult = {
+  entries: AuditLog[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 type LegacyAuditInput = {
   module: "Penjualan" | "Pengeluaran" | "Data Barang";
   action: "Buat" | "Ubah";
@@ -41,9 +59,70 @@ type LegacyAuditInput = {
 
 const auditFile = process.env.AUDIT_TRAIL_FILE || path.join(process.cwd(), "data", "audit-trail.json");
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
+const SENSITIVE_KEY_PATTERN = /(authorization|cookie|token|secret|password|passwordhash|apikey|api_key|accesskey|refresh|credential|session)/i;
+const PHONE_KEY_PATTERN = /(phone|whatsapp|nomor|number)/i;
+const MESSAGE_BODY_PATTERN = /(messagebody|body|payload|command|request|response)/i;
+const ERROR_KEY_PATTERN = /(error|errormessage|syncerror)/i;
+const AUDIT_PAGE_SIZE = 50;
+
+function clampPage(value?: number) {
+  return Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 1;
+}
+
+function clampPageSize(value?: number) {
+  if (!Number.isFinite(value) || !value || value <= 0) return AUDIT_PAGE_SIZE;
+  return Math.min(Math.max(Math.floor(value), 10), 100);
+}
+
+function normalizeDateBoundary(value?: string, endOfDay = false) {
+  if (!value) return null;
+  const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function maskPhone(value: unknown) {
+  const text = String(value ?? "").replace(/\s+/g, "");
+  if (text.length <= 4) return "***";
+  return `${text.slice(0, 2)}***${text.slice(-3)}`;
+}
+
+function truncateAuditText(value: unknown, max = 160) {
+  const text = String(value ?? "");
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function summarizeObject(value: Record<string, unknown>) {
+  return {
+    sanitized: true,
+    keys: Object.keys(value).slice(0, 20)
+  };
+}
+
+export function sanitizeAuditValue(value: unknown, depth = 0): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) {
+    if (depth >= 6) return `[array:${value.length}]`;
+    return value.slice(0, 50).map((item) => sanitizeAuditValue(item, depth + 1));
+  }
+  if (typeof value !== "object") return String(value);
+  if (depth >= 6) return summarizeObject(value as Record<string, unknown>);
+  const source = value as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(source).map(([key, item]) => {
+    if (SENSITIVE_KEY_PATTERN.test(key)) return [key, "[REDACTED]"];
+    if (PHONE_KEY_PATTERN.test(key)) return [key, maskPhone(item)];
+    if (MESSAGE_BODY_PATTERN.test(key)) {
+      if (item && typeof item === "object") return [key, summarizeObject(item as Record<string, unknown>)];
+      return [key, "[REDACTED]"];
+    }
+    if (ERROR_KEY_PATTERN.test(key)) return [key, truncateAuditText(item)];
+    return [key, sanitizeAuditValue(item, depth + 1)];
+  }));
+}
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue | undefined {
-  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(sanitizeAuditValue(value)));
 }
 
 async function readEntries(): Promise<AuditLog[]> {
@@ -141,7 +220,9 @@ export async function recordAudit(entry: Omit<AuditLog, "id" | "createdAt" | "us
     userNameSnapshot: user.name,
     userRoleSnapshot: user.role,
     ...requestMeta,
-    ...entry
+    ...entry,
+    beforeValue: sanitizeAuditValue(entry.beforeValue),
+    afterValue: sanitizeAuditValue(entry.afterValue)
   };
   if (isProductionMode()) {
     await prisma.auditLog.create({
@@ -166,17 +247,106 @@ export async function recordAudit(entry: Omit<AuditLog, "id" | "createdAt" | "us
   await appendAudit(audit);
 }
 
-export async function listAudit(options?: { role?: Role }): Promise<AuditLog[]> {
-  const storedEntries = isProductionMode()
-    ? (await prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 10000 })).map((entry) => ({
+function filterAuditForRole(entries: AuditLog[], role?: Role) {
+  if (role === "MANAGER") return entries.filter((entry) => entry.entityType === "approval" || ["approve", "reject"].includes(entry.action));
+  if (role === "FINANCE") return entries.filter((entry) => entry.entityType === "tempo" || ["mark_paid", "partial_paid"].includes(entry.action));
+  return entries;
+}
+
+function applyAuditFilters(entries: AuditLog[], options?: AuditListFilters) {
+  const from = normalizeDateBoundary(options?.from);
+  const to = normalizeDateBoundary(options?.to, true);
+  const entityType = options?.entityType?.trim();
+  const action = options?.action?.trim();
+  const keyword = options?.keyword?.trim().toLowerCase();
+  return entries.filter((entry) => {
+    const createdAt = new Date(entry.createdAt);
+    if (from && createdAt < from) return false;
+    if (to && createdAt > to) return false;
+    if (entityType && entry.entityType !== entityType) return false;
+    if (action && entry.action !== action) return false;
+    if (keyword) {
+      const haystack = [
+        entry.entityType,
+        entry.entityId,
+        entry.action,
+        entry.userNameSnapshot,
+        entry.userRoleSnapshot,
+        entry.reason
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (!haystack.includes(keyword)) return false;
+    }
+    return true;
+  });
+}
+
+function buildAuditWhere(options?: AuditListFilters): Prisma.AuditLogWhereInput {
+  const from = normalizeDateBoundary(options?.from);
+  const to = normalizeDateBoundary(options?.to, true);
+  const where: Prisma.AuditLogWhereInput = {};
+  if (from || to) where.createdAt = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
+  if (options?.entityType?.trim()) where.entityType = options.entityType.trim();
+  if (options?.action?.trim()) where.action = options.action.trim();
+  if (options?.keyword?.trim()) {
+    const contains = options.keyword.trim();
+    where.OR = [
+      { entityType: { contains, mode: "insensitive" } },
+      { entityId: { contains, mode: "insensitive" } },
+      { action: { contains, mode: "insensitive" } },
+      { userNameSnapshot: { contains, mode: "insensitive" } },
+      { reason: { contains, mode: "insensitive" } }
+    ];
+  }
+  if (options?.role === "MANAGER") {
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { OR: [{ entityType: "approval" }, { action: { in: ["approve", "reject"] } }] }];
+  }
+  if (options?.role === "FINANCE") {
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { OR: [{ entityType: "tempo" }, { action: { in: ["mark_paid", "partial_paid"] } }] }];
+  }
+  return where;
+}
+
+export async function listAudit(options?: AuditListFilters): Promise<AuditLog[]> {
+  const result = await listAuditPaginated({ ...options, page: 1, pageSize: 10000 });
+  return result.entries;
+}
+
+export async function listAuditPaginated(options?: AuditListFilters): Promise<AuditListResult> {
+  const page = clampPage(options?.page);
+  const pageSize = clampPageSize(options?.pageSize);
+  if (isProductionMode()) {
+    const where = buildAuditWhere(options);
+    const [total, entries] = await Promise.all([
+      prisma.auditLog.count({ where }),
+      prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize })
+    ]);
+    return {
+      entries: entries.map((entry) => ({
+        ...entry,
+        beforeValue: entry.beforeValue,
+        afterValue: entry.afterValue,
+        createdAt: entry.createdAt.toISOString()
+      }) as AuditLog),
+      total,
+      page,
+      pageSize
+    };
+  }
+  const storedEntries =
+    (await readEntries()).map((entry) => ({
       ...entry,
       beforeValue: entry.beforeValue,
       afterValue: entry.afterValue,
-      createdAt: entry.createdAt.toISOString()
-    }) as AuditLog)
-    : await readEntries();
-  const entries = storedEntries.filter((entry) => !entry.reason?.toLowerCase().includes("mock"));
-  if (options?.role === "MANAGER") return entries.filter((entry) => entry.entityType === "approval" || ["approve", "reject"].includes(entry.action));
-  if (options?.role === "FINANCE") return entries.filter((entry) => entry.entityType === "tempo" || ["mark_paid", "partial_paid"].includes(entry.action));
-  return entries;
+      createdAt: entry.createdAt
+    }) as AuditLog);
+  const withoutTestEntries = process.env.NODE_ENV === "test" ? storedEntries.filter((entry) => !entry.reason?.toLowerCase().includes("mock")) : storedEntries;
+  const roleScoped = filterAuditForRole(withoutTestEntries, options?.role);
+  const filtered = applyAuditFilters(roleScoped, options);
+  const start = (page - 1) * pageSize;
+  return {
+    entries: filtered.slice(start, start + pageSize),
+    total: filtered.length,
+    page,
+    pageSize
+  };
 }

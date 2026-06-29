@@ -59,6 +59,10 @@ function normalizePasswordInput(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function assertPasswordStrength(password: string, label = "Password") {
+  if (password.length < 8) throw new Error(`${label} minimal 8 karakter.`);
+}
+
 function toManagedUser(user: {
   id: string;
   externalId: string;
@@ -112,6 +116,7 @@ export async function createUser(input: UserInput | null): Promise<ManagedUser> 
   const data = normalizeUserInput(input || {}, { requireExternalId: true, requireRole: true });
   const password = normalizePasswordInput(input?.password);
   if (!password) throw new Error("Password awal wajib diisi.");
+  assertPasswordStrength(password, "Password awal");
   const passwordHash = hashPassword(password);
   const user = await prisma.user.create({
     data: {
@@ -139,6 +144,7 @@ export async function updateUser(id: string, input: UserInput | null): Promise<M
   const body = input || {};
   const data = normalizeUserInput({ ...before, ...body }, { requireRole: true });
   const password = normalizePasswordInput(body.password);
+  if (password) assertPasswordStrength(password, "Password baru");
   const nextIsActive = typeof body.isActive === "boolean" ? body.isActive : before.isActive;
   const nextRole = body.role ? data.role : before.role;
   if (before.externalId === actor.id && before.isActive && !nextIsActive) throw new Error("User tidak boleh menonaktifkan dirinya sendiri.");

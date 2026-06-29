@@ -6,6 +6,7 @@ import { getCurrentRole } from "@/lib/auth/session";
 import { getTempoReceivable, listTempoPayments } from "@/lib/tempo/store";
 import { listRekeningAccounts } from "@/lib/business/masterData";
 import { TempoPayForm } from "@/components/tempo/TempoPayForm";
+import { TempoActionForm } from "@/components/tempo/TempoActionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +59,12 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
             {payments.length === 0 && <p className="py-3 text-sm text-slate-500">Belum ada pembayaran.</p>}
           </div>
         </section>
-        {can(role, "tempo.mark_paid") && !["paid", "cancelled", "written_off"].includes(tempo.status) && (
-          <TempoPayForm tempoId={tempo.id} remainingAmount={tempo.remainingAmount} tipeId={tempo.tipeId} rekenings={rekenings} />
+        {!["paid", "cancelled", "written_off"].includes(tempo.status) && (
+          <div className="space-y-4">
+            {can(role, "tempo.mark_paid") && <TempoPayForm tempoId={tempo.id} remainingAmount={tempo.remainingAmount} tipeId={tempo.tipeId} rekenings={rekenings} />}
+            {can(role, "tempo.cancel") && <TempoActionForm tempoId={tempo.id} action="cancel" />}
+            {can(role, "tempo.write_off") && tempo.remainingAmount > 0 && <TempoActionForm tempoId={tempo.id} action="write-off" />}
+          </div>
         )}
       </div>
     </AppShell>

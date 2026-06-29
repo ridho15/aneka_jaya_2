@@ -6,7 +6,7 @@ import { sendNeoCommand } from "./neo";
 import { recordAudit } from "@/lib/audit/store";
 import { createApprovalRequest, approvalIsEnabled } from "@/lib/approval/store";
 import { getCurrentUser } from "@/lib/auth/session";
-import { findTipe } from "@/lib/business/masterData";
+import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
 import { transactionTargetForType } from "@/lib/api/transactionRouting";
 import { saveExpenseRecord } from "@/lib/expenses/store";
 import { erpReferenceFrom, safeErpSyncError } from "@/lib/api/sales";
@@ -20,6 +20,8 @@ export function buildExpenseNeoCommand(input: Pick<Expense, "expenseDate" | "tip
 export async function createExpense(input: PengeluaranInput): Promise<ApiResponse<unknown>> {
   const user = await getCurrentUser();
   const tipe = await findTipe(input.tipeId);
+  const rekening = (await rekeningForTipe(tipe.id)).find((item) => item.id === input.rekeningId);
+  if (!rekening) throw new Error("Rekening pengeluaran tidak tersedia untuk tipe transaksi ini.");
   const target = transactionTargetForType(tipe.code);
   const approvalStatus: NonNullable<Expense["approvalStatus"]> = user.role === "ADMIN" && approvalIsEnabled("pengeluaran") ? "pending_approval" : "approved";
   const baseExpense: Expense = {
@@ -28,6 +30,8 @@ export async function createExpense(input: PengeluaranInput): Promise<ApiRespons
     tipeId: tipe.id,
     tipeCodeSnapshot: tipe.code,
     tipeNameSnapshot: tipe.name,
+    rekeningId: rekening.id,
+    rekeningNameSnapshot: rekening.name,
     attachmentUrl: input.attachmentUrl || undefined,
     approvalStatus,
     erpSyncTarget: target === "erp" ? "erp" : "local",
@@ -37,9 +41,26 @@ export async function createExpense(input: PengeluaranInput): Promise<ApiRespons
     createdAt: new Date().toISOString()
   };
 
+  if (approvalStatus === "pending_approval") {
+    const expense = await saveExpenseRecord({
+      ...baseExpense,
+      erpSyncStatus: target === "erp" ? "pending" : "not_required"
+    });
+    await createApprovalRequest({ module: "pengeluaran", entityId: expense.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, amount: input.amount });
+    await recordAudit({
+      entityType: "expense",
+      entityId: expense.id,
+      action: "create",
+      afterValue: expense,
+      reason: target === "erp"
+        ? "Pengeluaran AJ menunggu approval sebelum dikirim ke ERP"
+        : `Tipe ${tipe.code} disimpan lokal dan menunggu approval`
+    });
+    return { success: true, data: expense };
+  }
+
   if (target === "local") {
     const expense = await saveExpenseRecord({ ...baseExpense, erpSyncStatus: "not_required" });
-    if (approvalStatus === "pending_approval") await createApprovalRequest({ module: "pengeluaran", entityId: expense.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, amount: input.amount });
     await recordAudit({ entityType: "expense", entityId: expense.id, action: "create", afterValue: expense, reason: `Tipe ${tipe.code} disimpan lokal, ERP sync not_required` });
     return { success: true, data: expense };
   }
@@ -48,13 +69,11 @@ export async function createExpense(input: PengeluaranInput): Promise<ApiRespons
   if (response.success) {
     const syncedAt = new Date().toISOString();
     const expense = await saveExpenseRecord({ ...baseExpense, erpSyncStatus: "synced", erpSyncAttemptedAt: attemptedAt, erpSyncedAt: syncedAt, erpReference: erpReferenceFrom(response.data) });
-    if (approvalStatus === "pending_approval") await createApprovalRequest({ module: "pengeluaran", entityId: expense.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, amount: input.amount });
     await recordAudit({ entityType: "expense", entityId: expense.id, action: "create", afterValue: expense, reason: `Kas & Bank / COA ${input.coaNameSnapshot || "Kas"} • Terkirim ERP` });
     return { success: true, data: expense };
   }
   const erpSyncError = safeErpSyncError(response);
   const expense = await saveExpenseRecord({ ...baseExpense, erpSyncStatus: "failed", erpSyncError, erpSyncAttemptedAt: attemptedAt });
-  if (approvalStatus === "pending_approval") await createApprovalRequest({ module: "pengeluaran", entityId: expense.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, amount: input.amount });
   await recordAudit({ entityType: "expense", entityId: expense.id, action: "create", afterValue: expense, reason: `Pengeluaran AJ gagal ERP, tersimpan untuk retry • ${erpSyncError}` });
   return { success: true, data: { ...expense, retryable: true } };
 }

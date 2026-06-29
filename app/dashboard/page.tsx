@@ -10,10 +10,12 @@ import { getOpenCloudStatus } from "@/lib/opencloud/auth";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole, getCurrentUser } from "@/lib/auth/session";
 import { listSalesRecords } from "@/lib/sales/store";
+import { listExpenseRecords } from "@/lib/expenses/store";
 import { listTempoReceivables } from "@/lib/tempo/store";
 import { summarizeOpenTempo } from "@/lib/tempo/summary";
 import { listAudit } from "@/lib/audit/store";
 import { activityText, buildCategorySummary, buildMonthlyPerformance } from "@/lib/dashboard/summary";
+import { jakartaDateKey, jakartaMonthKey } from "@/lib/date/jakarta";
 import { getWhatsappProvider } from "@/lib/whatsapp/whatsappClient";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +29,10 @@ export default async function DashboardPage() {
   const audit = await listAudit({ role });
   const activities = audit.slice(0, 5);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const monthStr = new Date().toISOString().slice(0, 7);
+  const todayStr = jakartaDateKey();
+  const monthStr = jakartaMonthKey();
   const allSales = await listSalesRecords();
+  const allExpenses = await listExpenseRecords();
   const paidSales = allSales.filter((s) => s.approvalStatus === "approved");
   const salesThisMonth = paidSales.filter((s) => s.saleDate?.startsWith(monthStr));
   const salesToday = paidSales.filter((s) => s.saleDate === todayStr || s.createdAt?.startsWith(todayStr));
@@ -37,7 +40,7 @@ export default async function DashboardPage() {
   const totalToday = salesToday.reduce((sum, s) => sum + (s.total || 0), 0);
   const allTempo = await listTempoReceivables();
   const { openTempo, openTempoAmount } = summarizeOpenTempo(allTempo);
-  const performance = buildMonthlyPerformance(allSales, audit);
+  const performance = buildMonthlyPerformance(allSales, allExpenses);
   const categories = buildCategorySummary(paidSales, products.success ? products.data : []);
   const whatsappProvider = getWhatsappProvider();
 

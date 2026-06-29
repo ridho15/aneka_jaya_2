@@ -1,4 +1,5 @@
 import type { AuditLog } from "@/lib/audit/store";
+import type { Expense } from "@/lib/types/expenses";
 import type { Product } from "@/lib/types/product";
 import type { Sale } from "@/lib/types/sales";
 
@@ -21,15 +22,7 @@ function monthKey(value: string | Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function expenseFromAudit(entry: AuditLog) {
-  if (entry.entityType !== "expense" || entry.action !== "create" || !entry.afterValue || typeof entry.afterValue !== "object") return null;
-  const value = entry.afterValue as Record<string, unknown>;
-  const amount = Number(value.amount);
-  const date = typeof value.expenseDate === "string" ? value.expenseDate : entry.createdAt;
-  return Number.isFinite(amount) && amount > 0 ? { amount, date } : null;
-}
-
-export function buildMonthlyPerformance(sales: Sale[], audit: AuditLog[], now = new Date()): MonthlyPerformance[] {
+export function buildMonthlyPerformance(sales: Sale[], expenses: Expense[], now = new Date()): MonthlyPerformance[] {
   const months = Array.from({ length: 6 }, (_, index) => {
     const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
     return {
@@ -46,11 +39,12 @@ export function buildMonthlyPerformance(sales: Sale[], audit: AuditLog[], now = 
     const month = byMonth.get(monthKey(sale.saleDate) || "");
     if (month) month.sales += Number(sale.total) || 0;
   }
-  for (const entry of audit) {
-    const expense = expenseFromAudit(entry);
-    if (!expense) continue;
-    const month = byMonth.get(monthKey(expense.date) || "");
-    if (month) month.expenses += expense.amount;
+  for (const expense of expenses) {
+    if (expense.approvalStatus !== "approved") continue;
+    const amount = Number(expense.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const month = byMonth.get(monthKey(expense.expenseDate) || "");
+    if (month) month.expenses += amount;
   }
   return months;
 }

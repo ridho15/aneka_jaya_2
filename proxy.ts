@@ -15,7 +15,8 @@ const PROTECTED: Array<{ path: string; permission: Parameters<typeof can>[1] }> 
   { path: "/approval", permission: "approval.view" },
   { path: "/tempo", permission: "tempo.view" },
   { path: "/penjualan", permission: "penjualan.create" },
-  { path: "/pengeluaran", permission: "pengeluaran.create" },
+  { path: "/pengeluaran/input", permission: "pengeluaran.create" },
+  { path: "/pengeluaran", permission: "pengeluaran.view" },
   { path: "/barang", permission: "stock.view" },
 ];
 

@@ -5,6 +5,7 @@ import { recordAudit } from "@/lib/audit/store";
 import { readJsonArray, writeJsonArray } from "@/lib/data/jsonStore";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
+import { rekeningForTipe } from "@/lib/business/masterData";
 
 export type TempoStatus = "open" | "paid" | "partial_paid" | "overdue" | "cancelled" | "written_off";
 
@@ -45,6 +46,8 @@ export type TempoPayment = {
 const receivableFile = "tempo-receivables.json";
 const paymentFile = "tempo-payments.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
+const finalStatuses: TempoStatus[] = ["paid", "cancelled", "written_off"];
+const activeStatuses: TempoStatus[] = ["open", "overdue", "partial_paid"];
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
@@ -175,12 +178,17 @@ export async function listTempoPayments(tempoReceivableId?: string): Promise<Tem
 export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tempoReceivableId" | "createdByUserId" | "createdByNameSnapshot" | "createdAt">): Promise<{ receivable: TempoReceivable; payment: TempoPayment }> {
   const user = await getCurrentUser();
   if (!can(user.role, "tempo.mark_paid")) throw new Error("Tidak punya akses bayar Tempo.");
+  if (!Number.isFinite(input.amountPaid) || input.amountPaid <= 0) throw new Error("Nominal dibayar harus lebih dari 0.");
+  if (Number.isNaN(Date.parse(input.paymentDate))) throw new Error("Tanggal pembayaran tidak valid.");
   if (isProductionMode()) {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const row = await tx.tempoReceivable.findUnique({ where: { id } });
       if (!row) throw new Error("Tempo tidak ditemukan.");
       const before = toTempoReceivable(row);
-      if (input.amountPaid <= 0) throw new Error("Nominal dibayar harus lebih dari 0.");
+      if (finalStatuses.includes(before.status)) throw new Error("Tempo final tidak bisa dibayar lagi.");
+      const rekenings = await rekeningForTipe(before.tipeId);
+      const rekening = rekenings.find((item) => item.id === input.rekeningId);
+      if (!rekening) throw new Error("Rekening penerima tidak tersedia untuk tipe Tempo ini.");
       if (input.amountPaid > before.remainingAmount) throw new Error("Nominal dibayar tidak boleh lebih dari sisa Tempo.");
       const now = new Date();
       const updated = await tx.tempoReceivable.updateMany({
@@ -199,8 +207,8 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
           paymentDate: new Date(input.paymentDate),
           amountPaid: input.amountPaid,
           paymentMethod: input.paymentMethod,
-          rekeningId: input.rekeningId,
-          rekeningNameSnapshot: input.rekeningNameSnapshot,
+          rekeningId: rekening.id,
+          rekeningNameSnapshot: rekening.name,
           attachmentUrl: input.attachmentUrl,
           notes: input.notes,
           createdByUserId: user.id,
@@ -237,7 +245,10 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) throw new Error("Tempo tidak ditemukan.");
   const before = rows[index];
-  if (input.amountPaid <= 0) throw new Error("Nominal dibayar harus lebih dari 0.");
+  if (finalStatuses.includes(before.status)) throw new Error("Tempo final tidak bisa dibayar lagi.");
+  const rekenings = await rekeningForTipe(before.tipeId);
+  const rekening = rekenings.find((item) => item.id === input.rekeningId);
+  if (!rekening) throw new Error("Rekening penerima tidak tersedia untuk tipe Tempo ini.");
   if (input.amountPaid > before.remainingAmount) throw new Error("Nominal dibayar tidak boleh lebih dari sisa Tempo.");
   const now = new Date().toISOString();
   const paidAmount = before.paidAmount + input.amountPaid;
@@ -245,10 +256,96 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
   const after: TempoReceivable = { ...before, paidAmount, remainingAmount, status: remainingAmount <= 0 ? "paid" : "partial_paid", updatedAt: now };
   rows[index] = after;
   await writeJsonArray(receivableFile, rows);
-  const payment: TempoPayment = { id: `TPY-${Date.now()}`, tempoReceivableId: id, createdByUserId: user.id, createdByNameSnapshot: user.name, createdAt: now, ...input };
+  const payment: TempoPayment = { id: `TPY-${Date.now()}`, tempoReceivableId: id, createdByUserId: user.id, createdByNameSnapshot: user.name, createdAt: now, ...input, rekeningId: rekening.id, rekeningNameSnapshot: rekening.name };
   const payments = await readJsonArray<TempoPayment>(paymentFile);
   payments.unshift(payment);
   await writeJsonArray(paymentFile, payments);
   await recordAudit({ entityType: "tempo", entityId: id, action: after.status === "paid" ? "mark_paid" : "partial_paid", beforeValue: before, afterValue: { receivable: after, payment }, reason: `Pembayaran Tempo ${input.paymentMethod}` });
   return { receivable: after, payment };
+}
+
+export async function cancelTempo(id: string, reason: string): Promise<TempoReceivable> {
+  const user = await getCurrentUser();
+  if (!can(user.role, "tempo.cancel")) throw new Error("Tidak punya akses cancel Tempo.");
+  const cleanReason = reason.trim();
+  if (!cleanReason) throw new Error("Alasan cancel wajib diisi.");
+  if (isProductionMode()) {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const row = await tx.tempoReceivable.findUnique({ where: { id } });
+      if (!row) throw new Error("Tempo tidak ditemukan.");
+      const before = toTempoReceivable(row);
+      if (!activeStatuses.includes(before.status)) throw new Error("Tempo final tidak bisa di-cancel.");
+      const updated = await tx.tempoReceivable.update({ where: { id }, data: { status: "cancelled", updatedAt: new Date() } });
+      const after = toTempoReceivable(updated);
+      await tx.auditLog.create({
+        data: {
+          id: crypto.randomUUID(),
+          entityType: "tempo",
+          entityId: id,
+          action: "cancel",
+          beforeValue: serializeJson(before),
+          afterValue: serializeJson(after),
+          userId: user.id,
+          userNameSnapshot: user.name,
+          userRoleSnapshot: user.role,
+          reason: cleanReason
+        }
+      });
+      return after;
+    });
+  }
+  const rows = await readJsonArray<TempoReceivable>(receivableFile);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) throw new Error("Tempo tidak ditemukan.");
+  const before = rows[index];
+  if (!activeStatuses.includes(before.status)) throw new Error("Tempo final tidak bisa di-cancel.");
+  const after: TempoReceivable = { ...before, status: "cancelled", updatedAt: new Date().toISOString() };
+  rows[index] = after;
+  await writeJsonArray(receivableFile, rows);
+  await recordAudit({ entityType: "tempo", entityId: id, action: "cancel", beforeValue: before, afterValue: after, reason: cleanReason });
+  return after;
+}
+
+export async function writeOffTempo(id: string, reason: string): Promise<TempoReceivable> {
+  const user = await getCurrentUser();
+  if (!can(user.role, "tempo.write_off")) throw new Error("Tidak punya akses write-off Tempo.");
+  const cleanReason = reason.trim();
+  if (!cleanReason) throw new Error("Alasan write-off wajib diisi.");
+  if (isProductionMode()) {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const row = await tx.tempoReceivable.findUnique({ where: { id } });
+      if (!row) throw new Error("Tempo tidak ditemukan.");
+      const before = toTempoReceivable(row);
+      if (!activeStatuses.includes(before.status)) throw new Error("Tempo final tidak bisa di-write-off.");
+      if (before.remainingAmount <= 0) throw new Error("Tempo tanpa sisa piutang tidak bisa di-write-off.");
+      const updated = await tx.tempoReceivable.update({ where: { id }, data: { status: "written_off", updatedAt: new Date() } });
+      const after = toTempoReceivable(updated);
+      await tx.auditLog.create({
+        data: {
+          id: crypto.randomUUID(),
+          entityType: "tempo",
+          entityId: id,
+          action: "write_off",
+          beforeValue: serializeJson(before),
+          afterValue: serializeJson({ receivable: after, writtenOffAmount: before.remainingAmount }),
+          userId: user.id,
+          userNameSnapshot: user.name,
+          userRoleSnapshot: user.role,
+          reason: cleanReason
+        }
+      });
+      return after;
+    });
+  }
+  const rows = await readJsonArray<TempoReceivable>(receivableFile);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) throw new Error("Tempo tidak ditemukan.");
+  const before = rows[index];
+  if (!activeStatuses.includes(before.status)) throw new Error("Tempo final tidak bisa di-write-off.");
+  if (before.remainingAmount <= 0) throw new Error("Tempo tanpa sisa piutang tidak bisa di-write-off.");
+  const after: TempoReceivable = { ...before, status: "written_off", updatedAt: new Date().toISOString() };
+  rows[index] = after;
+  await writeJsonArray(receivableFile, rows);
+  await recordAudit({ entityType: "tempo", entityId: id, action: "write_off", beforeValue: before, afterValue: { receivable: after, writtenOffAmount: before.remainingAmount }, reason: cleanReason });
+  return after;
 }

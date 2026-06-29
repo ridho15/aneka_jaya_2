@@ -15,6 +15,7 @@ export type RekeningAccount = {
   name: string;
   accountNumber: string;
   isCash?: boolean;
+  isActive?: boolean;
   tipeIds: string[];
 };
 
@@ -64,6 +65,22 @@ export async function listRekeningAccounts(): Promise<RekeningAccount[]> {
   }));
 }
 
+export async function listAllRekeningAccounts(): Promise<RekeningAccount[]> {
+  const rows = await prisma.rekeningAccount.findMany({
+    include: { tipeLinks: { select: { bookkeepingTypeId: true } } },
+    orderBy: [{ isActive: "desc" }, { name: "asc" }]
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    bank: row.bankName || row.name,
+    name: row.name,
+    accountNumber: row.accountNumber || "-",
+    isCash: row.bankName === "Cash",
+    isActive: row.isActive,
+    tipeIds: row.tipeLinks.map((link) => link.bookkeepingTypeId)
+  }));
+}
+
 export async function saveRekeningAccounts(rows: RekeningAccount[]): Promise<void> {
   await prisma.$transaction(async (tx) => {
     for (const row of rows) {
@@ -74,13 +91,13 @@ export async function saveRekeningAccounts(rows: RekeningAccount[]): Promise<voi
           name: row.name,
           accountNumber: row.accountNumber,
           bankName: row.bank,
-          isActive: true
+          isActive: row.isActive ?? true
         },
         update: {
           name: row.name,
           accountNumber: row.accountNumber,
           bankName: row.bank,
-          isActive: true
+          isActive: row.isActive ?? true
         }
       });
       await tx.rekeningAccountBookkeepingType.deleteMany({ where: { rekeningAccountId: row.id } });

@@ -63,6 +63,21 @@ describe("ERP sync retry service", () => {
     });
   });
 
+  it("returns an operational warning when Prisma sales storage is not generated", async () => {
+    const delegate = mocks.prisma.salesRecord;
+    // @ts-expect-error simulates stale Prisma Client runtime
+    mocks.prisma.salesRecord = undefined;
+
+    await expect(getErpSyncOverview()).resolves.toMatchObject({
+      storageReady: false,
+      warning: "Prisma Client belum tersinkron. Jalankan generate/migrate dan restart server.",
+      summary: { pending: 0, failed: 0, synced: 0, totalErp: 0 },
+      items: []
+    });
+
+    mocks.prisma.salesRecord = delegate;
+  });
+
   it("marks a failed sales sync as synced when retry succeeds", async () => {
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
     mocks.sendNeoCommand.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });

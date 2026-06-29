@@ -27,7 +27,15 @@ export type ErpSyncSaleItem = {
 export type ErpSyncOverview = {
   summary: { pending: number; failed: number; synced: number; totalErp: number };
   items: ErpSyncSaleItem[];
+  storageReady: boolean;
+  warning?: string;
 };
+
+const PRISMA_SYNC_WARNING = "Prisma Client belum tersinkron. Jalankan generate/migrate dan restart server.";
+
+function salesDelegate() {
+  return (prisma as typeof prisma & { salesRecord?: typeof prisma.salesRecord }).salesRecord;
+}
 
 function toSyncItem(row: SalesRow): ErpSyncSaleItem {
   return {
@@ -67,33 +75,37 @@ function buildRetryCommand(row: SalesRow) {
 }
 
 export async function getErpSyncOverview(): Promise<ErpSyncOverview> {
+  const delegate = salesDelegate();
+  if (!delegate) return { summary: { pending: 0, failed: 0, synced: 0, totalErp: 0 }, items: [], storageReady: false, warning: PRISMA_SYNC_WARNING };
   const [pending, failed, synced, items] = await Promise.all([
-    prisma.salesRecord.count({ where: { syncTarget: "erp", syncStatus: "pending" } }),
-    prisma.salesRecord.count({ where: { syncTarget: "erp", syncStatus: "failed" } }),
-    prisma.salesRecord.count({ where: { syncTarget: "erp", syncStatus: "synced" } }),
-    prisma.salesRecord.findMany({
+    delegate.count({ where: { syncTarget: "erp", syncStatus: "pending" } }),
+    delegate.count({ where: { syncTarget: "erp", syncStatus: "failed" } }),
+    delegate.count({ where: { syncTarget: "erp", syncStatus: "synced" } }),
+    delegate.findMany({
       where: { syncTarget: "erp", syncStatus: { in: ["pending", "failed"] } },
       include: salesInclude,
       orderBy: [{ syncAttemptedAt: "asc" }, { createdAt: "asc" }],
       take: 100
     })
   ]);
-  return { summary: { pending, failed, synced, totalErp: pending + failed + synced }, items: items.map(toSyncItem) };
+  return { summary: { pending, failed, synced, totalErp: pending + failed + synced }, items: items.map(toSyncItem), storageReady: true };
 }
 
 export async function retrySalesErpSync(id: string): Promise<{ success: boolean; item?: ErpSyncSaleItem; message: string }> {
-  const row = await prisma.salesRecord.findUnique({ where: { id }, include: salesInclude });
+  const delegate = salesDelegate();
+  if (!delegate) return { success: false, message: PRISMA_SYNC_WARNING };
+  const row = await delegate.findUnique({ where: { id }, include: salesInclude });
   if (!row || row.syncTarget !== "erp") return { success: false, message: "Transaksi ERP tidak ditemukan." };
   if (row.syncStatus === "synced") return { success: true, item: toSyncItem(row), message: "Transaksi sudah tersinkron." };
 
   const attemptedAt = new Date();
-  await prisma.salesRecord.update({ where: { id }, data: { syncStatus: "pending", syncAttemptedAt: attemptedAt } });
+  await delegate.update({ where: { id }, data: { syncStatus: "pending", syncAttemptedAt: attemptedAt } });
   const response = await sendNeoCommand(buildRetryCommand(row));
 
   if (response.success) {
     const syncedAt = new Date();
     const erpReference = erpReferenceFrom(response.data);
-    const updated = await prisma.salesRecord.update({
+    const updated = await delegate.update({
       where: { id },
       data: { syncStatus: "synced", syncError: null, syncAttemptedAt: attemptedAt, syncedAt, erpReference },
       include: salesInclude
@@ -103,7 +115,7 @@ export async function retrySalesErpSync(id: string): Promise<{ success: boolean;
   }
 
   const syncError = safeErpSyncError(response);
-  const updated = await prisma.salesRecord.update({
+  const updated = await delegate.update({
     where: { id },
     data: { syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt },
     include: salesInclude
@@ -113,7 +125,9 @@ export async function retrySalesErpSync(id: string): Promise<{ success: boolean;
 }
 
 export async function retryPendingSalesErpSync(limit = 25) {
-  const rows = await prisma.salesRecord.findMany({
+  const delegate = salesDelegate();
+  if (!delegate) return { attempted: 0, succeeded: 0, failed: 1, results: [{ id: "sales-storage", success: false, message: PRISMA_SYNC_WARNING }] };
+  const rows = await delegate.findMany({
     where: { syncTarget: "erp", syncStatus: { in: ["pending", "failed"] } },
     select: { id: true },
     orderBy: [{ syncAttemptedAt: "asc" }, { createdAt: "asc" }],

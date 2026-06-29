@@ -64,6 +64,24 @@ describe("expense ERP sync retry service", () => {
       summary: { pending: 1, failed: 2, synced: 3, totalErp: 6 },
       items: [{ id: "E-ERP-1", erpSyncStatus: "failed", retryable: true }]
     });
+    expect(mocks.prisma.expenseRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ approvalStatus: "approved" })
+    }));
+  });
+
+  it("returns an operational warning when Prisma expense storage is not generated", async () => {
+    const delegate = mocks.prisma.expenseRecord;
+    // @ts-expect-error simulates stale Prisma Client runtime
+    mocks.prisma.expenseRecord = undefined;
+
+    await expect(getExpenseSyncOverview()).resolves.toMatchObject({
+      storageReady: false,
+      warning: "Prisma Client belum tersinkron. Jalankan generate/migrate dan restart server.",
+      summary: { pending: 0, failed: 0, synced: 0, totalErp: 0 },
+      items: []
+    });
+
+    mocks.prisma.expenseRecord = delegate;
   });
 
   it("marks a failed expense sync as synced when retry succeeds", async () => {
@@ -95,6 +113,16 @@ describe("expense ERP sync retry service", () => {
     expect(JSON.stringify(mocks.prisma.expenseRecord.update.mock.calls)).not.toContain("raw secret");
   });
 
+  it("does not retry expenses before approval", async () => {
+    mocks.prisma.expenseRecord.findUnique.mockResolvedValue({ ...row, approvalStatus: "pending_approval", erpSyncStatus: "pending" });
+
+    await expect(retryExpenseErpSync("E-ERP-1")).resolves.toMatchObject({
+      success: false,
+      message: "Pengeluaran belum approved, tidak bisa sinkron ERP."
+    });
+    expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
+  });
+
   it("retries batch pending/failed expense rows", async () => {
     mocks.prisma.expenseRecord.findMany.mockResolvedValue([{ id: "E-ERP-1" }]);
     mocks.prisma.expenseRecord.findUnique.mockResolvedValue(row);
@@ -102,5 +130,8 @@ describe("expense ERP sync retry service", () => {
     mocks.prisma.expenseRecord.update.mockResolvedValueOnce({ ...row, erpSyncStatus: "pending" }).mockResolvedValueOnce({ ...row, erpSyncStatus: "synced", erpReference: "ERP-1", erpSyncError: null, erpSyncedAt: new Date() });
 
     await expect(retryPendingExpenseErpSync()).resolves.toMatchObject({ attempted: 1, succeeded: 1, failed: 0 });
+    expect(mocks.prisma.expenseRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ approvalStatus: "approved" })
+    }));
   });
 });

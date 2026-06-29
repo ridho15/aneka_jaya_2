@@ -77,3 +77,18 @@ export async function getExpenseRecord(id: string): Promise<Expense | undefined>
   const row = await prisma.expenseRecord.findUnique({ where: { id } });
   return row ? toExpense(row) : undefined;
 }
+
+export async function listExpenseRecords(): Promise<Expense[]> {
+  const rows = await prisma.expenseRecord.findMany({ orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }] });
+  return rows.map(toExpense);
+}
+
+export async function updateExpenseApprovalStatus(id: string, status: NonNullable<Expense["approvalStatus"]>): Promise<Expense | undefined> {
+  const data: Prisma.ExpenseRecordUpdateInput = { approvalStatus: status };
+  if (status === "rejected") {
+    data.erpSyncStatus = "not_required";
+    data.erpSyncError = "Pengeluaran ditolak approval.";
+  }
+  const row = await prisma.expenseRecord.update({ where: { id }, data }).catch(() => null);
+  return row ? toExpense(row) : undefined;
+}

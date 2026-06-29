@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listBookkeepingTypes, listRekeningAccounts } from "@/lib/business/masterData";
+import { listAllRekeningAccounts, listBookkeepingTypes } from "@/lib/business/masterData";
 import { RekeningManager } from "@/components/settings/RekeningManager";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export default async function RekeningPage() {
   const role = await getCurrentRole();
   if (!can(role, "settings.rekening.manage")) redirect("/settings");
   const types = await listBookkeepingTypes();
-  const rekenings = await listRekeningAccounts();
+  const rekenings = await listAllRekeningAccounts();
   return (
     <AppShell>
       <div className="mb-7">

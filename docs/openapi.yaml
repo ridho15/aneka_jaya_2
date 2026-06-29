@@ -217,7 +217,7 @@ components:
           type: string
     TempoPaymentInput:
       type: object
-      required: [amountPaid]
+      required: [paymentDate, amountPaid, rekeningId]
       properties:
         paymentDate:
           type: string
@@ -229,11 +229,15 @@ components:
           enum: [Cash, TF, Other]
         rekeningId:
           type: string
-        rekeningNameSnapshot:
-          type: string
         attachmentUrl:
           type: string
         notes:
+          type: string
+    TempoActionInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
           type: string
     UserInput:
       type: object
@@ -496,6 +500,52 @@ paths:
       responses:
         "200":
           description: Pembayaran tempo berhasil.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/tempo/{id}/cancel:
+    post:
+      summary: Cancel piutang tempo aktif.
+      description: Permission tempo.cancel. Wajib alasan cancel.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TempoActionInput"
+      responses:
+        "200":
+          description: Tempo berhasil di-cancel.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/tempo/{id}/write-off:
+    post:
+      summary: Write-off sisa piutang tempo.
+      description: Permission tempo.write_off. Wajib alasan write-off.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TempoActionInput"
+      responses:
+        "200":
+          description: Tempo berhasil di-write-off.
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -772,20 +822,63 @@ paths:
   /api/print/sales/{id}:
     get:
       summary: Preview cetak dot matrix penjualan.
-      description: Mengembalikan text/plain fixed-width 80 kolom.
+      description: Mengembalikan output dot matrix fixed-width 44 kolom sebagai text/plain atau native ESC/P .prn.
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [txt, prn]
+            default: txt
       responses:
         "200":
-          description: Teks nota penjualan.
+          description: Teks nota penjualan atau file native PRN.
           content:
             text/plain:
               schema:
                 type: string
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/print/expenses/{id}:
+    get:
+      summary: Preview cetak dot matrix pengeluaran.
+      description: Mengembalikan output dot matrix fixed-width 44 kolom sebagai text/plain atau native ESC/P .prn.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [txt, prn]
+            default: txt
+      responses:
+        "200":
+          description: Teks bukti pengeluaran atau file native PRN.
+          content:
+            text/plain:
+              schema:
+                type: string
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -793,20 +886,31 @@ paths:
   /api/print/tempo/{id}:
     get:
       summary: Preview cetak dot matrix pembayaran tempo.
-      description: Mengembalikan text/plain fixed-width 80 kolom.
+      description: Mengembalikan output dot matrix fixed-width 44 kolom sebagai text/plain atau native ESC/P .prn.
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [txt, prn]
+            default: txt
       responses:
         "200":
-          description: Teks bukti pembayaran tempo.
+          description: Teks bukti pembayaran tempo atau file native PRN.
           content:
             text/plain:
               schema:
                 type: string
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":

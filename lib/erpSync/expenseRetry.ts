@@ -28,7 +28,15 @@ export type ErpSyncExpenseItem = {
 export type ExpenseSyncOverview = {
   summary: { pending: number; failed: number; synced: number; totalErp: number };
   items: ErpSyncExpenseItem[];
+  storageReady: boolean;
+  warning?: string;
 };
+
+const PRISMA_SYNC_WARNING = "Prisma Client belum tersinkron. Jalankan generate/migrate dan restart server.";
+
+function expenseDelegate() {
+  return (prisma as typeof prisma & { expenseRecord?: typeof prisma.expenseRecord }).expenseRecord;
+}
 
 function toSyncItem(row: ExpenseRow): ErpSyncExpenseItem {
   return {
@@ -45,7 +53,7 @@ function toSyncItem(row: ExpenseRow): ErpSyncExpenseItem {
     erpSyncAttemptedAt: row.erpSyncAttemptedAt?.toISOString(),
     erpSyncedAt: row.erpSyncedAt?.toISOString(),
     erpReference: row.erpReference || undefined,
-    retryable: ["pending", "failed"].includes(row.erpSyncStatus)
+    retryable: row.approvalStatus === "approved" && ["pending", "failed"].includes(row.erpSyncStatus)
   };
 }
 
@@ -66,32 +74,37 @@ function buildRetryCommand(row: ExpenseRow) {
 }
 
 export async function getExpenseSyncOverview(): Promise<ExpenseSyncOverview> {
+  const delegate = expenseDelegate();
+  if (!delegate) return { summary: { pending: 0, failed: 0, synced: 0, totalErp: 0 }, items: [], storageReady: false, warning: PRISMA_SYNC_WARNING };
   const [pending, failed, synced, items] = await Promise.all([
-    prisma.expenseRecord.count({ where: { erpSyncTarget: "erp", erpSyncStatus: "pending" } }),
-    prisma.expenseRecord.count({ where: { erpSyncTarget: "erp", erpSyncStatus: "failed" } }),
-    prisma.expenseRecord.count({ where: { erpSyncTarget: "erp", erpSyncStatus: "synced" } }),
-    prisma.expenseRecord.findMany({
-      where: { erpSyncTarget: "erp", erpSyncStatus: { in: ["pending", "failed"] } },
+    delegate.count({ where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: "pending" } }),
+    delegate.count({ where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: "failed" } }),
+    delegate.count({ where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: "synced" } }),
+    delegate.findMany({
+      where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: { in: ["pending", "failed"] } },
       orderBy: [{ erpSyncAttemptedAt: "asc" }, { createdAt: "asc" }],
       take: 100
     })
   ]);
-  return { summary: { pending, failed, synced, totalErp: pending + failed + synced }, items: items.map(toSyncItem) };
+  return { summary: { pending, failed, synced, totalErp: pending + failed + synced }, items: items.map(toSyncItem), storageReady: true };
 }
 
 export async function retryExpenseErpSync(id: string): Promise<{ success: boolean; item?: ErpSyncExpenseItem; message: string }> {
-  const row = await prisma.expenseRecord.findUnique({ where: { id } });
+  const delegate = expenseDelegate();
+  if (!delegate) return { success: false, message: PRISMA_SYNC_WARNING };
+  const row = await delegate.findUnique({ where: { id } });
   if (!row || row.erpSyncTarget !== "erp") return { success: false, message: "Pengeluaran ERP tidak ditemukan." };
+  if (row.approvalStatus !== "approved") return { success: false, item: toSyncItem(row), message: "Pengeluaran belum approved, tidak bisa sinkron ERP." };
   if (row.erpSyncStatus === "synced") return { success: true, item: toSyncItem(row), message: "Pengeluaran sudah tersinkron." };
 
   const attemptedAt = new Date();
-  await prisma.expenseRecord.update({ where: { id }, data: { erpSyncStatus: "pending", erpSyncAttemptedAt: attemptedAt } });
+  await delegate.update({ where: { id }, data: { erpSyncStatus: "pending", erpSyncAttemptedAt: attemptedAt } });
   const response = await sendNeoCommand(buildRetryCommand(row));
 
   if (response.success) {
     const syncedAt = new Date();
     const erpReference = erpReferenceFrom(response.data);
-    const updated = await prisma.expenseRecord.update({
+    const updated = await delegate.update({
       where: { id },
       data: { erpSyncStatus: "synced", erpSyncError: null, erpSyncAttemptedAt: attemptedAt, erpSyncedAt: syncedAt, erpReference }
     });
@@ -100,7 +113,7 @@ export async function retryExpenseErpSync(id: string): Promise<{ success: boolea
   }
 
   const erpSyncError = safeErpSyncError(response);
-  const updated = await prisma.expenseRecord.update({
+  const updated = await delegate.update({
     where: { id },
     data: { erpSyncStatus: "failed", erpSyncError, erpSyncAttemptedAt: attemptedAt }
   });
@@ -109,8 +122,10 @@ export async function retryExpenseErpSync(id: string): Promise<{ success: boolea
 }
 
 export async function retryPendingExpenseErpSync(limit = 25) {
-  const rows = await prisma.expenseRecord.findMany({
-    where: { erpSyncTarget: "erp", erpSyncStatus: { in: ["pending", "failed"] } },
+  const delegate = expenseDelegate();
+  if (!delegate) return { attempted: 0, succeeded: 0, failed: 1, results: [{ id: "expense-storage", success: false, message: PRISMA_SYNC_WARNING }] };
+  const rows = await delegate.findMany({
+    where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: { in: ["pending", "failed"] } },
     select: { id: true },
     orderBy: [{ erpSyncAttemptedAt: "asc" }, { createdAt: "asc" }],
     take: limit

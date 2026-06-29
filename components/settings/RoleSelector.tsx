@@ -30,7 +30,7 @@ export function RoleSelector({ currentRole, redirectTo = "/" }: { currentRole: R
       <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-700">Development Access</p>
       <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-950">Pilih role development</h3>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        Super Admin memiliki akses penuh. Admin fokus input Penjualan, Pengeluaran, dan Stock Barang. Finance menangani Tempo/pengeluaran. Manager fokus approval. Viewer default tanpa akses.
+        Super Admin memiliki akses penuh. Admin fokus input Penjualan, Pengeluaran, dan Stock Barang. Finance menangani Tempo/pengeluaran. Manager fokus approval dan akses baca laporan/riwayat. Viewer default tanpa akses.
       </p>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <Select value={role} onChange={(event) => setRole(event.target.value as Role)}>

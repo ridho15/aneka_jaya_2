@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => {
     listStocks: vi.fn(),
     listBookkeepingTypes: vi.fn(),
     listRekeningAccounts: vi.fn(),
+    listAllRekeningAccounts: vi.fn(),
+    saveBookkeepingTypes: vi.fn(),
+    saveRekeningAccounts: vi.fn(),
     getOpenCloudStatus: vi.fn(),
     checkStockMinimumAlert: vi.fn(),
     updateApprovalStatus: vi.fn(),
@@ -49,8 +52,9 @@ vi.mock("@/lib/audit/store", () => ({
 vi.mock("@/lib/business/masterData", () => ({
   listBookkeepingTypes: mocks.listBookkeepingTypes,
   listRekeningAccounts: mocks.listRekeningAccounts,
-  saveBookkeepingTypes: vi.fn(),
-  saveRekeningAccounts: vi.fn()
+  listAllRekeningAccounts: mocks.listAllRekeningAccounts,
+  saveBookkeepingTypes: mocks.saveBookkeepingTypes,
+  saveRekeningAccounts: mocks.saveRekeningAccounts
 }));
 
 vi.mock("@/lib/opencloud/auth", () => ({
@@ -67,9 +71,9 @@ import { POST as approveApproval } from "@/app/api/approval/[id]/route";
 import { GET as getHealth } from "@/app/api/health/route";
 import { GET as getProducts } from "@/app/api/products/route";
 import { GET as getProductDetail } from "@/app/api/products/[id]/route";
-import { GET as getRekening } from "@/app/api/rekening/route";
+import { GET as getRekening, POST as postRekening } from "@/app/api/rekening/route";
 import { GET as getStocks } from "@/app/api/stocks/route";
-import { GET as getTipe } from "@/app/api/tipe/route";
+import { GET as getTipe, POST as postTipe } from "@/app/api/tipe/route";
 
 describe("api route permission enforcement", () => {
   beforeEach(() => {
@@ -80,6 +84,9 @@ describe("api route permission enforcement", () => {
     mocks.listStocks.mockReset();
     mocks.listBookkeepingTypes.mockReset();
     mocks.listRekeningAccounts.mockReset();
+    mocks.listAllRekeningAccounts.mockReset();
+    mocks.saveBookkeepingTypes.mockReset();
+    mocks.saveRekeningAccounts.mockReset();
     mocks.getOpenCloudStatus.mockReset();
     mocks.checkStockMinimumAlert.mockReset();
     mocks.updateApprovalStatus.mockReset();
@@ -155,6 +162,17 @@ describe("api route permission enforcement", () => {
     expect(mocks.listRekeningAccounts).not.toHaveBeenCalled();
   });
 
+  it.each(["ADMIN", "FINANCE", "MANAGER"])("allows rekening listing for %s operational roles", async (role) => {
+    mocks.role = role;
+    mocks.listRekeningAccounts.mockResolvedValue([{ id: "cash", name: "Kas", bank: "Cash", accountNumber: "-", tipeIds: ["AJ"] }]);
+
+    const response = await getRekening(new Request("http://local/api/rekening"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true, data: expect.any(Array) });
+    expect(mocks.listRekeningAccounts).toHaveBeenCalled();
+  });
+
   it("rejects tipe listing for viewer roles", async () => {
     mocks.role = "VIEWER";
 
@@ -163,6 +181,57 @@ describe("api route permission enforcement", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({ success: false });
     expect(mocks.listBookkeepingTypes).not.toHaveBeenCalled();
+  });
+
+  it.each(["ADMIN", "FINANCE", "MANAGER"])("allows tipe listing for %s roles with master data view", async (role) => {
+    mocks.role = role;
+    mocks.listBookkeepingTypes.mockResolvedValue([{ id: "AJ", code: "AJ", name: "AJ", isActive: true, sortOrder: 1 }]);
+
+    const response = await getTipe();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true, data: expect.any(Array) });
+    expect(mocks.listBookkeepingTypes).toHaveBeenCalled();
+  });
+
+  it("keeps tipe and rekening mutation restricted to settings managers", async () => {
+    mocks.role = "MANAGER";
+
+    const tipeResponse = await postTipe(new Request("http://local/api/tipe", { method: "POST", body: JSON.stringify({ code: "X", name: "X" }) }));
+    const rekeningResponse = await postRekening(new Request("http://local/api/rekening", { method: "POST", body: JSON.stringify({ bank: "Cash", name: "Kas" }) }));
+
+    expect(tipeResponse.status).toBe(403);
+    expect(rekeningResponse.status).toBe(403);
+  });
+
+  it("rejects invalid tipe create payloads server-side", async () => {
+    mocks.role = "OWNER";
+
+    const response = await postTipe(new Request("http://local/api/tipe", { method: "POST", body: JSON.stringify({ code: "", name: "" }) }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.saveBookkeepingTypes).not.toHaveBeenCalled();
+  });
+
+  it("rejects duplicate tipe codes with a clear conflict", async () => {
+    mocks.role = "OWNER";
+    mocks.listBookkeepingTypes.mockResolvedValue([{ id: "tipe-aj", code: "AJ", name: "AJ", isActive: true, sortOrder: 1 }]);
+
+    const response = await postTipe(new Request("http://local/api/tipe", { method: "POST", body: JSON.stringify({ code: "aj", name: "Aneka Jaya" }) }));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ success: false, message: expect.stringContaining("AJ") });
+    expect(mocks.saveBookkeepingTypes).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid rekening bank server-side", async () => {
+    mocks.role = "OWNER";
+
+    const response = await postRekening(new Request("http://local/api/rekening", { method: "POST", body: JSON.stringify({ bank: "Bank Tidak Ada", name: "Rekening Test" }) }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ success: false, message: "Bank rekening tidak valid." });
+    expect(mocks.saveRekeningAccounts).not.toHaveBeenCalled();
   });
 
   it("does not expose integration details from health checks for non-owner roles", async () => {

@@ -105,6 +105,10 @@ describe("user management store", () => {
     await expect(createUser({ externalId: "finance-sso", email: "FINANCE@EXAMPLE.COM", name: "Finance", role: "FINANCE" })).rejects.toThrow("Password awal wajib diisi.");
   });
 
+  it("rejects short initial passwords", async () => {
+    await expect(createUser({ externalId: "finance-sso", email: "FINANCE@EXAMPLE.COM", name: "Finance", role: "FINANCE", password: "short" })).rejects.toThrow("Password awal minimal 8 karakter.");
+  });
+
   it("allows owner to change roles", async () => {
     mocks.state.users.push(fakeUser({ id: "u-fin", externalId: "finance-sso", role: "FINANCE", name: "Finance" }));
 
@@ -112,6 +116,12 @@ describe("user management store", () => {
 
     expect(user.role).toBe("MANAGER");
     expect(mocks.recordAudit).toHaveBeenCalledWith(expect.objectContaining({ entityType: "user", action: "update" }));
+  });
+
+  it("rejects short password resets", async () => {
+    mocks.state.users.push(fakeUser({ id: "u-fin", externalId: "finance-sso", role: "FINANCE", name: "Finance" }));
+
+    await expect(updateUser("u-fin", { name: "Finance", role: "FINANCE", password: "short" })).rejects.toThrow("Password baru minimal 8 karakter.");
   });
 
   it("prevents users from disabling themselves", async () => {

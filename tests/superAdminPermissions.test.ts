@@ -10,4 +10,20 @@ describe("Super Admin permission contract", () => {
     expect(new Set(ROLE_PERMISSIONS.OWNER)).toEqual(new Set(ALL_PERMISSIONS));
     for (const permission of ALL_PERMISSIONS) expect(can("OWNER", permission)).toBe(true);
   });
+
+  it("grants read-only expense and master data permissions to operational roles", () => {
+    for (const role of ["ADMIN", "FINANCE", "MANAGER"] as const) {
+      expect(can(role, "pengeluaran.view")).toBe(true);
+      expect(can(role, "master_data.view")).toBe(true);
+    }
+    expect(can("VIEWER", "pengeluaran.view")).toBe(false);
+    expect(can("VIEWER", "master_data.view")).toBe(false);
+  });
+
+  it("keeps expense creation limited to admin and finance roles", () => {
+    expect(can("ADMIN", "pengeluaran.create")).toBe(true);
+    expect(can("FINANCE", "pengeluaran.create")).toBe(true);
+    expect(can("MANAGER", "pengeluaran.create")).toBe(false);
+    expect(can("VIEWER", "pengeluaran.create")).toBe(false);
+  });
 });

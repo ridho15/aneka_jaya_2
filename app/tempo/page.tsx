@@ -1,16 +1,63 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listTempoReceivables } from "@/lib/tempo/store";
+import { listTempoReceivables, type TempoReceivable } from "@/lib/tempo/store";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 
 export const dynamic = "force-dynamic";
+const PAGE_SIZE = 50;
 
-export default async function TempoPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function valueOf(params: SearchParams, key: string) {
+  const value = params[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function pageHref(params: SearchParams, page: number) {
+  const next = new URLSearchParams();
+  for (const [key, raw] of Object.entries(params)) {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value && key !== "page") next.set(key, value);
+  }
+  next.set("page", String(page));
+  return `/tempo?${next.toString()}`;
+}
+
+function filterTempo(rows: TempoReceivable[], params: SearchParams) {
+  const keyword = valueOf(params, "keyword")?.trim().toLowerCase();
+  const tipe = valueOf(params, "tipe");
+  const status = valueOf(params, "status");
+  const dueFrom = valueOf(params, "dueFrom");
+  const dueTo = valueOf(params, "dueTo");
+  const includeFinal = valueOf(params, "includeFinal") === "1";
+  return rows.filter((row) => {
+    if (!includeFinal && ["paid", "cancelled", "written_off"].includes(row.status)) return false;
+    if (keyword) {
+      const haystack = [row.id, row.salesId, row.customerName, row.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
+      if (!haystack.includes(keyword)) return false;
+    }
+    if (tipe && (row.tipeCodeSnapshot || row.tipeId) !== tipe) return false;
+    if (status && row.status !== status) return false;
+    if (dueFrom && row.dueDate < dueFrom) return false;
+    if (dueTo && row.dueDate > dueTo) return false;
+    return true;
+  });
+}
+
+export default async function TempoPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
   if (!can(role, "tempo.view")) redirect("/");
+  const params = await searchParams || {};
   const rows = await listTempoReceivables();
-  const openRows = rows.filter((row) => !["paid", "cancelled", "written_off"].includes(row.status));
+  const filtered = filterTempo(rows, params);
+  const page = Math.max(1, Number(valueOf(params, "page") || "1"));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const tipeOptions = Array.from(new Set(rows.map((row) => row.tipeCodeSnapshot || row.tipeId).filter(Boolean))).sort();
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
-  return <AppShell><div className="mb-7"><p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Piutang</p><h2 className="aj-page-title text-3xl font-bold">Tempo</h2><p className="mt-2 text-sm text-slate-600">Open Tempo tetap muncul sampai Paid, Cancelled, atau Written Off.</p></div><section className="aj-surface overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Original</th><th className="px-5 py-3">Paid</th><th className="px-5 py-3">Remaining</th><th className="px-5 py-3">Jatuh Tempo</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Action</th></tr></thead><tbody>{openRows.map((row) => <tr key={row.id} className="border-b border-slate-100"><td className="px-5 py-4 font-semibold">{row.customerName}</td><td className="px-5 py-4">{row.tipeCodeSnapshot}</td><td className="px-5 py-4">{rupiah(row.originalAmount)}</td><td className="px-5 py-4">{rupiah(row.paidAmount)}</td><td className="px-5 py-4">{rupiah(row.remainingAmount)}</td><td className="px-5 py-4">{new Intl.DateTimeFormat("id-ID").format(new Date(row.dueDate))}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.status === "overdue" ? "bg-red-50 text-red-700" : "bg-blue-50 text-blue-700"}`}>{row.status}</span></td><td className="px-5 py-4"><a href={`/tempo/${row.id}`} className="font-semibold text-emerald-700 hover:text-emerald-800">Detail / Bayar</a></td></tr>)}{openRows.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-500">Tidak ada Tempo terbuka.</td></tr>}</tbody></table></section></AppShell>;
+  return <AppShell><div className="mb-7"><p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Piutang</p><h2 className="aj-page-title text-3xl font-bold">Tempo</h2><p className="mt-2 text-sm text-slate-600">Default menampilkan open Tempo. Aktifkan final status untuk melihat paid, cancelled, atau written off.</p></div><section className="aj-surface mb-5 p-5"><form className="grid gap-3 md:grid-cols-3 xl:grid-cols-6"><label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Customer / No tempo / No sales" className="mt-1" /></label><label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{tipeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label><label className="text-sm font-medium text-slate-700">Status<Select name="status" defaultValue={valueOf(params, "status") || ""} className="mt-1"><option value="">Semua</option>{["open", "overdue", "partial_paid", "paid", "cancelled", "written_off"].map((item) => <option key={item} value={item}>{item}</option>)}</Select></label><label className="text-sm font-medium text-slate-700">Jatuh tempo dari<Input type="date" name="dueFrom" defaultValue={valueOf(params, "dueFrom") || ""} className="mt-1" /></label><label className="text-sm font-medium text-slate-700">Jatuh tempo sampai<Input type="date" name="dueTo" defaultValue={valueOf(params, "dueTo") || ""} className="mt-1" /></label><label className="flex items-end gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input type="checkbox" name="includeFinal" value="1" defaultChecked={valueOf(params, "includeFinal") === "1"} /> Tampilkan final</label><div className="flex gap-2 md:col-span-3 xl:col-span-6"><button className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" type="submit">Filter</button><Link className="rounded-sm border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/tempo">Reset</Link></div></form></section><section className="aj-surface overflow-x-auto"><div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {filtered.length} tempo.</div><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Original</th><th className="px-5 py-3">Paid</th><th className="px-5 py-3">Remaining</th><th className="px-5 py-3">Jatuh Tempo</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Action</th></tr></thead><tbody>{paged.map((row) => <tr key={row.id} className="border-b border-slate-100"><td className="px-5 py-4"><b>{row.customerName}</b><p className="mt-0.5 font-mono text-xs text-slate-500">{row.id}</p></td><td className="px-5 py-4">{row.tipeCodeSnapshot}</td><td className="px-5 py-4">{rupiah(row.originalAmount)}</td><td className="px-5 py-4">{rupiah(row.paidAmount)}</td><td className="px-5 py-4">{rupiah(row.remainingAmount)}</td><td className="px-5 py-4">{new Intl.DateTimeFormat("id-ID").format(new Date(row.dueDate))}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.status === "overdue" ? "bg-red-50 text-red-700" : ["paid"].includes(row.status) ? "bg-emerald-50 text-emerald-700" : ["cancelled", "written_off"].includes(row.status) ? "bg-slate-100 text-slate-600" : "bg-blue-50 text-blue-700"}`}>{row.status}</span></td><td className="px-5 py-4"><div className="flex gap-3"><Link href={`/tempo/${row.id}`} className="font-semibold text-emerald-700 hover:text-emerald-800">Detail</Link><Link href={`/print/tempo/${row.id}`} className="font-semibold text-emerald-700 hover:text-emerald-800">Cetak</Link></div></td></tr>)}{paged.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-500">Tidak ada Tempo sesuai filter.</td></tr>}</tbody></table><div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm"><span className="text-slate-500">Halaman {page} dari {totalPages}</span><div className="flex gap-2">{page > 1 && <Link className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={pageHref(params, page - 1)}>Sebelumnya</Link>}{page < totalPages && <Link className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={pageHref(params, page + 1)}>Berikutnya</Link>}</div></div></section></AppShell>;
 }

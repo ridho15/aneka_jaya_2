@@ -31,7 +31,9 @@ export default async function ErpSyncPage() {
     failed: salesOverview.summary.failed + expenseOverview.summary.failed,
     synced: salesOverview.summary.synced + expenseOverview.summary.synced
   };
+  const runtimeWarnings = [salesOverview.warning, expenseOverview.warning].filter(Boolean);
   return <AppShell><div className="mb-7"><h2 className="aj-page-title text-3xl font-bold">ERP Sync</h2><p className="mt-2 text-sm text-slate-600">Pantau transaksi AJ yang gagal/pending dan retry sinkronisasi ke Aneka Jaya ERP.</p></div>
+    {runtimeWarnings.length > 0 && <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-bold">ERP Sync storage belum siap</p><p className="mt-1">{Array.from(new Set(runtimeWarnings)).join(" ")}</p></div>}
     <div className="mb-5 grid gap-3 md:grid-cols-4">
       <div className="aj-surface p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">ERP Status</p><p className={config.ok ? "mt-1 text-lg font-bold text-emerald-700" : "mt-1 text-lg font-bold text-amber-700"}>{config.label}</p><p className="mt-1 text-xs text-slate-500">{config.message}</p></div>
       <div className="aj-surface p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending</p><p className="mt-1 text-2xl font-bold text-slate-900">{summary.pending}</p></div>

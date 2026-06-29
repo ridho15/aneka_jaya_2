@@ -50,6 +50,22 @@ export async function sendWhatsappMessage(recipient: WhatsAppRecipient, reportTy
   const finalLog: WhatsAppMessageLog = { ...pending, status: result.status, providerMessageId: result.providerMessageId, errorMessage: result.errorMessage, sentAt: result.status === "sent" ? new Date().toISOString() : undefined };
   logs[0] = finalLog;
   await writeJsonArray(logFile, logs);
-  await recordAudit({ entityType: "whatsapp_report", entityId: finalLog.id, action: "send_whatsapp", afterValue: finalLog, reason: `${reportType} • ${result.status} • ${provider}` });
+  await recordAudit({
+    entityType: "whatsapp_report",
+    entityId: finalLog.id,
+    action: "send_whatsapp",
+    afterValue: {
+      reportType,
+      provider,
+      status: finalLog.status,
+      recipientNameSnapshot: finalLog.recipientNameSnapshot,
+      phoneNumberSnapshot: finalLog.phoneNumberSnapshot,
+      providerMessageId: finalLog.providerMessageId,
+      errorMessage: finalLog.errorMessage,
+      createdAt: finalLog.createdAt,
+      sentAt: finalLog.sentAt
+    },
+    reason: `${reportType} • ${result.status} • ${provider}`
+  });
   return finalLog;
 }

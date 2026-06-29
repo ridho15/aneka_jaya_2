@@ -4,6 +4,7 @@ import { can } from "@/lib/auth/roles";
 import { recordAudit } from "@/lib/audit/store";
 import { readJsonArray, writeJsonArray } from "@/lib/data/jsonStore";
 import { getSalesRecord, updateSalesApprovalStatus } from "@/lib/sales/store";
+import { updateExpenseApprovalStatus } from "@/lib/expenses/store";
 import { createTempoReceivable } from "@/lib/tempo/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
@@ -181,6 +182,15 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
           }
         }
       }
+      if (after.module === "pengeluaran") {
+        const expenseStatus = after.status === "approved" ? "approved" : after.status === "rejected" ? "rejected" : after.status;
+        await tx.expenseRecord.update({
+          where: { id: after.entityId },
+          data: after.status === "rejected"
+            ? { approvalStatus: expenseStatus, erpSyncStatus: "not_required", erpSyncError: "Pengeluaran ditolak approval." }
+            : { approvalStatus: expenseStatus }
+        }).catch(() => null);
+      }
       await tx.auditLog.create({
         data: {
           id: crypto.randomUUID(),
@@ -216,6 +226,7 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
     const fullSale = sale || await getSalesRecord(after.entityId);
     if (after.status === "approved" && fullSale?.paymentMethod === "Tempo") await createTempoReceivable({ salesId: fullSale.id, tipeId: fullSale.tipeId || "W", tipeCodeSnapshot: fullSale.tipeCodeSnapshot || "W", tipeNameSnapshot: fullSale.tipeNameSnapshot || "W", customerName: fullSale.customerName, originalAmount: fullSale.total, transactionDate: fullSale.saleDate, dueDate: fullSale.dueDate || fullSale.saleDate });
   }
+  if (after.module === "pengeluaran") await updateExpenseApprovalStatus(after.entityId, after.status === "approved" ? "approved" : after.status === "rejected" ? "rejected" : after.status);
   await recordAudit({ entityType: "approval", entityId: id, action, beforeValue: before, afterValue: after, reason });
   return after;
 }

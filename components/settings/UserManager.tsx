@@ -34,6 +34,7 @@ export function UserManager({ users: initial }: { users: UserRow[] }) {
 
   const addUser = async () => {
     if (!externalId.trim() || !name.trim() || !password.trim()) { setNotice({ type: "error", message: "External ID, nama, dan password awal wajib diisi." }); return; }
+    if (password.trim().length < 8) { setNotice({ type: "error", message: "Password awal minimal 8 karakter." }); return; }
     setSaving(true);
     const response = await fetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ externalId: externalId.trim(), email: email.trim(), name: name.trim(), role, password }) });
     const result = await response.json();
@@ -52,6 +53,7 @@ export function UserManager({ users: initial }: { users: UserRow[] }) {
   };
 
   const updateUser = async (user: UserRow, patch: Partial<Pick<UserRow, "email" | "name" | "role" | "isActive">> & { password?: string }) => {
+    if (patch.password && patch.password.trim().length < 8) { setNotice({ type: "error", message: "Password baru minimal 8 karakter." }); return; }
     const updated = { ...user, ...patch };
     const response = await fetch(`/api/users/${user.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
     const result = await response.json();

@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => {
   const tx = {
     salesRecord: { create: vi.fn(), update: vi.fn() },
+    expenseRecord: { update: vi.fn() },
     approvalRequest: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     tempoReceivable: { create: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     tempoPayment: { create: vi.fn() },
@@ -39,7 +40,7 @@ vi.mock("@/lib/audit/store", () => ({ recordAudit: vi.fn() }));
 
 import { createSale } from "@/lib/api/sales";
 import { updateApprovalStatus } from "@/lib/approval/store";
-import { payTempo } from "@/lib/tempo/store";
+import { cancelTempo, payTempo, writeOffTempo } from "@/lib/tempo/store";
 
 const saleInput = {
   saleDate: "2026-06-27",
@@ -66,6 +67,7 @@ describe("production Prisma transactions", () => {
     mocks.saveSalesRecord.mockReset();
     mocks.prisma.$transaction.mockClear();
     Object.values(mocks.tx).forEach((model) => Object.values(model).forEach((fn) => "mockReset" in fn && fn.mockReset()));
+    mocks.tx.expenseRecord.update.mockResolvedValue({});
   });
 
   it("creates approved production Tempo sales atomically with receivable and audit rows", async () => {
@@ -202,17 +204,191 @@ describe("production Prisma transactions", () => {
       updatedAt: new Date("2026-06-27")
     });
     mocks.tx.tempoReceivable.updateMany.mockResolvedValue({ count: 0 });
+    mocks.rekeningForTipe.mockResolvedValue([{ id: "cash", name: "Cash", tipeIds: ["W"] }]);
 
     await expect(payTempo("TMP-1", {
       paymentDate: "2026-06-28",
       amountPaid: 80,
       paymentMethod: "Cash",
       rekeningId: "cash",
-      rekeningNameSnapshot: "Cash"
+      rekeningNameSnapshot: "Client Name"
     })).rejects.toThrow("Nominal dibayar tidak boleh lebih dari sisa Tempo.");
 
     expect(mocks.tx.tempoPayment.create).not.toHaveBeenCalled();
     expect(mocks.tx.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects Tempo payment with an invalid rekening for the tipe", async () => {
+    mocks.tx.tempoReceivable.findUnique.mockResolvedValue({
+      id: "TMP-1",
+      salesId: "S-1",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      originalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      transactionDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27"),
+      status: "open",
+      createdByUserId: "u-1",
+      createdByNameSnapshot: "User",
+      createdAt: new Date("2026-06-27"),
+      updatedAt: new Date("2026-06-27")
+    });
+    mocks.rekeningForTipe.mockResolvedValue([{ id: "cash-w", name: "Cash W", tipeIds: ["W"] }]);
+
+    await expect(payTempo("TMP-1", {
+      paymentDate: "2026-06-28",
+      amountPaid: 80,
+      paymentMethod: "Cash",
+      rekeningId: "cash-aj",
+      rekeningNameSnapshot: "Kas AJ"
+    })).rejects.toThrow("Rekening penerima tidak tersedia");
+
+    expect(mocks.tx.tempoPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("uses the server rekening name when creating Tempo payment", async () => {
+    mocks.tx.tempoReceivable.findUnique.mockResolvedValueOnce({
+      id: "TMP-1",
+      salesId: "S-1",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      originalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      transactionDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27"),
+      status: "open",
+      createdByUserId: "u-1",
+      createdByNameSnapshot: "User",
+      createdAt: new Date("2026-06-27"),
+      updatedAt: new Date("2026-06-27")
+    }).mockResolvedValueOnce({
+      id: "TMP-1",
+      salesId: "S-1",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      originalAmount: 100,
+      paidAmount: 80,
+      remainingAmount: 20,
+      transactionDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27"),
+      status: "open",
+      createdByUserId: "u-1",
+      createdByNameSnapshot: "User",
+      createdAt: new Date("2026-06-27"),
+      updatedAt: new Date("2026-06-27")
+    });
+    mocks.tx.tempoReceivable.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.tempoPayment.create.mockResolvedValue({
+      id: "TPY-1",
+      tempoReceivableId: "TMP-1",
+      paymentDate: new Date("2026-06-28"),
+      amountPaid: 80,
+      paymentMethod: "Cash",
+      rekeningId: "cash-w",
+      rekeningNameSnapshot: "Cash W",
+      attachmentUrl: null,
+      notes: null,
+      createdByUserId: "actor-1",
+      createdByNameSnapshot: "Actor",
+      createdAt: new Date("2026-06-28")
+    });
+    mocks.tx.tempoReceivable.findUniqueOrThrow.mockResolvedValue({ remainingAmount: 20 });
+    mocks.tx.tempoReceivable.update.mockResolvedValue({
+      id: "TMP-1",
+      salesId: "S-1",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      originalAmount: 100,
+      paidAmount: 80,
+      remainingAmount: 20,
+      transactionDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27"),
+      status: "partial_paid",
+      createdByUserId: "u-1",
+      createdByNameSnapshot: "User",
+      createdAt: new Date("2026-06-27"),
+      updatedAt: new Date("2026-06-28")
+    });
+    mocks.rekeningForTipe.mockResolvedValue([{ id: "cash-w", name: "Cash W", tipeIds: ["W"] }]);
+
+    await expect(payTempo("TMP-1", {
+      paymentDate: "2026-06-28",
+      amountPaid: 80,
+      paymentMethod: "Cash",
+      rekeningId: "cash-w",
+      rekeningNameSnapshot: "Tampered"
+    })).resolves.toMatchObject({ payment: { rekeningNameSnapshot: "Cash W" } });
+
+    expect(mocks.tx.tempoPayment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ rekeningNameSnapshot: "Cash W" })
+    }));
+  });
+
+  it("cancels active Tempo and records audit", async () => {
+    const row = {
+      id: "TMP-1",
+      salesId: "S-1",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      originalAmount: 100,
+      paidAmount: 0,
+      remainingAmount: 100,
+      transactionDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27"),
+      status: "open",
+      createdByUserId: "u-1",
+      createdByNameSnapshot: "User",
+      createdAt: new Date("2026-06-27"),
+      updatedAt: new Date("2026-06-27")
+    };
+    mocks.tx.tempoReceivable.findUnique.mockResolvedValue(row);
+    mocks.tx.tempoReceivable.update.mockResolvedValue({ ...row, status: "cancelled", updatedAt: new Date("2026-06-28") });
+
+    await expect(cancelTempo("TMP-1", "Customer membatalkan order")).resolves.toMatchObject({ status: "cancelled" });
+    expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ entityType: "tempo", action: "cancel" })
+    }));
+  });
+
+  it("write-offs active Tempo with remaining amount and records audit", async () => {
+    const row = {
+      id: "TMP-1",
+      salesId: "S-1",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      originalAmount: 100,
+      paidAmount: 30,
+      remainingAmount: 70,
+      transactionDate: new Date("2026-06-27"),
+      dueDate: new Date("2026-07-27"),
+      status: "partial_paid",
+      createdByUserId: "u-1",
+      createdByNameSnapshot: "User",
+      createdAt: new Date("2026-06-27"),
+      updatedAt: new Date("2026-06-27")
+    };
+    mocks.tx.tempoReceivable.findUnique.mockResolvedValue(row);
+    mocks.tx.tempoReceivable.update.mockResolvedValue({ ...row, status: "written_off", updatedAt: new Date("2026-06-28") });
+
+    await expect(writeOffTempo("TMP-1", "Sisa tidak tertagih")).resolves.toMatchObject({ status: "written_off" });
+    expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ entityType: "tempo", action: "write_off" })
+    }));
   });
 
   it("does not create duplicate Tempo receivables when approving an already-linked Tempo sale", async () => {
@@ -263,5 +439,82 @@ describe("production Prisma transactions", () => {
     expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ entityType: "approval", action: "approve" })
     }));
+  });
+
+  it("updates ExpenseRecord when approving a pending expense", async () => {
+    const beforeApproval = {
+      id: "APR-EXP-1",
+      module: "pengeluaran",
+      entityId: "E-1",
+      tipeCodeSnapshot: "AJ",
+      tipeNameSnapshot: "AJ",
+      amount: 100,
+      status: "pending_approval",
+      createdByUserId: "admin-1",
+      createdByNameSnapshot: "Admin",
+      createdByRoleSnapshot: "ADMIN",
+      createdAt: new Date("2026-06-27"),
+      approvedByUserId: null,
+      approvedByNameSnapshot: null,
+      approvedAt: null,
+      rejectedByUserId: null,
+      rejectedByNameSnapshot: null,
+      rejectedAt: null,
+      rejectionReason: null
+    };
+    mocks.tx.approvalRequest.findUnique.mockResolvedValue(beforeApproval);
+    mocks.tx.approvalRequest.update.mockResolvedValue({
+      ...beforeApproval,
+      status: "approved",
+      approvedByUserId: "actor-1",
+      approvedByNameSnapshot: "Actor",
+      approvedAt: new Date("2026-06-28")
+    });
+
+    await expect(updateApprovalStatus("APR-EXP-1", "approve")).resolves.toMatchObject({ status: "approved" });
+
+    expect(mocks.tx.expenseRecord.update).toHaveBeenCalledWith({
+      where: { id: "E-1" },
+      data: { approvalStatus: "approved" }
+    });
+  });
+
+  it("marks rejected ExpenseRecord as not required for ERP retry", async () => {
+    const beforeApproval = {
+      id: "APR-EXP-2",
+      module: "pengeluaran",
+      entityId: "E-2",
+      tipeCodeSnapshot: "AJ",
+      tipeNameSnapshot: "AJ",
+      amount: 100,
+      status: "pending_approval",
+      createdByUserId: "admin-1",
+      createdByNameSnapshot: "Admin",
+      createdByRoleSnapshot: "ADMIN",
+      createdAt: new Date("2026-06-27"),
+      approvedByUserId: null,
+      approvedByNameSnapshot: null,
+      approvedAt: null,
+      rejectedByUserId: null,
+      rejectedByNameSnapshot: null,
+      rejectedAt: null,
+      rejectionReason: null
+    };
+    mocks.tx.approvalRequest.findUnique.mockResolvedValue(beforeApproval);
+    mocks.tx.approvalRequest.update.mockResolvedValue({
+      ...beforeApproval,
+      status: "rejected",
+      rejectedByUserId: "actor-1",
+      rejectedByNameSnapshot: "Actor",
+      rejectedAt: new Date("2026-06-28"),
+      rejectionReason: "Tidak valid"
+    });
+
+    await expect(updateApprovalStatus("APR-EXP-2", "reject", "Tidak valid")).resolves.toMatchObject({ status: "rejected" });
+
+    expect(mocks.tx.expenseRecord.update).toHaveBeenCalledWith({
+      where: { id: "E-2" },
+      data: { approvalStatus: "rejected", erpSyncStatus: "not_required", erpSyncError: "Pengeluaran ditolak approval." }
+    });
   });
 });

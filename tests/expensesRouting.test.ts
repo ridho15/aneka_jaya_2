@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   sendNeoCommand: vi.fn(),
   recordAudit: vi.fn(),
   findTipe: vi.fn(),
+  rekeningForTipe: vi.fn(),
   createApprovalRequest: vi.fn(),
   approvalIsEnabled: vi.fn()
   ,
@@ -16,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn(async () => mocks.user) }));
 vi.mock("@/lib/api/neo", () => ({ sendNeoCommand: mocks.sendNeoCommand }));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
-vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe }));
+vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe, rekeningForTipe: mocks.rekeningForTipe }));
 vi.mock("@/lib/approval/store", () => ({
   createApprovalRequest: mocks.createApprovalRequest,
   approvalIsEnabled: mocks.approvalIsEnabled
@@ -52,6 +53,8 @@ describe("expense routing by tipe", () => {
     mocks.sendNeoCommand.mockResolvedValue({ success: true, data: { ok: true } });
     mocks.recordAudit.mockReset();
     mocks.findTipe.mockReset();
+    mocks.rekeningForTipe.mockReset();
+    mocks.rekeningForTipe.mockResolvedValue([{ id: "cash-w", name: "Kas Server", bank: "Cash", accountNumber: "-", tipeIds: ["W", "AJ"] }]);
     mocks.createApprovalRequest.mockReset();
     mocks.approvalIsEnabled.mockReset();
     mocks.approvalIsEnabled.mockReturnValue(false);
@@ -67,7 +70,7 @@ describe("expense routing by tipe", () => {
     expect(mocks.sendNeoCommand).toHaveBeenCalledWith(expect.objectContaining({
       text: expect.stringContaining("Tipe AJ")
     }));
-    expect(mocks.saveExpenseRecord).toHaveBeenCalledWith(expect.objectContaining({ erpSyncTarget: "erp", erpSyncStatus: "synced" }));
+    expect(mocks.saveExpenseRecord).toHaveBeenCalledWith(expect.objectContaining({ erpSyncTarget: "erp", erpSyncStatus: "synced", rekeningNameSnapshot: "Kas Server" }));
   });
 
   it("keeps AJ expenses as failed/retryable when ERP rejects it", async () => {
@@ -93,5 +96,28 @@ describe("expense routing by tipe", () => {
 
     expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
     expect(mocks.saveExpenseRecord).toHaveBeenCalledWith(expect.objectContaining({ erpSyncTarget: "local", erpSyncStatus: "not_required" }));
+  });
+
+  it("stores pending AJ expenses without sending ERP when approval is required", async () => {
+    mocks.user = { id: "admin-1", name: "Admin", role: "ADMIN" };
+    mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
+    mocks.approvalIsEnabled.mockReturnValue(true);
+
+    await expect(createExpense({ ...expenseInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ" })).resolves.toMatchObject({
+      success: true,
+      data: { approvalStatus: "pending_approval", erpSyncTarget: "erp", erpSyncStatus: "pending" }
+    });
+
+    expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
+    expect(mocks.createApprovalRequest).toHaveBeenCalledWith(expect.objectContaining({ module: "pengeluaran", tipeCodeSnapshot: "AJ" }));
+  });
+
+  it("rejects rekening that is not assigned to the selected tipe", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
+    mocks.rekeningForTipe.mockResolvedValue([{ id: "cash-other", name: "Kas Lain", bank: "Cash", accountNumber: "-", tipeIds: ["W"] }]);
+
+    await expect(createExpense({ ...expenseInput, tipeId: "AJ" })).rejects.toThrow("Rekening pengeluaran tidak tersedia");
+    expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
+    expect(mocks.saveExpenseRecord).not.toHaveBeenCalled();
   });
 });
