@@ -7,6 +7,7 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { listSalesRecords } from "@/lib/sales/store";
 import type { Sale } from "@/lib/types/sales";
+import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,7 @@ function statusTone(value?: string) {
 export default async function PenjualanHistoryPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
   if (!can(role, "penjualan.create") && !can(role, "reports.view")) redirect("/");
+  const canManage = can(role, "penjualan.manage");
   const params = await searchParams || {};
   const sales = await listSalesRecords();
   const filtered = filterSales(sales, params);
@@ -131,7 +133,22 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                 <td className="px-5 py-4"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /></td>
                 <td className="px-5 py-4"><Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} /></td>
                 <td className="px-5 py-4 text-slate-600">{sale.createdByNameSnapshot || "—"}</td>
-                <td className="px-5 py-4"><Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/print/sales/${sale.id}`}>Cetak</Link></td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-col gap-2">
+                    <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/print/sales/${sale.id}`}>Cetak</Link>
+                    {canManage && (
+                      <>
+                        {sale.approvalStatus !== "cancelled" && <Link className="font-semibold text-blue-700 hover:text-blue-800" href={`/penjualan/${sale.id}/edit`}>Edit</Link>}
+                        <TransactionCancelButton
+                          id={sale.id}
+                          kind="sales"
+                          disabled={sale.approvalStatus === "cancelled" || (sale.syncTarget === "erp" && sale.syncStatus === "synced")}
+                          disabledReason={sale.syncTarget === "erp" && sale.syncStatus === "synced" ? "Transaksi AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Transaksi sudah dibatalkan."}
+                        />
+                      </>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
             {paged.length === 0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan sesuai filter.</td></tr>}

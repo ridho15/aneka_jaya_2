@@ -258,24 +258,34 @@ model RekeningAccountBookkeepingType {
 }
 
 model WhatsAppRecipient {
-  id        String   @id
-  name      String
-  phone     String
-  role      String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String   @id
+  name                  String
+  phone                 String
+  role                  String?
+  isActive              Boolean  @default(true)
+  receivesDailyReport   Boolean  @default(false)
+  receivesStockAlert    Boolean  @default(false)
+  receivesTempoReminder Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 model WhatsAppMessageLog {
-  id          String   @id
-  recipientId String?
-  recipient   String
-  messageType String
-  status      String
-  payload     Json?
-  response    Json?
-  createdAt   DateTime @default(now())
+  id                    String    @id
+  recipientId           String?
+  recipient             String
+  messageType           String
+  status                String
+  payload               Json?
+  response              Json?
+  reportType            String?
+  provider              String?
+  recipientNameSnapshot String?
+  phoneMaskedSnapshot   String?
+  providerMessageId     String?
+  errorMessage          String?
+  sentAt                DateTime?
+  createdAt             DateTime  @default(now())
 
   @@index([createdAt])
   @@index([status])

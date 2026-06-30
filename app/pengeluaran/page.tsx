@@ -7,6 +7,7 @@ import { listExpenseRecords } from "@/lib/expenses/store";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import type { Expense } from "@/lib/types/expenses";
+import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 50;
@@ -64,6 +65,7 @@ function filterExpenses(expenses: Expense[], params: SearchParams) {
 export default async function PengeluaranHistoryPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
   if (!can(role, "pengeluaran.view")) redirect("/");
+  const canManage = can(role, "pengeluaran.manage");
   const params = await searchParams || {};
   const expenses = await listExpenseRecords();
   const filtered = filterExpenses(expenses, params);
@@ -128,7 +130,22 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
                 <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.approvalStatus || "approved"] || "bg-slate-100 text-slate-600"}`}>{expense.approvalStatus || "approved"}</span></td>
                 <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.erpSyncStatus || "not_required"] || "bg-slate-100 text-slate-600"}`}>{expense.erpSyncStatus || "not_required"}</span></td>
                 <td className="px-5 py-4">{expense.attachmentUrl ? <a className="font-semibold text-emerald-700 hover:text-emerald-800" href={expense.attachmentUrl} target="_blank" rel="noreferrer">Buka</a> : "—"}</td>
-                <td className="px-5 py-4"><Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/print/expenses/${expense.id}`}>Cetak</Link></td>
+                <td className="px-5 py-4">
+                  <div className="flex flex-col gap-2">
+                    <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/print/expenses/${expense.id}`}>Cetak</Link>
+                    {canManage && (
+                      <>
+                        {expense.approvalStatus !== "cancelled" && <Link className="font-semibold text-blue-700 hover:text-blue-800" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
+                        <TransactionCancelButton
+                          id={expense.id}
+                          kind="expenses"
+                          disabled={expense.approvalStatus === "cancelled" || (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced")}
+                          disabledReason={expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced" ? "Pengeluaran AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Pengeluaran sudah dibatalkan."}
+                        />
+                      </>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
             {paged.length === 0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-500">Tidak ada pengeluaran sesuai filter.</td></tr>}

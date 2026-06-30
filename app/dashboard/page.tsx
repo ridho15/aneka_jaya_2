@@ -16,7 +16,7 @@ import { summarizeOpenTempo } from "@/lib/tempo/summary";
 import { listAudit } from "@/lib/audit/store";
 import { activityText, buildCategorySummary, buildMonthlyPerformance } from "@/lib/dashboard/summary";
 import { jakartaDateKey, jakartaMonthKey } from "@/lib/date/jakarta";
-import { getWhatsappProvider } from "@/lib/whatsapp/whatsappClient";
+import { getWhatsappProviderStatus } from "@/lib/whatsapp/whatsappClient";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ export default async function DashboardPage() {
   const { openTempo, openTempoAmount } = summarizeOpenTempo(allTempo);
   const performance = buildMonthlyPerformance(allSales, allExpenses);
   const categories = buildCategorySummary(paidSales, products.success ? products.data : []);
-  const whatsappProvider = getWhatsappProvider();
+  const whatsappStatus = getWhatsappProviderStatus();
 
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0, notation: "compact" }).format(value);
 
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
           <h2 className="mt-1 text-lg font-bold tracking-tight">Status sistem</h2>
           <Status label="ERP Integration API" ok={products.success} text={products.success ? "Terhubung dan siap digunakan" : products.message} />
           <Status label="OpenCloud Storage" ok={cloud.configured} text={cloud.message} />
-          <Status label="WhatsApp" ok={Boolean(whatsappProvider)} text={whatsappProvider ? `Provider ${whatsappProvider} siap digunakan` : "Provider WhatsApp belum dikonfigurasi"} />
+          <Status label="WhatsApp" ok={whatsappStatus.ready} text={whatsappStatus.message} />
           <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-emerald-950">
             <p className="text-sm font-semibold">Butuh transaksi cepat?</p>
             <Link href="/pengeluaran/input" className="mt-2 inline-block text-sm font-semibold text-emerald-700 hover:text-emerald-800">Input pengeluaran →</Link>

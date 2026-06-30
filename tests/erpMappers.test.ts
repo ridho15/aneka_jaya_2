@@ -82,6 +82,101 @@ describe("ERP product and stock mappers", () => {
     warn.mockRestore();
   });
 
+  it("reads live ERP product nested prices and flags", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const product = toProduct({
+      id: 88,
+      sku: "ERP-88",
+      name: "Produk Live ERP",
+      category: { id: 4, name: "Aksesoris" },
+      uom: { id: 9, abbreviation: "PCS" },
+      prices: {
+        sell_price: "175000",
+        cost_price: 125000
+      },
+      flags: {
+        is_active: false
+      }
+    });
+
+    expect(product.productId).toBe("88");
+    expect(product.sellingPrice).toBe(175000);
+    expect(product.costPrice).toBe(125000);
+    expect(product.isActive).toBe(false);
+    expect(product.unit).toBe("PCS");
+    expect(product.dataQualityWarnings).toEqual(expect.arrayContaining(["minimum stock"]));
+    expect(product.dataQualityWarnings).not.toEqual(expect.arrayContaining(["harga jual", "harga modal", "status aktif", "satuan"]));
+    warn.mockRestore();
+  });
+
+  it("reads latest ERP product stock summary and stock breakdown", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const product = toProduct({
+      id: 91,
+      sku: "ERP-91",
+      name: "Produk Summary ERP",
+      category: { id: 4, name: "Aksesoris" },
+      uom: { id: 9, abbreviation: "PCS" },
+      prices: { sell_price: 99000, cost_price: 70000 },
+      flags: { is_active: true },
+      stock_summary: {
+        qty_available: 0,
+        qty_reserved: 2,
+        free_qty: 0,
+        qty_on_hand: 2,
+        qty_min: 5,
+        warehouse_count: 2,
+        rak_count: 3,
+        is_low_stock: true
+      },
+      stock_breakdown: [{
+        id: 701,
+        product_id: 91,
+        product_sku: "ERP-91",
+        product_name: "Produk Summary ERP",
+        warehouse_name: "Gudang Utama",
+        rak_name: "Rak A",
+        qty_available: 0,
+        qty_reserved: 2,
+        free_qty: 0,
+        qty_on_hand: 2,
+        qty_min: 5,
+        is_low_stock: true,
+        ready: false,
+        uom: { abbreviation: "PCS" }
+      }]
+    });
+
+    expect(product.minimumStock).toBe(5);
+    expect(product.stockSummary).toMatchObject({
+      quantity: 0,
+      reservedQuantity: 2,
+      freeQuantity: 0,
+      onHandQuantity: 2,
+      minimumStock: 5,
+      warehouseCount: 2,
+      rackCount: 3,
+      isLowStock: true
+    });
+    expect(product.stockBreakdown?.[0]).toMatchObject({
+      productId: "91",
+      productCode: "ERP-91",
+      quantity: 0,
+      reservedQuantity: 2,
+      freeQuantity: 0,
+      onHandQuantity: 2,
+      minimumStock: 5,
+      warehouse: "Gudang Utama",
+      rack: "Rak A",
+      isLowStock: true,
+      ready: false
+    });
+    expect(product.dataQualityWarnings).toEqual([]);
+    warn.mockRestore();
+  });
+
   it("normalizes stock object fields and preserves nullable invalid numbers", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
@@ -133,6 +228,81 @@ describe("ERP product and stock mappers", () => {
     expect(stock.productCode).toBe("SKU-002");
     expect(stock.quantity).toBe(9);
     expect(stock.minimumStock).toBe(2);
+    expect(stock.dataQualityWarnings).toEqual([]);
+    warn.mockRestore();
+  });
+
+  it("reads live-like stock product id, nested product, current quantity, warehouse, and rack", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const stock = toStockItem({
+      id: 501,
+      product_id: 88,
+      product: { id: 88, sku: "ERP-88", name: "Produk Live ERP", uom: { abbreviation: "PCS" } },
+      warehouse: { id: 2, name: "Gudang Utama" },
+      rak: { id: 7, name: "Rak A1" },
+      current_qty: "14"
+    });
+
+    expect(stock).toMatchObject({
+      id: "501",
+      productId: "88",
+      productCode: "ERP-88",
+      productName: "Produk Live ERP",
+      warehouse: "Gudang Utama",
+      rack: "Rak A1",
+      quantity: 14,
+      unit: "PCS"
+    });
+    expect(stock.dataQualityWarnings).toEqual(expect.arrayContaining(["minimum stock"]));
+    expect(stock.dataQualityWarnings).not.toEqual(expect.arrayContaining(["quantity", "satuan", "gudang"]));
+    warn.mockRestore();
+  });
+
+  it("reads latest ERP StockResource fields and keeps zero quantities valid", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const stock = toStockItem({
+      id: 801,
+      product_id: 91,
+      product_sku: "ERP-91",
+      product_name: "Produk StockResource",
+      uom: { abbreviation: "PCS" },
+      warehouse_id: 3,
+      warehouse_code: "GDG",
+      warehouse_name: "Gudang Utama",
+      rak_id: 4,
+      rak_code: "A",
+      rak_name: "Rak A",
+      qty_available: 0,
+      qty_reserved: 1,
+      free_qty: 0,
+      qty_on_hand: 1,
+      qty_min: 5,
+      is_low_stock: true,
+      ready: false
+    });
+
+    expect(stock).toMatchObject({
+      id: "801",
+      productId: "91",
+      productCode: "ERP-91",
+      productName: "Produk StockResource",
+      warehouseId: "3",
+      warehouseCode: "GDG",
+      warehouse: "Gudang Utama",
+      rackId: "4",
+      rackCode: "A",
+      rack: "Rak A",
+      quantity: 0,
+      reservedQuantity: 1,
+      freeQuantity: 0,
+      onHandQuantity: 1,
+      minimumStock: 5,
+      isLowStock: true,
+      ready: false,
+      unit: "PCS"
+    });
     expect(stock.dataQualityWarnings).toEqual([]);
     warn.mockRestore();
   });

@@ -65,8 +65,8 @@ export async function checkStockMinimumAlert(input: Product | StockItem) {
     `Rak: ${alert.rackSnapshot || "-"}`
   ].join("\n");
   const recipients = (await listWhatsappRecipients()).filter((recipient) => recipient.isActive && recipient.receivesStockAlert);
-  const sends = await Promise.all(recipients.map((recipient) => sendWhatsappMessage(recipient, "stock_alert", message)));
-  const sent = sends.length > 0 && sends.every((send) => send.status === "sent");
+  const sends = await Promise.allSettled(recipients.map((recipient) => sendWhatsappMessage(recipient, "stock_alert", message)));
+  const sent = sends.length > 0 && sends.every((send) => send.status === "fulfilled" && send.value.status === "sent");
   alert = { ...alert, status: sent ? "sent" : "failed", sentAt: sent ? new Date().toISOString() : undefined };
   rows.unshift(alert);
   await writeJsonArray(fileName, rows);

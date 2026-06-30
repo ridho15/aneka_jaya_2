@@ -1,0 +1,41 @@
+openapi: 3.1.0
+paths:
+  /stock-adjustments:
+    post:
+      tags: [Inventory]
+      summary: Buat stock adjustment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAdjustmentStoreRequest"
+  /stocks:
+    get:
+      tags: [Inventory]
+      summary: Ambil posisi stok
+  /sales:
+    post:
+      tags: [Sales]
+      summary: Buat penjualan
+components:
+  schemas:
+    StockAdjustmentStoreRequest:
+      type: object
+      required: [warehouse_id, adjustment_type, reason, items]
+      properties:
+        warehouse_id: { type: integer }
+        adjustment_type:
+          type: string
+          enum: [increase, decrease]
+        reason: { type: string }
+        approve_now: { type: boolean }
+        items:
+          type: array
+          items:
+            type: object
+            required: [product_id, rak_id, difference_qty]
+            properties:
+              product_id: { type: integer }
+              rak_id: { type: integer }
+              difference_qty: { type: number }

@@ -39,6 +39,21 @@ export const rekeningUpdateSchema = z.object({
   tipeIds: z.array(z.string().trim().min(1).max(80)).optional()
 });
 
+const phoneRegex = /^\+?[0-9]{8,16}$/;
+
+export const whatsappRecipientCreateSchema = z.object({
+  name: cleanString(100),
+  phoneNumber: z.string().trim().regex(phoneRegex, "Nomor WhatsApp harus berupa angka 8-16 digit."),
+  isActive: z.boolean().optional(),
+  receivesDailyReport: z.boolean().optional(),
+  receivesStockAlert: z.boolean().optional(),
+  receivesTempoReminder: z.boolean().optional()
+});
+
+export const whatsappRecipientUpdateSchema = whatsappRecipientCreateSchema.partial().extend({
+  id: cleanString(80)
+});
+
 export function validationMessage(error: unknown, fallback: string) {
   if (error instanceof z.ZodError) return error.issues[0]?.message || fallback;
   return fallback;

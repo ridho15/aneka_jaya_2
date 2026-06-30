@@ -1,12 +1,22 @@
 export type StockItem = {
   id: string;
+  productId?: string;
   productCode: string;
   productName: string;
   warehouse: string | null;
+  warehouseId?: string;
+  warehouseCode?: string;
   quantity: number | null;
+  reservedQuantity?: number | null;
+  freeQuantity?: number | null;
+  onHandQuantity?: number | null;
   unit: string | null;
   minimumStock?: number | null;
   rack?: string;
+  rackId?: string;
+  rackCode?: string;
+  isLowStock?: boolean | null;
+  ready?: boolean | null;
   updatedAt?: string;
   dataQualityWarnings?: string[];
 };

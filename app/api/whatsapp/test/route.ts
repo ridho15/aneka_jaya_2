@@ -4,9 +4,13 @@ import { getCurrentRole } from "@/lib/auth/session";
 import { listWhatsappRecipients, sendWhatsappMessage } from "@/lib/whatsapp/whatsappClient";
 import { APP_BRAND_NAME } from "@/lib/appBrand";
 
-export async function POST() {
+export async function POST(request: Request) {
   if (!can(await getCurrentRole(), "settings.whatsapp.manage")) return NextResponse.json({ success: false, message: "Tidak punya akses WhatsApp settings." }, { status: 403 });
-  const recipient = (await listWhatsappRecipients()).find((row) => row.isActive);
+  const body = await request.json().catch(() => null) as { recipientId?: string } | null;
+  const recipients = await listWhatsappRecipients();
+  const recipient = body?.recipientId
+    ? recipients.find((row) => row.id === body.recipientId && row.isActive)
+    : recipients.find((row) => row.isActive);
   if (!recipient) return NextResponse.json({ success: false, message: "Recipient aktif belum ada." }, { status: 400 });
   try {
     const data = await sendWhatsappMessage(recipient, "test", `Test WhatsApp ${APP_BRAND_NAME}`);

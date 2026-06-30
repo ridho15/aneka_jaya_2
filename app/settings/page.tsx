@@ -5,7 +5,7 @@ import { RoleSelector } from "@/components/settings/RoleSelector";
 import { isDemoRoleSelectorEnabled } from "@/lib/auth/demoUi";
 import { getCurrentRole } from "@/lib/auth/session";
 import { can, roleLabel } from "@/lib/auth/roles";
-import { getWhatsappProvider } from "@/lib/whatsapp/whatsappClient";
+import { getWhatsappProviderStatus } from "@/lib/whatsapp/whatsappClient";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export default async function SettingsPage() {
   const role = await getCurrentRole();
   if (!can(role, "settings.view")) redirect("/no-access");
   const mode = process.env.NEXT_PUBLIC_APP_MODE === "production" ? "Produksi" : "Development";
-  const whatsappProvider = getWhatsappProvider();
+  const whatsappStatus = getWhatsappProviderStatus();
   const showRoleSelector = isDemoRoleSelectorEnabled();
   const cards = [
     can(role, "settings.tipe.manage") ? { href: "/settings/tipe", title: "Tipe Pembukuan", description: "Kelola tipe transaksi (AJ, W, Online, …)", tone: "emerald" } : null,
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
         <dl className="divide-y divide-slate-100 text-sm">
           <Row label="Mode aplikasi" value={mode} />
           <Row label="ERP API" value={process.env.ANIKA_ERP_API_BASE_URL ? "Dikonfigurasi di server" : "Belum dikonfigurasi"} />
-          <Row label="WhatsApp provider" value={whatsappProvider || "Belum dikonfigurasi"} />
+          <Row label="WhatsApp provider" value={whatsappStatus.provider || "Belum dikonfigurasi"} />
           <Row label="Peran aktif" value={roleLabel(role)} />
         </dl>
         <p className="mt-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Token ERP dan WhatsApp tidak pernah ditampilkan di halaman ini. Semua integrasi berjalan server-side.</p>

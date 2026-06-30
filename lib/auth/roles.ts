@@ -3,6 +3,7 @@ export type Role = (typeof ROLES)[number];
 
 export const ALL_PERMISSIONS = [
   "dashboard.view", "penjualan.create", "pengeluaran.view", "pengeluaran.create", "stock.create", "stock.view",
+  "penjualan.manage", "pengeluaran.manage", "stock.manage", "stock.adjust",
   "reports.view", "reports.finance_view", "settings.view", "settings.tipe.manage", "settings.rekening.manage",
   "settings.coa.manage", "settings.whatsapp.manage", "users.manage", "approval.view", "approval.approve",
   "tempo.view", "tempo.mark_paid", "tempo.cancel", "tempo.write_off", "audit.view", "erp_sync.retry", "rekening.reset",

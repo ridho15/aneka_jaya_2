@@ -8,6 +8,8 @@ export async function GET() {
   const role = await getCurrentRole();
   if (!can(role, "stock.view")) return NextResponse.json({ success: false, message: "Tidak punya akses Stock Barang." }, { status: 403 });
   const response = await listStocks();
-  if (response.success) await Promise.all(response.data.map((stock) => checkStockMinimumAlert(stock)));
+  if (response.success) {
+    await Promise.allSettled(response.data.map((stock) => checkStockMinimumAlert(stock)));
+  }
   return NextResponse.json(response, { status: response.success ? 200 : 502 });
 }

@@ -7,11 +7,12 @@ import type { Product, ProductListItem } from "@/lib/types/product";
 import type { BarangInput } from "@/lib/validation/barangSchema";
 import { recordAudit } from "@/lib/audit/store";
 import { toProduct, toProductListItem } from "@/lib/api/erpMappers";
+import { listErpPaginated } from "@/lib/api/pagination";
 
 export async function listProducts(): Promise<ApiResponse<Product[]>> {
-  const response = await anikaRequest<unknown>("/products");
-  if (!response.success) return response;
-  const rows = Array.isArray(response.data) ? response.data : (response.data as { data?: unknown[] }).data;
+  const response = await listErpPaginated("/products", { query: { include_stock: true } });
+  if (!response.success) return response.code === "ERP_SCHEMA" ? failure("Format data produk dari ERP tidak dikenali.", "ERP_SCHEMA") : response;
+  const rows = response.data;
   if (!Array.isArray(rows)) return failure("Format data produk dari ERP tidak dikenali.", "ERP_SCHEMA");
   return { success: true, data: rows.map((row) => toProduct(row as Record<string, unknown>)) };
 }
@@ -54,5 +55,30 @@ export async function updateProduct(id: string, input: BarangInput): Promise<Api
     body: JSON.stringify({ sku: input.code, name: input.name, product_category_id: current.data.productCategoryId, kode_merk: input.brand || current.data.brandCode, uom_id: current.data.uomId, cost_price: input.costPrice, sell_price: input.sellingPrice, description: input.notes || undefined, is_active: input.isActive })
   });
   if (response.success) await recordAudit({ entityType: "product", entityId: id, action: "update", beforeValue: current.data, afterValue: input, reason: "Master Barang • Terkirim" });
+  return response;
+}
+
+export async function deactivateProduct(id: string): Promise<ApiResponse<unknown>> {
+  const current = await getProduct(id);
+  if (!current.success) return current;
+  const input: BarangInput = {
+    code: current.data.code,
+    name: current.data.name,
+    category: current.data.category || "Lain - Lain",
+    unit: current.data.unit || "PCS",
+    sellingPrice: current.data.sellingPrice ?? 0,
+    costPrice: current.data.costPrice ?? 0,
+    brand: current.data.brand || current.data.brandCode || "UMUM",
+    initialStock: current.data.initialStock ?? 0,
+    minimumStock: current.data.minimumStock ?? 0,
+    warehouse: current.data.warehouse || "Toko",
+    rack: current.data.rack || "",
+    isActive: false,
+    notes: current.data.notes || ""
+  };
+  const response = await updateProduct(id, input);
+  if (response.success) {
+    await recordAudit({ entityType: "product", entityId: id, action: "update", beforeValue: current.data, afterValue: { ...current.data, isActive: false }, reason: "Master Barang • Nonaktifkan barang di ERP" });
+  }
   return response;
 }

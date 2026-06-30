@@ -1,5 +1,19 @@
+import type { StockItem } from "@/lib/types/stock";
+
+export type ProductStockSummary = {
+  quantity: number | null;
+  reservedQuantity: number | null;
+  freeQuantity: number | null;
+  onHandQuantity: number | null;
+  minimumStock: number | null;
+  warehouseCount: number | null;
+  rackCount: number | null;
+  isLowStock: boolean | null;
+};
+
 export type Product = {
   id: string;
+  productId?: string;
   code: string;
   name: string;
   category: string | null;
@@ -18,7 +32,9 @@ export type Product = {
   productCategoryId?: number;
   uomId?: number;
   brandCode?: string;
+  stockSummary?: ProductStockSummary;
+  stockBreakdown?: StockItem[];
   dataQualityWarnings?: string[];
 };
 
-export type ProductListItem = Pick<Product, "id" | "code" | "name" | "category" | "sellingPrice" | "minimumStock" | "isActive" | "updatedAt" | "dataQualityWarnings">;
+export type ProductListItem = Pick<Product, "id" | "productId" | "code" | "name" | "category" | "sellingPrice" | "minimumStock" | "isActive" | "updatedAt" | "stockSummary" | "stockBreakdown" | "dataQualityWarnings">;

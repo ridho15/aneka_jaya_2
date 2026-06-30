@@ -10,38 +10,63 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Toast } from "@/components/ui/Toast";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Product } from "@/lib/types/product";
+import type { StockItem } from "@/lib/types/stock";
+import type { Sale } from "@/lib/types/sales";
 import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
 import { APP_BRAND_NAME, EXTERNAL_ERP_NAME } from "@/lib/appBrand";
+import { useRouter } from "next/navigation";
 
 const draftKey = "aneka-jaya-draft-penjualan";
 const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
 const today = new Date().toISOString().slice(0, 10);
 
-type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; allowTestTransaction?: boolean; erpTypeCodes?: string[] };
+type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; allowTestTransaction?: boolean; erpTypeCodes?: string[]; sale?: Sale };
 type CreatedSale = { id: string; approvalStatus?: string; target?: "erp" | "local"; testReference?: string; erpReference?: string };
 type ProductState =
   | { status: "loading" }
   | { status: "ready" }
   | { status: "empty"; message: string }
   | { status: "error"; message: string; code?: string };
+type StockState =
+  | { status: "loading" }
+  | { status: "success"; updatedAt: string }
+  | { status: "failed"; message: string };
+type ProductOption = {
+  product: Product;
+  stockRows: StockItem[];
+  quantity: number | null;
+  minimumStock: number | null;
+  unit: string | null;
+  warehouses: string[];
+  warnings: string[];
+};
 
-export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, erpTypeCodes = ["AJ"] }: Props) {
+const normalizeCode = (value?: string | null) => String(value ?? "").trim().toLowerCase();
+
+export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, erpTypeCodes = ["AJ"], sale }: Props) {
+  const router = useRouter();
+  const isEdit = Boolean(sale);
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
-  const defaultTipe = activeTipes[0];
+  const defaultTipe = sale ? activeTipes.find((tipe) => tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot) || activeTipes[0] : activeTipes[0];
   const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
-  const defaultRekening = useMemo(() => defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined, [defaultTipe, rekeningForTipe]);
+  const defaultRekening = useMemo(() => sale?.rekeningId ? rekenings.find((rekening) => rekening.id === sale.rekeningId) : defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined, [defaultTipe, rekeningForTipe, rekenings, sale?.rekeningId]);
 
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string }>();
   const [createdSale, setCreatedSale] = useState<CreatedSale>();
   const [products, setProducts] = useState<Product[]>([]);
+  const [stocks, setStocks] = useState<StockItem[]>([]);
   const [productState, setProductState] = useState<ProductState>({ status: "loading" });
+  const [stockState, setStockState] = useState<StockState>({ status: "loading" });
   const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
-      saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "",
+      saleDate: sale?.saleDate || today, tipeId: sale?.tipeId || defaultTipe?.id || "", tipeCodeSnapshot: sale?.tipeCodeSnapshot || defaultTipe?.code || "", tipeNameSnapshot: sale?.tipeNameSnapshot || defaultTipe?.name || "",
       rekeningId: defaultRekening?.id || "", rekeningNameSnapshot: defaultRekening?.name || "",
-      customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash",
-      items: [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }]
+      customerName: sale?.customerName || "Walk In", customerLocation: sale?.customerLocation || "Toko", shippingMethod: sale?.shippingMethod || "di Tempat", paymentMethod: sale?.paymentMethod || "Cash",
+      dueDate: sale?.dueDate,
+      transferAccount: sale?.transferAccount,
+      notes: sale?.notes,
+      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, quantity: item.quantity, unitPrice: item.unitPrice, discount: item.discount || 0 })) : [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }]
     }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -55,6 +80,9 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const discountTotal = values.reduce((sum, item) => sum + Number(item.discount || 0), 0);
   const filteredRekenings = useMemo(() => rekeningForTipe(tipeId), [rekeningForTipe, tipeId]);
   const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || filteredRekenings.length > 0);
+  const productOptions = useMemo(() => buildProductOptions(products, stocks), [products, stocks]);
+  const productCodes = useMemo(() => new Set(productOptions.map((option) => normalizeCode(option.product.code))), [productOptions]);
+  const selectedProductsReady = values.length > 0 && values.every((item) => productCodes.has(normalizeCode(item.productRef)));
   const dependenciesReady = productState.status === "ready" && masterDataReady;
 
   const addItem = () => {
@@ -65,20 +93,36 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
 
   const refreshProducts = useCallback(async () => {
     setProductState({ status: "loading" });
+    setStockState({ status: "loading" });
     try {
-      const response = await fetch("/api/products", { cache: "no-store" });
-      const result = await response.json().catch(() => null);
-      if (!response.ok || !result?.success) {
+      const [productResponse, stockResponse] = await Promise.all([
+        fetch("/api/products", { cache: "no-store" }),
+        fetch("/api/stocks", { cache: "no-store" })
+      ]);
+      const productResult = await productResponse.json().catch(() => null);
+      if (!productResponse.ok || !productResult?.success) {
         setProducts([]);
-        setProductState({ status: "error", message: result?.message || "Produk ERP gagal dimuat.", code: result?.code });
+        setStocks([]);
+        setProductState({ status: "error", message: productResult?.message || "Produk ERP gagal dimuat.", code: productResult?.code });
+        setStockState({ status: "failed", message: "Stok ERP tidak berhasil dimuat karena daftar barang belum siap." });
         return;
       }
-      const rows = Array.isArray(result.data) ? result.data : [];
+      const rows = Array.isArray(productResult.data) ? productResult.data : [];
       setProducts(rows);
       setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP belum memiliki produk aktif untuk dipilih." });
+      const stockResult = await stockResponse.json().catch(() => null);
+      if (stockResponse.ok && stockResult?.success && Array.isArray(stockResult.data)) {
+        setStocks(stockResult.data);
+        setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
+      } else {
+        setStocks([]);
+        setStockState({ status: "failed", message: stockResult?.message || "Stok ERP tidak berhasil dimuat. Pilih barang tanpa memakai angka stok palsu." });
+      }
     } catch {
       setProducts([]);
+      setStocks([]);
       setProductState({ status: "error", message: "Koneksi ke layanan produk bermasalah." });
+      setStockState({ status: "failed", message: "Koneksi ke layanan stok bermasalah." });
     }
   }, []);
 
@@ -87,12 +131,13 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   }, [refreshProducts]);
 
   useEffect(() => {
+    if (isEdit) return;
     const saved = localStorage.getItem(draftKey);
     if (saved) {
       try { reset(JSON.parse(saved)); setNotice({ type: "error", message: "Draf yang belum terkirim telah dipulihkan." }); }
       catch { localStorage.removeItem(draftKey); }
     }
-  }, [reset]);
+  }, [isEdit, reset]);
 
   useEffect(() => {
     const tipe = activeTipes.find((t) => t.id === tipeId) ?? activeTipes[0];
@@ -112,11 +157,20 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       setNotice({ type: "error", message: "Form belum siap. Pastikan produk, tipe pembukuan, dan rekening telah tersedia." });
       return;
     }
-    const response = await fetch("/api/sales", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    if (!selectedProductsReady) {
+      setNotice({ type: "error", message: "Pilih barang dari daftar ERP. Barang tidak boleh diketik bebas." });
+      return;
+    }
+    const response = await fetch(isEdit && sale ? `/api/sales/${encodeURIComponent(sale.id)}` : "/api/sales", { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
     const result = await response.json();
     if (!response.ok || !result.success) {
-      localStorage.setItem(draftKey, JSON.stringify(data));
-      setNotice({ type: "error", message: result.message || "Data gagal dikirim ke ERP. Draf disimpan di perangkat ini." });
+      if (!isEdit) localStorage.setItem(draftKey, JSON.stringify(data));
+      setNotice({ type: "error", message: result.message || (isEdit ? "Data gagal diperbarui." : "Data gagal dikirim ke ERP. Draf disimpan di perangkat ini.") });
+      return;
+    }
+    if (isEdit) {
+      setNotice({ type: "success", message: "Transaksi penjualan berhasil diperbarui." });
+      setTimeout(() => router.push("/penjualan"), 700);
       return;
     }
     localStorage.removeItem(draftKey);
@@ -207,20 +261,40 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
               <Button type="button" variant="secondary" onClick={addItem} disabled={productState.status !== "ready"}>+ Tambah barang</Button>
             </div>
             <ProductDependencyState state={productState} onRetry={refreshProducts} />
+            <StockDependencyState state={stockState} />
             <div className="hidden grid-cols-[minmax(0,2fr)_78px_120px_100px_120px] gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 md:grid sm:px-6"><span>Barang</span><span>Qty</span><span>Harga satuan</span><span>Diskon</span><span>Subtotal</span></div>
             <div className="divide-y divide-neutral-200">
-              {fields.map((field, index) => (
+              {fields.map((field, index) => {
+                const selected = productOptions.find((option) => normalizeCode(option.product.code) === normalizeCode(values[index]?.productRef));
+                const quantity = Number(values[index]?.quantity || 0);
+                const stockExceeded = selected?.quantity !== null && selected?.quantity !== undefined && quantity > selected.quantity;
+                return (
                 <div id={`sale-item-${index}`} key={field.id} className="scroll-mt-24 p-5 sm:p-6">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
-                    <Field label="Barang" error={errors.items?.[index]?.productRef?.message}><Input list="erp-products" placeholder="Kode / nama barang" disabled={productState.status !== "ready"} {...register(`items.${index}.productRef`)} /></Field>
+                    <Field label="Barang" error={errors.items?.[index]?.productRef?.message}>
+                      <ProductSearchSelect
+                        name={`items.${index}.productRef`}
+                        value={values[index]?.productRef || ""}
+                        disabled={productState.status !== "ready"}
+                        options={productOptions}
+                        onSelect={(option) => {
+                          setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
+                          if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
+                            setValue(`items.${index}.unitPrice`, option.product.sellingPrice, { shouldDirty: true, shouldValidate: true });
+                          }
+                        }}
+                        onInvalidInput={(value) => setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true })}
+                      />
+                    </Field>
                     <Field label="Qty" error={errors.items?.[index]?.quantity?.message}><Input type="number" min="1" step="1" {...register(`items.${index}.quantity`, { valueAsNumber: true })} /></Field>
                     <Field label="Harga" error={errors.items?.[index]?.unitPrice?.message}><Input type="number" min="0" {...register(`items.${index}.unitPrice`, { valueAsNumber: true })} /></Field>
                     <Field label="Diskon"><Input type="number" min="0" {...register(`items.${index}.discount`, { valueAsNumber: true })} /></Field>
                     <div><p className="mb-1 text-sm font-medium text-slate-700">Subtotal</p><p className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold">{rupiah(Number(values[index]?.quantity || 0) * Number(values[index]?.unitPrice || 0) - Number(values[index]?.discount || 0))}</p></div>
                   </div>
+                  <ProductSelectionInfo option={selected} stockExceeded={stockExceeded} stockState={stockState} />
                   {fields.length > 1 && <button type="button" onClick={() => remove(index)} className="mt-3 text-xs font-semibold text-red-600">Hapus barang</button>}
                 </div>
-              ))}
+              );})}
             </div>
             {errors.items?.root?.message && <p className="px-5 py-3 text-sm text-red-600">{errors.items.root.message}</p>}
           </section>
@@ -233,15 +307,31 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
               <div className="flex justify-between"><dt className="text-neutral-500">Diskon</dt><dd>{rupiah(discountTotal)}</dd></div>
               <div className="border-t border-neutral-300 pt-4"><dt className="text-sm font-semibold">Total</dt><dd className="mt-1 text-3xl font-bold tracking-tight">{rupiah(total)}</dd></div>
             </dl>
-            <Button type="submit" className="mt-6 w-full" disabled={isSubmitting || !dependenciesReady}>{isSubmitting ? "Menyimpan..." : "Simpan Penjualan"}</Button>
+            <Button type="submit" className="mt-6 w-full" disabled={isSubmitting || !dependenciesReady || !selectedProductsReady}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penjualan"}</Button>
             {!dependenciesReady && <p className="mt-2 text-center text-xs text-slate-500">Lengkapi konfigurasi master data dan pastikan produk ERP berhasil dimuat.</p>}
+            {dependenciesReady && !selectedProductsReady && <p className="mt-2 text-center text-xs text-slate-500">Pilih barang dari dropdown ERP untuk melanjutkan.</p>}
           </section>
         </aside>
       </div>
-      <datalist id="erp-products">{products.map((product) => <option key={product.id} value={product.code}>{product.name}</option>)}</datalist>
       <p className="flex items-center gap-2 text-xs text-neutral-500"><span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-400 text-[10px]">i</span> Data barang ditarik langsung dari ERP saat halaman dibuka. Pastikan data penjualan sudah benar sebelum disimpan.</p>
     </form>
   );
+}
+
+export function buildProductOptions(products: Product[], stocks: StockItem[]): ProductOption[] {
+  return products.map((product) => {
+    const stockRows = stocks.filter((stock) => normalizeCode(stock.productCode) === normalizeCode(product.code));
+    const validQuantities = stockRows.map((stock) => stock.quantity).filter((quantity): quantity is number => typeof quantity === "number" && Number.isFinite(quantity));
+    const quantity = stockRows.length > 0 && validQuantities.length === stockRows.length ? validQuantities.reduce((sum, value) => sum + value, 0) : null;
+    const stockMinimum = stockRows.find((stock) => stock.minimumStock !== null && stock.minimumStock !== undefined)?.minimumStock ?? null;
+    const unit = product.unit ?? stockRows.find((stock) => stock.unit)?.unit ?? null;
+    const warehouses = Array.from(new Set(stockRows.map((stock) => stock.warehouse).filter((warehouse): warehouse is string => Boolean(warehouse))));
+    const warnings = [...(product.dataQualityWarnings ?? []), ...stockRows.flatMap((stock) => stock.dataQualityWarnings ?? [])];
+    if (stockRows.length === 0) warnings.push("stok ERP");
+    if (quantity === null) warnings.push("qty ERP");
+    if (product.sellingPrice === null) warnings.push("harga jual");
+    return { product, stockRows, quantity, minimumStock: product.minimumStock ?? stockMinimum, unit, warehouses, warnings: Array.from(new Set(warnings)) };
+  });
 }
 
 function DependencyNotice({ message }: { message: string }) {
@@ -257,6 +347,120 @@ function ProductDependencyState({ state, onRetry }: { state: ProductState; onRet
       <Button type="button" variant="secondary" onClick={() => void onRetry()}>Muat ulang</Button>
     </div>
   );
+}
+
+function StockDependencyState({ state }: { state: StockState }) {
+  if (state.status === "loading") return <p className="border-b border-neutral-100 bg-neutral-50 px-5 py-2 text-xs text-neutral-600 sm:px-6">Memuat stok ERP...</p>;
+  if (state.status === "success") return <p className="border-b border-blue-100 bg-blue-50 px-5 py-2 text-xs text-blue-800 sm:px-6">Stok ERP berhasil dimuat · terakhir {state.updatedAt}</p>;
+  return <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 sm:px-6">{state.message}</p>;
+}
+
+function ProductSearchSelect({ name, value, options, disabled, onSelect, onInvalidInput }: {
+  name: string;
+  value: string;
+  options: ProductOption[];
+  disabled?: boolean;
+  onSelect: (option: ProductOption) => void;
+  onInvalidInput: (value: string) => void;
+}) {
+  const selected = options.find((option) => normalizeCode(option.product.code) === normalizeCode(value));
+  const [query, setQuery] = useState(selected ? optionLabel(selected) : value);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const rows = normalized ? options.filter((option) => `${option.product.code} ${option.product.name}`.toLowerCase().includes(normalized)) : options;
+    return rows.slice(0, 12);
+  }, [options, query]);
+
+  const choose = (option: ProductOption) => {
+    setQuery(optionLabel(option));
+    setOpen(false);
+    onSelect(option);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        name={name}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={`${name}-options`}
+        aria-autocomplete="list"
+        autoComplete="off"
+        disabled={disabled}
+        value={query}
+        placeholder="Cari kode / nama barang ERP"
+        className="block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 disabled:bg-neutral-100"
+        onFocus={() => setOpen(true)}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setActiveIndex(0);
+          setOpen(true);
+          onInvalidInput(event.target.value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setOpen(true);
+            setActiveIndex((current) => Math.min(current + 1, Math.max(0, filtered.length - 1)));
+          }
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActiveIndex((current) => Math.max(0, current - 1));
+          }
+          if (event.key === "Enter" && open && filtered[activeIndex]) {
+            event.preventDefault();
+            choose(filtered[activeIndex]);
+          }
+        }}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+      />
+      {open && !disabled && (
+        <div id={`${name}-options`} role="listbox" className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-xl">
+          {filtered.map((option, index) => (
+            <button
+              key={option.product.id || option.product.code}
+              type="button"
+              role="option"
+              aria-selected={normalizeCode(option.product.code) === normalizeCode(value)}
+              className={`w-full rounded-lg px-3 py-2 text-left transition ${index === activeIndex ? "bg-emerald-50" : "hover:bg-neutral-50"}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose(option)}
+            >
+              <span className="block font-bold text-slate-900">{option.product.code} · {option.product.name}</span>
+              <span className="mt-0.5 block text-xs text-slate-600">Stok {formatNumber(option.quantity)} {option.unit ?? ""} · {option.warehouses.length ? option.warehouses.join(", ") : "Gudang —"} · Harga {rupiah(option.product.sellingPrice ?? 0)}</span>
+            </button>
+          ))}
+          {filtered.length === 0 && <p className="px-3 py-4 text-center text-sm text-slate-500">Barang ERP tidak ditemukan.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductSelectionInfo({ option, stockExceeded, stockState }: { option?: ProductOption; stockExceeded: boolean; stockState: StockState }) {
+  if (!option) return <p className="mt-2 text-xs text-amber-700">Pilih barang dari dropdown ERP. Input bebas tidak dapat disimpan.</p>;
+  return (
+    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1">Stok ERP: <b>{formatNumber(option.quantity)}</b>{option.unit ? ` ${option.unit}` : ""}</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1">Gudang: <b>{option.warehouses.length ? option.warehouses.join(", ") : "—"}</b></span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1">Minimum: <b>{formatNumber(option.minimumStock)}</b></span>
+      {stockExceeded && <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">Qty melebihi stok ERP</span>}
+      {stockState.status === "failed" && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Stok tidak terverifikasi</span>}
+      {option.warnings.length > 0 && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Data ERP tidak lengkap</span>}
+    </div>
+  );
+}
+
+function optionLabel(option: ProductOption) {
+  return `${option.product.code} — ${option.product.name}`;
+}
+
+function formatNumber(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return value.toLocaleString("id-ID");
 }
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {

@@ -21,7 +21,7 @@ export default defineConfig({
     trace: "retain-on-failure"
   },
   webServer: {
-    command: `env NEXT_PUBLIC_APP_MODE=development AUTH_PROVIDER=local_credentials AUTH_SESSION_SECRET=${visualSessionSecret} AUTH_LOCAL_CREDENTIALS_ALLOW_VISUAL_FALLBACK=true AUTH_ENABLE_DEMO_ROLE_SELECTOR=false APP_DEFAULT_ROLE=VIEWER npm run start -- -p 3010`,
+    command: `npm run build && env NEXT_PUBLIC_APP_MODE=development AUTH_PROVIDER=local_credentials AUTH_SESSION_SECRET=${visualSessionSecret} AUTH_LOCAL_CREDENTIALS_ALLOW_VISUAL_FALLBACK=true AUTH_ENABLE_DEMO_ROLE_SELECTOR=false APP_DEFAULT_ROLE=VIEWER npm run start -- -p 3010`,
     url: "http://127.0.0.1:3010",
     reuseExistingServer: false,
     timeout: 30_000

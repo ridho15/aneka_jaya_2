@@ -11,6 +11,16 @@ describe("Super Admin permission contract", () => {
     for (const permission of ALL_PERMISSIONS) expect(can("OWNER", permission)).toBe(true);
   });
 
+  it("keeps new transaction and stock management permissions Super Admin only", () => {
+    for (const permission of ["penjualan.manage", "pengeluaran.manage", "stock.manage", "stock.adjust"] as const) {
+      expect(can("OWNER", permission)).toBe(true);
+      expect(can("ADMIN", permission)).toBe(false);
+      expect(can("FINANCE", permission)).toBe(false);
+      expect(can("MANAGER", permission)).toBe(false);
+      expect(can("VIEWER", permission)).toBe(false);
+    }
+  });
+
   it("grants read-only expense and master data permissions to operational roles", () => {
     for (const role of ["ADMIN", "FINANCE", "MANAGER"] as const) {
       expect(can(role, "pengeluaran.view")).toBe(true);

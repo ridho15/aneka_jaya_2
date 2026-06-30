@@ -13,14 +13,22 @@ export type WhatsAppRecipient = {
   updatedAt: string;
 };
 
+export type WhatsAppRecipientInput = {
+  name: string;
+  phoneNumber: string;
+  isActive?: boolean;
+  receivesDailyReport?: boolean;
+  receivesStockAlert?: boolean;
+  receivesTempoReminder?: boolean;
+};
+
 export type WhatsAppMessageLog = {
   id: string;
   reportType: WhatsAppReportType;
-  recipientId: string;
+  recipientId?: string;
   recipientNameSnapshot: string;
-  phoneNumberSnapshot: string;
-  messageBody: string;
-  provider: WhatsAppProviderName;
+  phoneMaskedSnapshot: string;
+  provider: WhatsAppProviderName | "not_configured";
   status: "pending" | "sent" | "failed";
   providerMessageId?: string;
   errorMessage?: string;
@@ -38,4 +46,12 @@ export type WhatsAppSendResult = {
   provider: WhatsAppProviderName;
   providerMessageId?: string;
   errorMessage?: string;
+};
+
+export type WhatsAppProviderStatus = {
+  provider: WhatsAppProviderName | null;
+  ready: boolean;
+  label: string;
+  message: string;
+  missing: string[];
 };

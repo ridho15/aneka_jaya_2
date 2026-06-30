@@ -128,6 +128,61 @@ components:
           type: string
         notes:
           type: string
+    CancelInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 3
+    StockAdjustmentInput:
+      type: object
+      required: [warehouseId, adjustmentType, reason, items]
+      properties:
+        adjustmentNumber:
+          type: string
+        adjustmentDate:
+          type: string
+          format: date
+        warehouseId:
+          type: integer
+        adjustmentType:
+          type: string
+          enum: [increase, decrease]
+        reason:
+          type: string
+        notes:
+          type: string
+        createdBy:
+          type: integer
+        approvedBy:
+          type: integer
+        approveNow:
+          type: boolean
+          default: true
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, rakId, differenceQty]
+            properties:
+              productId:
+                type: integer
+              rakId:
+                type: integer
+              currentQty:
+                type: number
+              adjustedQty:
+                type: number
+              differenceQty:
+                type: number
+              unitCost:
+                type: number
+              differenceValue:
+                type: number
+              notes:
+                type: string
     ProductInput:
       type: object
       required: [code, name, category, unit, sellingPrice, costPrice]
@@ -258,6 +313,25 @@ components:
           type: string
           format: password
           description: Wajib saat create user; opsional saat update untuk reset password.
+    WhatsAppRecipientInput:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Wajib untuk update.
+        name:
+          type: string
+        phoneNumber:
+          type: string
+          description: Nomor WhatsApp format internasional, misalnya 62812...
+        isActive:
+          type: boolean
+        receivesDailyReport:
+          type: boolean
+        receivesStockAlert:
+          type: boolean
+        receivesTempoReminder:
+          type: boolean
   responses:
     BadRequest:
       description: Request tidak valid.
@@ -339,6 +413,67 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "502":
           $ref: "#/components/responses/BadGateway"
+  /api/sales/{id}:
+    put:
+      summary: Update transaksi penjualan aman.
+      description: Permission penjualan.manage. Transaksi AJ yang sudah synced ke ERP ditolak sampai tersedia mekanisme koreksi resmi.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleInput"
+      responses:
+        "200":
+          description: Penjualan diperbarui.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/{id}/cancel:
+    post:
+      summary: Cancel transaksi penjualan.
+      description: Permission penjualan.manage. Cancel adalah void/soft delete dengan alasan, bukan hard delete.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelInput"
+      responses:
+        "200":
+          description: Penjualan dibatalkan.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/{id}/erp-correction:
+    post:
+      summary: Guard koreksi ERP penjualan.
+      description: Permission penjualan.manage. Saat ini selalu mengembalikan 501 ERP_CONTRACT_PENDING sampai kontrak resmi ERP untuk koreksi/cancel invoice tersedia.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "501":
+          description: Kontrak ERP belum tersedia.
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/expenses:
     post:
       summary: Membuat transaksi pengeluaran.
@@ -358,6 +493,67 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "502":
           $ref: "#/components/responses/BadGateway"
+  /api/expenses/{id}:
+    put:
+      summary: Update pengeluaran aman.
+      description: Permission pengeluaran.manage. Pengeluaran AJ yang sudah synced ke ERP ditolak sampai tersedia mekanisme koreksi resmi.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "200":
+          description: Pengeluaran diperbarui.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/expenses/{id}/cancel:
+    post:
+      summary: Cancel pengeluaran.
+      description: Permission pengeluaran.manage. Cancel adalah void/soft delete dengan alasan, bukan hard delete.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelInput"
+      responses:
+        "200":
+          description: Pengeluaran dibatalkan.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/expenses/{id}/erp-correction:
+    post:
+      summary: Guard koreksi ERP pengeluaran.
+      description: Permission pengeluaran.manage. Saat ini selalu mengembalikan 501 ERP_CONTRACT_PENDING sampai kontrak resmi ERP untuk koreksi/cancel Kas & Bank tersedia.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "501":
+          description: Kontrak ERP belum tersedia.
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/products:
     get:
       summary: Daftar produk.
@@ -382,7 +578,7 @@ paths:
           $ref: "#/components/responses/BadGateway"
     post:
       summary: Membuat produk.
-      description: Permission stock.create.
+      description: Permission stock.manage.
       requestBody:
         required: true
         content:
@@ -414,7 +610,7 @@ paths:
           $ref: "#/components/responses/NotFound"
     put:
       summary: Update produk.
-      description: Permission stock.create.
+      description: Permission stock.manage.
       parameters:
         - name: id
           in: path
@@ -432,6 +628,22 @@ paths:
           description: Produk diupdate.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+    delete:
+      summary: Nonaktifkan produk.
+      description: Permission stock.manage. Delete bersifat soft delete/deactivate ke ERP, bukan hard delete.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Produk dinonaktifkan.
         "403":
           $ref: "#/components/responses/Forbidden"
         "502":
@@ -454,6 +666,25 @@ paths:
                         type: array
                         items:
                           $ref: "#/components/schemas/StockItem"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+  /api/stocks/adjust:
+    post:
+      summary: Membuat stock adjustment ERP.
+      description: Permission stock.adjust. Proxy server-side ke endpoint resmi ERP POST /stock-adjustments; tidak menyimpan qty stok lokal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAdjustmentInput"
+      responses:
+        "201":
+          description: Stock adjustment dibuat di ERP.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
         "502":
@@ -738,6 +969,15 @@ paths:
     post:
       summary: Mengirim pesan WhatsApp test.
       description: Permission settings.whatsapp.manage.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipientId:
+                  type: string
       responses:
         "200":
           description: Pesan test dikirim.
@@ -745,6 +985,41 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/whatsapp/recipients:
+    post:
+      summary: Membuat recipient WhatsApp.
+      description: Permission settings.whatsapp.manage. Token provider tetap server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsAppRecipientInput"
+      responses:
+        "200":
+          description: Recipient dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      summary: Update atau nonaktifkan recipient WhatsApp.
+      description: Permission settings.whatsapp.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsAppRecipientInput"
+      responses:
+        "200":
+          description: Recipient diupdate.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/jobs/send-daily-report:
     post:
       summary: Cron kirim laporan harian WhatsApp.

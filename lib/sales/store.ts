@@ -4,6 +4,8 @@ import type { Sale } from "@/lib/types/sales";
 import { prisma } from "@/lib/db/prisma";
 import type { Role } from "@/lib/auth/roles";
 import type { Prisma } from "@prisma/client";
+import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
+import { recordAudit } from "@/lib/audit/store";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -127,4 +129,101 @@ export async function updateSalesApprovalStatus(id: string, approvalStatus: Sale
   rows[index] = { ...rows[index], approvalStatus };
   await writeJsonArray(fileName, rows);
   return rows[index];
+}
+
+function assertSaleManageable(sale: Sale) {
+  if (sale.approvalStatus === "cancelled") throw new Error("Transaksi sudah dibatalkan.");
+  if (sale.syncTarget === "erp" && sale.syncStatus === "synced") {
+    throw new Error("Transaksi AJ yang sudah tersinkron ERP tidak bisa diubah langsung. Buat koreksi melalui ERP atau mekanisme koreksi resmi.");
+  }
+}
+
+function saleTotal(input: Pick<Sale, "items">) {
+  return input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
+}
+
+export async function updateSalesRecord(id: string, input: PenjualanInput): Promise<Sale> {
+  const before = await getSalesRecord(id);
+  if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
+  assertSaleManageable(before);
+  const total = saleTotal(input);
+  const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
+  if (isProductionMode()) {
+    const row = await prisma.$transaction(async (tx) => {
+      await tx.salesRecordItem.deleteMany({ where: { salesRecordId: id } });
+      return tx.salesRecord.update({
+        where: { id },
+        data: {
+          saleDate: new Date(input.saleDate),
+          tipeId: input.tipeId || before.tipeId || "W",
+          tipeCodeSnapshot: input.tipeCodeSnapshot || before.tipeCodeSnapshot || "W",
+          tipeNameSnapshot: input.tipeNameSnapshot || before.tipeNameSnapshot || "W",
+          customerName: input.customerName,
+          customerLocation: input.customerLocation,
+          shippingMethod: input.shippingMethod,
+          paymentMethod: input.paymentMethod,
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+          rekeningId: input.rekeningId,
+          transferAccount: input.transferAccount,
+          notes: input.notes,
+          total,
+          syncStatus: nextSyncStatus,
+          syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : null,
+          syncedAt: before.syncTarget === "erp" ? null : before.syncedAt ? new Date(before.syncedAt) : null,
+          items: {
+            create: input.items.map((item, index) => ({
+              id: `${id}-item-${Date.now()}-${index}`,
+              productRef: item.productRef,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              discount: item.discount || 0,
+              sortOrder: index
+            }))
+          }
+        },
+        include: salesInclude
+      });
+    });
+    const after = toSale(row);
+    await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
+    return after;
+  }
+  const rows = await readJsonArray<Sale>(fileName);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) throw new Error("Transaksi penjualan tidak ditemukan.");
+  const after: Sale = { ...before, ...input, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined };
+  rows[index] = after;
+  await writeJsonArray(fileName, rows);
+  await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
+  return after;
+}
+
+export async function cancelSalesRecord(id: string, reason: string): Promise<Sale> {
+  const cleanReason = reason.trim();
+  if (!cleanReason) throw new Error("Alasan cancel wajib diisi.");
+  const before = await getSalesRecord(id);
+  if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
+  assertSaleManageable(before);
+  if (isProductionMode()) {
+    const row = await prisma.salesRecord.update({
+      where: { id },
+      data: {
+        approvalStatus: "cancelled",
+        syncStatus: before.syncTarget === "erp" ? "failed" : before.syncStatus || "local",
+        syncError: before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError
+      },
+      include: salesInclude
+    });
+    const after = toSale(row);
+    await recordAudit({ entityType: "sales", entityId: id, action: "cancel", beforeValue: before, afterValue: after, reason: cleanReason });
+    return after;
+  }
+  const rows = await readJsonArray<Sale>(fileName);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index < 0) throw new Error("Transaksi penjualan tidak ditemukan.");
+  const after: Sale = { ...before, approvalStatus: "cancelled", syncStatus: before.syncTarget === "erp" ? "failed" : before.syncStatus, syncError: before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError };
+  rows[index] = after;
+  await writeJsonArray(fileName, rows);
+  await recordAudit({ entityType: "sales", entityId: id, action: "cancel", beforeValue: before, afterValue: after, reason: cleanReason });
+  return after;
 }

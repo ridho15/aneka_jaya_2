@@ -10,14 +10,18 @@ import { FileUpload } from "@/components/ui/FileUpload";
 import { Toast } from "@/components/ui/Toast";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
+import type { Expense } from "@/lib/types/expenses";
+import { useRouter } from "next/navigation";
 
 const today = new Date().toISOString().slice(0, 10);
 
-type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[] };
+type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; expense?: Expense };
 
-export function PengeluaranForm({ tipes, rekenings }: Props) {
+export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
+  const router = useRouter();
+  const isEdit = Boolean(expense);
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
-  const defaultTipe = useMemo(() => activeTipes[0] ?? { id: "W", code: "W", name: "W", isActive: true, sortOrder: 1 }, [activeTipes]);
+  const defaultTipe = useMemo(() => expense ? activeTipes.find((tipe) => tipe.id === expense.tipeId || tipe.code === expense.tipeCodeSnapshot) || activeTipes[0] || { id: expense.tipeId || "W", code: expense.tipeCodeSnapshot || "W", name: expense.tipeNameSnapshot || "W", isActive: true, sortOrder: 1 } : activeTipes[0] ?? { id: "W", code: "W", name: "W", isActive: true, sortOrder: 1 }, [activeTipes, expense]);
   const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
   const defaultRekening = useMemo(() => rekeningForTipe(defaultTipe.id)[0], [defaultTipe.id, rekeningForTipe]);
 
@@ -28,9 +32,9 @@ export function PengeluaranForm({ tipes, rekenings }: Props) {
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<PengeluaranInput>({
     resolver: zodResolver(pengeluaranSchema),
     defaultValues: {
-      expenseDate: today, tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name,
-      rekeningId: defaultRekening?.id || "", rekeningNameSnapshot: defaultRekening?.name || "",
-      coaId: "Kas", coaNameSnapshot: "Kas", amount: 0, attachmentUrl: ""
+      expenseDate: expense?.expenseDate || today, tipeId: expense?.tipeId || defaultTipe.id, tipeCodeSnapshot: expense?.tipeCodeSnapshot || defaultTipe.code, tipeNameSnapshot: expense?.tipeNameSnapshot || defaultTipe.name,
+      rekeningId: expense?.rekeningId || defaultRekening?.id || "", rekeningNameSnapshot: expense?.rekeningNameSnapshot || defaultRekening?.name || "",
+      coaId: expense?.coaId || "Kas", coaNameSnapshot: expense?.coaNameSnapshot || "Kas", category: expense?.category || "", vendorName: expense?.vendorName || "", description: expense?.description || "", amount: expense?.amount || 0, paymentMethod: expense?.paymentMethod || "", attachmentUrl: expense?.attachmentUrl || "", notes: expense?.notes || ""
     }
   });
 
@@ -57,9 +61,14 @@ export function PengeluaranForm({ tipes, rekenings }: Props) {
       if (!upload.ok || !uploadResult.success) { setNotice({ type: "error", message: uploadResult.message || "Bukti pembayaran gagal diunggah." }); return; }
       attachmentUrl = uploadResult.data.url;
     }
-    const response = await fetch("/api/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, attachmentUrl }) });
+    const response = await fetch(isEdit && expense ? `/api/expenses/${encodeURIComponent(expense.id)}` : "/api/expenses", { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, attachmentUrl }) });
     const result = await response.json();
     if (!response.ok || !result.success) { setNotice({ type: "error", message: result.message || "Data gagal dikirim ke ERP." }); return; }
+    if (isEdit) {
+      setNotice({ type: "success", message: "Data pengeluaran berhasil diperbarui." });
+      setTimeout(() => router.push("/pengeluaran"), 700);
+      return;
+    }
     const defaultRek = rekeningForTipe(defaultTipe.id)[0];
     reset({ expenseDate: today, tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name, rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", coaId: "Kas", coaNameSnapshot: "Kas", amount: 0, attachmentUrl: "" });
     setFile(undefined);
@@ -101,7 +110,7 @@ export function PengeluaranForm({ tipes, rekenings }: Props) {
           <div className="md:col-span-2"><Field label="Catatan"><Textarea rows={2} placeholder="Opsional" {...register("notes")} /></Field></div>
         </div>
       </section>
-      <div className="flex justify-end"><Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan Pengeluaran"}</Button></div>
+      <div className="flex justify-end"><Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Pengeluaran"}</Button></div>
     </form>
   );
 }

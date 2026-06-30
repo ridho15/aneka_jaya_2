@@ -12,7 +12,7 @@ export async function GET() {
   return NextResponse.json(response, { status: response.success ? 200 : productErrorStatus(response.code) });
 }
 export async function POST(request: Request) {
-  if (!can(await getCurrentRole(), "stock.create")) return NextResponse.json({ success: false, message: "Tidak punya akses Input Stock Barang." }, { status: 403 });
+  if (!can(await getCurrentRole(), "stock.manage")) return NextResponse.json({ success: false, message: "Tidak punya akses Input Stock Barang." }, { status: 403 });
   const parsed = barangSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: "Mohon lengkapi data yang wajib diisi.", code: "VALIDATION", details: parsed.error.flatten() }, { status: 400 });
   const response = await createProduct(parsed.data);
