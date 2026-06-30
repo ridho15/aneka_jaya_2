@@ -55,7 +55,7 @@ const row = {
 describe("ERP sync retry service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("ANIKA_ERP_FALLBACK_CUSTOMER_CODE", "");
+    vi.stubEnv("ANIKA_ERP_AUTO_CREATE_CUSTOMER", "false");
     mocks.listErpPaginated.mockResolvedValue({ success: true, data: [{ id: 77, name: "Budi", code: "BUDI" }] });
     mocks.listProducts.mockResolvedValue({ success: true, data: [{ id: "88", productId: "88", code: "P-1", name: "Produk 1" }] });
     mocks.anikaRequest.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });
@@ -142,20 +142,54 @@ describe("ERP sync retry service", () => {
     await expect(retryPendingSalesErpSync()).resolves.toMatchObject({ attempted: 1, succeeded: 1, failed: 0 });
   });
 
-  it("uses the ERP fallback customer when retrying a manual customer", async () => {
+  it("does not use a fallback customer when retrying a manual customer", async () => {
     vi.stubEnv("ANIKA_ERP_FALLBACK_CUSTOMER_CODE", "WALK-IN");
     mocks.prisma.salesRecord.findUnique.mockResolvedValue({ ...row, customerName: "Customer Manual", customerLocation: "Toko Timur" });
     mocks.listErpPaginated
       .mockResolvedValueOnce({ success: true, data: [] })
-      .mockResolvedValueOnce({ success: true, data: [{ id: 99, code: "WALK-IN", name: "Customer Umum" }] });
+      .mockResolvedValueOnce({ success: true, data: [] });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, customerName: "Customer Manual", syncStatus: "failed", syncError: "Customer ERP tidak ditemukan dan auto-create customer tidak aktif." });
+
+    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: false, item: { syncStatus: "failed" } });
+    expect(mocks.listErpPaginated).toHaveBeenCalledTimes(2);
+    expect(mocks.anikaRequest).not.toHaveBeenCalled();
+  });
+
+  it("auto-creates an ERP customer when retrying a manual customer", async () => {
+    vi.stubEnv("ANIKA_ERP_AUTO_CREATE_CUSTOMER", "true");
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue({ ...row, customerName: "Customer Manual", customerLocation: "Toko Timur" });
+    mocks.listErpPaginated
+      .mockResolvedValueOnce({ success: true, data: [] })
+      .mockResolvedValueOnce({ success: true, data: [] });
+    mocks.anikaRequest
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 123, code: "SLM-CUSTOMER" } } })
+      .mockResolvedValueOnce({ success: true, data: { invoice_id: "INV-1" } });
     mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, customerName: "Customer Manual", syncStatus: "synced", syncError: null, erpReference: "INV-1", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
 
     await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, item: { syncStatus: "synced" } });
-    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
-      body: expect.stringContaining("\"customer_id\":99")
+    expect(mocks.anikaRequest).toHaveBeenNthCalledWith(1, "/customers", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"name\":\"Customer Manual\"")
     }));
-    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
-      body: expect.stringContaining("Customer Manual - Toko Timur")
+    const customerPayload = JSON.parse(mocks.anikaRequest.mock.calls[0][1].body);
+    expect(customerPayload).toMatchObject({
+      name: "Customer Manual",
+      address: "Toko Timur",
+      telephone: "-",
+      phone: "-",
+      fax: "-",
+      isSpecial: "0",
+      tipe: "PRI",
+      tipe_pembayaran: "Bebas",
+      cabang_id: 1,
+      nik_npwp: "-"
+    });
+    for (const key of ["address", "telephone", "phone", "fax", "nik_npwp", "tipe", "tipe_pembayaran", "isSpecial", "cabang_id"]) {
+      expect(customerPayload[key]).not.toBeNull();
+      expect(customerPayload[key]).not.toBe("");
+    }
+    expect(mocks.anikaRequest).toHaveBeenNthCalledWith(2, "/sales", expect.objectContaining({
+      body: expect.stringContaining("\"customer_id\":123")
     }));
   });
 });

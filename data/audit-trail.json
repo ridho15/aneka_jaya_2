@@ -1,5 +1,432 @@
 [
   {
+    "id": "d6fa960b-a0f5-4250-9460-3569a328a192",
+    "createdAt": "2026-06-30T13:12:12.500Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796427910-da16e52d",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Customer manual belum cukup jelas untuk dibuat di ERP."
+    },
+    "reason": "Retry ERP sales gagal • Customer manual belum cukup jelas untuk dibuat di ERP."
+  },
+  {
+    "id": "6f60a666-29e2-4bc6-9367-13bc30bf75c3",
+    "createdAt": "2026-06-30T13:12:09.821Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782799862292-3257312b",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "synced",
+      "erpReference": "479"
+    },
+    "reason": "Retry ERP sales berhasil"
+  },
+  {
+    "id": "12adde05-95cf-4f85-b005-b0817e57ce8d",
+    "createdAt": "2026-06-30T13:11:59.898Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796427910-da16e52d",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Customer manual belum cukup jelas untuk dibuat di ERP."
+    },
+    "reason": "Retry ERP sales gagal • Customer manual belum cukup jelas untuk dibuat di ERP."
+  },
+  {
+    "id": "d7eab5cf-7ef7-42b6-82b3-af6c8afa02d1",
+    "createdAt": "2026-06-30T13:11:55.781Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782799830164-e583e45f",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "synced",
+      "erpReference": "478"
+    },
+    "reason": "Retry ERP sales berhasil"
+  },
+  {
+    "id": "cda9913f-d71c-4b79-a689-0ab641e728d9",
+    "createdAt": "2026-06-30T13:11:47.340Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796427910-da16e52d",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Customer manual belum cukup jelas untuk dibuat di ERP."
+    },
+    "reason": "Retry ERP sales gagal • Customer manual belum cukup jelas untuk dibuat di ERP."
+  },
+  {
+    "id": "2c6c0e90-446d-475c-8fd5-dc6426e3666d",
+    "createdAt": "2026-06-30T13:07:00.871Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796460370-839475f7",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "synced",
+      "erpReference": "477"
+    },
+    "reason": "Retry ERP sales berhasil"
+  },
+  {
+    "id": "dda4a01f-c90e-49a7-b0b2-a915f1ec156e",
+    "createdAt": "2026-06-30T13:06:58.001Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "SLM-RIDHO-MR0NV5FW767C",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-RIDHO-MR0NV5FW767C",
+      "customerName": "Ridho",
+      "source": "sales_customer_auto_create"
+    },
+    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "d77f6400-d0b3-4dd0-8402-bcc435d5b295",
+    "createdAt": "2026-06-30T13:03:03.104Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "synced",
+      "erpReference": "476"
+    },
+    "reason": "Retry ERP sales berhasil"
+  },
+  {
+    "id": "3c60ac67-34c7-4b72-8654-e5b53ab6b64b",
+    "createdAt": "2026-06-30T13:01:28.407Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP service error: ERP menolak data karena constraint database."
+    },
+    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
+  },
+  {
+    "id": "ed3fda66-f4b8-4672-8fa4-a8c5467e6aa3",
+    "createdAt": "2026-06-30T12:59:41.567Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP service error: ERP menolak data karena constraint database."
+    },
+    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
+  },
+  {
+    "id": "34435e50-9700-4d80-9494-c6ad79ef20ed",
+    "createdAt": "2026-06-30T12:56:15.024Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP service error: ERP menolak data karena constraint database."
+    },
+    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
+  },
+  {
+    "id": "52a0b4e4-8251-41f1-aa32-dd5985b8f8e7",
+    "createdAt": "2026-06-30T12:55:18.940Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP service error: ERP menolak data karena constraint database."
+    },
+    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
+  },
+  {
+    "id": "0f910411-059b-4a16-a65d-e8a371ed9700",
+    "createdAt": "2026-06-30T12:50:43.461Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP service error: ERP menolak data karena constraint database."
+    },
+    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
+  },
+  {
+    "id": "b87f1101-c549-45ca-a69b-b9eac8a8eee9",
+    "createdAt": "2026-06-30T12:50:39.777Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "SLM-QA-SLM-DELETE-1782810523-MR0NA6GMFD9D",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-QA-SLM-DELETE-1782810523-MR0NA6GMFD9D",
+      "customerName": "QA SLM DELETE 1782810523404",
+      "source": "sales_customer_auto_create"
+    },
+    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "77dc55db-13d7-48ac-976c-2338b22b7c2d",
+    "createdAt": "2026-06-30T10:44:18.399Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Koneksi ERP bermasalah."
+    },
+    "reason": "Retry ERP sales gagal • Koneksi ERP bermasalah."
+  },
+  {
+    "id": "8f5cea8d-2ef4-4123-b788-faea89f257bb",
+    "createdAt": "2026-06-30T09:42:07.691Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP menolak create customer: isSpecial wajib diisi."
+    },
+    "reason": "Retry ERP sales gagal • ERP menolak create customer: isSpecial wajib diisi."
+  },
+  {
+    "id": "6de4b3c4-b65b-40dc-bbc5-ffff1c302dc4",
+    "createdAt": "2026-06-30T09:36:35.195Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP menolak payload: validation.string"
+    },
+    "reason": "Retry ERP sales gagal • ERP menolak payload: validation.string"
+  },
+  {
+    "id": "42482304-0a63-4d56-8fd8-6f7e3f3c0367",
+    "createdAt": "2026-06-30T09:33:14.317Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP menolak create customer: isSpecial wajib diisi."
+    },
+    "reason": "Retry ERP sales gagal • ERP menolak create customer: isSpecial wajib diisi."
+  },
+  {
+    "id": "f090884c-b094-47dc-8108-d2024ab07d39",
+    "createdAt": "2026-06-30T09:12:05.244Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782810597403-8bdacd5e",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP menolak create customer: isSpecial wajib diisi."
+    },
+    "reason": "Retry ERP sales gagal • ERP menolak create customer: isSpecial wajib diisi."
+  },
+  {
+    "id": "60817ffe-535e-4f38-bb95-e7e0b633157e",
+    "createdAt": "2026-06-30T08:57:57.922Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782799862292-3257312b",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`co…"
+    },
+    "reason": "Retry ERP sales gagal • ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`code`, `name`, `address`, `telephone`, `phone`, `email`, `perusahaan`, `tipe`, `fax`, `isSpecial`, `tempo_kredit`, `kredit_limit`, `tipe_pembayaran`, `nik_npwp`,…"
+  },
+  {
+    "id": "5a085cbf-8f6f-4719-95ee-a72dad3885ef",
+    "createdAt": "2026-06-30T08:57:50.724Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782799830164-e583e45f",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`co…"
+    },
+    "reason": "Retry ERP sales gagal • ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`code`, `name`, `address`, `telephone`, `phone`, `email`, `perusahaan`, `tipe`, `fax`, `isSpecial`, `tempo_kredit`, `kredit_limit`, `tipe_pembayaran`, `nik_npwp`,…"
+  },
+  {
+    "id": "fd2c92be-4d36-4509-8461-1dc013ba05d9",
+    "createdAt": "2026-06-30T08:20:42.990Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796427910-da16e52d",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Auto-create customer ERP gagal: Customer manual belum cukup jelas untuk dibuat di ERP. Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemu…"
+    },
+    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: Customer manual belum cukup jelas untuk dibuat di ERP. Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
+  },
+  {
+    "id": "83b9ada4-6fc8-451f-856c-c0e6c2ff7adf",
+    "createdAt": "2026-06-30T08:20:41.341Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796460370-839475f7",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka J…"
+    },
+    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
+  },
+  {
+    "id": "c33e677d-e7b3-4fbb-badc-78cbd24cf261",
+    "createdAt": "2026-06-30T08:20:39.001Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782799862292-3257312b",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka J…"
+    },
+    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
+  },
+  {
+    "id": "ef765409-ddc8-4e37-a809-c252545239c0",
+    "createdAt": "2026-06-30T08:20:26.977Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782799830164-e583e45f",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka J…"
+    },
+    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
+  },
+  {
     "id": "ae46dd36-434e-4953-b8e2-e04e0bf81639",
     "createdAt": "2026-06-30T06:27:43.052Z",
     "userId": "anika:1",

@@ -98,18 +98,18 @@ describe("expense routing by tipe", () => {
     expect(mocks.saveExpenseRecord).toHaveBeenCalledWith(expect.objectContaining({ erpSyncTarget: "local", erpSyncStatus: "not_required" }));
   });
 
-  it("stores pending AJ expenses without sending ERP when approval is required", async () => {
+  it("auto-approves Admin AJ expenses and still sends them to ERP", async () => {
     mocks.user = { id: "admin-1", name: "Admin", role: "ADMIN" };
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
     mocks.approvalIsEnabled.mockReturnValue(true);
 
     await expect(createExpense({ ...expenseInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ" })).resolves.toMatchObject({
       success: true,
-      data: { approvalStatus: "pending_approval", erpSyncTarget: "erp", erpSyncStatus: "pending" }
+      data: { approvalStatus: "approved", erpSyncTarget: "erp", erpSyncStatus: "synced" }
     });
 
-    expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
-    expect(mocks.createApprovalRequest).toHaveBeenCalledWith(expect.objectContaining({ module: "pengeluaran", tipeCodeSnapshot: "AJ" }));
+    expect(mocks.sendNeoCommand).toHaveBeenCalledOnce();
+    expect(mocks.createApprovalRequest).not.toHaveBeenCalled();
   });
 
   it("rejects rekening that is not assigned to the selected tipe", async () => {

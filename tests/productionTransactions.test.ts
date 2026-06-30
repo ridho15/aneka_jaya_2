@@ -65,7 +65,7 @@ describe("production Prisma transactions", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_APP_MODE", "production");
     vi.stubEnv("SALES_ERP_TYPE_CODES", "AJ");
-    vi.stubEnv("ANIKA_ERP_FALLBACK_CUSTOMER_CODE", "");
+    vi.stubEnv("ANIKA_ERP_AUTO_CREATE_CUSTOMER", "false");
     mocks.user = { id: "actor-1", name: "Actor", role: "OWNER" };
     mocks.sendNeoCommand.mockReset();
     mocks.sendNeoCommand.mockResolvedValue({ success: true, data: { ok: true } });
@@ -135,7 +135,7 @@ describe("production Prisma transactions", () => {
     expect(mocks.saveSalesRecord).not.toHaveBeenCalled();
   });
 
-  it("keeps an AJ sale failed when the ERP fallback customer is not configured", async () => {
+  it("keeps an AJ sale failed when auto-create customer is disabled and customer is missing", async () => {
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
     mocks.listErpPaginated.mockResolvedValue({ success: true, data: [] });
 
@@ -145,17 +145,47 @@ describe("production Prisma transactions", () => {
     expect(mocks.anikaRequest).not.toHaveBeenCalled();
     expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        syncError: expect.stringContaining("Customer fallback ERP belum dikonfigurasi")
+        syncError: expect.stringContaining("Customer ERP tidak ditemukan")
       })
     }));
   });
 
-  it("sends an AJ sale with manual customer through the ERP fallback customer", async () => {
+  it("does not use a fallback customer for AJ manual customers", async () => {
     vi.stubEnv("ANIKA_ERP_FALLBACK_CUSTOMER_CODE", "WALK-IN");
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
     mocks.listErpPaginated
       .mockResolvedValueOnce({ success: true, data: [] })
-      .mockResolvedValueOnce({ success: true, data: [{ id: 99, code: "WALK-IN", name: "Customer Umum" }] });
+      .mockResolvedValueOnce({ success: true, data: [] });
+
+    await expect(createSale({
+      ...saleInput,
+      tipeId: "AJ",
+      tipeCodeSnapshot: "AJ",
+      tipeNameSnapshot: "AJ",
+      customerName: "Ridho Manual",
+      customerLocation: "Toko Selatan"
+    })).resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "failed", retryable: true } });
+
+    expect(mocks.listErpPaginated).toHaveBeenNthCalledWith(1, "/customers", expect.objectContaining({
+      query: { name: "Ridho Manual" }
+    }));
+    expect(mocks.listErpPaginated).toHaveBeenNthCalledWith(2, "/customers", expect.objectContaining({
+      query: { code: "Ridho Manual" }
+    }));
+    expect(mocks.listErpPaginated).toHaveBeenCalledTimes(2);
+    expect(mocks.anikaRequest).not.toHaveBeenCalled();
+  });
+
+  it("auto-creates an ERP customer for AJ manual customers before creating the sale", async () => {
+    vi.stubEnv("ANIKA_ERP_AUTO_CREATE_CUSTOMER", "true");
+    mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
+    mocks.listErpPaginated
+      .mockResolvedValueOnce({ success: true, data: [] })
+      .mockResolvedValueOnce({ success: true, data: [] })
+      .mockResolvedValueOnce({ success: true, data: [] });
+    mocks.anikaRequest
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 123, code: "SLM-RIDHO" } } })
+      .mockResolvedValueOnce({ success: true, data: { invoice_id: "INV-AUTO-CUSTOMER" } });
 
     await expect(createSale({
       ...saleInput,
@@ -166,35 +196,53 @@ describe("production Prisma transactions", () => {
       customerLocation: "Toko Selatan"
     })).resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "synced" } });
 
-    expect(mocks.listErpPaginated).toHaveBeenNthCalledWith(1, "/customers", expect.objectContaining({
-      query: { name: "Ridho Manual" }
-    }));
-    expect(mocks.listErpPaginated).toHaveBeenNthCalledWith(2, "/customers", expect.objectContaining({
-      query: { code: "WALK-IN" }
-    }));
-    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
+    expect(mocks.anikaRequest).toHaveBeenNthCalledWith(1, "/customers", expect.objectContaining({
       method: "POST",
-      body: expect.stringContaining("\"customer_id\":99")
+      body: expect.stringContaining("\"name\":\"Ridho Manual\"")
     }));
-    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
-      body: expect.stringContaining("Ridho Manual - Toko Selatan")
+    const customerPayload = JSON.parse(mocks.anikaRequest.mock.calls[0][1].body);
+    expect(customerPayload).toMatchObject({
+      name: "Ridho Manual",
+      address: "Toko Selatan",
+      telephone: "-",
+      phone: "-",
+      perusahaan: "Ridho Manual",
+      tipe: "PRI",
+      fax: "-",
+      isSpecial: "0",
+      tempo_kredit: 0,
+      kredit_limit: 0,
+      tipe_pembayaran: "Bebas",
+      cabang_id: 1,
+      nik_npwp: "-"
+    });
+    for (const key of ["address", "telephone", "phone", "fax", "nik_npwp", "tipe", "tipe_pembayaran", "isSpecial", "cabang_id"]) {
+      expect(customerPayload[key]).not.toBeNull();
+      expect(customerPayload[key]).not.toBe("");
+    }
+    expect(customerPayload.email).toMatch(/^customer\+slm-ridho-manual-.+@slm\.localhost\.test$/);
+    expect(mocks.anikaRequest).toHaveBeenNthCalledWith(2, "/sales", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"customer_id\":123")
     }));
   });
 
-  it("keeps an AJ sale failed when the configured fallback customer is missing in ERP", async () => {
-    vi.stubEnv("ANIKA_ERP_FALLBACK_CUSTOMER_CODE", "WALK-IN");
+  it("keeps an AJ sale failed when auto-create customer is rejected by ERP", async () => {
+    vi.stubEnv("ANIKA_ERP_AUTO_CREATE_CUSTOMER", "true");
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
     mocks.listErpPaginated
       .mockResolvedValueOnce({ success: true, data: [] })
       .mockResolvedValueOnce({ success: true, data: [] });
+    mocks.anikaRequest.mockResolvedValueOnce({ success: false, code: "ERP_VALIDATION", message: "ERP menolak payload: isSpecial wajib diisi" });
 
     await expect(createSale({ ...saleInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ" }))
       .resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "failed", retryable: true } });
 
-    expect(mocks.anikaRequest).not.toHaveBeenCalled();
+    expect(mocks.anikaRequest).toHaveBeenCalledTimes(1);
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/customers", expect.objectContaining({ method: "POST" }));
     expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        syncError: expect.stringContaining("code WALK-IN tidak ditemukan")
+        syncError: "ERP menolak create customer: isSpecial wajib diisi."
       })
     }));
   });
@@ -235,8 +283,12 @@ describe("production Prisma transactions", () => {
 
     const result = await createSale({ ...saleInput, tipeId: "AJ", tipeCodeSnapshot: "AJ", tipeNameSnapshot: "AJ", isTestTransaction: true });
 
-    expect(result).toMatchObject({ success: true, data: { target: "erp", isTestTransaction: false } });
+    expect(result).toMatchObject({ success: true, data: { target: "erp", isTestTransaction: false, approvalStatus: "approved" } });
     expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.any(Object));
+    expect(mocks.tx.approvalRequest.create).not.toHaveBeenCalled();
+    expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ approvalStatus: "approved" })
+    }));
   });
 
   it("rejects Cash AJ when the selected rekening is not assigned to AJ", async () => {

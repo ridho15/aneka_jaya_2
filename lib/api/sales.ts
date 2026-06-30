@@ -5,7 +5,6 @@ import type { ApiResponse } from "@/lib/types/api";
 import { failure } from "@/lib/types/api";
 import type { Sale } from "@/lib/types/sales";
 import { recordAudit } from "@/lib/audit/store";
-import { createApprovalRequest, approvalIsEnabled } from "@/lib/approval/store";
 import { createTempoReceivable } from "@/lib/tempo/store";
 import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, MasterDataError, rekeningForTipe } from "@/lib/business/masterData";
@@ -46,7 +45,7 @@ export function safeErpSyncError(response: ApiResponse<unknown>) {
   if (code === "ERP_NOT_CONFIGURED") return "Konfigurasi ERP belum lengkap.";
   if (code === "ERP_NETWORK") return "Koneksi ERP bermasalah.";
   if (code === "ERP_CUSTOMER_NOT_LINKED") return response.message || "Customer ERP belum terhubung.";
-  if (code === "ERP_FALLBACK_CUSTOMER_NOT_CONFIGURED") return response.message || "Customer fallback ERP belum dikonfigurasi.";
+  if (code === "ERP_CUSTOMER_AUTO_CREATE_FAILED") return response.message || "Customer ERP gagal dibuat otomatis.";
   if (code === "ERP_PRODUCT_NOT_FOUND") return response.message || "Produk ERP tidak ditemukan.";
   if (code === "ERP_PAYLOAD_INCOMPLETE") return response.message || "Payload transaksi ERP belum lengkap.";
   if (code === "ERP_VALIDATION") return response.message || "ERP menolak payload/data transaksi.";
@@ -90,8 +89,60 @@ function customerCode(row: ErpCustomer) {
   return typeof row.code === "string" ? row.code : "";
 }
 
-function fallbackCustomerCode(env: NodeJS.ProcessEnv = process.env) {
-  return String(env.ANIKA_ERP_FALLBACK_CUSTOMER_CODE ?? "").trim();
+function autoCreateCustomerEnabled(env: NodeJS.ProcessEnv = process.env) {
+  return String(env.ANIKA_ERP_AUTO_CREATE_CUSTOMER ?? "false").trim().toLowerCase() === "true";
+}
+
+function autoCustomerEmailDomain(env: NodeJS.ProcessEnv = process.env) {
+  return String(env.ANIKA_ERP_AUTO_CUSTOMER_EMAIL_DOMAIN ?? "slm.localhost.test")
+    .trim()
+    .replace(/^@+/, "") || "slm.localhost.test";
+}
+
+function defaultErpCabangId(env: NodeJS.ProcessEnv = process.env) {
+  const value = Number(String(env.ANIKA_ERP_DEFAULT_CABANG_ID ?? "1").trim());
+  return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+function generatedErpDocumentNumber(prefix: string) {
+  return `SLM-${prefix}-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`.slice(0, 60);
+}
+
+function erpShippingType(value?: string) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "ambil sendiri") return "Ambil Sendiri";
+  if (normalized === "kirim langsung") return "Kirim Langsung";
+  return "Kirim Langsung";
+}
+
+function safeCreateCustomerErrorMessage(message?: string) {
+  if (!message) return "Customer ERP gagal dibuat otomatis.";
+  if (/isSpecial/i.test(message)) return "ERP menolak create customer: isSpecial wajib diisi.";
+  if (/cabang/i.test(message)) return "ERP menolak create customer: cabang wajib valid.";
+  if (/tipe_pembayaran/i.test(message)) return "ERP menolak create customer: tipe pembayaran wajib valid.";
+  return message;
+}
+
+function slugCustomerCode(value: string) {
+  const slug = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24);
+  return slug || "CUSTOMER";
+}
+
+function generatedCustomerCode(name: string) {
+  const suffix = `${Date.now().toString(36)}${crypto.randomUUID().slice(0, 4)}`.toUpperCase();
+  return `SLM-${slugCustomerCode(name)}-${suffix}`.slice(0, 50);
+}
+
+function responseId(value: unknown) {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : undefined;
+  const nested = row?.data && typeof row.data === "object" ? row.data as Record<string, unknown> : undefined;
+  return numberId(row?.id) ?? numberId(row?.customer_id) ?? numberId(nested?.id) ?? numberId(nested?.customer_id);
 }
 
 async function findCustomerByNameOrCode(lookupName: string): Promise<ApiResponse<number | undefined>> {
@@ -99,34 +150,81 @@ async function findCustomerByNameOrCode(lookupName: string): Promise<ApiResponse
   if (!response.success) return response;
   const rows = response.data as ErpCustomer[];
   const normalized = normalizeLookup(lookupName);
-  const match = rows.find((row) => normalizeLookup(customerName(row)) === normalized || normalizeLookup(customerCode(row)) === normalized)
-    ?? (rows.length === 1 ? rows[0] : undefined);
+  const match = rows.find((row) => normalizeLookup(customerName(row)) === normalized || normalizeLookup(customerCode(row)) === normalized);
   return { success: true, data: numberId(match?.id) };
 }
 
-async function findFallbackCustomerId(): Promise<ApiResponse<number>> {
-  const code = fallbackCustomerCode();
-  if (!code) {
-    return failure("Customer fallback ERP belum dikonfigurasi. Isi ANIKA_ERP_FALLBACK_CUSTOMER_CODE dan pastikan customer tersebut ada di Aneka Jaya ERP.", "ERP_FALLBACK_CUSTOMER_NOT_CONFIGURED");
-  }
+async function findCustomerByCode(code: string): Promise<ApiResponse<number | undefined>> {
   const response = await listErpPaginated("/customers", { maxPages: 1, query: { code } });
   if (!response.success) return response;
   const rows = response.data as ErpCustomer[];
   const normalized = normalizeLookup(code);
-  const match = rows.find((row) => normalizeLookup(customerCode(row)) === normalized)
-    ?? (rows.length === 1 ? rows[0] : undefined);
-  const id = numberId(match?.id);
-  if (!id) return failure(`Customer fallback ERP belum dikonfigurasi: code ${code} tidak ditemukan di Aneka Jaya ERP.`, "ERP_FALLBACK_CUSTOMER_NOT_CONFIGURED");
+  const match = rows.find((row) => normalizeLookup(customerCode(row)) === normalized);
+  return { success: true, data: numberId(match?.id) };
+}
+
+async function createErpCustomer(input: { name: string; location?: string }): Promise<ApiResponse<number>> {
+  const name = cleanCustomerLookupName(input.name);
+  if (!name || normalizeLookup(name) === "walk in") {
+    return failure("Customer manual belum cukup jelas untuk dibuat di ERP.", "ERP_CUSTOMER_AUTO_CREATE_SKIPPED");
+  }
+
+  const code = generatedCustomerCode(name);
+  const placeholder = "-";
+  const response = await anikaRequest<unknown>("/customers", {
+    method: "POST",
+    body: JSON.stringify({
+      code,
+      name,
+      address: input.location || placeholder,
+      telephone: placeholder,
+      phone: placeholder,
+      email: `customer+${code.toLowerCase()}@${autoCustomerEmailDomain()}`,
+      perusahaan: name,
+      tipe: "PRI",
+      fax: placeholder,
+      isSpecial: "0",
+      tempo_kredit: 0,
+      kredit_limit: 0,
+      tipe_pembayaran: "Bebas",
+      nik_npwp: placeholder,
+      keterangan: "Auto-created from SLM transaction",
+      cabang_id: defaultErpCabangId()
+    })
+  });
+  if (!response.success) {
+    return failure(safeCreateCustomerErrorMessage(response.message), "ERP_CUSTOMER_AUTO_CREATE_FAILED", response.details);
+  }
+  const id = responseId(response.data);
+  if (!id) return failure("Customer ERP berhasil dibuat tetapi ID customer tidak terbaca.", "ERP_SCHEMA");
+  await recordAudit({
+    entityType: "erp_sync",
+    entityId: code,
+    action: "create",
+    afterValue: { customerCode: code, customerName: name, source: "sales_customer_auto_create" },
+    reason: "Customer ERP dibuat otomatis dari transaksi SLM"
+  });
   return { success: true, data: id };
 }
 
-async function resolveErpCustomerId(customerNameInput: string): Promise<ApiResponse<number>> {
+async function resolveErpCustomerId(customerNameInput: string, customerLocation?: string): Promise<ApiResponse<number>> {
   const lookupName = cleanCustomerLookupName(customerNameInput);
   if (!lookupName) return failure("Customer ERP belum terhubung: nama customer kosong.", "ERP_CUSTOMER_NOT_LINKED");
   const direct = await findCustomerByNameOrCode(lookupName);
   if (!direct.success) return direct;
   if (direct.data) return { success: true, data: direct.data };
-  return findFallbackCustomerId();
+
+  const byCode = await findCustomerByCode(lookupName);
+  if (!byCode.success) return byCode;
+  if (byCode.data) return { success: true, data: byCode.data };
+
+  if (autoCreateCustomerEnabled()) {
+    const created = await createErpCustomer({ name: lookupName, location: customerLocation });
+    if (created.success) return created;
+    return created;
+  }
+
+  return failure("Customer ERP tidak ditemukan dan auto-create customer tidak aktif.", "ERP_CUSTOMER_NOT_LINKED");
 }
 
 async function resolveErpSaleItems(items: ErpSaleSyncItem[]): Promise<ApiResponse<Array<{ product_id: number; quantity: number; unit_price: number; discount?: number }>>> {
@@ -147,7 +245,7 @@ async function resolveErpSaleItems(items: ErpSaleSyncItem[]): Promise<ApiRespons
 }
 
 export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<ApiResponse<unknown>> {
-  const customer = await resolveErpCustomerId(input.customerName);
+  const customer = await resolveErpCustomerId(input.customerName, input.customerLocation);
   if (!customer.success) return customer;
   const items = await resolveErpSaleItems(input.items);
   if (!items.success) return items;
@@ -155,18 +253,39 @@ export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<A
 
   const manualCustomer = cleanCustomerLookupName(input.customerName);
   const shippedTo = [manualCustomer, input.customerLocation].filter(Boolean).join(" - ") || undefined;
+  const saleDate = input.saleDate;
+  const dueDate = input.paymentMethod === "Tempo" && input.dueDate ? input.dueDate : saleDate;
+  const cabangId = defaultErpCabangId();
+  const payload = {
+    customer_id: customer.data,
+    so_number: generatedErpDocumentNumber("SO"),
+    order_date: saleDate,
+    delivery_date: input.deliveryDate || saleDate,
+    status: "confirmed",
+    shipped_to: shippedTo,
+    tipe_pengiriman: erpShippingType(input.shippingMethod),
+    tempo_pembayaran: input.paymentMethod === "Tempo" && input.dueDate ? Math.max(0, Math.ceil((new Date(input.dueDate).getTime() - new Date(input.saleDate).getTime()) / 86_400_000)) : 0,
+    cabang_id: cabangId,
+    auto_create_invoice: true,
+    invoice: {
+      invoice_number: generatedErpDocumentNumber("INV"),
+      invoice_date: saleDate,
+      due_date: dueDate,
+      status: "sent",
+      tax: 0,
+      ppn_rate: 0,
+      other_fee: []
+    },
+    items: items.data.map((item) => ({
+      ...item,
+      tax: 0,
+      tipe_pajak: "Non Pajak"
+    }))
+  };
 
   return anikaRequest("/sales", {
     method: "POST",
-    body: JSON.stringify({
-      customer_id: customer.data,
-      order_date: input.saleDate,
-      delivery_date: input.deliveryDate || undefined,
-      shipped_to: shippedTo,
-      tipe_pengiriman: input.shippingMethod || undefined,
-      tempo_pembayaran: input.paymentMethod === "Tempo" && input.dueDate ? Math.max(0, Math.ceil((new Date(input.dueDate).getTime() - new Date(input.saleDate).getTime()) / 86_400_000)) : undefined,
-      items: items.data
-    })
+    body: JSON.stringify(payload)
   });
 }
 
@@ -343,7 +462,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
       throw new MasterDataError("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.", "REKENING_NOT_FOUND");
     }
   }
-  const approvalStatus = user.role === "ADMIN" && approvalIsEnabled("penjualan") ? "pending_approval" : "approved";
+  const approvalStatus: NonNullable<Sale["approvalStatus"]> = "approved";
   const target = salesTargetForType(tipe.code);
   const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
   const testReference = isTestTransaction ? `TEST-${tipe.code.toUpperCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
@@ -354,7 +473,6 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   if (target === "local") {
     const sale: Sale = { id: `S-${Date.now()}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "local", syncStatus: "local", createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await saveSalesRecord(sale);
-    if (approvalStatus === "pending_approval") await createApprovalRequest({ module: "penjualan", entityId: sale.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, amount: total });
     if (approvalStatus === "approved" && input.paymentMethod === "Tempo") await createTempoReceivable({ salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, customerName: input.customerName, originalAmount: total, transactionDate: input.saleDate, dueDate: input.dueDate || input.saleDate });
     await recordAudit({ entityType: "sales", entityId: sale.id, action: "create", afterValue: sale, reason: `Invoice Penjualan lokal • ${approvalStatus} • ${input.paymentMethod}` });
     return { success: true, data: { ...sale, target: "local" } };

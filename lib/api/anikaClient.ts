@@ -32,11 +32,18 @@ function truncateSafe(value: string | undefined) {
   return trimmed.length > MAX_SAFE_MESSAGE_LENGTH ? `${trimmed.slice(0, MAX_SAFE_MESSAGE_LENGTH)}…` : trimmed;
 }
 
+function sanitizeOperationalMessage(value: string | undefined) {
+  if (!value) return undefined;
+  if (/isSpecial/i.test(value)) return "isSpecial wajib diisi";
+  if (/SQLSTATE|Integrity constraint|insert into|Column '.+' cannot be null/i.test(value)) return "ERP menolak data karena constraint database.";
+  return value;
+}
+
 function safeUpstreamError(body: unknown) {
   const row = asRecord(body);
   const nested = asRecord(row?.error) || asRecord(row?.data);
   const upstreamCode = truncateSafe(firstString(row?.code, row?.error_code, nested?.code, nested?.error_code));
-  const upstreamMessage = truncateSafe(firstString(row?.message, row?.error, row?.detail, nested?.message, nested?.detail));
+  const upstreamMessage = truncateSafe(sanitizeOperationalMessage(firstString(row?.message, row?.error, row?.detail, nested?.message, nested?.detail)));
   return { upstreamCode, upstreamMessage };
 }
 

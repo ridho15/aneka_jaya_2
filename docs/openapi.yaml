@@ -1134,18 +1134,13 @@ paths:
                             type: boolean
                           authReady:
                             type: boolean
-                      fallbackCustomer:
+                      autoCreateCustomer:
                         type: object
                         properties:
-                          configured:
+                          enabled:
                             type: boolean
-                          code:
-                            type: string
-                          found:
+                          endpointConfigured:
                             type: boolean
-                          status:
-                            type: string
-                            enum: [configured, missing, erp_error]
                           message:
                             type: string
         "403":

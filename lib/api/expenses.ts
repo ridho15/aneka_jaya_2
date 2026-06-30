@@ -4,7 +4,6 @@ import type { Expense } from "@/lib/types/expenses";
 import type { PengeluaranInput } from "@/lib/validation/pengeluaranSchema";
 import { sendNeoCommand } from "./neo";
 import { recordAudit } from "@/lib/audit/store";
-import { createApprovalRequest, approvalIsEnabled } from "@/lib/approval/store";
 import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
 import { transactionTargetForType } from "@/lib/api/transactionRouting";
@@ -23,7 +22,7 @@ export async function createExpense(input: PengeluaranInput): Promise<ApiRespons
   const rekening = (await rekeningForTipe(tipe.id)).find((item) => item.id === input.rekeningId);
   if (!rekening) throw new Error("Rekening pengeluaran tidak tersedia untuk tipe transaksi ini.");
   const target = transactionTargetForType(tipe.code);
-  const approvalStatus: NonNullable<Expense["approvalStatus"]> = user.role === "ADMIN" && approvalIsEnabled("pengeluaran") ? "pending_approval" : "approved";
+  const approvalStatus: NonNullable<Expense["approvalStatus"]> = "approved";
   const baseExpense: Expense = {
     id: `E-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
     ...input,
@@ -40,24 +39,6 @@ export async function createExpense(input: PengeluaranInput): Promise<ApiRespons
     createdByRoleSnapshot: user.role,
     createdAt: new Date().toISOString()
   };
-
-  if (approvalStatus === "pending_approval") {
-    const expense = await saveExpenseRecord({
-      ...baseExpense,
-      erpSyncStatus: target === "erp" ? "pending" : "not_required"
-    });
-    await createApprovalRequest({ module: "pengeluaran", entityId: expense.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, amount: input.amount });
-    await recordAudit({
-      entityType: "expense",
-      entityId: expense.id,
-      action: "create",
-      afterValue: expense,
-      reason: target === "erp"
-        ? "Pengeluaran AJ menunggu approval sebelum dikirim ke ERP"
-        : `Tipe ${tipe.code} disimpan lokal dan menunggu approval`
-    });
-    return { success: true, data: expense };
-  }
 
   if (target === "local") {
     const expense = await saveExpenseRecord({ ...baseExpense, erpSyncStatus: "not_required" });

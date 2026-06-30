@@ -83,11 +83,11 @@ describe("ERP sync retry API routes", () => {
   });
 
   it("allows OWNER to run ERP sync preflight", async () => {
-    mocks.getErpSyncPreflight.mockResolvedValue({ fallbackCustomer: { configured: true, found: true, code: "WALK-IN" } });
+    mocks.getErpSyncPreflight.mockResolvedValue({ autoCreateCustomer: { enabled: true, endpointConfigured: true } });
     const response = await preflight();
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ success: true, data: { fallbackCustomer: { found: true } } });
+    await expect(response.json()).resolves.toMatchObject({ success: true, data: { autoCreateCustomer: { enabled: true } } });
   });
 
   it("rejects preflight for non-OWNER roles", async () => {

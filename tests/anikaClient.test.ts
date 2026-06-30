@@ -78,6 +78,21 @@ describe("anikaRequest error contract", () => {
     if (!result.success) expect(result.message.length).toBeLessThanOrEqual(320);
   });
 
+  it("redacts SQL constraint errors into operational messages", async () => {
+    vi.stubEnv("ANIKA_ERP_API_BASE_URL", "https://erp.example.test");
+    vi.stubEnv("ANIKA_ERP_API_TOKEN", "secret-token");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      message: "SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` ...)"
+    }), { status: 500 }));
+
+    const result = await anikaRequest("/customers", { method: "POST", body: JSON.stringify({ token: "must-not-leak" }) });
+
+    expect(result).toMatchObject({ success: false, code: "ERP_UPSTREAM", message: "ERP service error: isSpecial wajib diisi" });
+    expect(JSON.stringify(result)).not.toContain("SQLSTATE");
+    expect(JSON.stringify(result)).not.toContain("insert into");
+    expect(JSON.stringify(result)).not.toContain("must-not-leak");
+  });
+
   it("maps aborts to a timeout error", async () => {
     vi.stubEnv("ANIKA_ERP_API_BASE_URL", "https://erp.example.test");
     vi.stubEnv("ANIKA_ERP_API_TOKEN", "secret-token");
