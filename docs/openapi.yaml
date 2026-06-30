@@ -566,6 +566,47 @@ paths:
           description: Kontrak ERP belum tersedia.
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/product-references:
+    get:
+      summary: Referensi kategori dan satuan produk ERP.
+      description: Permission penjualan.create atau stock.manage. Dipakai input transaksi untuk membuat produk manual AJ memakai ID resmi ERP.
+      responses:
+        "200":
+          description: Kategori produk dan satuan ERP.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          categories:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                name:
+                                  type: string
+                                code:
+                                  type: string
+                          uoms:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                name:
+                                  type: string
+                                code:
+                                  type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/products:
     get:
       summary: Daftar produk.

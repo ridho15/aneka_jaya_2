@@ -27,6 +27,17 @@ export type ProductListOptions = {
   keyword?: string;
 };
 
+export type OfficialProductInput = {
+  sku: string;
+  name: string;
+  productCategoryId: number;
+  uomId: number;
+  brandCode: string;
+  sellPrice?: number;
+  costPrice?: number;
+  description?: string;
+};
+
 const DEFAULT_PRODUCT_PAGE = 1;
 const DEFAULT_PRODUCT_PAGE_SIZE = 50;
 const MAX_PRODUCT_PAGE_SIZE = 100;
@@ -89,6 +100,62 @@ export async function getProduct(id: string): Promise<ApiResponse<Product>> {
   if (!products.success) return products;
   const product = products.data.find((item) => item.id === id);
   return product ? { success: true, data: product } : failure("Barang tidak ditemukan.", "NOT_FOUND");
+}
+
+function numberId(value: unknown) {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) return Number(value);
+  return undefined;
+}
+
+function normalizeLookup(value?: string | null) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function responseId(value: unknown) {
+  const row = value && typeof value === "object" ? value as Record<string, unknown> : undefined;
+  const nested = row?.data && typeof row.data === "object" ? row.data as Record<string, unknown> : undefined;
+  return numberId(row?.id) ?? numberId(row?.product_id) ?? numberId(nested?.id) ?? numberId(nested?.product_id);
+}
+
+export async function findProductIdBySku(sku: string): Promise<ApiResponse<number | undefined>> {
+  const cleanSku = sku.trim();
+  if (!cleanSku) return { success: true, data: undefined };
+  const response = await listErpPaginated("/products", { maxPages: 2, query: { sku: cleanSku } });
+  if (!response.success) return response;
+  const normalized = normalizeLookup(cleanSku);
+  const match = response.data
+    .map((row) => toProduct(row as Record<string, unknown>))
+    .find((product) => normalizeLookup(product.code) === normalized || normalizeLookup(product.id) === normalized || normalizeLookup(product.productId) === normalized);
+  return { success: true, data: numberId(match?.productId) ?? numberId(match?.id) };
+}
+
+export async function createOfficialProduct(input: OfficialProductInput): Promise<ApiResponse<number>> {
+  const response = await anikaRequest<unknown>("/products", {
+    method: "POST",
+    body: JSON.stringify({
+      sku: input.sku,
+      name: input.name,
+      product_category_id: input.productCategoryId,
+      kode_merk: input.brandCode,
+      uom_id: input.uomId,
+      cost_price: input.costPrice ?? 0,
+      sell_price: input.sellPrice ?? 0,
+      description: input.description || undefined,
+      is_active: true
+    })
+  });
+  if (!response.success) return response;
+  const id = responseId(response.data);
+  if (!id) return failure("Produk ERP berhasil dibuat tetapi ID produk tidak terbaca.", "ERP_SCHEMA");
+  await recordAudit({
+    entityType: "product",
+    entityId: input.sku,
+    action: "create",
+    afterValue: { sku: input.sku, name: input.name, source: "sales_manual_product" },
+    reason: "Produk ERP dibuat otomatis dari transaksi SLM"
+  });
+  return { success: true, data: id };
 }
 
 export async function createProduct(input: BarangInput): Promise<ApiResponse<unknown>> {

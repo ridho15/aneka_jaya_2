@@ -13,13 +13,15 @@ const mocks = vi.hoisted(() => ({
   },
   anikaRequest: vi.fn(),
   listProducts: vi.fn(),
+  findProductIdBySku: vi.fn(),
+  createOfficialProduct: vi.fn(),
   listErpPaginated: vi.fn(),
   recordAudit: vi.fn()
 }));
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 vi.mock("@/lib/api/anikaClient", () => ({ anikaRequest: mocks.anikaRequest }));
-vi.mock("@/lib/api/products", () => ({ listProducts: mocks.listProducts }));
+vi.mock("@/lib/api/products", () => ({ listProducts: mocks.listProducts, findProductIdBySku: mocks.findProductIdBySku, createOfficialProduct: mocks.createOfficialProduct }));
 vi.mock("@/lib/api/pagination", () => ({ listErpPaginated: mocks.listErpPaginated }));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 
@@ -58,6 +60,8 @@ describe("ERP sync retry service", () => {
     vi.stubEnv("ANIKA_ERP_AUTO_CREATE_CUSTOMER", "false");
     mocks.listErpPaginated.mockResolvedValue({ success: true, data: [{ id: 77, name: "Budi", code: "BUDI" }] });
     mocks.listProducts.mockResolvedValue({ success: true, data: [{ id: "88", productId: "88", code: "P-1", name: "Produk 1" }] });
+    mocks.findProductIdBySku.mockResolvedValue({ success: true, data: undefined });
+    mocks.createOfficialProduct.mockResolvedValue({ success: true, data: 99 });
     mocks.anikaRequest.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });
   });
 

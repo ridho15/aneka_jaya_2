@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, type UseFormRegister, type UseFormSetValue } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { penjualanSchema, type PenjualanInput } from "@/lib/validation/penjualanSchema";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toast } from "@/components/ui/Toast";
@@ -19,9 +20,26 @@ import { useRouter } from "next/navigation";
 const draftKey = "aneka-jaya-draft-penjualan";
 const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
 const today = new Date().toISOString().slice(0, 10);
+const clampDiscountPercent = (value: number) => Math.min(Math.max(Number.isFinite(value) ? value : 0, 0), 100);
+const itemGross = (item: { quantity?: number; unitPrice?: number }) => Number(item.quantity || 0) * Number(item.unitPrice || 0);
+const itemDiscountAmount = (item: { quantity?: number; unitPrice?: number; discount?: number }) => Math.round(itemGross(item) * clampDiscountPercent(Number(item.discount || 0)) / 100);
+const itemNetTotal = (item: { quantity?: number; unitPrice?: number; discount?: number }) => Math.max(0, itemGross(item) - itemDiscountAmount(item));
+const discountPercentFromAmount = (amount: number | undefined, quantity: number, unitPrice: number) => {
+  const gross = quantity * unitPrice;
+  if (!gross) return 0;
+  return Math.min(100, Number(((Number(amount || 0) / gross) * 100).toFixed(2)));
+};
+const pad2 = (value: number) => String(value).padStart(2, "0");
+const generateManualSku = (tipeCode?: string | null) => {
+  const now = new Date();
+  const timestamp = `${String(now.getFullYear()).slice(-2)}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}`;
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const code = String(tipeCode || "X").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "") || "X";
+  return `SLM-${code}-${timestamp}-${suffix}`.toUpperCase();
+};
 
 type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; allowTestTransaction?: boolean; erpTypeCodes?: string[]; sale?: Sale };
-type CreatedSale = { id: string; approvalStatus?: string; target?: "erp" | "local"; testReference?: string; erpReference?: string };
+type CreatedSale = { id: string; approvalStatus?: string; target?: "erp" | "local"; syncStatus?: string; retryable?: boolean; testReference?: string; erpReference?: string };
 type ProductState =
   | { status: "loading" }
   | { status: "ready" }
@@ -40,6 +58,11 @@ type ProductOption = {
   warehouses: string[];
   warnings: string[];
 };
+type ProductReferenceOption = { id: number; name: string; code?: string };
+type ProductReferenceState =
+  | { status: "idle" | "loading" }
+  | { status: "ready"; categories: ProductReferenceOption[]; uoms: ProductReferenceOption[] }
+  | { status: "error"; message: string };
 
 const normalizeCode = (value?: string | null) => String(value ?? "").trim().toLowerCase();
 
@@ -76,6 +99,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const [productQuery, setProductQuery] = useState("");
   const [productState, setProductState] = useState<ProductState>({ status: "loading" });
   const [stockState, setStockState] = useState<StockState>({ status: "loading" });
+  const [referenceState, setReferenceState] = useState<ProductReferenceState>({ status: "idle" });
   const { register, control, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
@@ -85,7 +109,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       dueDate: sale?.dueDate,
       transferAccount: sale?.transferAccount,
       notes: sale?.notes,
-      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, quantity: item.quantity, unitPrice: item.unitPrice, discount: item.discount || 0 })) : [{ productRef: "", productId: undefined, quantity: 1, unitPrice: 0, discount: 0 }]
+      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, productInputMode: item.productInputMode || (item.manualProduct ? "manual" : "erp"), manualProduct: item.manualProduct, quantity: item.quantity, unitPrice: item.unitPrice, discount: discountPercentFromAmount(item.discount, item.quantity, item.unitPrice) })) : [{ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 }]
     }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -95,20 +119,29 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const selectedTipe = activeTipes.find((tipe) => tipe.id === tipeId);
   const targetsErp = Boolean(selectedTipe && erpTypeCodeSet.has(selectedTipe.code.trim().toUpperCase()));
   const selectedLooksAj = selectedTipe?.code.trim().toUpperCase() === "AJ";
-  const total = values.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unitPrice || 0) - Number(item.discount || 0)), 0);
+  const total = values.reduce((sum, item) => sum + itemNetTotal(item), 0);
   const subtotal = values.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
-  const discountTotal = values.reduce((sum, item) => sum + Number(item.discount || 0), 0);
+  const discountTotal = values.reduce((sum, item) => sum + itemDiscountAmount(item), 0);
   const filteredRekenings = useMemo(() => rekeningForTipe(tipeId), [rekeningForTipe, tipeId]);
   const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || filteredRekenings.length > 0);
   const effectiveProducts = useMemo(() => mergeProductsWithSaleItems(products, sale), [products, sale]);
   const productOptions = useMemo(() => buildProductOptions(effectiveProducts, stocks), [effectiveProducts, stocks]);
   const productCodes = useMemo(() => new Set(productOptions.map((option) => normalizeCode(option.product.code))), [productOptions]);
-  const selectedProductsReady = values.length > 0 && values.every((item) => productCodes.has(normalizeCode(item.productRef)));
-  const dependenciesReady = productState.status === "ready" && masterDataReady;
+  const allItemsManual = values.length > 0 && values.every((item) => item.productInputMode === "manual");
+  const selectedProductsReady = values.length > 0 && values.every((item) => {
+    if (item.productInputMode === "manual") {
+      const sku = item.manualProduct?.sku || item.productRef;
+      const hasBasic = Boolean(String(sku || "").trim() && String(item.manualProduct?.name || "").trim());
+      return hasBasic && Boolean(item.manualProduct?.productCategoryId && item.manualProduct?.uomId && String(item.manualProduct?.brandCode || "").trim());
+    }
+    return productCodes.has(normalizeCode(item.productRef));
+  });
+  const hasManualItems = values.some((item) => item.productInputMode === "manual");
+  const dependenciesReady = (productState.status === "ready" || allItemsManual) && masterDataReady;
 
   const addItem = () => {
     const newIndex = fields.length;
-    append({ productRef: "", productId: undefined, quantity: 1, unitPrice: 0, discount: 0 });
+    append({ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 });
     window.setTimeout(() => document.getElementById(`sale-item-${newIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   };
 
@@ -163,6 +196,21 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     }
   }, []);
 
+  const refreshProductReferences = useCallback(async () => {
+    setReferenceState({ status: "loading" });
+    try {
+      const response = await fetch("/api/product-references", { cache: "no-store" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        setReferenceState({ status: "error", message: result?.message || "Referensi produk ERP gagal dimuat." });
+        return;
+      }
+      setReferenceState({ status: "ready", categories: result.data?.categories || [], uoms: result.data?.uoms || [] });
+    } catch {
+      setReferenceState({ status: "error", message: "Koneksi referensi produk ERP bermasalah." });
+    }
+  }, []);
+
   async function refreshStocksForProducts() {
     const stockResponse = await fetch("/api/stocks", { cache: "no-store" });
     const stockResult = await stockResponse.json().catch(() => null);
@@ -178,6 +226,11 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   useEffect(() => {
     void refreshProducts();
   }, [refreshProducts]);
+
+  useEffect(() => {
+    if (!hasManualItems || referenceState.status !== "idle") return;
+    void refreshProductReferences();
+  }, [hasManualItems, referenceState.status, refreshProductReferences]);
 
   useEffect(() => {
     if (productQuery.trim().length < 2) return;
@@ -219,10 +272,17 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       return;
     }
     if (!selectedProductsReady) {
-      setNotice({ type: "error", message: "Pilih barang dari daftar ERP. Barang tidak boleh diketik bebas." });
+      setNotice({ type: "error", message: "Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP." });
       return;
     }
-    const response = await fetch(isEdit && sale ? `/api/sales/${encodeURIComponent(sale.id)}` : "/api/sales", { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    const payload: PenjualanInput = {
+      ...data,
+      items: data.items.map((item) => ({
+        ...item,
+        discount: itemDiscountAmount(item)
+      }))
+    };
+    const response = await fetch(isEdit && sale ? `/api/sales/${encodeURIComponent(sale.id)}` : "/api/sales", { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const result = await response.json();
     if (!response.ok || !result.success) {
       if (!isEdit) localStorage.setItem(draftKey, JSON.stringify(data));
@@ -239,25 +299,54 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       id: String(result.data.id),
       approvalStatus: result.data.approvalStatus,
       target: result.data.target,
+      syncStatus: result.data.syncStatus,
+      retryable: result.data.retryable === true,
       testReference: result.data.testReference,
       erpReference: result.data.erpReference
     });
     const defaultRek = defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
-    reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", productId: undefined, quantity: 1, unitPrice: 0, discount: 0 }] });
-    setNotice({ type: "success", message: result.data?.target === "erp" ? `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.` : result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.` });
+    reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 }] });
+    const isRetryableErp = result.data?.target === "erp" && (result.data?.retryable === true || result.data?.syncStatus === "failed");
+    const isSyncedErp = result.data?.target === "erp" && result.data?.syncStatus === "synced" && result.data?.erpReference;
+    setNotice({
+      type: isRetryableErp ? "error" : "success",
+      message: isRetryableErp
+        ? `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
+        : isSyncedErp
+          ? `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.`
+          : result.data?.approvalStatus === "pending_approval"
+            ? "Data berhasil disimpan dan menunggu approval."
+            : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.`
+    });
   };
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-5">
       {notice && <Toast {...notice} />}
       {createdSale && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <div className={`rounded-lg border px-4 py-3 text-sm ${createdSale.retryable || createdSale.syncStatus === "failed" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
           {createdSale.testReference && <p className="mb-2 font-semibold">Referensi pengujian: <code>{createdSale.testReference}</code></p>}
           {createdSale.erpReference && <p className="mb-2">Referensi ERP: <code>{createdSale.erpReference}</code></p>}
+          {(createdSale.retryable || createdSale.syncStatus === "failed") && <p className="mb-2 font-semibold">Transaksi tersimpan untuk retry ERP. Status belum synced.</p>}
           {createdSale.approvalStatus === "approved" ? (
-            <Link href={`/print/sales/${createdSale.id}`} className="font-bold underline underline-offset-4">
-              Cetak Penjualan
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/penjualan/${createdSale.id}`} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">
+                Lihat Transaksi
+              </Link>
+              {!(createdSale.retryable || createdSale.syncStatus === "failed") && (createdSale.target !== "erp" || Boolean(createdSale.erpReference)) && (
+                <Link href={`/print/sales/${createdSale.id}`} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+                  Cetak Penjualan
+                </Link>
+              )}
+              <button type="button" onClick={() => setCreatedSale(undefined)} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+                Input Lagi
+              </button>
+              {createdSale.target === "erp" && (createdSale.retryable || createdSale.syncStatus === "failed" || !createdSale.erpReference) && (
+                <Link href="/erp-sync" className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
+                  Lihat ERP Sync
+                </Link>
+              )}
+            </div>
           ) : (
             <span>Cetak final tersedia setelah approval.</span>
           )}
@@ -328,38 +417,109 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
             <div className="divide-y divide-neutral-200">
               {fields.map((field, index) => {
                 const selected = productOptions.find((option) => normalizeCode(option.product.code) === normalizeCode(values[index]?.productRef));
+                const mode = values[index]?.productInputMode || "erp";
                 const quantity = Number(values[index]?.quantity || 0);
                 const stockExceeded = selected?.quantity !== null && selected?.quantity !== undefined && quantity > selected.quantity;
                 return (
                 <div id={`sale-item-${index}`} key={field.id} className="scroll-mt-24 p-5 sm:p-6">
+                  <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
+                    <input type="hidden" {...register(`items.${index}.productInputMode`)} />
+                    <button
+                      type="button"
+                      className={`rounded-full border px-3 py-1 ${mode === "erp" ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-slate-200 text-slate-600"}`}
+                      onClick={() => {
+                        setValue(`items.${index}.productInputMode`, "erp", { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
+                      }}
+                    >
+                      Pilih dari ERP
+                    </button>
+                    <button
+                      type="button"
+                      className={`rounded-full border px-3 py-1 ${mode === "manual" ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-600"}`}
+                      onClick={() => {
+                        const currentRef = values[index]?.productRef || "";
+                        setValue(`items.${index}.productInputMode`, "manual", { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.manualProduct.sku`, currentRef, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.manualProduct.sellingPrice`, Number(values[index]?.unitPrice || 0), { shouldDirty: true, shouldValidate: true });
+                      }}
+                    >
+                      Barang baru/manual
+                    </button>
+                    {mode === "manual" && <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">Produk baru akan dibuat di ERP bila SKU belum ada</span>}
+                  </div>
                   <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
                     <Field label="Barang" error={errors.items?.[index]?.productRef?.message}>
                       <input type="hidden" {...register(`items.${index}.productId`)} />
-                      <ProductSearchSelect
-                        name={`items.${index}.productRef`}
-                        value={values[index]?.productRef || ""}
-                        disabled={productState.status !== "ready"}
-                        options={productOptions}
-                        onSelect={(option) => {
-                          setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
-                          setValue(`items.${index}.productId`, option.product.productId || option.product.id, { shouldDirty: true, shouldValidate: true });
-                          if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
-                            setValue(`items.${index}.unitPrice`, option.product.sellingPrice, { shouldDirty: true, shouldValidate: true });
-                          }
-                        }}
-                        onInvalidInput={(value) => {
-                          setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true });
-                          setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
-                        }}
-                        onSearch={setProductQuery}
-                      />
+                      {mode === "manual" ? (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="SKU produk baru"
+                            {...register(`items.${index}.manualProduct.sku`)}
+                            onChange={(event) => {
+                              setValue(`items.${index}.manualProduct.sku`, event.target.value, { shouldDirty: true, shouldValidate: true });
+                              setValue(`items.${index}.productRef`, event.target.value, { shouldDirty: true, shouldValidate: true });
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              const sku = generateManualSku(selectedTipe?.code);
+                              setValue(`items.${index}.manualProduct.sku`, sku, { shouldDirty: true, shouldValidate: true });
+                              setValue(`items.${index}.productRef`, sku, { shouldDirty: true, shouldValidate: true });
+                            }}
+                          >
+                            Generate SKU
+                          </Button>
+                        </div>
+                      ) : (
+                        <ProductSearchSelect
+                          name={`items.${index}.productRef`}
+                          value={values[index]?.productRef || ""}
+                          disabled={productState.status !== "ready"}
+                          options={productOptions}
+                          onSelect={(option) => {
+                            setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.productId`, option.product.productId || option.product.id, { shouldDirty: true, shouldValidate: true });
+                            if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
+                              setValue(`items.${index}.unitPrice`, option.product.sellingPrice, { shouldDirty: true, shouldValidate: true });
+                            }
+                          }}
+                          onInvalidInput={(value) => {
+                            setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
+                          }}
+                          onSearch={setProductQuery}
+                        />
+                      )}
                     </Field>
                     <Field label="Qty" error={errors.items?.[index]?.quantity?.message}><Input type="number" min="1" step="1" {...register(`items.${index}.quantity`, { valueAsNumber: true })} /></Field>
-                    <Field label="Harga" error={errors.items?.[index]?.unitPrice?.message}><Input type="number" min="0" {...register(`items.${index}.unitPrice`, { valueAsNumber: true })} /></Field>
-                    <Field label="Diskon"><Input type="number" min="0" {...register(`items.${index}.discount`, { valueAsNumber: true })} /></Field>
-                    <div><p className="mb-1 text-sm font-medium text-slate-700">Subtotal</p><p className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold">{rupiah(Number(values[index]?.quantity || 0) * Number(values[index]?.unitPrice || 0) - Number(values[index]?.discount || 0))}</p></div>
+                    <Field label="Harga" error={errors.items?.[index]?.unitPrice?.message}>
+                      <MoneyInput
+                        value={values[index]?.unitPrice}
+                        min={0}
+                        onValueChange={(value) => {
+                          setValue(`items.${index}.unitPrice`, value, { shouldDirty: true, shouldValidate: true });
+                          if (mode === "manual") setValue(`items.${index}.manualProduct.sellingPrice`, value, { shouldDirty: true, shouldValidate: true });
+                        }}
+                      />
+                    </Field>
+                    <Field label="Diskon (%)" error={errors.items?.[index]?.discount?.message}>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={values[index]?.discount ?? 0}
+                        onChange={(event) => setValue(`items.${index}.discount`, clampDiscountPercent(Number(event.target.value)), { shouldDirty: true, shouldValidate: true })}
+                      />
+                    </Field>
+                    <div><p className="mb-1 text-sm font-medium text-slate-700">Subtotal</p><p className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold">{rupiah(itemNetTotal(values[index] || {}))}</p></div>
                   </div>
-                  <ProductSelectionInfo option={selected} stockExceeded={stockExceeded} stockState={stockState} />
+                  {mode === "manual" ? <ManualProductFields index={index} register={register} setValue={setValue} values={values} referenceState={referenceState} /> : <ProductSelectionInfo option={selected} stockExceeded={stockExceeded} stockState={stockState} />}
                   {fields.length > 1 && <button type="button" onClick={() => remove(index)} className="mt-3 text-xs font-semibold text-red-600">Hapus barang</button>}
                 </div>
               );})}
@@ -377,11 +537,11 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
             </dl>
             <Button type="submit" className="mt-6 w-full" disabled={isSubmitting || !dependenciesReady || !selectedProductsReady}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penjualan"}</Button>
             {!dependenciesReady && <p className="mt-2 text-center text-xs text-slate-500">Lengkapi konfigurasi master data dan pastikan produk ERP berhasil dimuat.</p>}
-            {dependenciesReady && !selectedProductsReady && <p className="mt-2 text-center text-xs text-slate-500">Pilih barang dari dropdown ERP untuk melanjutkan.</p>}
+            {dependenciesReady && !selectedProductsReady && <p className="mt-2 text-center text-xs text-slate-500">Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP.</p>}
           </section>
         </aside>
       </div>
-      <p className="flex items-center gap-2 text-xs text-neutral-500"><span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-400 text-[10px]">i</span> Data barang ditarik langsung dari ERP saat halaman dibuka. Pastikan data penjualan sudah benar sebelum disimpan.</p>
+      <p className="flex items-center gap-2 text-xs text-neutral-500"><span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-400 text-[10px]">i</span> Barang dapat dipilih dari ERP atau dibuat sebagai produk baru di Aneka Jaya ERP. Transaksi non-AJ tetap lokal, tetapi produk manual tetap disinkronkan ke ERP.</p>
     </form>
   );
 }
@@ -541,6 +701,65 @@ function ProductSelectionInfo({ option, stockExceeded, stockState }: { option?: 
       {stockExceeded && <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">Qty melebihi stok ERP</span>}
       {stockState.status === "failed" && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Stok tidak terverifikasi</span>}
       {option.warnings.length > 0 && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Data ERP tidak lengkap</span>}
+    </div>
+  );
+}
+
+function ManualProductFields({ index, register, setValue, values, referenceState }: {
+  index: number;
+  register: UseFormRegister<PenjualanInput>;
+  setValue: UseFormSetValue<PenjualanInput>;
+  values: PenjualanInput["items"];
+  referenceState: ProductReferenceState;
+}) {
+  const unitPrice = Number(values[index]?.unitPrice || 0);
+  return (
+    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <Field label="Nama produk manual">
+          <Input placeholder="Nama produk baru" {...register(`items.${index}.manualProduct.name`)} />
+        </Field>
+        <Field label="Harga modal">
+          <MoneyInput
+            value={values[index]?.manualProduct?.costPrice}
+            min={0}
+            onValueChange={(value) => setValue(`items.${index}.manualProduct.costPrice`, value, { shouldDirty: true, shouldValidate: true })}
+          />
+        </Field>
+        <Field label="Kode merk">
+          <Input placeholder="Contoh: UMUM" {...register(`items.${index}.manualProduct.brandCode`)} />
+        </Field>
+        <Field label="Harga jual ERP">
+          <MoneyInput
+            min={0}
+            value={unitPrice}
+            onValueChange={(value) => {
+              setValue(`items.${index}.unitPrice`, value, { shouldDirty: true, shouldValidate: true });
+              setValue(`items.${index}.manualProduct.sellingPrice`, value, { shouldDirty: true, shouldValidate: true });
+            }}
+          />
+        </Field>
+        <Field label="Kategori ERP">
+          <Select {...register(`items.${index}.manualProduct.productCategoryId`, { valueAsNumber: true })} disabled={referenceState.status !== "ready"}>
+            <option value="">— pilih kategori —</option>
+            {referenceState.status === "ready" && referenceState.categories.map((item) => <option key={item.id} value={item.id}>{item.name}{item.code ? ` (${item.code})` : ""}</option>)}
+          </Select>
+        </Field>
+        <Field label="Satuan ERP">
+          <Select {...register(`items.${index}.manualProduct.uomId`, { valueAsNumber: true })} disabled={referenceState.status !== "ready"}>
+            <option value="">— pilih satuan —</option>
+            {referenceState.status === "ready" && referenceState.uoms.map((item) => <option key={item.id} value={item.id}>{item.name}{item.code ? ` (${item.code})` : ""}</option>)}
+          </Select>
+        </Field>
+        <div className="md:col-span-2">
+          <Field label="Catatan produk">
+            <Input placeholder="Opsional, tersimpan sebagai deskripsi produk ERP" {...register(`items.${index}.manualProduct.description`)} />
+          </Field>
+        </div>
+      </div>
+      <p className="mt-2 text-xs font-medium text-amber-800">
+        {referenceState.status === "error" ? referenceState.message : "SKU akan dicek ke ERP. Jika belum ada, produk dibuat otomatis di Aneka Jaya ERP sebelum transaksi disimpan."}
+      </p>
     </div>
   );
 }

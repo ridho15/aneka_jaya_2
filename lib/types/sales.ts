@@ -1,4 +1,22 @@
-export type SalesItem = { productRef: string; productId?: string; quantity: number; unitPrice: number; discount?: number };
+export type ManualSalesProduct = {
+  sku: string;
+  name: string;
+  productCategoryId?: number;
+  uomId?: number;
+  brandCode?: string;
+  costPrice?: number;
+  sellingPrice?: number;
+  description?: string;
+};
+export type SalesItem = {
+  productRef: string;
+  productId?: string;
+  productInputMode?: "erp" | "manual";
+  manualProduct?: ManualSalesProduct;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+};
 export type Sale = {
   id: string; saleDate: string; tipeId?: string; tipeCodeSnapshot?: string; tipeNameSnapshot?: string; rekeningId?: string; rekeningNameSnapshot?: string; customerName: string; customerLocation?: string;
   deliveryDate?: string; shippingMethod?: string; notes?: string; items: SalesItem[]; total: number;

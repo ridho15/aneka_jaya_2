@@ -155,5 +155,38 @@ describe("ProductList rendering", () => {
     expect(html).toContain(">5<");
     expect(html).toContain("Gudang Utama / Rak A");
     expect(html).toContain("bg-red-50");
+    expect(html).toContain("Ready");
+  });
+
+  it("renders explicit stock ready status from ERP stock rows", () => {
+    const html = renderToStaticMarkup(React.createElement(ProductList, {
+      products: [{
+        id: "92",
+        productId: "92",
+        code: "ERP-92",
+        name: "Produk Ready ERP",
+        category: "Aksesoris",
+        sellingPrice: 99000,
+        minimumStock: null,
+        isActive: true,
+        updatedAt: "2026-06-29T10:00:00.000Z",
+        dataQualityWarnings: []
+      }],
+      stocks: [{
+        id: "ST-92",
+        productId: "92",
+        productCode: "ERP-92",
+        productName: "Produk Ready ERP",
+        warehouse: "Toko",
+        quantity: 0,
+        minimumStock: 2,
+        unit: "PCS",
+        ready: false
+      }]
+    }));
+
+    expect(html).toContain("Tidak ready");
+    expect(html).toContain("Detail stok");
+    expect(html).toContain("/stok-barang?productId=92&amp;sku=ERP-92");
   });
 });

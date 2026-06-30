@@ -21,6 +21,8 @@ Sumber kontrak: `https://ankjy.playgo.id/integrations/openapi.yaml`
 - Jika auto-create customer gagal/nonaktif, transaksi AJ tidak dikirim ke `/sales`; transaksi tetap `failed/retryable` di ERP Sync.
 - Item barang harus memakai ERP `product_id`; bila transaksi lama hanya punya kode barang, sistem resolve ulang dari `/products`.
 - Jika customer atau produk tidak ditemukan, transaksi tetap `failed` di ERP Sync dengan pesan operasional aman.
+- Produk manual AJ wajib punya harga jual dan harga modal valid sebelum invoice dikirim. Jika harga modal kosong, SLM hanya memakai `ANIKA_ERP_DEFAULT_PRODUCT_COST_PRICE` bila env tersebut bernilai lebih dari 0.
+- Jika ERP menolak invoice karena HPP/COA/release barang, transaksi tetap `failed/retryable`; UI tidak boleh menampilkan transaksi tersebut sebagai berhasil dikirim.
 
 ## Payload Minimum yang Dipakai SLM
 
@@ -30,7 +32,7 @@ Sumber kontrak: `https://ankjy.playgo.id/integrations/openapi.yaml`
   "order_date": "2026-06-30",
   "delivery_date": "2026-06-30",
   "shipped_to": "Ridho Manual - Toko",
-  "tipe_pengiriman": "di Tempat",
+  "tipe_pengiriman": "Kirim Langsung",
   "tempo_pembayaran": 30,
   "items": [
     {
@@ -69,3 +71,4 @@ Sumber kontrak: `https://ankjy.playgo.id/integrations/openapi.yaml`
 - Auto-create customer hanya aktif jika `ANIKA_ERP_AUTO_CREATE_CUSTOMER=true`.
 - SLM tidak memakai fallback `WALK-IN` untuk sales AJ; `customer_id` harus berasal dari customer existing atau customer yang baru dibuat otomatis.
 - Domain email customer otomatis dikonfigurasi dengan `ANIKA_ERP_AUTO_CUSTOMER_EMAIL_DOMAIN`.
+- Default harga modal produk manual untuk QA/production dikonfigurasi dengan `ANIKA_ERP_DEFAULT_PRODUCT_COST_PRICE`; nilai kosong berarti produk manual AJ tanpa harga modal akan diblokir sebelum create ERP.

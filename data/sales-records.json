@@ -1,5 +1,81 @@
 [
   {
+    "id": "S-1782847802242",
+    "saleDate": "2026-06-30",
+    "tipeId": "W",
+    "tipeCodeSnapshot": "W",
+    "tipeNameSnapshot": "Walk In",
+    "rekeningId": "cash-w",
+    "rekeningNameSnapshot": "Kas Walk In",
+    "customerName": "QA SLM DELETE LOCAL 1782847751614",
+    "customerLocation": "QA TEST DELETE",
+    "deliveryDate": "",
+    "shippingMethod": "di Tempat",
+    "paymentMethod": "Cash",
+    "notes": "QA SLM DELETE - non AJ local transaction live test",
+    "items": [
+      {
+        "productRef": "QA-SLM-LOCAL-1782847751614",
+        "productInputMode": "manual",
+        "manualProduct": {
+          "sku": "QA-SLM-LOCAL-1782847751614",
+          "name": "QA SLM PRODUCT LOCAL DELETE 1782847751614",
+          "productCategoryId": 8,
+          "uomId": 5,
+          "brandCode": "UMUM",
+          "costPrice": 500,
+          "sellingPrice": 1000,
+          "description": "QA SLM DELETE - non AJ manual product live test"
+        },
+        "quantity": 1,
+        "unitPrice": 1000,
+        "discount": 0,
+        "productId": "1374"
+      }
+    ],
+    "isTestTransaction": false,
+    "total": 1000,
+    "approvalStatus": "approved",
+    "syncTarget": "local",
+    "syncStatus": "local",
+    "createdByUserId": "anika:1",
+    "createdByNameSnapshot": "Ridho Al Amzah",
+    "createdByRoleSnapshot": "OWNER",
+    "createdAt": "2026-06-30T19:30:02.242Z"
+  },
+  {
+    "id": "S-1782829611358",
+    "saleDate": "2026-06-30",
+    "tipeId": "W",
+    "tipeCodeSnapshot": "W",
+    "tipeNameSnapshot": "Walk In",
+    "rekeningId": "cash-w",
+    "rekeningNameSnapshot": "Kas Walk In",
+    "customerName": "QA SLM DELETE 1782829604317",
+    "customerLocation": "QA TEST DELETE",
+    "deliveryDate": "",
+    "shippingMethod": "di Tempat",
+    "paymentMethod": "Cash",
+    "items": [
+      {
+        "productRef": "KcrE060311",
+        "productId": "1289",
+        "quantity": 1,
+        "unitPrice": 40000,
+        "discount": 0
+      }
+    ],
+    "isTestTransaction": false,
+    "total": 40000,
+    "approvalStatus": "approved",
+    "syncTarget": "local",
+    "syncStatus": "local",
+    "createdByUserId": "anika:1",
+    "createdByNameSnapshot": "Ridho Al Amzah",
+    "createdByRoleSnapshot": "OWNER",
+    "createdAt": "2026-06-30T14:26:51.358Z"
+  },
+  {
     "id": "S-1782729047060",
     "saleDate": "2026-06-30",
     "tipeId": "AJ",

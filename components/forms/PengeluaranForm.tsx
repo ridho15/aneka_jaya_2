@@ -1,13 +1,17 @@
 "use client";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { pengeluaranSchema, type PengeluaranInput } from "@/lib/validation/pengeluaranSchema";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Toast } from "@/components/ui/Toast";
+import { AttachmentPreview } from "@/components/attachments/AttachmentPreview";
+import { LocalAttachmentPreview } from "@/components/attachments/LocalAttachmentPreview";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
 import type { Expense } from "@/lib/types/expenses";
@@ -16,6 +20,7 @@ import { useRouter } from "next/navigation";
 const today = new Date().toISOString().slice(0, 10);
 
 type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; expense?: Expense };
+type CreatedExpense = { id: string; approvalStatus?: string; erpSyncTarget?: "local" | "erp"; erpSyncStatus?: string; erpReference?: string; retryable?: boolean };
 
 export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
   const router = useRouter();
@@ -34,6 +39,7 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
 
   const [file, setFile] = useState<File>();
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string }>();
+  const [createdExpense, setCreatedExpense] = useState<CreatedExpense>();
   const [filteredRekenings, setFilteredRekenings] = useState<RekeningAccount[]>(rekeningForTipe(defaultTipe.id));
 
   const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<PengeluaranInput>({
@@ -46,6 +52,7 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
   });
 
   const tipeId = watch("tipeId");
+  const amount = watch("amount");
 
   useEffect(() => {
     const tipe = activeTipes.find((t) => t.id === tipeId) ?? activeTipes[0];
@@ -66,6 +73,7 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
 
   const submit = async (data: PengeluaranInput) => {
     setNotice(undefined);
+    setCreatedExpense(undefined);
     let attachmentUrl = data.attachmentUrl;
     if (file) {
       const body = new FormData(); body.append("file", file);
@@ -85,13 +93,42 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
     const defaultRek = rekeningForTipe(defaultTipe.id)[0];
     reset({ expenseDate: today, tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name, rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", coaId: "Kas", coaNameSnapshot: "Kas", amount: 0, attachmentUrl: "" });
     setFile(undefined);
+    if (result.data?.id) setCreatedExpense({
+      id: String(result.data.id),
+      approvalStatus: result.data.approvalStatus,
+      erpSyncTarget: result.data.erpSyncTarget,
+      erpSyncStatus: result.data.erpSyncStatus,
+      erpReference: result.data.erpReference,
+      retryable: result.data.retryable
+    });
     setNotice({ type: "success", message: result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : "Data pengeluaran berhasil disimpan." });
   };
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-6">
       {notice && <Toast {...notice} />}
-      <p className="rounded-lg border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-orange-800">Tujuan ERP: <b>Buat Transaksi Kas & Bank</b>, transaksi keluar pada COA <b>Kas</b>.</p>
+      {createdExpense && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {createdExpense.erpReference && <p className="mb-2">Referensi ERP: <code>{createdExpense.erpReference}</code></p>}
+          <div className="flex flex-wrap gap-3">
+            <Link href={`/pengeluaran/${createdExpense.id}`} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">
+              Lihat Pengeluaran
+            </Link>
+            <Link href={`/print/expenses/${createdExpense.id}`} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+              Cetak Pengeluaran
+            </Link>
+            <button type="button" onClick={() => setCreatedExpense(undefined)} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+              Input Lagi
+            </button>
+            {createdExpense.erpSyncTarget === "erp" && createdExpense.erpSyncStatus === "failed" && (
+              <Link href="/erp-sync" className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
+                Lihat ERP Sync
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+      <p className="rounded-lg border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-orange-800">Pengeluaran AJ disinkronkan ke ERP sebagai <b>command Kas & Bank</b>. Status sukses hanya diberikan jika ERP merespons berhasil.</p>
       <section className="aj-surface p-5 sm:p-6">
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Tanggal pengeluaran" error={errors.expenseDate?.message}><Input type="date" {...register("expenseDate")} /></Field>
@@ -114,18 +151,25 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
           </Field>
           <Field label="Kategori pengeluaran" error={errors.category?.message}><Input placeholder="Contoh: Operasional" {...register("category")} /></Field>
           <Field label="Nama vendor / penerima" error={errors.vendorName?.message}><Input {...register("vendorName")} /></Field>
-          <Field label="Jumlah" error={errors.amount?.message}><Input type="number" min="1" inputMode="numeric" {...register("amount", { valueAsNumber: true })} /></Field>
+          <Field label="Jumlah" error={errors.amount?.message}>
+            <MoneyInput
+              value={amount}
+              min={1}
+              onValueChange={(value) => setValue("amount", value, { shouldDirty: true, shouldValidate: true })}
+            />
+          </Field>
           <Field label="Metode pembayaran" error={errors.paymentMethod?.message}>
             <Select {...register("paymentMethod")}><option value="">Pilih metode</option><option>Transfer</option><option>Tunai</option><option>QRIS</option><option>Kartu</option></Select>
           </Field>
           <Field label="Upload bukti pembayaran">
             {isEdit && expense?.attachmentUrl && (
-              <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                Lampiran lama: <a href={expense.attachmentUrl} target="_blank" rel="noreferrer" className="font-semibold text-emerald-700 underline underline-offset-2">Buka bukti pembayaran</a>
-                <span className="block mt-1">Biarkan kosong jika tidak ingin mengganti lampiran.</span>
-              </p>
+              <>
+                <AttachmentPreview url={expense.attachmentUrl} label="Lampiran lama" className="mb-2" />
+                <p className="mb-2 text-xs text-slate-500">Biarkan kosong jika tidak ingin mengganti lampiran.</p>
+              </>
             )}
             <FileUpload onFileChange={setFile} />
+            <LocalAttachmentPreview file={file} />
           </Field>
           <div className="md:col-span-2"><Field label="Deskripsi" error={errors.description?.message}><Textarea rows={3} {...register("description")} /></Field></div>
           <div className="md:col-span-2"><Field label="Catatan"><Textarea rows={2} placeholder="Opsional" {...register("notes")} /></Field></div>

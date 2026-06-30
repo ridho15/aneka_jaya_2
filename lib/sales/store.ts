@@ -12,6 +12,10 @@ const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
 const salesInclude = { items: { orderBy: { sortOrder: "asc" as const } } };
 
+function serializeJson(value: unknown) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 type SalesRecordWithItems = Prisma.SalesRecordGetPayload<{ include: typeof salesInclude }>;
 export type SalesRecordFilters = {
   from?: string;
@@ -118,11 +122,38 @@ function toSale(row: SalesRecordWithItems): Sale {
     createdAt: row.createdAt.toISOString(),
     items: row.items.map((item) => ({
       productRef: item.productRef,
+      productId: item.productId || undefined,
+      productInputMode: item.manualProduct ? "manual" : "erp",
+      manualProduct: item.manualProduct && typeof item.manualProduct === "object" ? item.manualProduct as Sale["items"][number]["manualProduct"] : undefined,
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
       discount: Number(item.discount)
     }))
   };
+}
+
+async function listPrismaSalesRecordsSafe(): Promise<Sale[]> {
+  try {
+    const rows = await prisma.salesRecord.findMany({ include: salesInclude, orderBy: { createdAt: "desc" } });
+    return rows.map(toSale);
+  } catch {
+    return [];
+  }
+}
+
+async function getPrismaSalesRecordSafe(id: string): Promise<Sale | undefined> {
+  try {
+    const row = await prisma.salesRecord.findUnique({ where: { id }, include: salesInclude });
+    return row ? toSale(row) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function mergeSalesRecords(primary: Sale[], secondary: Sale[]) {
+  const byId = new Map<string, Sale>();
+  for (const sale of [...secondary, ...primary]) byId.set(sale.id, sale);
+  return Array.from(byId.values()).sort((a, b) => new Date(b.createdAt || b.saleDate).getTime() - new Date(a.createdAt || a.saleDate).getTime());
 }
 
 export async function listSalesRecords(): Promise<Sale[]> {
@@ -131,7 +162,7 @@ export async function listSalesRecords(): Promise<Sale[]> {
     return rows.map(toSale);
   }
   const rows = await readJsonArray<Sale>(fileName);
-  return rows;
+  return mergeSalesRecords(rows, await listPrismaSalesRecordsSafe());
 }
 
 export async function listSalesRecordsPage(input: { page?: number; pageSize?: number; filters?: SalesRecordFilters } = {}): Promise<PaginatedSalesRecords> {
@@ -173,7 +204,7 @@ export async function getSalesRecord(id: string): Promise<Sale | undefined> {
     const row = await prisma.salesRecord.findUnique({ where: { id }, include: salesInclude });
     return row ? toSale(row) : undefined;
   }
-  return (await listSalesRecords()).find((sale) => sale.id === id);
+  return (await readJsonArray<Sale>(fileName)).find((sale) => sale.id === id) ?? await getPrismaSalesRecordSafe(id);
 }
 
 export async function saveSalesRecord(sale: Sale): Promise<void> {
@@ -211,6 +242,8 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
           create: sale.items.map((item, index) => ({
             id: `${sale.id}-item-${index}`,
             productRef: item.productRef,
+            productId: item.productId,
+            manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             discount: item.discount || 0,
@@ -288,6 +321,8 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
             create: input.items.map((item, index) => ({
               id: `${id}-item-${Date.now()}-${index}`,
               productRef: item.productRef,
+              productId: item.productId,
+              manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               discount: item.discount || 0,

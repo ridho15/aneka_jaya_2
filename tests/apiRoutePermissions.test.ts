@@ -156,7 +156,7 @@ describe("api route permission enforcement", () => {
     mocks.role = "ADMIN";
     mocks.listStocks.mockResolvedValue({ success: true, data: [] });
 
-    const response = await getStocks();
+    const response = await getStocks(new Request("http://local/api/stocks"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true, data: [] });

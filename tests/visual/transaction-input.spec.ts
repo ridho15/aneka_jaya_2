@@ -75,6 +75,22 @@ async function mockStocksReady(page: import("@playwright/test").Page) {
   });
 }
 
+async function mockProductReferencesReady(page: import("@playwright/test").Page) {
+  await page.route("**/api/product-references", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        data: {
+          categories: [{ id: 5, name: "QA Category", code: "QA" }],
+          uoms: [{ id: 2, name: "PCS", code: "PCS" }]
+        }
+      })
+    });
+  });
+}
+
 test("Input Penjualan can submit a local SLM transaction with ERP product data", async ({ page }) => {
   await loginAsOwner(page);
   await mockProductsReady(page);
@@ -100,7 +116,7 @@ test("Input Penjualan can submit a local SLM transaction with ERP product data",
   await page.getByRole("combobox", { name: "Barang" }).fill("BRG");
   await page.getByRole("option", { name: /BRG-001/ }).click();
   await expect(page.getByText(/Stok ERP:\s*8/)).toBeVisible();
-  await expect(page.getByRole("spinbutton", { name: "Harga" })).toHaveValue("25000");
+  await expect(page.getByRole("textbox", { name: "Harga" })).toHaveValue("25.000");
   await page.getByRole("spinbutton", { name: "Qty" }).fill("2");
   await expect(page.getByText(/Rp\s?50\.000/).first()).toBeVisible();
   await page.getByRole("button", { name: "Simpan Penjualan" }).click();
@@ -127,14 +143,14 @@ test("Input Penjualan can submit an AJ transaction without touching the live ERP
       contentType: "application/json",
       body: JSON.stringify({
         success: true,
-        data: { id: "S-E2E-AJ", target: "erp", approvalStatus: "approved", erpReference: "ERP-E2E-1" }
+        data: { id: "S-E2E-AJ", target: "erp", approvalStatus: "approved", syncStatus: "synced", erpReference: "ERP-E2E-1" }
       })
     });
   });
 
   await page.goto("/penjualan/input", { waitUntil: "networkidle" });
   await page.getByLabel("Tipe").selectOption("AJ");
-  await expect(page.getByText("Aneka Jaya ERP")).toBeVisible();
+  await expect(page.getByText("Aneka Jaya ERP", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Rekening penerima")).toHaveValue("cash-aj");
 
   await page.getByRole("textbox", { name: "Nama customer" }).fill("Customer E2E AJ");
@@ -152,6 +168,71 @@ test("Input Penjualan can submit an AJ transaction without touching the live ERP
     rekeningId: "cash-aj",
     customerName: "Customer E2E AJ",
     items: [{ productRef: "BRG-001", quantity: 1, unitPrice: 25000 }]
+  });
+});
+
+test("Input Penjualan can submit mixed ERP and manual products in one AJ transaction", async ({ page }) => {
+  await loginAsOwner(page);
+  await mockProductsReady(page);
+  await mockStocksReady(page);
+  await mockProductReferencesReady(page);
+  const submitted: unknown[] = [];
+  await page.route("**/api/sales", async (route) => {
+    submitted.push(await route.request().postDataJSON());
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        success: true,
+        data: { id: "S-E2E-MIXED-AJ", target: "erp", approvalStatus: "approved", syncStatus: "synced", erpReference: "ERP-E2E-MIXED" }
+      })
+    });
+  });
+
+  await page.goto("/penjualan/input", { waitUntil: "networkidle" });
+  await page.getByLabel("Tipe").selectOption("AJ");
+  await page.getByRole("textbox", { name: "Nama customer" }).fill("Customer Mixed AJ");
+
+  await page.getByRole("combobox", { name: "Barang" }).fill("BRG");
+  await page.getByRole("option", { name: /BRG-001/ }).click();
+  await page.getByRole("spinbutton", { name: "Qty" }).fill("2");
+  await page.getByLabel("Diskon (%)").fill("10");
+
+  await page.getByRole("button", { name: "+ Tambah barang" }).click();
+  await page.getByRole("button", { name: "Barang baru/manual" }).last().click();
+  await page.getByRole("button", { name: "Generate SKU" }).click();
+  await expect(page.getByPlaceholder("SKU produk baru").last()).toHaveValue(/^SLM-AJ-\d{10}-[A-Z0-9]{4}$/);
+  await page.getByPlaceholder("Nama produk baru").fill("QA Mixed Manual Product");
+  await page.getByLabel("Harga modal").fill("500");
+  await page.getByPlaceholder("Contoh: UMUM").fill("UMUM");
+  await page.getByLabel("Harga jual ERP").fill("1.000");
+  await page.getByLabel("Kategori ERP").selectOption("5");
+  await page.getByLabel("Satuan ERP").selectOption("2");
+
+  await page.getByRole("button", { name: "Simpan Penjualan" }).click();
+
+  await expect(page.getByText("Data penjualan berhasil dikirim ke Aneka Jaya ERP.")).toBeVisible();
+  expect(submitted).toHaveLength(1);
+  expect(submitted[0]).toMatchObject({
+    tipeId: "AJ",
+    customerName: "Customer Mixed AJ",
+    items: [
+      expect.objectContaining({ productRef: "BRG-001", quantity: 2, unitPrice: 25000, discount: 5000 }),
+      expect.objectContaining({
+        productInputMode: "manual",
+        quantity: 1,
+        unitPrice: 1000,
+        discount: 0,
+        manualProduct: expect.objectContaining({
+          name: "QA Mixed Manual Product",
+          productCategoryId: 5,
+          uomId: 2,
+          brandCode: "UMUM",
+          costPrice: 500,
+          sellingPrice: 1000
+        })
+      })
+    ]
   });
 });
 

@@ -57,7 +57,7 @@ describe("sales store normalized persistence", () => {
     await expect(listSalesRecords()).resolves.toEqual([
       expect.objectContaining({
         id: "S-1",
-        items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }]
+        items: [expect.objectContaining({ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 })]
       })
     ]);
     expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({

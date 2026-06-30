@@ -1,5 +1,606 @@
 [
   {
+    "id": "a529cb49-4a81-4f65-9a75-608c6ce30176",
+    "createdAt": "2026-06-30T20:49:12.555Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "expense",
+    "entityId": "E-1782852551133-174197be",
+    "action": "create",
+    "afterValue": {
+      "id": "E-1782852551133-174197be",
+      "expenseDate": "2026-06-30",
+      "tipeId": "AJ",
+      "tipeCodeSnapshot": "AJ",
+      "tipeNameSnapshot": "Aneka Jaya",
+      "rekeningId": "cash-aj",
+      "rekeningNameSnapshot": "Kas AJ",
+      "coaId": "Kas",
+      "coaNameSnapshot": "Kas",
+      "category": "QA Operasional",
+      "vendorName": "QA SLM EXPENSE DELETE 1782852519265",
+      "description": "QA SLM EXPENSE DELETE 1782852519265 - live QA pengeluaran AJ Kas Bank",
+      "amount": 1000,
+      "paymentMethod": "Tunai",
+      "notes": "QA SLM EXPENSE DELETE 1782852519265 - boleh dihapus manual",
+      "approvalStatus": "approved",
+      "erpSyncTarget": "erp",
+      "erpSyncStatus": "synced",
+      "erpSyncError": "",
+      "erpSyncAttemptedAt": "2026-06-30T20:49:11.133Z",
+      "erpSyncedAt": "2026-06-30T20:49:11.783Z",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-30T20:49:11.133Z"
+    },
+    "reason": "Kas & Bank / COA Kas • Terkirim ERP"
+  },
+  {
+    "id": "57aa6841-3581-46b3-a6f0-0cc949e85647",
+    "createdAt": "2026-06-30T20:46:12.006Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "08f776f3-8420-412b-ac76-bfc4784dc8e2",
+    "createdAt": "2026-06-30T20:29:51.512Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "SLM-QA-SLM-MIXED-DELETE-1782-MR13OPRSF7BE",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-QA-SLM-MIXED-DELETE-1782-MR13OPRSF7BE",
+      "customerName": "QA SLM MIXED DELETE 1782851235338",
+      "source": "sales_customer_auto_create"
+    },
+    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "ba210ef2-3012-4158-ae5d-c46bf9bb0e13",
+    "createdAt": "2026-06-30T20:29:50.926Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "product",
+    "entityId": "QA-SLM-MIXED-1782851235338",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-MIXED-1782851235338",
+      "name": "QA SLM MIXED PRODUCT DELETE 1782851235338",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "2c166be5-584e-45aa-a867-45dec7156526",
+    "createdAt": "2026-06-30T20:25:38.336Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "32a8a076-563a-4616-9045-15459ebd13df",
+    "createdAt": "2026-06-30T20:08:36.757Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "00ee9204-9f2c-405c-9e58-6ac1cbbc39d7",
+    "createdAt": "2026-06-30T19:52:31.205Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "c28e62b6-b411-47ed-ae63-91a4e7a67ae2",
+    "createdAt": "2026-06-30T19:39:56.657Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "43203bd6-f2fb-4a3d-955e-d3118187bc71",
+    "createdAt": "2026-06-30T19:33:04.552Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "SLM-QA-SLM-DELETE-AJ-1782847-MR11NOXL783C",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-QA-SLM-DELETE-AJ-1782847-MR11NOXL783C",
+      "customerName": "QA SLM DELETE AJ 1782847955217",
+      "source": "sales_customer_auto_create"
+    },
+    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "f75b2064-6254-4621-8194-1e735c880ea6",
+    "createdAt": "2026-06-30T19:33:04.034Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "product",
+    "entityId": "QA-SLM-AJ-1782847955217",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-AJ-1782847955217",
+      "name": "QA SLM PRODUCT AJ DELETE 1782847955217",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "a268b87f-7fee-4101-a585-ff3994b8bcaa",
+    "createdAt": "2026-06-30T19:30:02.248Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "sales",
+    "entityId": "S-1782847802242",
+    "action": "create",
+    "afterValue": {
+      "id": "S-1782847802242",
+      "saleDate": "2026-06-30",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "Walk In",
+      "rekeningId": "cash-w",
+      "rekeningNameSnapshot": "Kas Walk In",
+      "customerName": "QA SLM DELETE LOCAL 1782847751614",
+      "customerLocation": "QA TEST DELETE",
+      "deliveryDate": "",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "notes": "QA SLM DELETE - non AJ local transaction live test",
+      "items": [
+        {
+          "productRef": "QA-SLM-LOCAL-1782847751614",
+          "productInputMode": "manual",
+          "manualProduct": {
+            "sku": "QA-SLM-LOCAL-1782847751614",
+            "name": "QA SLM PRODUCT LOCAL DELETE 1782847751614",
+            "productCategoryId": 8,
+            "uomId": 5,
+            "brandCode": "UMUM",
+            "costPrice": 500,
+            "sellingPrice": 1000,
+            "description": "QA SLM DELETE - non AJ manual product live test"
+          },
+          "quantity": 1,
+          "unitPrice": 1000,
+          "discount": 0,
+          "productId": "1374"
+        }
+      ],
+      "isTestTransaction": false,
+      "total": 1000,
+      "approvalStatus": "approved",
+      "syncTarget": "local",
+      "syncStatus": "local",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-30T19:30:02.242Z"
+    },
+    "reason": "Invoice Penjualan lokal • approved • Cash"
+  },
+  {
+    "id": "d3c18b72-d5ec-4f0a-bda9-de2d3a355570",
+    "createdAt": "2026-06-30T19:30:02.234Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "product",
+    "entityId": "QA-SLM-LOCAL-1782847751614",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-LOCAL-1782847751614",
+      "name": "QA SLM PRODUCT LOCAL DELETE 1782847751614",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "a6057e46-fb5d-49a7-ad9f-57464a590060",
+    "createdAt": "2026-06-30T19:24:16.490Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "de4b98d3-b475-4ca3-9359-31b9d26d11fa",
+    "createdAt": "2026-06-30T19:16:37.524Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "c03c8d68-b489-4eba-a14d-39973e3ab1bb",
+    "createdAt": "2026-06-30T18:18:32.920Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "51168176-a73a-411d-87c4-4993228f096e",
+    "createdAt": "2026-06-30T18:07:25.232Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "product",
+    "entityId": "QA-SLM-1782842806776",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-1782842806776",
+      "name": "QA SLM PRODUCT DELETE 1782842806776",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "0a424e21-05f2-463f-a097-4f063faf6274",
+    "createdAt": "2026-06-30T18:07:24.859Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0YLJ3EF833",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0YLJ3EF833",
+      "customerName": "QA SLM PRODUCT DELETE 1782842806776",
+      "source": "sales_customer_auto_create"
+    },
+    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "aa9cc0c8-4a81-40d8-9e07-cbfc35a48450",
+    "createdAt": "2026-06-30T18:02:29.041Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "2bfa3e98-51a1-4473-8a63-68de5e83104c",
+    "createdAt": "2026-06-30T18:02:11.237Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "207ea7bc-93f1-4d70-84bb-15e08399f804",
+    "createdAt": "2026-06-30T18:00:46.287Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "1c39fd80-ea39-4c95-878a-ddf1f55ac8e1",
+    "createdAt": "2026-06-30T17:43:56.807Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "product",
+    "entityId": "QA-SLM-BROWSER-1782841401784",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-BROWSER-1782841401784",
+      "name": "QA SLM BROWSER PRODUCT DELETE 1782841401784",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "7c9f593e-927d-498e-829b-493f1cccc500",
+    "createdAt": "2026-06-30T17:43:56.446Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "SLM-QA-SLM-BROWSER-DELETE-17-MR0XRCD127ED",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-QA-SLM-BROWSER-DELETE-17-MR0XRCD127ED",
+      "customerName": "QA SLM BROWSER DELETE 1782841401784",
+      "source": "sales_customer_auto_create"
+    },
+    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "ba4c6757-8760-4e5b-87f6-01f48d82a896",
+    "createdAt": "2026-06-30T17:30:02.276Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::ffff:127.0.0.1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "product",
+    "entityId": "QA-SLM-1782840577271",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-1782840577271",
+      "name": "QA SLM PRODUCT DELETE 1782840577271",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "b4ffbbba-b664-4bbe-aa32-b77f5e52eaca",
+    "createdAt": "2026-06-30T17:30:01.063Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::ffff:127.0.0.1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "erp_sync",
+    "entityId": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0X9FFK5A3B",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0X9FFK5A3B",
+      "customerName": "QA SLM PRODUCT DELETE 1782840577271",
+      "source": "sales_customer_auto_create"
+    },
+    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "27cb3533-55af-4b29-9de9-8fd431ac5e8e",
+    "createdAt": "2026-06-30T17:11:48.164Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "cab7499b-8d60-4481-aebf-6bbe7d9c1c59",
+    "createdAt": "2026-06-30T17:10:20.710Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "4a972bea-9437-489d-8b7b-540cc262e2f4",
+    "createdAt": "2026-06-30T17:03:47.357Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "f24b9d49-08f0-486e-bc9b-9566893f0fec",
+    "createdAt": "2026-06-30T14:27:47.107Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "expense",
+    "entityId": "E-1782829667080-36047eb3",
+    "action": "create",
+    "afterValue": {
+      "id": "E-1782829667080-36047eb3",
+      "expenseDate": "2026-06-30",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "Walk In",
+      "rekeningId": "cash-w",
+      "rekeningNameSnapshot": "Kas Walk In",
+      "coaId": "Kas",
+      "coaNameSnapshot": "Kas",
+      "category": "QA TEST",
+      "vendorName": "QA SLM DELETE 1782829662415",
+      "description": "QA SLM DELETE browser expense detail test",
+      "amount": 1000,
+      "paymentMethod": "Tunai",
+      "approvalStatus": "approved",
+      "erpSyncTarget": "local",
+      "erpSyncStatus": "not_required",
+      "erpSyncError": "",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-30T14:27:47.080Z"
+    },
+    "reason": "Tipe W disimpan lokal, ERP sync not_required"
+  },
+  {
+    "id": "c34e9e92-7564-4a05-9d93-69f7b7ceb9ce",
+    "createdAt": "2026-06-30T14:26:51.368Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "sales",
+    "entityId": "S-1782829611358",
+    "action": "create",
+    "afterValue": {
+      "id": "S-1782829611358",
+      "saleDate": "2026-06-30",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "Walk In",
+      "rekeningId": "cash-w",
+      "rekeningNameSnapshot": "Kas Walk In",
+      "customerName": "QA SLM DELETE 1782829604317",
+      "customerLocation": "QA TEST DELETE",
+      "deliveryDate": "",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "items": [
+        {
+          "productRef": "KcrE060311",
+          "productId": "1289",
+          "quantity": 1,
+          "unitPrice": 40000,
+          "discount": 0
+        }
+      ],
+      "isTestTransaction": false,
+      "total": 40000,
+      "approvalStatus": "approved",
+      "syncTarget": "local",
+      "syncStatus": "local",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-30T14:26:51.358Z"
+    },
+    "reason": "Invoice Penjualan lokal • approved • Cash"
+  },
+  {
     "id": "d6fa960b-a0f5-4250-9460-3569a328a192",
     "createdAt": "2026-06-30T13:12:12.500Z",
     "userId": "anika:1",

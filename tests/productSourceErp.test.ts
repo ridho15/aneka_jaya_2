@@ -10,8 +10,8 @@ vi.mock("@/lib/api/anikaClient", () => ({
   anikaRequest: mocks.anikaRequest
 }));
 
-import { listProducts, paginateProductItems } from "@/lib/api/products";
-import { listStocks } from "@/lib/api/stocks";
+import { createOfficialProduct, findProductIdBySku, listProducts, paginateProductItems } from "@/lib/api/products";
+import { listStocks, listStocksPage } from "@/lib/api/stocks";
 
 describe("ERP product and stock source contract", () => {
   beforeEach(() => {
@@ -44,6 +44,28 @@ describe("ERP product and stock source contract", () => {
     expect(mocks.anikaRequest).toHaveBeenCalledWith("/stocks?per_page=100&page=1");
   });
 
+  it("loads a filtered stock page without requiring every ERP stock page", async () => {
+    mocks.anikaRequest.mockResolvedValue({
+      success: true,
+      data: {
+        data: [
+          { id: "ST-1", product_id: 7, product_sku: "BRG-001", product_name: "Barang ERP", qty_available: 5, qty_min: 1, uom: "PCS", warehouse_name: "Toko" },
+          { id: "ST-2", product_id: 8, product_sku: "BRG-002", product_name: "Barang Lain", qty_available: 2, qty_min: 1, uom: "PCS", warehouse_name: "Toko" }
+        ],
+        meta: { current_page: 1, last_page: 20, per_page: 50, total: 1000 }
+      }
+    });
+
+    await expect(listStocksPage({ productId: "7", page: 1, pageSize: 50 })).resolves.toMatchObject({
+      success: true,
+      data: {
+        data: [expect.objectContaining({ productId: "7", productCode: "BRG-001", quantity: 5 })],
+        meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 }
+      }
+    });
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/stocks?product_id=7&per_page=50&page=1");
+  });
+
   it("does not synthesize local fallback products when ERP payload shape is invalid", async () => {
     mocks.anikaRequest.mockResolvedValue({ success: true, data: { unexpected: true } });
 
@@ -52,6 +74,36 @@ describe("ERP product and stock source contract", () => {
       code: "ERP_SCHEMA",
       message: "Format data produk dari ERP tidak dikenali."
     });
+  });
+
+  it("creates products through the official ERP /products endpoint", async () => {
+    mocks.anikaRequest.mockResolvedValue({ success: true, data: { data: { id: 123 } } });
+
+    await expect(createOfficialProduct({
+      sku: "QA-SLM-001",
+      name: "QA Product",
+      productCategoryId: 5,
+      uomId: 2,
+      brandCode: "UMUM",
+      sellPrice: 100000,
+      costPrice: 0,
+      description: "QA"
+    })).resolves.toMatchObject({ success: true, data: 123 });
+
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/products", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"product_category_id\":5")
+    }));
+    const payload = JSON.parse(mocks.anikaRequest.mock.calls[0][1].body);
+    expect(payload).toMatchObject({ sku: "QA-SLM-001", name: "QA Product", kode_merk: "UMUM", uom_id: 2, sell_price: 100000, is_active: true });
+  });
+
+  it("finds an existing ERP product by exact SKU", async () => {
+    mocks.anikaRequest.mockResolvedValue({ success: true, data: { data: [{ id: 88, sku: "SKU-EXACT", name: "Exact" }, { id: 89, sku: "SKU-EXACT-OTHER", name: "Other" }] } });
+
+    await expect(findProductIdBySku("SKU-EXACT")).resolves.toMatchObject({ success: true, data: 88 });
+
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/products?sku=SKU-EXACT&per_page=100&page=1");
   });
 
   it("does not synthesize local fallback stocks when ERP payload shape is invalid", async () => {

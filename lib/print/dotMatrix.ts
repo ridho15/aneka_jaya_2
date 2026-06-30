@@ -121,10 +121,11 @@ function headerForTipe(tipeCode?: string) {
   return tipeCode?.trim().toUpperCase() === "AJ" ? "ANEKA JAYA" : "SLM";
 }
 
-export function formatSaleDotMatrix(sale: Sale) {
+export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber?: boolean } = {}) {
   const brand = headerForTipe(sale.tipeCodeSnapshot);
+  const transactionNumber = options.showTransactionNumber === false ? "-" : sale.id;
   const rows: string[] = [
-    ...infoHeader(brand, "INVOICE PENJUALAN", `Tgl ${sale.saleDate}`, `No ${sale.id}`, [
+    ...infoHeader(brand, "INVOICE PENJUALAN", `Tgl ${sale.saleDate}`, `No ${transactionNumber}`, [
       sale.customerName,
       sale.customerLocation || "-",
       `Bayar ${sale.paymentMethod}`,

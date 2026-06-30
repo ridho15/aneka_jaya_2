@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 const paymentMethods: Sale["paymentMethod"][] = ["Cash", "TF", "Tempo", "Other"];
 const approvalStatuses = ["draft", "pending_approval", "approved", "rejected", "cancelled"];
 const syncStatuses = ["local", "pending", "synced", "failed"];
@@ -67,6 +67,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
   const role = await getCurrentRole();
   if (!can(role, "penjualan.create") && !can(role, "reports.view")) redirect("/");
   const canManage = can(role, "penjualan.manage");
+  const canViewTransactionNumber = role === "OWNER";
   const params = await searchParams || {};
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
   const [{ data: paged, meta }, tipeOptions] = await Promise.all([
@@ -107,13 +108,13 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} transaksi.</div>
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-            <tr><th className="px-5 py-3">Tanggal</th><th className="px-5 py-3">No Transaksi</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Pembayaran</th><th className="px-5 py-3 text-right">Total</th><th className="px-5 py-3">Approval</th><th className="px-5 py-3">ERP Sync</th><th className="px-5 py-3">Pembuat</th><th className="px-5 py-3">Aksi</th></tr>
+            <tr><th className="px-5 py-3">Tanggal</th>{canViewTransactionNumber && <th className="px-5 py-3">No Transaksi</th>}<th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Pembayaran</th><th className="px-5 py-3 text-right">Total</th><th className="px-5 py-3">Approval</th><th className="px-5 py-3">ERP Sync</th><th className="px-5 py-3">Pembuat</th><th className="px-5 py-3">Aksi</th></tr>
           </thead>
           <tbody>
             {paged.map((sale) => (
               <tr key={sale.id} className="border-b border-slate-100">
                 <td className="px-5 py-4 text-slate-600">{sale.saleDate}</td>
-                <td className="px-5 py-4 font-mono text-xs text-slate-700">{sale.id}</td>
+                {canViewTransactionNumber && <td className="px-5 py-4 font-mono text-xs text-slate-700">{sale.id}</td>}
                 <td className="px-5 py-4"><b>{sale.customerName}</b><p className="mt-0.5 text-xs text-slate-500">{sale.customerLocation || "—"}</p></td>
                 <td className="px-5 py-4 font-semibold">{sale.tipeCodeSnapshot || sale.tipeId || "W"}</td>
                 <td className="px-5 py-4">{sale.paymentMethod}</td>
@@ -123,6 +124,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                 <td className="px-5 py-4 text-slate-600">{sale.createdByNameSnapshot || "—"}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-col gap-2">
+                    <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/penjualan/${sale.id}`}>Detail</Link>
                     <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/print/sales/${sale.id}`}>Cetak</Link>
                     {canManage && (
                       <>
@@ -139,7 +141,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                 </td>
               </tr>
             ))}
-            {paged.length === 0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan sesuai filter.</td></tr>}
+            {paged.length === 0 && <tr><td colSpan={canViewTransactionNumber ? 10 : 9} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan sesuai filter.</td></tr>}
           </tbody>
         </table>
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">

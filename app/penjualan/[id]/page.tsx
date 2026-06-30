@@ -1,0 +1,96 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AppShell } from "@/components/layout/AppShell";
+import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
+import { can } from "@/lib/auth/roles";
+import { getCurrentRole } from "@/lib/auth/session";
+import { getSalesRecord } from "@/lib/sales/store";
+
+function rupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+}
+
+function Badge({ value, tone = "slate" }: { value: string; tone?: "slate" | "green" | "amber" | "red" | "blue" }) {
+  const colors = {
+    slate: "bg-slate-100 text-slate-600",
+    green: "bg-emerald-50 text-emerald-700",
+    amber: "bg-amber-50 text-amber-700",
+    red: "bg-red-50 text-red-700",
+    blue: "bg-blue-50 text-blue-700"
+  }[tone];
+  return <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${colors}`}>{value}</span>;
+}
+
+function statusTone(value?: string) {
+  if (value === "approved" || value === "synced") return "green";
+  if (value === "pending_approval" || value === "pending") return "amber";
+  if (value === "rejected" || value === "failed" || value === "cancelled") return "red";
+  return "slate";
+}
+
+export default async function SalesDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const role = await getCurrentRole();
+  if (!can(role, "penjualan.create") && !can(role, "reports.view")) redirect("/");
+  const { id } = await params;
+  const sale = await getSalesRecord(id);
+  if (!sale) redirect("/penjualan");
+  const canManage = can(role, "penjualan.manage");
+  const canViewTransactionNumber = role === "OWNER";
+
+  return (
+    <AppShell>
+      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Detail Penjualan</p>
+          <h2 className="aj-page-title text-3xl font-bold">{sale.customerName}</h2>
+          {canViewTransactionNumber && <p className="mt-2 font-mono text-sm text-slate-500">{sale.id}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
+          <Link href={`/print/sales/${sale.id}`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Cetak</Link>
+          {canManage && sale.approvalStatus !== "cancelled" && !(sale.syncTarget === "erp" && sale.syncStatus === "synced") && <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
+        </div>
+      </div>
+
+      <section className="aj-surface mb-5 p-5">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Info label="Tanggal" value={sale.saleDate} />
+          <Info label="Tipe" value={sale.tipeCodeSnapshot || sale.tipeId || "—"} />
+          <Info label="Pembayaran" value={sale.paymentMethod} />
+          <Info label="Customer" value={sale.customerName} />
+          <Info label="Lokasi" value={sale.customerLocation || "—"} />
+          <Info label="Pengiriman" value={sale.shippingMethod || "—"} />
+          <Info label="Pembuat" value={sale.createdByNameSnapshot || "—"} />
+          <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Approval</p><div className="mt-1"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /></div></div>
+          <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">ERP Sync</p><div className="mt-1"><Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} /></div></div>
+          <Info label="ERP Reference" value={sale.erpReference || "—"} />
+          <Info label="Test Reference" value={sale.testReference || "—"} />
+          <Info label="Total" value={rupiah(sale.total)} strong />
+        </div>
+        {sale.syncError && <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{sale.syncError}</p>}
+        {canManage && (
+          <div className="mt-5">
+            <TransactionCancelButton
+              id={sale.id}
+              kind="sales"
+              disabled={sale.approvalStatus === "cancelled" || (sale.syncTarget === "erp" && sale.syncStatus === "synced")}
+              disabledReason={sale.syncTarget === "erp" && sale.syncStatus === "synced" ? "Transaksi AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Transaksi sudah dibatalkan."}
+            />
+          </div>
+        )}
+      </section>
+
+      <section className="aj-surface overflow-x-auto">
+        <div className="border-b border-slate-200 px-5 py-4 font-bold text-slate-900">Item Barang</div>
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Produk</th><th className="px-5 py-3 text-right">Qty</th><th className="px-5 py-3 text-right">Harga</th><th className="px-5 py-3 text-right">Diskon</th><th className="px-5 py-3 text-right">Subtotal</th></tr></thead>
+          <tbody>{sale.items.map((item, index) => <tr key={`${item.productRef}-${index}`} className="border-b border-slate-100"><td className="px-5 py-4 font-semibold">{item.productRef}</td><td className="px-5 py-4 text-right">{item.quantity}</td><td className="px-5 py-4 text-right">{rupiah(item.unitPrice)}</td><td className="px-5 py-4 text-right">{rupiah(item.discount || 0)}</td><td className="px-5 py-4 text-right font-semibold">{rupiah(item.quantity * item.unitPrice - (item.discount || 0))}</td></tr>)}</tbody>
+        </table>
+      </section>
+    </AppShell>
+  );
+}
+
+function Info({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p><p className={`mt-1 ${strong ? "text-lg font-bold text-slate-900" : "text-sm text-slate-700"}`}>{value}</p></div>;
+}

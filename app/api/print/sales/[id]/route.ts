@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const sale = await getSalesRecord(id);
   if (!sale) return Response.json({ success: false, message: "Transaksi penjualan tidak ditemukan." }, { status: 404 });
-  const text = formatSaleDotMatrix(sale);
+  const text = formatSaleDotMatrix(sale, { showTransactionNumber: role === "OWNER" });
   const isPrn = new URL(request.url).searchParams.get("format") === "prn";
   return new Response(isPrn ? toEscPosPrn(text) : text, {
     headers: {
