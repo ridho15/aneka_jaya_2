@@ -2,8 +2,8 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { recordAudit } from "@/lib/audit/store";
-import { sendNeoCommand } from "@/lib/api/neo";
-import { buildSalesNeoCommand, erpReferenceFrom, safeErpSyncError } from "@/lib/api/sales";
+import { erpReferenceFrom, safeErpSyncError, sendOfficialSalesToErp } from "@/lib/api/sales";
+import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
 
 const salesInclude = { items: { orderBy: { sortOrder: "asc" as const } } };
 
@@ -48,7 +48,7 @@ function toSyncItem(row: SalesRow): ErpSyncSaleItem {
     saleDate: row.saleDate.toISOString().slice(0, 10),
     tipeCode: row.tipeCodeSnapshot,
     customerName: row.customerName,
-    paymentMethod: row.paymentMethod,
+    paymentMethod: row.paymentMethod as PenjualanInput["paymentMethod"],
     total: Number(row.total),
     syncStatus: row.syncStatus,
     syncError: row.syncError || undefined,
@@ -59,24 +59,18 @@ function toSyncItem(row: SalesRow): ErpSyncSaleItem {
   };
 }
 
-function buildRetryCommand(row: SalesRow) {
-  return buildSalesNeoCommand({
+function buildRetryInput(row: SalesRow) {
+  return {
     saleDate: row.saleDate.toISOString().slice(0, 10),
-    tipeId: row.tipeId,
-    tipeCodeSnapshot: row.tipeCodeSnapshot,
-    tipeNameSnapshot: row.tipeNameSnapshot,
     customerName: row.customerName,
     customerLocation: row.customerLocation || undefined,
-    paymentMethod: row.paymentMethod,
+    paymentMethod: row.paymentMethod as PenjualanInput["paymentMethod"],
     dueDate: row.dueDate?.toISOString().slice(0, 10),
-    rekeningId: row.rekeningId || undefined,
+    deliveryDate: undefined,
     shippingMethod: row.shippingMethod || undefined,
-    transferAccount: row.transferAccount || undefined,
     notes: row.notes || undefined,
-    items: row.items.map((item) => ({ productRef: item.productRef, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice), discount: Number(item.discount) })),
-    testReference: row.testReference || undefined,
-    isTestTransaction: row.isTestTransaction
-  });
+    items: row.items.map((item) => ({ productRef: item.productRef, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice), discount: Number(item.discount) }))
+  };
 }
 
 export async function getErpSyncOverview(): Promise<ErpSyncOverview> {
@@ -105,7 +99,7 @@ export async function retrySalesErpSync(id: string): Promise<{ success: boolean;
 
   const attemptedAt = new Date();
   await delegate.update({ where: { id }, data: { syncStatus: "pending", syncAttemptedAt: attemptedAt } });
-  const response = await sendNeoCommand(buildRetryCommand(row));
+  const response = await sendOfficialSalesToErp(buildRetryInput(row));
 
   if (response.success) {
     const syncedAt = new Date();

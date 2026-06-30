@@ -53,6 +53,10 @@ function extractProductRows(result: unknown): Product[] {
 export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, erpTypeCodes = ["AJ"], sale }: Props) {
   const router = useRouter();
   const isEdit = Boolean(sale);
+  const erpTypeCodeSet = useMemo(
+    () => new Set(erpTypeCodes.map((code) => code.trim().toUpperCase()).filter(Boolean)),
+    [erpTypeCodes],
+  );
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
   const defaultTipe = sale ? activeTipes.find((tipe) => tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot) || activeTipes[0] : activeTipes[0];
   const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
@@ -81,7 +85,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       dueDate: sale?.dueDate,
       transferAccount: sale?.transferAccount,
       notes: sale?.notes,
-      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, quantity: item.quantity, unitPrice: item.unitPrice, discount: item.discount || 0 })) : [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }]
+      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, quantity: item.quantity, unitPrice: item.unitPrice, discount: item.discount || 0 })) : [{ productRef: "", productId: undefined, quantity: 1, unitPrice: 0, discount: 0 }]
     }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -89,7 +93,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const paymentMethod = watch("paymentMethod");
   const tipeId = watch("tipeId");
   const selectedTipe = activeTipes.find((tipe) => tipe.id === tipeId);
-  const targetsErp = Boolean(selectedTipe && erpTypeCodes.includes(selectedTipe.code.toUpperCase()));
+  const targetsErp = Boolean(selectedTipe && erpTypeCodeSet.has(selectedTipe.code.trim().toUpperCase()));
+  const selectedLooksAj = selectedTipe?.code.trim().toUpperCase() === "AJ";
   const total = values.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unitPrice || 0) - Number(item.discount || 0)), 0);
   const subtotal = values.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
   const discountTotal = values.reduce((sum, item) => sum + Number(item.discount || 0), 0);
@@ -103,7 +108,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
 
   const addItem = () => {
     const newIndex = fields.length;
-    append({ productRef: "", quantity: 1, unitPrice: 0, discount: 0 });
+    append({ productRef: "", productId: undefined, quantity: 1, unitPrice: 0, discount: 0 });
     window.setTimeout(() => document.getElementById(`sale-item-${newIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   };
 
@@ -238,7 +243,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       erpReference: result.data.erpReference
     });
     const defaultRek = defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
-    reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", quantity: 1, unitPrice: 0, discount: 0 }] });
+    reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", productId: undefined, quantity: 1, unitPrice: 0, discount: 0 }] });
     setNotice({ type: "success", message: result.data?.target === "erp" ? `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.` : result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.` });
   };
 
@@ -260,6 +265,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       )}
       <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
         Tujuan transaksi: {targetsErp ? <><b>{EXTERNAL_ERP_NAME}</b> sebagai Invoice Penjualan untuk tipe AJ.</> : <><b>Sistem {APP_BRAND_NAME}</b>. Tipe non-AJ disimpan lokal.</>}
+        {selectedLooksAj && !targetsErp && <span className="mt-1 block text-xs font-semibold text-amber-700">Tipe terpilih AJ tetapi belum masuk daftar ERP. Cek SALES_ERP_TYPE_CODES di server.</span>}
       </p>
       {activeTipes.length === 0 && (
         <DependencyNotice message="Tipe pembukuan aktif belum tersedia. Jalankan seed master data atau atur tipe di Pengaturan." />
@@ -328,6 +334,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                 <div id={`sale-item-${index}`} key={field.id} className="scroll-mt-24 p-5 sm:p-6">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
                     <Field label="Barang" error={errors.items?.[index]?.productRef?.message}>
+                      <input type="hidden" {...register(`items.${index}.productId`)} />
                       <ProductSearchSelect
                         name={`items.${index}.productRef`}
                         value={values[index]?.productRef || ""}
@@ -335,11 +342,15 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                         options={productOptions}
                         onSelect={(option) => {
                           setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
+                          setValue(`items.${index}.productId`, option.product.productId || option.product.id, { shouldDirty: true, shouldValidate: true });
                           if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
                             setValue(`items.${index}.unitPrice`, option.product.sellingPrice, { shouldDirty: true, shouldValidate: true });
                           }
                         }}
-                        onInvalidInput={(value) => setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true })}
+                        onInvalidInput={(value) => {
+                          setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true });
+                          setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        }}
                         onSearch={setProductQuery}
                       />
                     </Field>

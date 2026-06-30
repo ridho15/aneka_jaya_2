@@ -11,12 +11,16 @@ const mocks = vi.hoisted(() => ({
       update: vi.fn()
     }
   },
-  sendNeoCommand: vi.fn(),
+  anikaRequest: vi.fn(),
+  listProducts: vi.fn(),
+  listErpPaginated: vi.fn(),
   recordAudit: vi.fn()
 }));
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
-vi.mock("@/lib/api/neo", () => ({ sendNeoCommand: mocks.sendNeoCommand }));
+vi.mock("@/lib/api/anikaClient", () => ({ anikaRequest: mocks.anikaRequest }));
+vi.mock("@/lib/api/products", () => ({ listProducts: mocks.listProducts }));
+vi.mock("@/lib/api/pagination", () => ({ listErpPaginated: mocks.listErpPaginated }));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 
 import { getErpSyncOverview, retryPendingSalesErpSync, retrySalesErpSync } from "@/lib/erpSync/salesRetry";
@@ -51,6 +55,10 @@ const row = {
 describe("ERP sync retry service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("ANIKA_ERP_FALLBACK_CUSTOMER_CODE", "");
+    mocks.listErpPaginated.mockResolvedValue({ success: true, data: [{ id: 77, name: "Budi", code: "BUDI" }] });
+    mocks.listProducts.mockResolvedValue({ success: true, data: [{ id: "88", productId: "88", code: "P-1", name: "Produk 1" }] });
+    mocks.anikaRequest.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });
   });
 
   it("lists ERP pending/failed rows with summary counts", async () => {
@@ -80,13 +88,14 @@ describe("ERP sync retry service", () => {
 
   it("marks a failed sales sync as synced when retry succeeds", async () => {
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
-    mocks.sendNeoCommand.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });
+    mocks.anikaRequest.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });
     mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "synced", syncError: null, erpReference: "INV-1", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
 
     await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, message: "Retry ERP berhasil.", item: { syncStatus: "synced", erpReference: "INV-1" } });
 
-    expect(mocks.sendNeoCommand).toHaveBeenCalledWith(expect.objectContaining({
-      parsedIntent: expect.objectContaining({ action: "create_sales", tipe_code_snapshot: "AJ" })
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"customer_id\":77")
     }));
     expect(mocks.prisma.salesRecord.update).toHaveBeenLastCalledWith(expect.objectContaining({
       data: expect.objectContaining({ syncStatus: "synced", syncError: null, erpReference: "INV-1" })
@@ -96,7 +105,7 @@ describe("ERP sync retry service", () => {
 
   it("keeps a failed status with a safe error when retry fails", async () => {
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
-    mocks.sendNeoCommand.mockResolvedValue({ success: false, code: "ERP_AUTH", message: "raw upstream detail" });
+    mocks.anikaRequest.mockResolvedValue({ success: false, code: "ERP_AUTH", message: "raw upstream detail" });
     mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "failed", syncError: "ERP menolak akses. Silakan cek sesi atau token ERP." });
 
     await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({
@@ -109,7 +118,7 @@ describe("ERP sync retry service", () => {
 
   it("stores an operational validation error and safe correlation id when ERP rejects payload", async () => {
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
-    mocks.sendNeoCommand.mockResolvedValue({ success: false, code: "ERP_VALIDATION", message: "ERP menolak payload: produk tidak ditemukan", details: { correlationId: "cid-sales-1" } });
+    mocks.anikaRequest.mockResolvedValue({ success: false, code: "ERP_VALIDATION", message: "ERP menolak payload: produk tidak ditemukan", details: { correlationId: "cid-sales-1" } });
     mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "failed", syncError: "ERP menolak payload: produk tidak ditemukan" });
 
     await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({
@@ -127,9 +136,26 @@ describe("ERP sync retry service", () => {
   it("retries batch pending/failed sales rows", async () => {
     mocks.prisma.salesRecord.findMany.mockResolvedValue([{ id: "S-ERP-1" }]);
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
-    mocks.sendNeoCommand.mockResolvedValue({ success: true, data: { id: "ERP-1" } });
+    mocks.anikaRequest.mockResolvedValue({ success: true, data: { id: "ERP-1" } });
     mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "synced", erpReference: "ERP-1", syncError: null, syncedAt: new Date() });
 
     await expect(retryPendingSalesErpSync()).resolves.toMatchObject({ attempted: 1, succeeded: 1, failed: 0 });
+  });
+
+  it("uses the ERP fallback customer when retrying a manual customer", async () => {
+    vi.stubEnv("ANIKA_ERP_FALLBACK_CUSTOMER_CODE", "WALK-IN");
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue({ ...row, customerName: "Customer Manual", customerLocation: "Toko Timur" });
+    mocks.listErpPaginated
+      .mockResolvedValueOnce({ success: true, data: [] })
+      .mockResolvedValueOnce({ success: true, data: [{ id: 99, code: "WALK-IN", name: "Customer Umum" }] });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, customerName: "Customer Manual", syncStatus: "synced", syncError: null, erpReference: "INV-1", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
+
+    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, item: { syncStatus: "synced" } });
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
+      body: expect.stringContaining("\"customer_id\":99")
+    }));
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
+      body: expect.stringContaining("Customer Manual - Toko Timur")
+    }));
   });
 });

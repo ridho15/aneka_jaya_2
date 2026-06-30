@@ -19,6 +19,7 @@ export const penjualanSchema = z.object({
   isTestTransaction: z.boolean().optional(),
   items: z.array(z.object({
     productRef: z.string().trim().min(1, "Kode atau nama barang wajib diisi").max(150),
+    productId: z.string().trim().max(50).optional(),
     quantity: z.coerce.number().positive("Quantity harus lebih dari 0"),
     unitPrice: z.coerce.number().min(0, "Harga satuan tidak boleh negatif"),
     discount: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Diskon tidak boleh negatif")).default(0)

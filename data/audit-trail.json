@@ -1,5 +1,22 @@
 [
   {
+    "id": "ae46dd36-434e-4953-b8e2-e04e0bf81639",
+    "createdAt": "2026-06-30T06:27:43.052Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796460370-839475f7",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "Customer fallback ERP belum dikonfigurasi: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
+    },
+    "reason": "Retry ERP sales gagal • Customer fallback ERP belum dikonfigurasi: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
+  },
+  {
     "id": "40e56fad-ffc2-457d-8440-43665eb9367c",
     "createdAt": "2026-06-30T05:27:49.294Z",
     "userId": "anika:1",

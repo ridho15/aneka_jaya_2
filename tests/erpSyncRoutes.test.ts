@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   retrySalesErpSync: vi.fn(),
   retryPendingExpenseErpSync: vi.fn(),
   retryExpenseErpSync: vi.fn(),
+  getErpSyncPreflight: vi.fn(),
   recordAudit: vi.fn()
 }));
 
@@ -20,11 +21,13 @@ vi.mock("@/lib/erpSync/expenseRetry", () => ({
   retryPendingExpenseErpSync: mocks.retryPendingExpenseErpSync,
   retryExpenseErpSync: mocks.retryExpenseErpSync
 }));
+vi.mock("@/lib/erpSync/preflight", () => ({ getErpSyncPreflight: mocks.getErpSyncPreflight }));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 
 import { POST as retryCron } from "@/app/api/jobs/retry-erp-sync/route";
 import { POST as retryOne } from "@/app/api/erp-sync/sales/[id]/retry/route";
 import { POST as retryExpense } from "@/app/api/erp-sync/expenses/[id]/retry/route";
+import { GET as preflight } from "@/app/api/erp-sync/preflight/route";
 
 describe("ERP sync retry API routes", () => {
   beforeEach(() => {
@@ -34,6 +37,7 @@ describe("ERP sync retry API routes", () => {
     mocks.retrySalesErpSync.mockReset();
     mocks.retryPendingExpenseErpSync.mockReset();
     mocks.retryExpenseErpSync.mockReset();
+    mocks.getErpSyncPreflight.mockReset();
     mocks.recordAudit.mockReset();
   });
 
@@ -76,5 +80,21 @@ describe("ERP sync retry API routes", () => {
 
     expect(response.status).toBe(403);
     expect(mocks.retrySalesErpSync).not.toHaveBeenCalled();
+  });
+
+  it("allows OWNER to run ERP sync preflight", async () => {
+    mocks.getErpSyncPreflight.mockResolvedValue({ fallbackCustomer: { configured: true, found: true, code: "WALK-IN" } });
+    const response = await preflight();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ success: true, data: { fallbackCustomer: { found: true } } });
+  });
+
+  it("rejects preflight for non-OWNER roles", async () => {
+    mocks.role = "ADMIN";
+    const response = await preflight();
+
+    expect(response.status).toBe(403);
+    expect(mocks.getErpSyncPreflight).not.toHaveBeenCalled();
   });
 });

@@ -1106,6 +1106,50 @@ paths:
           description: Job selesai.
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/erp-sync/preflight:
+    get:
+      summary: Preflight konfigurasi ERP Sync.
+      description: Permission erp_sync.retry. Mengecek status base URL/auth ERP dan fallback customer tanpa menampilkan token atau payload sensitif.
+      responses:
+        "200":
+          description: Status preflight ERP Sync.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      erp:
+                        type: object
+                        properties:
+                          baseUrlConfigured:
+                            type: boolean
+                          staticTokenConfigured:
+                            type: boolean
+                          sessionTokenAvailable:
+                            type: boolean
+                          authReady:
+                            type: boolean
+                      fallbackCustomer:
+                        type: object
+                        properties:
+                          configured:
+                            type: boolean
+                          code:
+                            type: string
+                          found:
+                            type: boolean
+                          status:
+                            type: string
+                            enum: [configured, missing, erp_error]
+                          message:
+                            type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/erp-sync/sales/{id}/retry:
     post:
       summary: Retry manual sinkron ERP untuk satu transaksi penjualan.
