@@ -89,13 +89,14 @@ function readBody(request) {
 }
 
 function htmlPage(message = "") {
+  const appName = escapeHtml(process.env.NEXT_PUBLIC_APP_NAME || "SLM");
   const notice = message ? `<p class="notice">${escapeHtml(message)}</p>` : "";
   return `<!doctype html>
 <html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Aneka Jaya Login</title>
+  <title>${appName} Login</title>
   <style>
     body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f8fafc;color:#0f172a;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     main{width:min(92vw,420px);border:1px solid #dbe7e2;background:white;border-radius:18px;padding:28px;box-shadow:0 24px 80px rgba(15,23,42,.08)}
@@ -109,8 +110,8 @@ function htmlPage(message = "") {
 </head>
 <body>
   <main>
-    <h1>Masuk ke Sistem</h1>
-    <p>Gunakan akun gateway sementara. Role tetap mengikuti user yang terdaftar di aplikasi.</p>
+    <h1>Masuk ke ${appName}</h1>
+    <p>Gunakan akun yang sudah terdaftar. Role mengikuti user yang terdaftar di aplikasi.</p>
     ${notice}
     <form method="post" action="/login">
       <label>Username<input name="username" autocomplete="username" required /></label>
