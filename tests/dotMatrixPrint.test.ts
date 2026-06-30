@@ -102,6 +102,22 @@ describe("dot matrix print formatter", () => {
     expect(slm).toContain("SLM");
   });
 
+  it("can mask sales transaction number for non-owner print access", () => {
+    const text = formatSaleDotMatrix({
+      id: "S-SECRET-001",
+      saleDate: "2026-06-27",
+      tipeCodeSnapshot: "W",
+      customerName: "Toko Admin",
+      paymentMethod: "Cash",
+      total: 10000,
+      items: []
+    }, { showTransactionNumber: false });
+
+    expectFixedWidth(text);
+    expect(text).toContain("No -");
+    expect(text).not.toContain("S-SECRET-001");
+  });
+
   it("uses Aneka Jaya fixed item positioning without shifting totals", () => {
     const text = formatSaleDotMatrix({
       id: "S-LAYOUT",

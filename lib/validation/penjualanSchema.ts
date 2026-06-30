@@ -1,6 +1,16 @@
 import { z } from "zod";
 
 const date = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Tanggal tidak valid");
+const manualProductSchema = z.object({
+  sku: z.string().trim().min(1, "Kode produk manual wajib diisi").max(80),
+  name: z.string().trim().min(1, "Nama produk manual wajib diisi").max(150),
+  productCategoryId: z.coerce.number().int().positive("Kategori ERP wajib dipilih").optional(),
+  uomId: z.coerce.number().int().positive("Satuan ERP wajib dipilih").optional(),
+  brandCode: z.string().trim().max(80).optional(),
+  costPrice: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Harga modal tidak boleh negatif").default(0)).optional(),
+  sellingPrice: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Harga jual tidak boleh negatif").default(0)).optional(),
+  description: z.string().trim().max(500).optional()
+});
 export const penjualanSchema = z.object({
   saleDate: date,
   tipeId: z.string().trim().min(1, "Tipe wajib dipilih").default("W"),
@@ -20,6 +30,8 @@ export const penjualanSchema = z.object({
   items: z.array(z.object({
     productRef: z.string().trim().min(1, "Kode atau nama barang wajib diisi").max(150),
     productId: z.string().trim().max(50).optional(),
+    productInputMode: z.enum(["erp", "manual"]).default("erp").optional(),
+    manualProduct: manualProductSchema.optional(),
     quantity: z.coerce.number().positive("Quantity harus lebih dari 0"),
     unitPrice: z.coerce.number().min(0, "Harga satuan tidak boleh negatif"),
     discount: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Diskon tidak boleh negatif")).default(0)

@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 
 export const dynamic = "force-dynamic";
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 const statusClass: Record<string, string> = {
   approved: "bg-emerald-50 text-emerald-700",
@@ -119,6 +119,7 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
                 <td className="px-5 py-4">{expense.attachmentUrl ? <a className="font-semibold text-emerald-700 hover:text-emerald-800" href={expense.attachmentUrl} target="_blank" rel="noreferrer">Buka</a> : "—"}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-col gap-2">
+                    <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/pengeluaran/${expense.id}`}>Detail</Link>
                     <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/print/expenses/${expense.id}`}>Cetak</Link>
                     {canManage && (
                       <>

@@ -203,6 +203,8 @@ model SalesRecordItem {
   salesRecordId String
   salesRecord   SalesRecord @relation(fields: [salesRecordId], references: [id], onDelete: Cascade)
   productRef    String
+  productId      String?
+  manualProduct  Json?
   quantity      Decimal     @db.Decimal(18, 2)
   unitPrice     Decimal     @db.Decimal(18, 2)
   discount      Decimal     @default(0) @db.Decimal(18, 2)
@@ -210,6 +212,7 @@ model SalesRecordItem {
 
   @@index([salesRecordId])
   @@index([productRef])
+  @@index([productId])
 }
 
 model ExpenseRecord {

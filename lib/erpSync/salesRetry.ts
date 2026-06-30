@@ -69,7 +69,15 @@ function buildRetryInput(row: SalesRow) {
     deliveryDate: undefined,
     shippingMethod: row.shippingMethod || undefined,
     notes: row.notes || undefined,
-    items: row.items.map((item) => ({ productRef: item.productRef, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice), discount: Number(item.discount) }))
+    items: row.items.map((item) => ({
+      productRef: item.productRef,
+      productId: item.productId || undefined,
+      productInputMode: item.manualProduct ? "manual" as const : "erp" as const,
+      manualProduct: item.manualProduct && typeof item.manualProduct === "object" ? item.manualProduct as PenjualanInput["items"][number]["manualProduct"] : undefined,
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      discount: Number(item.discount)
+    }))
   };
 }
 
