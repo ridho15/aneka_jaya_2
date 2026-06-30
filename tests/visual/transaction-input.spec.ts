@@ -31,7 +31,7 @@ async function loginAsOwner(page: import("@playwright/test").Page) {
 }
 
 async function mockProductsReady(page: import("@playwright/test").Page) {
-  await page.route("**/api/products", async (route) => {
+  await page.route("**/api/products**", async (route) => {
     if (route.request().method() !== "GET") return route.fallback();
     await route.fulfill({
       status: 200,
@@ -54,7 +54,7 @@ async function mockProductsReady(page: import("@playwright/test").Page) {
 }
 
 async function mockStocksReady(page: import("@playwright/test").Page) {
-  await page.route("**/api/stocks", async (route) => {
+  await page.route("**/api/stocks**", async (route) => {
     if (route.request().method() !== "GET") return route.fallback();
     await route.fulfill({
       status: 200,
@@ -157,7 +157,7 @@ test("Input Penjualan can submit an AJ transaction without touching the live ERP
 
 test("Input Penjualan blocks submit when ERP products fail to load", async ({ page }) => {
   await loginAsOwner(page);
-  await page.route("**/api/products", async (route) => {
+  await page.route("**/api/products**", async (route) => {
     await route.fulfill({
       status: 502,
       contentType: "application/json",
@@ -177,7 +177,7 @@ test("Input Penjualan keeps product selection usable when ERP stock fails", asyn
   await loginAsOwner(page);
   await mockProductsReady(page);
   const submitted: unknown[] = [];
-  await page.route("**/api/stocks", async (route) => {
+  await page.route("**/api/stocks**", async (route) => {
     await route.fulfill({
       status: 502,
       contentType: "application/json",

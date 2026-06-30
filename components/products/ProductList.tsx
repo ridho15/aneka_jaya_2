@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { ProductListItem } from "@/lib/types/product";
 import { Input } from "@/components/ui/Input";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import type { StockItem } from "@/lib/types/stock";
 import { normalizeProductCode } from "@/lib/api/erpMappers";
 import { ProductDeactivateButton } from "@/components/products/ProductDeactivateButton";
+import type { ProductPageMeta } from "@/lib/api/products";
 
 const rupiah = (amount: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
 const dash = "—";
@@ -32,6 +33,18 @@ function stockJoinValues(stock: StockItem) {
   return [stock.productId, stock.productCode].map(normalizeProductCode).filter(Boolean);
 }
 
+function buildStockLookup(stocks: StockItem[]) {
+  const lookup = new Map<string, StockItem[]>();
+  for (const stock of stocks) {
+    for (const key of stockJoinValues(stock)) {
+      const rows = lookup.get(key) ?? [];
+      rows.push(stock);
+      lookup.set(key, rows);
+    }
+  }
+  return lookup;
+}
+
 function locationSummary(stockRows: StockItem[]) {
   const locations = stockRows.map((stock) => [stock.warehouse, stock.rack].filter(Boolean).join(" / ")).filter(Boolean);
   const unique = Array.from(new Set(locations));
@@ -50,30 +63,42 @@ function productWarnings(item: ProductListItem, stockRows: StockItem[], quantity
   return Array.from(new Set(warnings));
 }
 
-function stockRowsForProduct(item: ProductListItem, stocks: StockItem[]) {
+function stockRowsForProduct(item: ProductListItem, stockLookup: Map<string, StockItem[]>) {
   if (item.stockBreakdown?.length) return item.stockBreakdown;
   const productJoinKeys = new Set([normalizeProductCode(item.productId), normalizeProductCode(item.id), normalizeProductCode(item.code)].filter(Boolean));
-  return stocks.filter((stock) => stockJoinValues(stock).some((value) => productJoinKeys.has(value)));
+  const rows = Array.from(productJoinKeys).flatMap((key) => stockLookup.get(key) ?? []);
+  return Array.from(new Map(rows.map((stock) => [stock.id, stock])).values());
 }
 
-export function ProductList({ products, stocks, initialStockError, canManage = false }: { products: ProductListItem[]; stocks: StockItem[]; initialStockError?: string | null; canManage?: boolean }) {
+export function ProductList({ products, productMeta, initialKeyword = "", stocks, initialStockError, canManage = false }: { products: ProductListItem[]; productMeta?: ProductPageMeta; initialKeyword?: string; stocks: StockItem[]; initialStockError?: string | null; canManage?: boolean }) {
   const [liveProducts, setLiveProducts] = useState<ProductListItem[]>(products);
   const [liveStocks, setLiveStocks] = useState(stocks);
+  const [productPage, setProductPage] = useState<ProductPageMeta>(() => productMeta ?? { page: 1, pageSize: Math.max(products.length, 1), total: products.length, totalPages: 1 });
   const [stockSync, setStockSync] = useState<StockSyncState>(() => initialStockError ? { status: "failed", message: initialStockError } : { status: "success", updatedAt: timeLabel() });
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialKeyword);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const didMountSearch = useRef(false);
 
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
+  const fetchProducts = useCallback(async (page: number, keyword: string) => {
+    setLoadingProducts(true);
     try {
-      const [productResponse, stockResponse] = await Promise.all([
-        fetch("/api/products", { cache: "no-store" }),
-        fetch("/api/stocks", { cache: "no-store" })
-      ]);
-      const productResult = await productResponse.json().catch(() => null);
-      const stockResult = await stockResponse.json().catch(() => null);
+      const search = new URLSearchParams({ page: String(page), pageSize: String(productPage.pageSize), keyword });
+      const response = await fetch(`/api/products?${search.toString()}`, { cache: "no-store" });
+      const result = await response.json().catch(() => null);
+      if (response.ok && result?.success && Array.isArray(result.data?.data) && result.data?.meta) {
+        setLiveProducts(result.data.data);
+        setProductPage(result.data.meta);
+      }
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, [productPage.pageSize]);
 
-      if (productResponse.ok && productResult?.success) setLiveProducts(productResult.data);
+  const refreshStocks = useCallback(async () => {
+    try {
+      const stockResponse = await fetch("/api/stocks", { cache: "no-store" });
+      const stockResult = await stockResponse.json().catch(() => null);
       if (stockResponse.ok && stockResult?.success) {
         setLiveStocks(stockResult.data);
         setStockSync({ status: "success", updatedAt: timeLabel() });
@@ -90,28 +115,43 @@ export function ProductList({ products, stocks, initialStockError, canManage = f
         message: "Refresh ERP gagal karena koneksi bermasalah. Menampilkan data valid terakhir bila tersedia.",
         updatedAt: previous.updatedAt
       }));
-    } finally {
-      setRefreshing(false);
     }
   }, [liveStocks.length]);
 
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchProducts(productPage.page, query), refreshStocks()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchProducts, productPage.page, query, refreshStocks]);
+
   useEffect(() => {
-    const interval = window.setInterval(refresh, 30_000);
+    const interval = window.setInterval(() => void refreshStocks(), 30_000);
     return () => window.clearInterval(interval);
-  }, [refresh]);
+  }, [refreshStocks]);
 
-  const shown = useMemo(() => {
-    const value = query.toLowerCase().trim();
-    return liveProducts.filter((item) => !value || item.code.toLowerCase().includes(value) || item.name.toLowerCase().includes(value));
-  }, [liveProducts, query]);
+  useEffect(() => {
+    if (!didMountSearch.current) {
+      didMountSearch.current = true;
+      return;
+    }
+    const timer = window.setTimeout(() => void fetchProducts(1, query), 350);
+    return () => window.clearTimeout(timer);
+  }, [fetchProducts, query]);
 
-  return <section className="aj-surface p-5 sm:p-6"><div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Input className="max-w-md" placeholder="Cari kode atau nama barang" value={query} onChange={(event) => setQuery(event.target.value)} /><div className="flex flex-wrap gap-2"><Link href="/stok-barang"><Button type="button" variant="secondary">Detail per Gudang</Button></Link><Button type="button" variant="secondary" onClick={refresh} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh ERP"}</Button>{canManage && <Link href="/barang/input"><Button>+ Tambah Barang</Button></Link>}</div></div><div className="mb-4 space-y-2"><p className="text-xs text-slate-500">Quantity disinkronkan dari ERP setiap 30 detik{stockSync.updatedAt ? ` · terakhir berhasil ${stockSync.updatedAt}` : ""}. Qty di halaman ini adalah total gabungan stok ERP per barang.</p>{stockSync.status !== "success" && <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{stockSync.status === "stale" ? "Refresh stok gagal, memakai data terakhir." : "Stok ERP belum berhasil dimuat."} {stockSync.message}</p>}</div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-3 py-3">Kode</th><th className="px-3 py-3">Nama barang</th><th className="px-3 py-3">Kategori</th><th className="px-3 py-3">Lokasi ERP</th><th className="px-3 py-3 text-right">Qty ERP</th><th className="px-3 py-3 text-right">Minimum</th><th className="px-3 py-3">Harga jual</th><th className="px-3 py-3">Status</th><th className="px-3 py-3" /></tr></thead><tbody>{shown.map((item) => {
-    const stockRows = stockRowsForProduct(item, liveStocks);
+  const stockLookup = useMemo(() => buildStockLookup(liveStocks), [liveStocks]);
+  const start = productPage.total === 0 ? 0 : (productPage.page - 1) * productPage.pageSize + 1;
+  const end = Math.min(productPage.page * productPage.pageSize, productPage.total);
+
+  return <section className="aj-surface p-5 sm:p-6"><div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Input className="max-w-md" placeholder="Cari kode atau nama barang" value={query} onChange={(event) => setQuery(event.target.value)} /><div className="flex flex-wrap gap-2"><Link href="/stok-barang"><Button type="button" variant="secondary">Detail per Gudang</Button></Link><Button type="button" variant="secondary" onClick={refresh} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh ERP"}</Button>{canManage && <Link href="/barang/input"><Button>+ Tambah Barang</Button></Link>}</div></div><div className="mb-4 space-y-2"><p className="text-xs text-slate-500">Menampilkan {start}–{end} dari {productPage.total} produk. Quantity disinkronkan dari ERP setiap 30 detik{stockSync.updatedAt ? ` · terakhir berhasil ${stockSync.updatedAt}` : ""}. Auto-refresh hanya memperbarui stok; tombol Refresh ERP memperbarui produk + stok.</p>{loadingProducts && <p className="text-xs font-medium text-emerald-700">Memuat produk...</p>}{stockSync.status !== "success" && <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">{stockSync.status === "stale" ? "Refresh stok gagal, memakai data terakhir." : "Stok ERP belum berhasil dimuat."} {stockSync.message}</p>}</div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-3 py-3">Kode</th><th className="px-3 py-3">Nama barang</th><th className="px-3 py-3">Kategori</th><th className="px-3 py-3">Lokasi ERP</th><th className="px-3 py-3 text-right">Qty ERP</th><th className="px-3 py-3 text-right">Minimum</th><th className="px-3 py-3">Harga jual</th><th className="px-3 py-3">Status</th><th className="px-3 py-3" /></tr></thead><tbody>{liveProducts.map((item) => {
+    const stockRows = stockRowsForProduct(item, stockLookup);
     const validQuantities = stockRows.map((stock) => stock.quantity).filter((quantity): quantity is number => typeof quantity === "number" && Number.isFinite(quantity));
     const quantity = item.stockSummary?.quantity ?? (stockSync.status === "failed" || stockRows.length === 0 || validQuantities.length === 0 ? null : validQuantities.reduce((sum, stockQuantity) => sum + stockQuantity, 0));
     const minimum = item.stockSummary?.minimumStock ?? item.minimumStock ?? stockRows.find((stock) => stock.minimumStock !== null && stock.minimumStock !== undefined)?.minimumStock ?? null;
     const warnings = productWarnings(item, stockRows, quantity, minimum);
     const shouldAlert = item.stockSummary?.isLowStock ?? stockRows.some((stock) => stock.isLowStock === true) ?? (quantity !== null && minimum !== null && minimum > 0 && quantity <= minimum);
     return <tr key={item.id} className="border-b border-slate-100 transition hover:bg-slate-50/80"><td className="px-3 py-3 font-semibold text-slate-800">{item.code}</td><td className="px-3 py-3">{item.name}{qualityWarning(warnings)}</td><td className="px-3 py-3">{item.category ?? dash}</td><td className="px-3 py-3 text-xs text-slate-600">{locationSummary(stockRows)}</td><td className="px-3 py-3 text-right"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${shouldAlert ? "bg-red-50 text-red-700" : quantity === null ? "bg-slate-100 text-slate-600" : "bg-blue-50 text-blue-700"}`}>{formatNumber(quantity)}</span></td><td className="px-3 py-3 text-right">{formatNumber(minimum)}</td><td className="px-3 py-3">{formatMoney(item.sellingPrice)}</td><td className="px-3 py-3">{item.isActive === null ? <span className="text-slate-500">{dash}</span> : <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{item.isActive ? "Aktif" : "Tidak aktif"}</span>}</td><td className="px-3 py-3 text-right">{canManage ? <div className="flex flex-col items-end gap-2"><Link className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline" href={`/barang/${item.id}/edit`}>Edit</Link><ProductDeactivateButton id={item.id} disabled={item.isActive === false} /></div> : null}</td></tr>;
-  })}{shown.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-500">Tidak ada barang yang sesuai.</td></tr>}</tbody></table></div></section>;
+  })}{liveProducts.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-500">Tidak ada barang yang sesuai.</td></tr>}</tbody></table></div><div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between"><span className="text-slate-500">Halaman {productPage.page} dari {productPage.totalPages}</span><div className="flex gap-2"><Button type="button" variant="secondary" disabled={loadingProducts || productPage.page <= 1} onClick={() => void fetchProducts(productPage.page - 1, query)}>Sebelumnya</Button><Button type="button" variant="secondary" disabled={loadingProducts || productPage.page >= productPage.totalPages} onClick={() => void fetchProducts(productPage.page + 1, query)}>Berikutnya</Button></div></div></section>;
 }

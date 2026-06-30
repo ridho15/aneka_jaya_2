@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     getProduct: vi.fn(),
     listProducts: vi.fn(),
     listProductTableItems: vi.fn(),
+    listProductTablePage: vi.fn(),
     listStocks: vi.fn(),
     listBookkeepingTypes: vi.fn(),
     listRekeningAccounts: vi.fn(),
@@ -34,7 +35,8 @@ vi.mock("@/lib/auth/session", () => ({
 vi.mock("@/lib/api/products", () => ({
   getProduct: mocks.getProduct,
   listProducts: mocks.listProducts,
-  listProductTableItems: mocks.listProductTableItems
+  listProductTableItems: mocks.listProductTableItems,
+  listProductTablePage: mocks.listProductTablePage
 }));
 
 vi.mock("@/lib/api/stocks", () => ({
@@ -81,6 +83,7 @@ describe("api route permission enforcement", () => {
     mocks.getProduct.mockReset();
     mocks.listProducts.mockReset();
     mocks.listProductTableItems.mockReset();
+    mocks.listProductTablePage.mockReset();
     mocks.listStocks.mockReset();
     mocks.listBookkeepingTypes.mockReset();
     mocks.listRekeningAccounts.mockReset();
@@ -119,7 +122,7 @@ describe("api route permission enforcement", () => {
       data: [{ id: "P-1", code: "P-1", name: "Produk", category: null, sellingPrice: null, minimumStock: null, isActive: null, updatedAt: "2026-06-29T10:00:00.000Z" }]
     });
 
-    const response = await getProducts();
+    const response = await getProducts(new Request("http://local/api/products"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -127,6 +130,26 @@ describe("api route permission enforcement", () => {
       data: [{ id: "P-1", code: "P-1", name: "Produk", category: null, sellingPrice: null, minimumStock: null, isActive: null, updatedAt: "2026-06-29T10:00:00.000Z" }]
     });
     expect(mocks.listProductTableItems).toHaveBeenCalled();
+  });
+
+  it("returns paginated products when page query is provided", async () => {
+    mocks.role = "ADMIN";
+    mocks.listProductTablePage.mockResolvedValue({
+      success: true,
+      data: {
+        data: [{ id: "P-1", code: "P-1", name: "Produk", category: null, sellingPrice: null, minimumStock: null, isActive: null, updatedAt: "2026-06-29T10:00:00.000Z" }],
+        meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 }
+      }
+    });
+
+    const response = await getProducts(new Request("http://local/api/products?page=1&pageSize=50&keyword=produk"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      data: { meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 } }
+    });
+    expect(mocks.listProductTablePage).toHaveBeenCalledWith({ page: 1, pageSize: 50, keyword: "produk" });
   });
 
   it("uses the shared current-role resolver for stocks, so trusted-header roles work", async () => {

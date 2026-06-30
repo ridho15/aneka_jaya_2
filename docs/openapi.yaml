@@ -234,6 +234,18 @@ components:
           type: array
           items:
             type: string
+    ProductListMeta:
+      type: object
+      required: [page, pageSize, total, totalPages]
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
     StockItem:
       type: object
       required: [id, productCode, productName]
@@ -557,21 +569,55 @@ paths:
   /api/products:
     get:
       summary: Daftar produk.
-      description: Permission stock.view. Respons daftar hanya berisi field tabel; detail internal seperti harga modal dan ID referensi tersedia melalui /api/products/{id}. Field nullable ditampilkan sebagai "—" di UI.
+      description: Permission stock.view. Tanpa query mengembalikan array kompatibilitas lama. Dengan page/pageSize/keyword mengembalikan data paginated plus meta.
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
-          description: Daftar produk.
+          description: Daftar produk array atau daftar paginated bila query pagination dikirim.
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: "#/components/schemas/ApiSuccess"
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/ProductListItem"
+                oneOf:
+                  - allOf:
+                      - $ref: "#/components/schemas/ApiSuccess"
+                      - type: object
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ProductListItem"
+                  - allOf:
+                      - $ref: "#/components/schemas/ApiSuccess"
+                      - type: object
+                        properties:
+                          data:
+                            type: object
+                            required: [data, meta]
+                            properties:
+                              data:
+                                type: array
+                                items:
+                                  $ref: "#/components/schemas/ProductListItem"
+                              meta:
+                                $ref: "#/components/schemas/ProductListMeta"
         "403":
           $ref: "#/components/responses/Forbidden"
         "502":

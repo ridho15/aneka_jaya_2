@@ -43,6 +43,13 @@ type ProductOption = {
 
 const normalizeCode = (value?: string | null) => String(value ?? "").trim().toLowerCase();
 
+function extractProductRows(result: unknown): Product[] {
+  const data = (result as { data?: unknown } | null)?.data;
+  if (Array.isArray(data)) return data as Product[];
+  const pagedData = (data as { data?: unknown } | null)?.data;
+  return Array.isArray(pagedData) ? pagedData as Product[] : [];
+}
+
 export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, erpTypeCodes = ["AJ"], sale }: Props) {
   const router = useRouter();
   const isEdit = Boolean(sale);
@@ -55,6 +62,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const [createdSale, setCreatedSale] = useState<CreatedSale>();
   const [products, setProducts] = useState<Product[]>([]);
   const [stocks, setStocks] = useState<StockItem[]>([]);
+  const [productQuery, setProductQuery] = useState("");
   const [productState, setProductState] = useState<ProductState>({ status: "loading" });
   const [stockState, setStockState] = useState<StockState>({ status: "loading" });
   const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
@@ -95,10 +103,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     setProductState({ status: "loading" });
     setStockState({ status: "loading" });
     try {
-      const [productResponse, stockResponse] = await Promise.all([
-        fetch("/api/products", { cache: "no-store" }),
-        fetch("/api/stocks", { cache: "no-store" })
-      ]);
+      const productResponse = await fetch("/api/products?page=1&pageSize=100", { cache: "no-store" });
       const productResult = await productResponse.json().catch(() => null);
       if (!productResponse.ok || !productResult?.success) {
         setProducts([]);
@@ -107,16 +112,14 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
         setStockState({ status: "failed", message: "Stok ERP tidak berhasil dimuat karena daftar barang belum siap." });
         return;
       }
-      const rows = Array.isArray(productResult.data) ? productResult.data : [];
+      const rows = extractProductRows(productResult);
       setProducts(rows);
       setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP belum memiliki produk aktif untuk dipilih." });
-      const stockResult = await stockResponse.json().catch(() => null);
-      if (stockResponse.ok && stockResult?.success && Array.isArray(stockResult.data)) {
-        setStocks(stockResult.data);
+      if (rows.every((product) => product.stockSummary)) {
+        setStocks([]);
         setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
       } else {
-        setStocks([]);
-        setStockState({ status: "failed", message: stockResult?.message || "Stok ERP tidak berhasil dimuat. Pilih barang tanpa memakai angka stok palsu." });
+        await refreshStocksForProducts();
       }
     } catch {
       setProducts([]);
@@ -126,9 +129,48 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     }
   }, []);
 
+  const searchProducts = useCallback(async (keyword: string) => {
+    const value = keyword.trim();
+    if (value.length < 2) return;
+    try {
+      const response = await fetch(`/api/products?page=1&pageSize=100&keyword=${encodeURIComponent(value)}`, { cache: "no-store" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) return;
+      const rows = extractProductRows(result);
+      setProducts(rows);
+      setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP tidak menemukan produk sesuai pencarian." });
+      if (rows.every((product) => product.stockSummary)) {
+        setStocks([]);
+        setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
+      } else {
+        await refreshStocksForProducts();
+      }
+    } catch {
+      setProductState({ status: "error", message: "Pencarian produk ERP bermasalah." });
+    }
+  }, []);
+
+  async function refreshStocksForProducts() {
+    const stockResponse = await fetch("/api/stocks", { cache: "no-store" });
+    const stockResult = await stockResponse.json().catch(() => null);
+    if (stockResponse.ok && stockResult?.success && Array.isArray(stockResult.data)) {
+      setStocks(stockResult.data);
+      setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
+    } else {
+      setStocks([]);
+      setStockState({ status: "failed", message: stockResult?.message || "Stok ERP tidak berhasil dimuat. Pilih barang tanpa memakai angka stok palsu." });
+    }
+  }
+
   useEffect(() => {
     void refreshProducts();
   }, [refreshProducts]);
+
+  useEffect(() => {
+    if (productQuery.trim().length < 2) return;
+    const timer = window.setTimeout(() => void searchProducts(productQuery), 350);
+    return () => window.clearTimeout(timer);
+  }, [productQuery, searchProducts]);
 
   useEffect(() => {
     if (isEdit) return;
@@ -255,7 +297,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
               )}
             </div>
           </section>
-          <section className="aj-surface overflow-hidden">
+          <section className="aj-surface overflow-visible">
             <div className="sticky top-2 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
               <div><h2 className="text-base font-bold tracking-tight">Barang</h2><p className="mt-0.5 text-xs text-neutral-500">{fields.length} item</p></div>
               <Button type="button" variant="secondary" onClick={addItem} disabled={productState.status !== "ready"}>+ Tambah barang</Button>
@@ -284,6 +326,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                           }
                         }}
                         onInvalidInput={(value) => setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true })}
+                        onSearch={setProductQuery}
                       />
                     </Field>
                     <Field label="Qty" error={errors.items?.[index]?.quantity?.message}><Input type="number" min="1" step="1" {...register(`items.${index}.quantity`, { valueAsNumber: true })} /></Field>
@@ -322,12 +365,12 @@ export function buildProductOptions(products: Product[], stocks: StockItem[]): P
   return products.map((product) => {
     const stockRows = stocks.filter((stock) => normalizeCode(stock.productCode) === normalizeCode(product.code));
     const validQuantities = stockRows.map((stock) => stock.quantity).filter((quantity): quantity is number => typeof quantity === "number" && Number.isFinite(quantity));
-    const quantity = stockRows.length > 0 && validQuantities.length === stockRows.length ? validQuantities.reduce((sum, value) => sum + value, 0) : null;
-    const stockMinimum = stockRows.find((stock) => stock.minimumStock !== null && stock.minimumStock !== undefined)?.minimumStock ?? null;
+    const quantity = product.stockSummary?.quantity ?? (stockRows.length > 0 && validQuantities.length === stockRows.length ? validQuantities.reduce((sum, value) => sum + value, 0) : null);
+    const stockMinimum = product.stockSummary?.minimumStock ?? stockRows.find((stock) => stock.minimumStock !== null && stock.minimumStock !== undefined)?.minimumStock ?? null;
     const unit = product.unit ?? stockRows.find((stock) => stock.unit)?.unit ?? null;
     const warehouses = Array.from(new Set(stockRows.map((stock) => stock.warehouse).filter((warehouse): warehouse is string => Boolean(warehouse))));
     const warnings = [...(product.dataQualityWarnings ?? []), ...stockRows.flatMap((stock) => stock.dataQualityWarnings ?? [])];
-    if (stockRows.length === 0) warnings.push("stok ERP");
+    if (stockRows.length === 0 && !product.stockSummary) warnings.push("stok ERP");
     if (quantity === null) warnings.push("qty ERP");
     if (product.sellingPrice === null) warnings.push("harga jual");
     return { product, stockRows, quantity, minimumStock: product.minimumStock ?? stockMinimum, unit, warehouses, warnings: Array.from(new Set(warnings)) };
@@ -355,13 +398,14 @@ function StockDependencyState({ state }: { state: StockState }) {
   return <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 sm:px-6">{state.message}</p>;
 }
 
-function ProductSearchSelect({ name, value, options, disabled, onSelect, onInvalidInput }: {
+function ProductSearchSelect({ name, value, options, disabled, onSelect, onInvalidInput, onSearch }: {
   name: string;
   value: string;
   options: ProductOption[];
   disabled?: boolean;
   onSelect: (option: ProductOption) => void;
   onInvalidInput: (value: string) => void;
+  onSearch?: (value: string) => void;
 }) {
   const selected = options.find((option) => normalizeCode(option.product.code) === normalizeCode(value));
   const [query, setQuery] = useState(selected ? optionLabel(selected) : value);
@@ -398,6 +442,7 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
           setActiveIndex(0);
           setOpen(true);
           onInvalidInput(event.target.value);
+          onSearch?.(event.target.value);
         }}
         onKeyDown={(event) => {
           if (event.key === "Escape") setOpen(false);
@@ -418,7 +463,7 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
       />
       {open && !disabled && (
-        <div id={`${name}-options`} role="listbox" className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-xl">
+        <div id={`${name}-options`} role="listbox" className="absolute z-[100] mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-xl">
           {filtered.map((option, index) => (
             <button
               key={option.product.id || option.product.code}

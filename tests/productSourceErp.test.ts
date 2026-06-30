@@ -10,7 +10,7 @@ vi.mock("@/lib/api/anikaClient", () => ({
   anikaRequest: mocks.anikaRequest
 }));
 
-import { listProducts } from "@/lib/api/products";
+import { listProducts, paginateProductItems } from "@/lib/api/products";
 import { listStocks } from "@/lib/api/stocks";
 
 describe("ERP product and stock source contract", () => {
@@ -61,6 +61,29 @@ describe("ERP product and stock source contract", () => {
       success: false,
       code: "ERP_SCHEMA",
       message: "Format data stok dari ERP tidak dikenali."
+    });
+  });
+
+  it("paginates and filters internal product table items safely", () => {
+    const items = Array.from({ length: 120 }, (_, index) => ({
+      id: `P-${index + 1}`,
+      code: `BRG-${index + 1}`,
+      name: index === 51 ? "Produk Khusus" : `Produk ${index + 1}`,
+      category: "Aksesoris",
+      sellingPrice: 1000,
+      minimumStock: 0,
+      isActive: true,
+      updatedAt: "2026-06-30T00:00:00.000Z"
+    }));
+
+    expect(paginateProductItems(items, { page: 2, pageSize: 50 })).toMatchObject({
+      data: expect.arrayContaining([expect.objectContaining({ code: "BRG-51" })]),
+      meta: { page: 2, pageSize: 50, total: 120, totalPages: 3 }
+    });
+    expect(paginateProductItems(items, { page: 1, pageSize: 500 }).meta.pageSize).toBe(100);
+    expect(paginateProductItems(items, { keyword: "khusus" })).toMatchObject({
+      data: [expect.objectContaining({ name: "Produk Khusus" })],
+      meta: expect.objectContaining({ total: 1 })
     });
   });
 });

@@ -9,6 +9,61 @@ import { recordAudit } from "@/lib/audit/store";
 import { toProduct, toProductListItem } from "@/lib/api/erpMappers";
 import { listErpPaginated } from "@/lib/api/pagination";
 
+export type ProductPageMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type ProductTablePage = {
+  data: ProductListItem[];
+  meta: ProductPageMeta;
+};
+
+export type ProductListOptions = {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+};
+
+const DEFAULT_PRODUCT_PAGE = 1;
+const DEFAULT_PRODUCT_PAGE_SIZE = 50;
+const MAX_PRODUCT_PAGE_SIZE = 100;
+
+function clampPage(value?: number) {
+  return Number.isFinite(value) && value && value > 0 ? Math.floor(value) : DEFAULT_PRODUCT_PAGE;
+}
+
+function clampPageSize(value?: number) {
+  if (!Number.isFinite(value) || !value || value <= 0) return DEFAULT_PRODUCT_PAGE_SIZE;
+  return Math.min(Math.max(Math.floor(value), 1), MAX_PRODUCT_PAGE_SIZE);
+}
+
+function normalizeKeyword(value?: string) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function filterProductItems(items: ProductListItem[], keyword?: string) {
+  const value = normalizeKeyword(keyword);
+  if (!value) return items;
+  return items.filter((item) => `${item.code} ${item.name} ${item.category ?? ""}`.toLowerCase().includes(value));
+}
+
+export function paginateProductItems(items: ProductListItem[], options: ProductListOptions = {}): ProductTablePage {
+  const page = clampPage(options.page);
+  const pageSize = clampPageSize(options.pageSize);
+  const filtered = filterProductItems(items, options.keyword);
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  return {
+    data: filtered.slice(start, start + pageSize),
+    meta: { page: safePage, pageSize, total, totalPages }
+  };
+}
+
 export async function listProducts(): Promise<ApiResponse<Product[]>> {
   const response = await listErpPaginated("/products", { query: { include_stock: true } });
   if (!response.success) return response.code === "ERP_SCHEMA" ? failure("Format data produk dari ERP tidak dikenali.", "ERP_SCHEMA") : response;
@@ -21,6 +76,12 @@ export async function listProductTableItems(): Promise<ApiResponse<ProductListIt
   const products = await listProducts();
   if (!products.success) return products;
   return { success: true, data: products.data.map(toProductListItem) };
+}
+
+export async function listProductTablePage(options: ProductListOptions = {}): Promise<ApiResponse<ProductTablePage>> {
+  const products = await listProductTableItems();
+  if (!products.success) return products;
+  return { success: true, data: paginateProductItems(products.data, options) };
 }
 
 export async function getProduct(id: string): Promise<ApiResponse<Product>> {
