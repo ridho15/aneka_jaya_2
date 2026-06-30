@@ -48,6 +48,98 @@ const paymentFile = "tempo-payments.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
 const finalStatuses: TempoStatus[] = ["paid", "cancelled", "written_off"];
 const activeStatuses: TempoStatus[] = ["open", "overdue", "partial_paid"];
+export type TempoReceivableFilters = {
+  keyword?: string;
+  tipe?: string;
+  status?: string;
+  dueFrom?: string;
+  dueTo?: string;
+  includeFinal?: boolean;
+};
+export type PaginatedTempoReceivables = {
+  data: TempoReceivable[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+};
+
+function cleanPage(value: number | undefined) {
+  return Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 1;
+}
+
+function cleanPageSize(value: number | undefined) {
+  const size = Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 50;
+  return Math.min(size, 100);
+}
+
+function dateStart(value: string) {
+  return new Date(`${value}T00:00:00.000`);
+}
+
+function dateEnd(value: string) {
+  return new Date(`${value}T23:59:59.999`);
+}
+
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function todayStart() {
+  return dateStart(todayDateString());
+}
+
+function applyOverdueStatus(row: TempoReceivable): TempoReceivable {
+  return row.status === "open" && row.dueDate < todayDateString() ? { ...row, status: "overdue" } : row;
+}
+
+function buildTempoWhere(filters: TempoReceivableFilters): Prisma.TempoReceivableWhereInput {
+  const where: Prisma.TempoReceivableWhereInput = {};
+  const and: Prisma.TempoReceivableWhereInput[] = [];
+  if (!filters.includeFinal) and.push({ status: { notIn: finalStatuses } });
+  if (filters.tipe) and.push({ OR: [{ tipeCodeSnapshot: filters.tipe }, { tipeId: filters.tipe }] });
+  if (filters.dueFrom || filters.dueTo) {
+    const dueDate: Prisma.DateTimeFilter = {};
+    if (filters.dueFrom) dueDate.gte = dateStart(filters.dueFrom);
+    if (filters.dueTo) dueDate.lte = dateEnd(filters.dueTo);
+    and.push({ dueDate });
+  }
+  if (filters.status) {
+    if (filters.status === "overdue") {
+      and.push({ status: "open", dueDate: { lt: todayStart() } });
+    } else if (filters.status === "open") {
+      and.push({ status: "open", dueDate: { gte: todayStart() } });
+    } else {
+      and.push({ status: filters.status as TempoStatus });
+    }
+  }
+  const keyword = filters.keyword?.trim();
+  if (keyword) {
+    and.push({
+      OR: [
+        { id: { contains: keyword, mode: "insensitive" } },
+        { salesId: { contains: keyword, mode: "insensitive" } },
+        { customerName: { contains: keyword, mode: "insensitive" } },
+        { createdByNameSnapshot: { contains: keyword, mode: "insensitive" } }
+      ]
+    });
+  }
+  if (and.length) where.AND = and;
+  return where;
+}
+
+function filterTempoInMemory(rows: TempoReceivable[], filters: TempoReceivableFilters) {
+  const keyword = filters.keyword?.trim().toLowerCase();
+  return rows.map(applyOverdueStatus).filter((row) => {
+    if (!filters.includeFinal && finalStatuses.includes(row.status)) return false;
+    if (keyword) {
+      const haystack = [row.id, row.salesId, row.customerName, row.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
+      if (!haystack.includes(keyword)) return false;
+    }
+    if (filters.tipe && (row.tipeCodeSnapshot || row.tipeId) !== filters.tipe) return false;
+    if (filters.status && row.status !== filters.status) return false;
+    if (filters.dueFrom && row.dueDate < filters.dueFrom) return false;
+    if (filters.dueTo && row.dueDate > filters.dueTo) return false;
+    return true;
+  });
+}
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
@@ -144,12 +236,43 @@ export async function createTempoReceivable(input: Omit<TempoReceivable, "id" | 
 export async function listTempoReceivables(): Promise<TempoReceivable[]> {
   if (isProductionMode()) {
     const rows = await prisma.tempoReceivable.findMany({ orderBy: { createdAt: "desc" } });
-    const today = new Date().toISOString().slice(0, 10);
-    return rows.map(toTempoReceivable).map((row) => row.status === "open" && row.dueDate < today ? { ...row, status: "overdue" as TempoStatus } : row);
+    return rows.map(toTempoReceivable).map(applyOverdueStatus);
   }
   const rows = await readJsonArray<TempoReceivable>(receivableFile);
-  const today = new Date().toISOString().slice(0, 10);
-  return rows.map((row) => row.status === "open" && row.dueDate < today ? { ...row, status: "overdue" as TempoStatus } : row);
+  return rows.map(applyOverdueStatus);
+}
+
+export async function listTempoReceivablesPage(input: { page?: number; pageSize?: number; filters?: TempoReceivableFilters } = {}): Promise<PaginatedTempoReceivables> {
+  const page = cleanPage(input.page);
+  const pageSize = cleanPageSize(input.pageSize);
+  if (isProductionMode()) {
+    const where = buildTempoWhere(input.filters || {});
+    const [total, rows] = await Promise.all([
+      prisma.tempoReceivable.count({ where }),
+      prisma.tempoReceivable.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      })
+    ]);
+    return { data: rows.map(toTempoReceivable).map(applyOverdueStatus), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+  }
+  const filtered = filterTempoInMemory(await readJsonArray<TempoReceivable>(receivableFile), input.filters || {});
+  const total = filtered.length;
+  return { data: filtered.slice((page - 1) * pageSize, page * pageSize), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+}
+
+export async function listTempoTipeOptions(): Promise<string[]> {
+  if (isProductionMode()) {
+    const rows = await prisma.tempoReceivable.findMany({
+      distinct: ["tipeCodeSnapshot"],
+      select: { tipeCodeSnapshot: true },
+      orderBy: { tipeCodeSnapshot: "asc" }
+    });
+    return rows.map((row) => row.tipeCodeSnapshot).filter(Boolean);
+  }
+  return Array.from(new Set((await readJsonArray<TempoReceivable>(receivableFile)).map((row) => row.tipeCodeSnapshot || row.tipeId).filter(Boolean))).sort();
 }
 
 export async function getTempoReceivable(id: string): Promise<TempoReceivable | undefined> {

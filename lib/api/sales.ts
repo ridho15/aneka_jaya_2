@@ -42,6 +42,8 @@ export function safeErpSyncError(response: ApiResponse<unknown>) {
   if (code === "ERP_TIMEOUT") return "ERP timeout saat sinkronisasi.";
   if (code === "ERP_NOT_CONFIGURED") return "Konfigurasi ERP belum lengkap.";
   if (code === "ERP_NETWORK") return "Koneksi ERP bermasalah.";
+  if (code === "ERP_VALIDATION") return response.message || "ERP menolak payload/data transaksi.";
+  if (code === "ERP_NOT_FOUND") return response.message || "Endpoint/resource ERP tidak ditemukan.";
   return response.message || "ERP gagal memproses transaksi.";
 }
 

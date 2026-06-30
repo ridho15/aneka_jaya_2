@@ -17,9 +17,10 @@ async function erpConfigStatus() {
   const hasStaticToken = Boolean(process.env.ANIKA_ERP_API_TOKEN);
   const provider = resolveAuthProvider();
   const hasSessionToken = provider === "anika_erp" ? Boolean(await currentAnikaErpToken()) : false;
-  if (!hasBaseUrl) return { ok: false, label: "Belum dikonfigurasi", message: "ANIKA_ERP_API_BASE_URL belum tersedia di server." };
-  if (hasStaticToken || hasSessionToken) return { ok: true, label: "Siap", message: "ERP siap dipakai untuk retry sinkronisasi." };
-  return { ok: false, label: provider === "anika_erp" ? "Perlu login ulang" : "Token belum dikonfigurasi", message: provider === "anika_erp" ? "Sesi ERP tidak tersedia. Silakan login ulang sebelum retry." : "ANIKA_ERP_API_TOKEN belum tersedia di server." };
+  if (!hasBaseUrl) return { ok: false, label: "Belum dikonfigurasi", message: "ANIKA_ERP_API_BASE_URL belum tersedia di server.", warning: undefined };
+  if (hasStaticToken) return { ok: true, label: "Siap", message: "ERP siap dipakai untuk retry sinkronisasi.", warning: undefined };
+  if (hasSessionToken) return { ok: true, label: "Siap", message: "ERP siap dipakai untuk retry manual berbasis sesi login.", warning: "ANIKA_ERP_API_TOKEN belum diisi. Manual retry bisa memakai sesi login, tetapi cron production sebaiknya memakai token statis server-side." };
+  return { ok: false, label: provider === "anika_erp" ? "Perlu login ulang" : "Token belum dikonfigurasi", message: provider === "anika_erp" ? "Sesi ERP tidak tersedia. Silakan login ulang sebelum retry." : "ANIKA_ERP_API_TOKEN belum tersedia di server.", warning: undefined };
 }
 
 export default async function ErpSyncPage() {
@@ -34,6 +35,7 @@ export default async function ErpSyncPage() {
   const runtimeWarnings = [salesOverview.warning, expenseOverview.warning].filter(Boolean);
   return <AppShell><div className="mb-7"><h2 className="aj-page-title text-3xl font-bold">ERP Sync</h2><p className="mt-2 text-sm text-slate-600">Pantau transaksi AJ yang gagal/pending dan retry sinkronisasi ke Aneka Jaya ERP.</p></div>
     {runtimeWarnings.length > 0 && <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-bold">ERP Sync storage belum siap</p><p className="mt-1">{Array.from(new Set(runtimeWarnings)).join(" ")}</p></div>}
+    {config.warning && <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-bold">Konfigurasi retry ERP perlu diperkuat</p><p className="mt-1">{config.warning}</p></div>}
     <div className="mb-5 grid gap-3 md:grid-cols-4">
       <div className="aj-surface p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">ERP Status</p><p className={config.ok ? "mt-1 text-lg font-bold text-emerald-700" : "mt-1 text-lg font-bold text-amber-700"}>{config.label}</p><p className="mt-1 text-xs text-slate-500">{config.message}</p></div>
       <div className="aj-surface p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending</p><p className="mt-1 text-2xl font-bold text-slate-900">{summary.pending}</p></div>

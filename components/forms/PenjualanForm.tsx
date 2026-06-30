@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toast } from "@/components/ui/Toast";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product } from "@/lib/types/product";
 import type { StockItem } from "@/lib/types/stock";
 import type { Sale } from "@/lib/types/sales";
@@ -56,7 +56,14 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
   const defaultTipe = sale ? activeTipes.find((tipe) => tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot) || activeTipes[0] : activeTipes[0];
   const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
-  const defaultRekening = useMemo(() => sale?.rekeningId ? rekenings.find((rekening) => rekening.id === sale.rekeningId) : defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined, [defaultTipe, rekeningForTipe, rekenings, sale?.rekeningId]);
+  const defaultRekening = useMemo(() => {
+    if (sale?.rekeningId && defaultTipe) {
+      const saleRekening = rekenings.find((rekening) => rekening.id === sale.rekeningId && rekening.tipeIds.includes(defaultTipe.id));
+      if (saleRekening) return saleRekening;
+    }
+    return defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
+  }, [defaultTipe, rekeningForTipe, rekenings, sale?.rekeningId]);
+  const initialTipeRef = useRef(sale?.tipeId || defaultTipe?.id || "");
 
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string }>();
   const [createdSale, setCreatedSale] = useState<CreatedSale>();
@@ -65,7 +72,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const [productQuery, setProductQuery] = useState("");
   const [productState, setProductState] = useState<ProductState>({ status: "loading" });
   const [stockState, setStockState] = useState<StockState>({ status: "loading" });
-  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
+  const { register, control, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
       saleDate: sale?.saleDate || today, tipeId: sale?.tipeId || defaultTipe?.id || "", tipeCodeSnapshot: sale?.tipeCodeSnapshot || defaultTipe?.code || "", tipeNameSnapshot: sale?.tipeNameSnapshot || defaultTipe?.name || "",
@@ -88,7 +95,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const discountTotal = values.reduce((sum, item) => sum + Number(item.discount || 0), 0);
   const filteredRekenings = useMemo(() => rekeningForTipe(tipeId), [rekeningForTipe, tipeId]);
   const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || filteredRekenings.length > 0);
-  const productOptions = useMemo(() => buildProductOptions(products, stocks), [products, stocks]);
+  const effectiveProducts = useMemo(() => mergeProductsWithSaleItems(products, sale), [products, sale]);
+  const productOptions = useMemo(() => buildProductOptions(effectiveProducts, stocks), [effectiveProducts, stocks]);
   const productCodes = useMemo(() => new Set(productOptions.map((option) => normalizeCode(option.product.code))), [productOptions]);
   const selectedProductsReady = values.length > 0 && values.every((item) => productCodes.has(normalizeCode(item.productRef)));
   const dependenciesReady = productState.status === "ready" && masterDataReady;
@@ -187,10 +195,16 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     setValue("tipeCodeSnapshot", tipe.code);
     setValue("tipeNameSnapshot", tipe.name);
     const reks = rekeningForTipe(tipe.id);
+    const currentRekening = reks.find((rekening) => rekening.id === getValues("rekeningId"));
+    if (isEdit && initialTipeRef.current === tipe.id && currentRekening) {
+      setValue("rekeningNameSnapshot", currentRekening.name);
+      return;
+    }
     const first = reks[0];
     setValue("rekeningId", first?.id || "");
     setValue("rekeningNameSnapshot", first?.name || "");
-  }, [activeTipes, rekeningForTipe, setValue, tipeId]);
+    initialTipeRef.current = tipe.id;
+  }, [activeTipes, getValues, isEdit, rekeningForTipe, setValue, tipeId]);
 
   const submit = async (data: PenjualanInput) => {
     setNotice(undefined);
@@ -375,6 +389,27 @@ export function buildProductOptions(products: Product[], stocks: StockItem[]): P
     if (product.sellingPrice === null) warnings.push("harga jual");
     return { product, stockRows, quantity, minimumStock: product.minimumStock ?? stockMinimum, unit, warehouses, warnings: Array.from(new Set(warnings)) };
   });
+}
+
+function mergeProductsWithSaleItems(products: Product[], sale?: Sale): Product[] {
+  if (!sale?.items?.length) return products;
+  const existingCodes = new Set(products.map((product) => normalizeCode(product.code)));
+  const fallbacks = sale.items
+    .filter((item) => item.productRef && !existingCodes.has(normalizeCode(item.productRef)))
+    .map((item): Product => ({
+      id: `saved-${item.productRef}`,
+      code: item.productRef,
+      name: `Produk tersimpan ${item.productRef}`,
+      category: null,
+      unit: null,
+      sellingPrice: item.unitPrice,
+      costPrice: null,
+      minimumStock: null,
+      isActive: true,
+      updatedAt: sale.createdAt || new Date().toISOString(),
+      dataQualityWarnings: ["Produk tidak masuk hasil produk ERP awal. Cari dan pilih ulang bila ingin mengganti barang."]
+    }));
+  return [...products, ...fallbacks];
 }
 
 function DependencyNotice({ message }: { message: string }) {

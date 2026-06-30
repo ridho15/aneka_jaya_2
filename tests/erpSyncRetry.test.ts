@@ -107,6 +107,23 @@ describe("ERP sync retry service", () => {
     expect(JSON.stringify(mocks.prisma.salesRecord.update.mock.calls)).not.toContain("raw upstream detail");
   });
 
+  it("stores an operational validation error and safe correlation id when ERP rejects payload", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
+    mocks.sendNeoCommand.mockResolvedValue({ success: false, code: "ERP_VALIDATION", message: "ERP menolak payload: produk tidak ditemukan", details: { correlationId: "cid-sales-1" } });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "failed", syncError: "ERP menolak payload: produk tidak ditemukan" });
+
+    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({
+      success: false,
+      message: "ERP menolak payload: produk tidak ditemukan"
+    });
+    expect(mocks.prisma.salesRecord.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ syncStatus: "failed", syncError: "ERP menolak payload: produk tidak ditemukan" })
+    }));
+    expect(mocks.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
+      afterValue: expect.objectContaining({ correlationId: "cid-sales-1" })
+    }));
+  });
+
   it("retries batch pending/failed sales rows", async () => {
     mocks.prisma.salesRecord.findMany.mockResolvedValue([{ id: "S-ERP-1" }]);
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);

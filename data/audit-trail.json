@@ -1,5 +1,194 @@
 [
   {
+    "id": "40e56fad-ffc2-457d-8440-43665eb9367c",
+    "createdAt": "2026-06-30T05:27:49.294Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796460370-839475f7",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP sedang tidak dapat melayani permintaan."
+    },
+    "reason": "Retry ERP sales gagal • ERP sedang tidak dapat melayani permintaan."
+  },
+  {
+    "id": "74114cab-be60-49cd-9ee7-96c28bd78645",
+    "createdAt": "2026-06-30T05:27:46.762Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1782796427910-da16e52d",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "failed",
+      "syncError": "ERP sedang tidak dapat melayani permintaan."
+    },
+    "reason": "Retry ERP sales gagal • ERP sedang tidak dapat melayani permintaan."
+  },
+  {
+    "id": "3d2de02c-c171-40d3-a389-ef9c3df71f3c",
+    "createdAt": "2026-06-30T05:15:22.455Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "sales",
+    "entityId": "S-1782729047060",
+    "action": "update",
+    "beforeValue": {
+      "id": "S-1782729047060",
+      "saleDate": "2026-06-30",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "Walk In",
+      "rekeningId": "cash-w",
+      "rekeningNameSnapshot": "Kas Walk In",
+      "customerName": "Ridho",
+      "customerLocation": "Ridho",
+      "deliveryDate": "2026-06-30",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "items": [
+        {
+          "productRef": "Ubr120H",
+          "quantity": 1,
+          "unitPrice": 0,
+          "discount": 0
+        }
+      ],
+      "isTestTransaction": false,
+      "total": 0,
+      "approvalStatus": "approved",
+      "syncTarget": "local",
+      "syncStatus": "local",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-29T10:30:47.060Z",
+      "notes": ""
+    },
+    "afterValue": {
+      "id": "S-1782729047060",
+      "saleDate": "2026-06-30",
+      "tipeId": "AJ",
+      "tipeCodeSnapshot": "AJ",
+      "tipeNameSnapshot": "Aneka Jaya",
+      "rekeningId": "cash-aj",
+      "rekeningNameSnapshot": "Kas AJ",
+      "customerName": "Ridho",
+      "customerLocation": "Ridho",
+      "deliveryDate": "2026-06-30",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "items": [
+        {
+          "productRef": "Kcr12881085",
+          "quantity": 10,
+          "unitPrice": 550000,
+          "discount": 0
+        }
+      ],
+      "isTestTransaction": false,
+      "total": 5500000,
+      "approvalStatus": "approved",
+      "syncTarget": "local",
+      "syncStatus": "local",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-29T10:30:47.060Z",
+      "notes": "",
+      "syncError": ""
+    },
+    "reason": "Edit transaksi lokal"
+  },
+  {
+    "id": "387897c8-0d57-4f85-932d-5881317f62ec",
+    "createdAt": "2026-06-30T05:14:53.045Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "sales",
+    "entityId": "S-1782729047060",
+    "action": "update",
+    "beforeValue": {
+      "id": "S-1782729047060",
+      "saleDate": "2026-06-29",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "W",
+      "rekeningId": "cash-w",
+      "rekeningNameSnapshot": "Kas Walk In",
+      "customerName": "Walk In",
+      "customerLocation": "Toko",
+      "deliveryDate": "2026-06-29",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "items": [
+        {
+          "productRef": "Ubr120H",
+          "quantity": 1,
+          "unitPrice": 0,
+          "discount": 0
+        }
+      ],
+      "isTestTransaction": false,
+      "total": 0,
+      "approvalStatus": "approved",
+      "syncTarget": "local",
+      "syncStatus": "local",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-29T10:30:47.060Z"
+    },
+    "afterValue": {
+      "id": "S-1782729047060",
+      "saleDate": "2026-06-30",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "Walk In",
+      "rekeningId": "cash-w",
+      "rekeningNameSnapshot": "Kas Walk In",
+      "customerName": "Ridho",
+      "customerLocation": "Ridho",
+      "deliveryDate": "2026-06-30",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "items": [
+        {
+          "productRef": "Ubr120H",
+          "quantity": 1,
+          "unitPrice": 0,
+          "discount": 0
+        }
+      ],
+      "isTestTransaction": false,
+      "total": 0,
+      "approvalStatus": "approved",
+      "syncTarget": "local",
+      "syncStatus": "local",
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-06-29T10:30:47.060Z",
+      "notes": "",
+      "syncError": ""
+    },
+    "reason": "Edit transaksi lokal"
+  },
+  {
     "id": "7d6e476d-4336-4fb7-afef-f41d69ea1e45",
     "createdAt": "2026-06-30T03:17:44.581Z",
     "userId": "anika:1",

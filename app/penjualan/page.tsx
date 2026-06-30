@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listSalesRecords } from "@/lib/sales/store";
+import { listSalesRecordsPage, listSalesTipeOptions, type SalesRecordFilters } from "@/lib/sales/store";
 import type { Sale } from "@/lib/types/sales";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 
@@ -33,28 +33,16 @@ function pageHref(params: SearchParams, page: number) {
   return `/penjualan?${next.toString()}`;
 }
 
-function filterSales(sales: Sale[], params: SearchParams) {
-  const from = valueOf(params, "from");
-  const to = valueOf(params, "to");
-  const keyword = valueOf(params, "keyword")?.trim().toLowerCase();
-  const tipe = valueOf(params, "tipe");
-  const payment = valueOf(params, "paymentMethod");
-  const approval = valueOf(params, "approvalStatus");
-  const sync = valueOf(params, "syncStatus");
-
-  return sales.filter((sale) => {
-    if (from && sale.saleDate < from) return false;
-    if (to && sale.saleDate > to) return false;
-    if (tipe && (sale.tipeCodeSnapshot || sale.tipeId || "") !== tipe) return false;
-    if (payment && sale.paymentMethod !== payment) return false;
-    if (approval && (sale.approvalStatus || "approved") !== approval) return false;
-    if (sync && (sale.syncStatus || "local") !== sync) return false;
-    if (keyword) {
-      const haystack = [sale.id, sale.customerName, sale.customerLocation, sale.testReference, sale.erpReference, sale.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
-      if (!haystack.includes(keyword)) return false;
-    }
-    return true;
-  });
+function filtersFromParams(params: SearchParams): SalesRecordFilters {
+  return {
+    from: valueOf(params, "from") || undefined,
+    to: valueOf(params, "to") || undefined,
+    keyword: valueOf(params, "keyword") || undefined,
+    tipe: valueOf(params, "tipe") || undefined,
+    paymentMethod: valueOf(params, "paymentMethod") || undefined,
+    approvalStatus: valueOf(params, "approvalStatus") || undefined,
+    syncStatus: valueOf(params, "syncStatus") || undefined
+  };
 }
 
 function Badge({ value, tone = "slate" }: { value: string; tone?: "slate" | "green" | "amber" | "red" | "blue" }) {
@@ -80,12 +68,12 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
   if (!can(role, "penjualan.create") && !can(role, "reports.view")) redirect("/");
   const canManage = can(role, "penjualan.manage");
   const params = await searchParams || {};
-  const sales = await listSalesRecords();
-  const filtered = filterSales(sales, params);
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const tipeOptions = Array.from(new Set(sales.map((sale) => sale.tipeCodeSnapshot || sale.tipeId).filter(Boolean))).sort() as string[];
+  const [{ data: paged, meta }, tipeOptions] = await Promise.all([
+    listSalesRecordsPage({ page, pageSize: PAGE_SIZE, filters: filtersFromParams(params) }),
+    listSalesTipeOptions()
+  ]);
+  const totalPages = meta.totalPages;
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 
   return (
@@ -116,7 +104,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
       </section>
 
       <section className="aj-surface overflow-x-auto">
-        <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {filtered.length} transaksi.</div>
+        <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} transaksi.</div>
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
             <tr><th className="px-5 py-3">Tanggal</th><th className="px-5 py-3">No Transaksi</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Pembayaran</th><th className="px-5 py-3 text-right">Total</th><th className="px-5 py-3">Approval</th><th className="px-5 py-3">ERP Sync</th><th className="px-5 py-3">Pembuat</th><th className="px-5 py-3">Aksi</th></tr>

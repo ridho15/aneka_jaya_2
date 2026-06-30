@@ -33,6 +33,11 @@ export type ErpSyncOverview = {
 
 const PRISMA_SYNC_WARNING = "Prisma Client belum tersinkron. Jalankan generate/migrate dan restart server.";
 
+function correlationIdFromFailure(response: { success: false; details?: unknown }) {
+  const details = response.details && typeof response.details === "object" ? response.details as Record<string, unknown> : {};
+  return typeof details.correlationId === "string" ? details.correlationId : undefined;
+}
+
 function salesDelegate() {
   return (prisma as typeof prisma & { salesRecord?: typeof prisma.salesRecord }).salesRecord;
 }
@@ -120,7 +125,7 @@ export async function retrySalesErpSync(id: string): Promise<{ success: boolean;
     data: { syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt },
     include: salesInclude
   });
-  await recordAudit({ entityType: "erp_sync", entityId: id, action: "retry_sync", afterValue: { syncStatus: "failed", syncError }, reason: `Retry ERP sales gagal • ${syncError}` });
+  await recordAudit({ entityType: "erp_sync", entityId: id, action: "retry_sync", afterValue: { syncStatus: "failed", syncError, correlationId: correlationIdFromFailure(response) }, reason: `Retry ERP sales gagal • ${syncError}` });
   return { success: false, item: toSyncItem(updated), message: syncError || "Retry ERP gagal." };
 }
 

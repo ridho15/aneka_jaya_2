@@ -3,10 +3,9 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listExpenseRecords } from "@/lib/expenses/store";
+import { listExpenseFilterOptions, listExpenseRecordsPage, type ExpenseRecordFilters } from "@/lib/expenses/store";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import type { Expense } from "@/lib/types/expenses";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 
 export const dynamic = "force-dynamic";
@@ -39,27 +38,16 @@ function pageHref(params: SearchParams, page: number) {
   return `/pengeluaran?${next.toString()}`;
 }
 
-function filterExpenses(expenses: Expense[], params: SearchParams) {
-  const from = valueOf(params, "from");
-  const to = valueOf(params, "to");
-  const keyword = valueOf(params, "keyword")?.trim().toLowerCase();
-  const tipe = valueOf(params, "tipe");
-  const rekening = valueOf(params, "rekening");
-  const approval = valueOf(params, "approvalStatus");
-  const sync = valueOf(params, "erpSyncStatus");
-  return expenses.filter((expense) => {
-    if (from && expense.expenseDate < from) return false;
-    if (to && expense.expenseDate > to) return false;
-    if (tipe && (expense.tipeCodeSnapshot || expense.tipeId || "") !== tipe) return false;
-    if (rekening && (expense.rekeningNameSnapshot || expense.rekeningId || "") !== rekening) return false;
-    if (approval && (expense.approvalStatus || "approved") !== approval) return false;
-    if (sync && (expense.erpSyncStatus || "not_required") !== sync) return false;
-    if (keyword) {
-      const haystack = [expense.id, expense.vendorName, expense.description, expense.category, expense.coaNameSnapshot, expense.notes, expense.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
-      if (!haystack.includes(keyword)) return false;
-    }
-    return true;
-  });
+function filtersFromParams(params: SearchParams): ExpenseRecordFilters {
+  return {
+    from: valueOf(params, "from") || undefined,
+    to: valueOf(params, "to") || undefined,
+    keyword: valueOf(params, "keyword") || undefined,
+    tipe: valueOf(params, "tipe") || undefined,
+    rekening: valueOf(params, "rekening") || undefined,
+    approvalStatus: valueOf(params, "approvalStatus") || undefined,
+    erpSyncStatus: valueOf(params, "erpSyncStatus") || undefined
+  };
 }
 
 export default async function PengeluaranHistoryPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
@@ -67,13 +55,12 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
   if (!can(role, "pengeluaran.view")) redirect("/");
   const canManage = can(role, "pengeluaran.manage");
   const params = await searchParams || {};
-  const expenses = await listExpenseRecords();
-  const filtered = filterExpenses(expenses, params);
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const tipeOptions = Array.from(new Set(expenses.map((expense) => expense.tipeCodeSnapshot || expense.tipeId).filter(Boolean))).sort() as string[];
-  const rekeningOptions = Array.from(new Set(expenses.map((expense) => expense.rekeningNameSnapshot || expense.rekeningId).filter(Boolean))).sort() as string[];
+  const [{ data: paged, meta }, { tipeOptions, rekeningOptions }] = await Promise.all([
+    listExpenseRecordsPage({ page, pageSize: PAGE_SIZE, filters: filtersFromParams(params) }),
+    listExpenseFilterOptions()
+  ]);
+  const totalPages = meta.totalPages;
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 
   return (
@@ -102,7 +89,7 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
         </form>
       </section>
       <section className="aj-surface overflow-x-auto">
-        <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {filtered.length} pengeluaran.</div>
+        <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} pengeluaran.</div>
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
             <tr>

@@ -1,33 +1,34 @@
 [
   {
     "id": "S-1782729047060",
-    "saleDate": "2026-06-29",
-    "tipeId": "W",
-    "tipeCodeSnapshot": "W",
-    "tipeNameSnapshot": "W",
-    "rekeningId": "cash-w",
-    "rekeningNameSnapshot": "Kas Walk In",
-    "customerName": "Walk In",
-    "customerLocation": "Toko",
-    "deliveryDate": "2026-06-29",
+    "saleDate": "2026-06-30",
+    "tipeId": "AJ",
+    "tipeCodeSnapshot": "AJ",
+    "tipeNameSnapshot": "Aneka Jaya",
+    "rekeningId": "cash-aj",
+    "rekeningNameSnapshot": "Kas AJ",
+    "customerName": "Ridho",
+    "customerLocation": "Ridho",
+    "deliveryDate": "2026-06-30",
     "shippingMethod": "di Tempat",
     "paymentMethod": "Cash",
     "items": [
       {
-        "productRef": "Ubr120H",
-        "quantity": 1,
-        "unitPrice": 0,
+        "productRef": "Kcr12881085",
+        "quantity": 10,
+        "unitPrice": 550000,
         "discount": 0
       }
     ],
     "isTestTransaction": false,
-    "total": 0,
+    "total": 5500000,
     "approvalStatus": "approved",
     "syncTarget": "local",
     "syncStatus": "local",
     "createdByUserId": "anika:1",
     "createdByNameSnapshot": "Ridho Al Amzah",
     "createdByRoleSnapshot": "OWNER",
-    "createdAt": "2026-06-29T10:30:47.060Z"
+    "createdAt": "2026-06-29T10:30:47.060Z",
+    "notes": ""
   }
 ]

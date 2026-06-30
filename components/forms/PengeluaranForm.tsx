@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Toast } from "@/components/ui/Toast";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
 import type { Expense } from "@/lib/types/expenses";
 import { useRouter } from "next/navigation";
@@ -23,13 +23,20 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
   const defaultTipe = useMemo(() => expense ? activeTipes.find((tipe) => tipe.id === expense.tipeId || tipe.code === expense.tipeCodeSnapshot) || activeTipes[0] || { id: expense.tipeId || "W", code: expense.tipeCodeSnapshot || "W", name: expense.tipeNameSnapshot || "W", isActive: true, sortOrder: 1 } : activeTipes[0] ?? { id: "W", code: "W", name: "W", isActive: true, sortOrder: 1 }, [activeTipes, expense]);
   const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
-  const defaultRekening = useMemo(() => rekeningForTipe(defaultTipe.id)[0], [defaultTipe.id, rekeningForTipe]);
+  const defaultRekening = useMemo(() => {
+    if (expense?.rekeningId) {
+      const expenseRekening = rekenings.find((rekening) => rekening.id === expense.rekeningId && rekening.tipeIds.includes(defaultTipe.id));
+      if (expenseRekening) return expenseRekening;
+    }
+    return rekeningForTipe(defaultTipe.id)[0];
+  }, [defaultTipe.id, expense?.rekeningId, rekeningForTipe, rekenings]);
+  const initialTipeRef = useRef(expense?.tipeId || defaultTipe.id);
 
   const [file, setFile] = useState<File>();
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string }>();
   const [filteredRekenings, setFilteredRekenings] = useState<RekeningAccount[]>(rekeningForTipe(defaultTipe.id));
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<PengeluaranInput>({
+  const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<PengeluaranInput>({
     resolver: zodResolver(pengeluaranSchema),
     defaultValues: {
       expenseDate: expense?.expenseDate || today, tipeId: expense?.tipeId || defaultTipe.id, tipeCodeSnapshot: expense?.tipeCodeSnapshot || defaultTipe.code, tipeNameSnapshot: expense?.tipeNameSnapshot || defaultTipe.name,
@@ -47,9 +54,15 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
     setValue("tipeNameSnapshot", tipe.name);
     const reks = rekeningForTipe(tipe.id);
     setFilteredRekenings(reks);
+    const currentRekening = reks.find((rekening) => rekening.id === getValues("rekeningId"));
+    if (isEdit && initialTipeRef.current === tipe.id && currentRekening) {
+      setValue("rekeningNameSnapshot", currentRekening.name);
+      return;
+    }
     const first = reks[0];
     if (first) { setValue("rekeningId", first.id); setValue("rekeningNameSnapshot", first.name); }
-  }, [activeTipes, rekeningForTipe, setValue, tipeId]);
+    initialTipeRef.current = tipe.id;
+  }, [activeTipes, getValues, isEdit, rekeningForTipe, setValue, tipeId]);
 
   const submit = async (data: PengeluaranInput) => {
     setNotice(undefined);
@@ -105,7 +118,15 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
           <Field label="Metode pembayaran" error={errors.paymentMethod?.message}>
             <Select {...register("paymentMethod")}><option value="">Pilih metode</option><option>Transfer</option><option>Tunai</option><option>QRIS</option><option>Kartu</option></Select>
           </Field>
-          <Field label="Upload bukti pembayaran"><FileUpload onFileChange={setFile} /></Field>
+          <Field label="Upload bukti pembayaran">
+            {isEdit && expense?.attachmentUrl && (
+              <p className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Lampiran lama: <a href={expense.attachmentUrl} target="_blank" rel="noreferrer" className="font-semibold text-emerald-700 underline underline-offset-2">Buka bukti pembayaran</a>
+                <span className="block mt-1">Biarkan kosong jika tidak ingin mengganti lampiran.</span>
+              </p>
+            )}
+            <FileUpload onFileChange={setFile} />
+          </Field>
           <div className="md:col-span-2"><Field label="Deskripsi" error={errors.description?.message}><Textarea rows={3} {...register("description")} /></Field></div>
           <div className="md:col-span-2"><Field label="Catatan"><Textarea rows={2} placeholder="Opsional" {...register("notes")} /></Field></div>
         </div>

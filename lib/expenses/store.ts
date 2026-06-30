@@ -5,8 +5,68 @@ import type { Role } from "@/lib/auth/roles";
 import type { Expense } from "@/lib/types/expenses";
 import type { PengeluaranInput } from "@/lib/validation/pengeluaranSchema";
 import { recordAudit } from "@/lib/audit/store";
+import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
 
 type ExpenseRecordRow = Prisma.ExpenseRecordGetPayload<object>;
+export type ExpenseRecordFilters = {
+  from?: string;
+  to?: string;
+  keyword?: string;
+  tipe?: string;
+  rekening?: string;
+  approvalStatus?: string;
+  erpSyncStatus?: string;
+};
+export type PaginatedExpenseRecords = {
+  data: Expense[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+};
+
+function cleanPage(value: number | undefined) {
+  return Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 1;
+}
+
+function cleanPageSize(value: number | undefined) {
+  const size = Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 50;
+  return Math.min(size, 100);
+}
+
+function dateStart(value: string) {
+  return new Date(`${value}T00:00:00.000`);
+}
+
+function dateEnd(value: string) {
+  return new Date(`${value}T23:59:59.999`);
+}
+
+function buildExpenseWhere(filters: ExpenseRecordFilters): Prisma.ExpenseRecordWhereInput {
+  const where: Prisma.ExpenseRecordWhereInput = {};
+  if (filters.from || filters.to) {
+    where.expenseDate = {};
+    if (filters.from) where.expenseDate.gte = dateStart(filters.from);
+    if (filters.to) where.expenseDate.lte = dateEnd(filters.to);
+  }
+  if (filters.tipe) where.OR = [{ tipeCodeSnapshot: filters.tipe }, { tipeId: filters.tipe }];
+  if (filters.rekening) {
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { OR: [{ rekeningNameSnapshot: filters.rekening }, { rekeningId: filters.rekening }] }];
+  }
+  if (filters.approvalStatus) where.approvalStatus = filters.approvalStatus;
+  if (filters.erpSyncStatus) where.erpSyncStatus = filters.erpSyncStatus;
+  const keyword = filters.keyword?.trim();
+  if (keyword) {
+    const keywordOr: Prisma.ExpenseRecordWhereInput[] = [
+      { id: { contains: keyword, mode: "insensitive" } },
+      { vendorName: { contains: keyword, mode: "insensitive" } },
+      { description: { contains: keyword, mode: "insensitive" } },
+      { category: { contains: keyword, mode: "insensitive" } },
+      { coaNameSnapshot: { contains: keyword, mode: "insensitive" } },
+      { notes: { contains: keyword, mode: "insensitive" } },
+      { createdByNameSnapshot: { contains: keyword, mode: "insensitive" } }
+    ];
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { OR: keywordOr }];
+  }
+  return where;
+}
 
 export function toExpense(row: ExpenseRecordRow): Expense {
   return {
@@ -85,6 +145,33 @@ export async function listExpenseRecords(): Promise<Expense[]> {
   return rows.map(toExpense);
 }
 
+export async function listExpenseRecordsPage(input: { page?: number; pageSize?: number; filters?: ExpenseRecordFilters } = {}): Promise<PaginatedExpenseRecords> {
+  const page = cleanPage(input.page);
+  const pageSize = cleanPageSize(input.pageSize);
+  const where = buildExpenseWhere(input.filters || {});
+  const [total, rows] = await Promise.all([
+    prisma.expenseRecord.count({ where }),
+    prisma.expenseRecord.findMany({
+      where,
+      orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    })
+  ]);
+  return { data: rows.map(toExpense), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+}
+
+export async function listExpenseFilterOptions(): Promise<{ tipeOptions: string[]; rekeningOptions: string[] }> {
+  const [tipeRows, rekeningRows] = await Promise.all([
+    prisma.expenseRecord.findMany({ distinct: ["tipeCodeSnapshot"], select: { tipeCodeSnapshot: true }, orderBy: { tipeCodeSnapshot: "asc" } }),
+    prisma.expenseRecord.findMany({ distinct: ["rekeningNameSnapshot"], select: { rekeningNameSnapshot: true }, orderBy: { rekeningNameSnapshot: "asc" } })
+  ]);
+  return {
+    tipeOptions: tipeRows.map((row) => row.tipeCodeSnapshot).filter(Boolean),
+    rekeningOptions: rekeningRows.map((row) => row.rekeningNameSnapshot).filter(Boolean)
+  };
+}
+
 export async function updateExpenseApprovalStatus(id: string, status: NonNullable<Expense["approvalStatus"]>): Promise<Expense | undefined> {
   const data: Prisma.ExpenseRecordUpdateInput = { approvalStatus: status };
   if (status === "rejected") {
@@ -106,15 +193,18 @@ export async function updateExpenseRecord(id: string, input: PengeluaranInput): 
   const before = await getExpenseRecord(id);
   if (!before) throw new Error("Pengeluaran tidak ditemukan.");
   assertExpenseManageable(before);
+  const tipe = await findTipe(input.tipeId || before.tipeId);
+  const rekening = (await rekeningForTipe(tipe.id)).find((item) => item.id === input.rekeningId);
+  if (!rekening) throw new Error("Rekening pengeluaran tidak tersedia untuk tipe transaksi ini.");
   const row = await prisma.expenseRecord.update({
     where: { id },
     data: {
       expenseDate: new Date(input.expenseDate),
-      tipeId: input.tipeId || before.tipeId || "W",
-      tipeCodeSnapshot: input.tipeCodeSnapshot || before.tipeCodeSnapshot || "W",
-      tipeNameSnapshot: input.tipeNameSnapshot || before.tipeNameSnapshot || "W",
-      rekeningId: input.rekeningId,
-      rekeningNameSnapshot: input.rekeningNameSnapshot,
+      tipeId: tipe.id,
+      tipeCodeSnapshot: tipe.code,
+      tipeNameSnapshot: tipe.name,
+      rekeningId: rekening.id,
+      rekeningNameSnapshot: rekening.name,
       coaId: input.coaId || "Kas",
       coaNameSnapshot: input.coaNameSnapshot || "Kas",
       category: input.category,

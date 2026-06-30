@@ -6,12 +6,86 @@ import type { Role } from "@/lib/auth/roles";
 import type { Prisma } from "@prisma/client";
 import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
 import { recordAudit } from "@/lib/audit/store";
+import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
 const salesInclude = { items: { orderBy: { sortOrder: "asc" as const } } };
 
 type SalesRecordWithItems = Prisma.SalesRecordGetPayload<{ include: typeof salesInclude }>;
+export type SalesRecordFilters = {
+  from?: string;
+  to?: string;
+  keyword?: string;
+  tipe?: string;
+  paymentMethod?: string;
+  approvalStatus?: string;
+  syncStatus?: string;
+};
+export type PaginatedSalesRecords = {
+  data: Sale[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+};
+
+function cleanPage(value: number | undefined) {
+  return Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 1;
+}
+
+function cleanPageSize(value: number | undefined) {
+  const size = Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 50;
+  return Math.min(size, 100);
+}
+
+function dateStart(value: string) {
+  return new Date(`${value}T00:00:00.000`);
+}
+
+function dateEnd(value: string) {
+  return new Date(`${value}T23:59:59.999`);
+}
+
+function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereInput {
+  const where: Prisma.SalesRecordWhereInput = {};
+  if (filters.from || filters.to) {
+    where.saleDate = {};
+    if (filters.from) where.saleDate.gte = dateStart(filters.from);
+    if (filters.to) where.saleDate.lte = dateEnd(filters.to);
+  }
+  if (filters.tipe) where.OR = [{ tipeCodeSnapshot: filters.tipe }, { tipeId: filters.tipe }];
+  if (filters.paymentMethod) where.paymentMethod = filters.paymentMethod;
+  if (filters.approvalStatus) where.approvalStatus = filters.approvalStatus;
+  if (filters.syncStatus) where.syncStatus = filters.syncStatus;
+  const keyword = filters.keyword?.trim();
+  if (keyword) {
+    const keywordOr: Prisma.SalesRecordWhereInput[] = [
+      { id: { contains: keyword, mode: "insensitive" } },
+      { customerName: { contains: keyword, mode: "insensitive" } },
+      { customerLocation: { contains: keyword, mode: "insensitive" } },
+      { testReference: { contains: keyword, mode: "insensitive" } },
+      { erpReference: { contains: keyword, mode: "insensitive" } },
+      { createdByNameSnapshot: { contains: keyword, mode: "insensitive" } }
+    ];
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { OR: keywordOr }];
+  }
+  return where;
+}
+
+function filterSalesInMemory(sales: Sale[], filters: SalesRecordFilters) {
+  const keyword = filters.keyword?.trim().toLowerCase();
+  return sales.filter((sale) => {
+    if (filters.from && sale.saleDate < filters.from) return false;
+    if (filters.to && sale.saleDate > filters.to) return false;
+    if (filters.tipe && (sale.tipeCodeSnapshot || sale.tipeId || "") !== filters.tipe) return false;
+    if (filters.paymentMethod && sale.paymentMethod !== filters.paymentMethod) return false;
+    if (filters.approvalStatus && (sale.approvalStatus || "approved") !== filters.approvalStatus) return false;
+    if (filters.syncStatus && (sale.syncStatus || "local") !== filters.syncStatus) return false;
+    if (keyword) {
+      const haystack = [sale.id, sale.customerName, sale.customerLocation, sale.testReference, sale.erpReference, sale.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
+      if (!haystack.includes(keyword)) return false;
+    }
+    return true;
+  });
+}
 
 function toSale(row: SalesRecordWithItems): Sale {
   return {
@@ -58,6 +132,40 @@ export async function listSalesRecords(): Promise<Sale[]> {
   }
   const rows = await readJsonArray<Sale>(fileName);
   return rows;
+}
+
+export async function listSalesRecordsPage(input: { page?: number; pageSize?: number; filters?: SalesRecordFilters } = {}): Promise<PaginatedSalesRecords> {
+  const page = cleanPage(input.page);
+  const pageSize = cleanPageSize(input.pageSize);
+  if (isProductionMode()) {
+    const where = buildSalesWhere(input.filters || {});
+    const [total, rows] = await Promise.all([
+      prisma.salesRecord.count({ where }),
+      prisma.salesRecord.findMany({
+        where,
+        include: salesInclude,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      })
+    ]);
+    return { data: rows.map(toSale), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+  }
+  const filtered = filterSalesInMemory(await listSalesRecords(), input.filters || {});
+  const total = filtered.length;
+  return { data: filtered.slice((page - 1) * pageSize, page * pageSize), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+}
+
+export async function listSalesTipeOptions(): Promise<string[]> {
+  if (isProductionMode()) {
+    const rows = await prisma.salesRecord.findMany({
+      distinct: ["tipeCodeSnapshot"],
+      select: { tipeCodeSnapshot: true },
+      orderBy: { tipeCodeSnapshot: "asc" }
+    });
+    return rows.map((row) => row.tipeCodeSnapshot).filter(Boolean);
+  }
+  return Array.from(new Set((await listSalesRecords()).map((sale) => sale.tipeCodeSnapshot || sale.tipeId).filter(Boolean))).sort() as string[];
 }
 
 export async function getSalesRecord(id: string): Promise<Sale | undefined> {
@@ -147,6 +255,12 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
   assertSaleManageable(before);
   const total = saleTotal(input);
+  const tipe = await findTipe(input.tipeId || before.tipeId);
+  const rekenings = await rekeningForTipe(tipe.id);
+  const requiresRekening = ["Cash", "TF"].includes(input.paymentMethod);
+  const rekening = input.rekeningId ? rekenings.find((item) => item.id === input.rekeningId) : undefined;
+  if (requiresRekening && !rekening) throw new Error("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.");
+  if (input.rekeningId && !rekening) throw new Error("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.");
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
   if (isProductionMode()) {
     const row = await prisma.$transaction(async (tx) => {
@@ -155,15 +269,15 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
         where: { id },
         data: {
           saleDate: new Date(input.saleDate),
-          tipeId: input.tipeId || before.tipeId || "W",
-          tipeCodeSnapshot: input.tipeCodeSnapshot || before.tipeCodeSnapshot || "W",
-          tipeNameSnapshot: input.tipeNameSnapshot || before.tipeNameSnapshot || "W",
+          tipeId: tipe.id,
+          tipeCodeSnapshot: tipe.code,
+          tipeNameSnapshot: tipe.name,
           customerName: input.customerName,
           customerLocation: input.customerLocation,
           shippingMethod: input.shippingMethod,
           paymentMethod: input.paymentMethod,
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
-          rekeningId: input.rekeningId,
+          rekeningId: rekening?.id,
           transferAccount: input.transferAccount,
           notes: input.notes,
           total,
@@ -191,7 +305,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) throw new Error("Transaksi penjualan tidak ditemukan.");
-  const after: Sale = { ...before, ...input, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined };
+  const after: Sale = { ...before, ...input, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined };
   rows[index] = after;
   await writeJsonArray(fileName, rows);
   await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });

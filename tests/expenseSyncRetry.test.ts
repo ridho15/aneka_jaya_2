@@ -113,6 +113,23 @@ describe("expense ERP sync retry service", () => {
     expect(JSON.stringify(mocks.prisma.expenseRecord.update.mock.calls)).not.toContain("raw secret");
   });
 
+  it("stores an operational validation error and safe correlation id when ERP rejects expense payload", async () => {
+    mocks.prisma.expenseRecord.findUnique.mockResolvedValue(row);
+    mocks.sendNeoCommand.mockResolvedValue({ success: false, code: "ERP_VALIDATION", message: "ERP menolak payload: rekening tidak ditemukan", details: { correlationId: "cid-expense-1" } });
+    mocks.prisma.expenseRecord.update.mockResolvedValueOnce({ ...row, erpSyncStatus: "pending" }).mockResolvedValueOnce({ ...row, erpSyncStatus: "failed", erpSyncError: "ERP menolak payload: rekening tidak ditemukan" });
+
+    await expect(retryExpenseErpSync("E-ERP-1")).resolves.toMatchObject({
+      success: false,
+      message: "ERP menolak payload: rekening tidak ditemukan"
+    });
+    expect(mocks.prisma.expenseRecord.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ erpSyncStatus: "failed", erpSyncError: "ERP menolak payload: rekening tidak ditemukan" })
+    }));
+    expect(mocks.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
+      afterValue: expect.objectContaining({ correlationId: "cid-expense-1" })
+    }));
+  });
+
   it("does not retry expenses before approval", async () => {
     mocks.prisma.expenseRecord.findUnique.mockResolvedValue({ ...row, approvalStatus: "pending_approval", erpSyncStatus: "pending" });
 
