@@ -100,6 +100,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const [productState, setProductState] = useState<ProductState>({ status: "loading" });
   const [stockState, setStockState] = useState<StockState>({ status: "loading" });
   const [referenceState, setReferenceState] = useState<ProductReferenceState>({ status: "idle" });
+  const productSearchControllerRef = useRef<AbortController>();
+  const productSearchRequestRef = useRef(0);
   const { register, control, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
@@ -126,16 +128,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || filteredRekenings.length > 0);
   const effectiveProducts = useMemo(() => mergeProductsWithSaleItems(products, sale), [products, sale]);
   const productOptions = useMemo(() => buildProductOptions(effectiveProducts, stocks), [effectiveProducts, stocks]);
-  const productCodes = useMemo(() => new Set(productOptions.map((option) => normalizeCode(option.product.code))), [productOptions]);
   const allItemsManual = values.length > 0 && values.every((item) => item.productInputMode === "manual");
-  const selectedProductsReady = values.length > 0 && values.every((item) => {
-    if (item.productInputMode === "manual") {
-      const sku = item.manualProduct?.sku || item.productRef;
-      const hasBasic = Boolean(String(sku || "").trim() && String(item.manualProduct?.name || "").trim());
-      return hasBasic && Boolean(item.manualProduct?.productCategoryId && item.manualProduct?.uomId && String(item.manualProduct?.brandCode || "").trim());
-    }
-    return productCodes.has(normalizeCode(item.productRef));
-  });
+  const selectedProductsReady = values.length > 0 && values.every(isSalesItemReady);
   const hasManualItems = values.some((item) => item.productInputMode === "manual");
   const dependenciesReady = (productState.status === "ready" || allItemsManual) && masterDataReady;
 
@@ -159,7 +153,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
         return;
       }
       const rows = extractProductRows(productResult);
-      setProducts(rows);
+      setProducts((current) => mergeErpProductResults(current, rows));
       setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP belum memiliki produk aktif untuk dipilih." });
       if (rows.every((product) => product.stockSummary)) {
         setStocks([]);
@@ -178,20 +172,26 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const searchProducts = useCallback(async (keyword: string) => {
     const value = keyword.trim();
     if (value.length < 2) return;
+    productSearchControllerRef.current?.abort();
+    const controller = new AbortController();
+    const requestId = ++productSearchRequestRef.current;
+    productSearchControllerRef.current = controller;
     try {
-      const response = await fetch(`/api/products?page=1&pageSize=100&keyword=${encodeURIComponent(value)}`, { cache: "no-store" });
+      const response = await fetch(`/api/products?page=1&pageSize=100&keyword=${encodeURIComponent(value)}`, { cache: "no-store", signal: controller.signal });
       const result = await response.json().catch(() => null);
+      if (controller.signal.aborted || requestId !== productSearchRequestRef.current) return;
       if (!response.ok || !result?.success) return;
       const rows = extractProductRows(result);
-      setProducts(rows);
-      setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP tidak menemukan produk sesuai pencarian." });
+      setProducts((current) => mergeErpProductResults(current, rows));
+      setProductState({ status: "ready" });
       if (rows.every((product) => product.stockSummary)) {
         setStocks([]);
         setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
       } else {
         await refreshStocksForProducts();
       }
-    } catch {
+    } catch (error) {
+      if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return;
       setProductState({ status: "error", message: "Pencarian produk ERP bermasalah." });
     }
   }, []);
@@ -237,6 +237,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     const timer = window.setTimeout(() => void searchProducts(productQuery), 350);
     return () => window.clearTimeout(timer);
   }, [productQuery, searchProducts]);
+
+  useEffect(() => () => productSearchControllerRef.current?.abort(), []);
 
   useEffect(() => {
     if (isEdit) return;
@@ -418,6 +420,9 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
               {fields.map((field, index) => {
                 const selected = productOptions.find((option) => normalizeCode(option.product.code) === normalizeCode(values[index]?.productRef));
                 const mode = values[index]?.productInputMode || "erp";
+                const erpSelectionError = mode === "erp" && values[index]?.productRef?.trim() && !values[index]?.productId?.trim()
+                  ? "Pilih barang dari hasil pencarian ERP."
+                  : undefined;
                 const quantity = Number(values[index]?.quantity || 0);
                 const stockExceeded = selected?.quantity !== null && selected?.quantity !== undefined && quantity > selected.quantity;
                 return (
@@ -450,7 +455,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                     {mode === "manual" && <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">Produk baru akan dibuat di ERP bila SKU belum ada</span>}
                   </div>
                   <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
-                    <Field label="Barang" error={errors.items?.[index]?.productRef?.message}>
+                    <Field label="Barang" error={errors.items?.[index]?.productRef?.message || erpSelectionError}>
                       <input type="hidden" {...register(`items.${index}.productId`)} />
                       {mode === "manual" ? (
                         <div className="flex gap-2">
@@ -481,6 +486,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                           disabled={productState.status !== "ready"}
                           options={productOptions}
                           onSelect={(option) => {
+                            setValue(`items.${index}.productInputMode`, "erp", { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productId`, option.product.productId || option.product.id, { shouldDirty: true, shouldValidate: true });
                             if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
@@ -562,6 +569,27 @@ export function buildProductOptions(products: Product[], stocks: StockItem[]): P
   });
 }
 
+function productCacheKey(product: Product) {
+  return product.productId?.trim()
+    ? `id:${product.productId.trim()}`
+    : `sku:${normalizeCode(product.code)}`;
+}
+
+export function mergeErpProductResults(current: Product[], incoming: Product[]): Product[] {
+  const products = new Map(current.map((product) => [productCacheKey(product), product]));
+  for (const product of incoming) products.set(productCacheKey(product), product);
+  return Array.from(products.values());
+}
+
+export function isSalesItemReady(item: PenjualanInput["items"][number]) {
+  if (item.productInputMode === "manual") {
+    const sku = item.manualProduct?.sku || item.productRef;
+    const hasBasic = Boolean(String(sku || "").trim() && String(item.manualProduct?.name || "").trim());
+    return hasBasic && Boolean(item.manualProduct?.productCategoryId && item.manualProduct?.uomId && String(item.manualProduct?.brandCode || "").trim());
+  }
+  return Boolean(item.productRef?.trim() && item.productId?.trim());
+}
+
 function mergeProductsWithSaleItems(products: Product[], sale?: Sale): Product[] {
   if (!sale?.items?.length) return products;
   const existingCodes = new Set(products.map((product) => normalizeCode(product.code)));
@@ -622,6 +650,10 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
     const rows = normalized ? options.filter((option) => `${option.product.code} ${option.product.name}`.toLowerCase().includes(normalized)) : options;
     return rows.slice(0, 12);
   }, [options, query]);
+
+  useEffect(() => {
+    if (!open) setQuery(selected ? optionLabel(selected) : value);
+  }, [open, selected, value]);
 
   const choose = (option: ProductOption) => {
     setQuery(optionLabel(option));

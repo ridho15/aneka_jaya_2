@@ -3,7 +3,8 @@ import type { ApiResponse } from "@/lib/types/api";
 import { failure } from "@/lib/types/api";
 import type { StockItem } from "@/lib/types/stock";
 import { toStockItem } from "@/lib/api/erpMappers";
-import { listErpPaginated } from "@/lib/api/pagination";
+import { listErpPage, listErpPaginated } from "@/lib/api/pagination";
+import { summarizeStockDetail, type StockDetailSummary } from "@/lib/stocks/detail";
 
 export type StockListOptions = {
   page?: number;
@@ -29,6 +30,16 @@ export type StockTablePage = {
   meta: StockPageMeta;
 };
 
+export type StockDetail = {
+  productKey: string;
+  productId?: string;
+  sku: string;
+  productName: string;
+  stocks: StockItem[];
+  summary: StockDetailSummary;
+  lookup: "productId" | "sku";
+};
+
 const DEFAULT_STOCK_PAGE = 1;
 const DEFAULT_STOCK_PAGE_SIZE = 50;
 const MAX_STOCK_PAGE_SIZE = 100;
@@ -50,6 +61,15 @@ function matchesAny(value: string | undefined, candidates?: string[]) {
   if (!candidates?.length) return true;
   const normalized = normalize(value);
   return candidates.map(normalize).filter(Boolean).includes(normalized);
+}
+
+function stockQuery(options: StockListOptions = {}) {
+  return {
+    product_id: options.productId,
+    product_sku: options.sku,
+    warehouse: options.warehouse,
+    keyword: options.keyword
+  };
 }
 
 function filterStocks(items: StockItem[], options: StockListOptions = {}) {
@@ -83,13 +103,7 @@ export function paginateStocks(items: StockItem[], options: StockListOptions = {
 }
 
 export async function listStocks(options: StockListOptions = {}): Promise<ApiResponse<StockItem[]>> {
-  const query: Record<string, string | number | boolean | undefined> = {
-    product_id: options.productId,
-    product_sku: options.sku,
-    warehouse: options.warehouse,
-    keyword: options.keyword
-  };
-  const response = await listErpPaginated("/stocks", { query, perPage: options.pageSize, maxPages: options.maxPages });
+  const response = await listErpPaginated("/stocks", { query: stockQuery(options), perPage: options.pageSize, maxPages: options.maxPages });
   if (!response.success) return response.code === "ERP_SCHEMA" ? failure("Format data stok dari ERP tidak dikenali.", "ERP_SCHEMA") : response;
   const rows = response.data;
   if (!Array.isArray(rows)) return failure("Format data stok dari ERP tidak dikenali.", "ERP_SCHEMA");
@@ -97,7 +111,55 @@ export async function listStocks(options: StockListOptions = {}): Promise<ApiRes
 }
 
 export async function listStocksPage(options: StockListOptions = {}): Promise<ApiResponse<StockTablePage>> {
-  const response = await listStocks({ ...options, maxPages: options.maxPages ?? 1, pageSize: options.pageSize ?? DEFAULT_STOCK_PAGE_SIZE });
+  const page = clampPage(options.page);
+  const pageSize = clampPageSize(options.pageSize);
+  const response = await listErpPage("/stocks", { query: stockQuery(options), page, perPage: pageSize });
   if (!response.success) return response;
-  return { success: true, data: paginateStocks(response.data, options) };
+  const rows = filterStocks(response.data.data.map((row) => toStockItem(row as Record<string, unknown>)), options);
+  return {
+    success: true,
+    data: {
+      data: rows,
+      meta: {
+        page: response.data.meta.page,
+        pageSize: response.data.meta.pageSize,
+        total: response.data.meta.total,
+        totalPages: response.data.meta.totalPages
+      }
+    }
+  };
+}
+
+export async function getStockDetail(productKey: string, fallbackSku?: string): Promise<ApiResponse<StockDetail>> {
+  const normalizedKey = String(productKey || "").trim();
+  const normalizedSku = String(fallbackSku || "").trim();
+  if (!normalizedKey || normalizedKey.length > 160 || normalizedSku.length > 160) {
+    return failure("Referensi produk tidak valid.", "VALIDATION");
+  }
+
+  const byProductId = await listStocks({ productId: normalizedKey, pageSize: 100, maxPages: 10 });
+  if (!byProductId.success) return byProductId;
+
+  let rows = byProductId.data;
+  let lookup: StockDetail["lookup"] = "productId";
+  if (rows.length === 0 && normalizedSku) {
+    const bySku = await listStocks({ sku: normalizedSku, pageSize: 100, maxPages: 10 });
+    if (!bySku.success) return bySku;
+    rows = bySku.data;
+    lookup = "sku";
+  }
+
+  const first = rows[0];
+  return {
+    success: true,
+    data: {
+      productKey: normalizedKey,
+      productId: first?.productId || (lookup === "productId" ? normalizedKey : undefined),
+      sku: first?.productCode || normalizedSku || normalizedKey,
+      productName: first?.productName || normalizedSku || normalizedKey,
+      stocks: rows,
+      summary: summarizeStockDetail(rows),
+      lookup
+    }
+  };
 }

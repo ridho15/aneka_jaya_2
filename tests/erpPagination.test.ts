@@ -10,7 +10,7 @@ vi.mock("@/lib/api/anikaClient", () => ({
   anikaRequest: mocks.anikaRequest
 }));
 
-import { listErpPaginated } from "@/lib/api/pagination";
+import { listErpPage, listErpPaginated } from "@/lib/api/pagination";
 
 describe("ERP pagination helper", () => {
   beforeEach(() => {
@@ -54,5 +54,33 @@ describe("ERP pagination helper", () => {
     mocks.anikaRequest.mockResolvedValue({ success: false, code: "ERP_TIMEOUT", message: "Koneksi ERP melebihi batas waktu." });
 
     await expect(listErpPaginated("/stocks")).resolves.toMatchObject({ success: false, code: "ERP_TIMEOUT" });
+  });
+
+  it("loads one requested ERP page and preserves upstream metadata", async () => {
+    mocks.anikaRequest.mockResolvedValue({
+      success: true,
+      data: {
+        data: [{ id: 11 }, { id: 12 }],
+        meta: { current_page: 2, last_page: 5, per_page: 2, total: 10 }
+      }
+    });
+
+    await expect(listErpPage("/stocks", { page: 2, perPage: 2, query: { warehouse: "Toko" } })).resolves.toEqual({
+      success: true,
+      data: {
+        data: [{ id: 11 }, { id: 12 }],
+        meta: { page: 2, pageSize: 2, total: 10, totalPages: 5 }
+      }
+    });
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/stocks?warehouse=Toko&per_page=2&page=2");
+  });
+
+  it("infers safe pagination when ERP metadata is absent", async () => {
+    mocks.anikaRequest.mockResolvedValue({ success: true, data: { data: [{ id: 3 }, { id: 4 }] } });
+
+    await expect(listErpPage("/stocks", { page: 2, perPage: 2 })).resolves.toMatchObject({
+      success: true,
+      data: { meta: { page: 2, pageSize: 2, total: 5, totalPages: 3 } }
+    });
   });
 });

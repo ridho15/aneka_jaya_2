@@ -187,6 +187,6 @@ describe("ProductList rendering", () => {
 
     expect(html).toContain("Tidak ready");
     expect(html).toContain("Detail stok");
-    expect(html).toContain("/stok-barang?productId=92&amp;sku=ERP-92");
+    expect(html).toContain("/stok-barang/92?sku=ERP-92&amp;returnTo=%2Fbarang");
   });
 });

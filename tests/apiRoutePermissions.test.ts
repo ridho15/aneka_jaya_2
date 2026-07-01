@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
     listProductTableItems: vi.fn(),
     listProductTablePage: vi.fn(),
     listStocks: vi.fn(),
+    listStocksPage: vi.fn(),
     listBookkeepingTypes: vi.fn(),
     listRekeningAccounts: vi.fn(),
     listAllRekeningAccounts: vi.fn(),
@@ -40,7 +41,8 @@ vi.mock("@/lib/api/products", () => ({
 }));
 
 vi.mock("@/lib/api/stocks", () => ({
-  listStocks: mocks.listStocks
+  listStocks: mocks.listStocks,
+  listStocksPage: mocks.listStocksPage
 }));
 
 vi.mock("@/lib/stockAlerts/store", () => ({
@@ -85,6 +87,7 @@ describe("api route permission enforcement", () => {
     mocks.listProductTableItems.mockReset();
     mocks.listProductTablePage.mockReset();
     mocks.listStocks.mockReset();
+    mocks.listStocksPage.mockReset();
     mocks.listBookkeepingTypes.mockReset();
     mocks.listRekeningAccounts.mockReset();
     mocks.listAllRekeningAccounts.mockReset();
@@ -161,6 +164,26 @@ describe("api route permission enforcement", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true, data: [] });
     expect(mocks.listStocks).toHaveBeenCalled();
+  });
+
+  it("returns paginated stock metadata beside the data array", async () => {
+    mocks.listStocksPage.mockResolvedValue({
+      success: true,
+      data: {
+        data: [{ id: "ST-11", productCode: "SKU-11", productName: "Produk", warehouse: "Toko", quantity: 2, unit: "PCS" }],
+        meta: { page: 2, pageSize: 10, total: 21, totalPages: 3 }
+      }
+    });
+
+    const response = await getStocks(new Request("http://local/api/stocks?page=2&pageSize=10"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      data: [expect.objectContaining({ id: "ST-11" })],
+      meta: { page: 2, pageSize: 10, total: 21, totalPages: 3 }
+    });
+    expect(mocks.listStocksPage).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 10 }));
   });
 
   it("returns 403 when approval permission is missing", async () => {

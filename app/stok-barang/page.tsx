@@ -26,5 +26,7 @@ export default async function StokBarangPage({ searchParams }: { searchParams: S
     sku: params.sku,
     warehouse: params.warehouse
   });
-  return <AppShell><div className="mb-7"><p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Stock</p><h2 className="aj-page-title text-3xl font-bold">Stok Barang</h2><p className="mt-2 text-sm text-slate-600">Tampilan stok ERP per gudang/rak. Gunakan filter produk agar tidak mengambil seluruh data stok.</p></div>{response.success ? <StockList initialStocks={response.data.data} initialMeta={response.data.meta} initialFilters={{ keyword: params.keyword || "", productId: params.productId || "", sku: params.sku || "", warehouse: params.warehouse || "" }} /> : <ErrorState message={response.message} />}</AppShell>;
+  const filters = { keyword: params.keyword || "", productId: params.productId || "", sku: params.sku || "", warehouse: params.warehouse || "" };
+  const listKey = JSON.stringify([response.success ? response.data.meta.page : params.page || "1", params.pageSize || "10", ...Object.values(filters)]);
+  return <AppShell><div className="mb-7"><p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Stock</p><h2 className="aj-page-title text-3xl font-bold">Stok Barang</h2><p className="mt-2 text-sm text-slate-600">Tampilan stok ERP per gudang/rak. Gunakan filter produk agar tidak mengambil seluruh data stok.</p></div>{response.success ? <StockList key={listKey} initialStocks={response.data.data} initialMeta={response.data.meta} initialFilters={filters} /> : <ErrorState message={response.message} />}</AppShell>;
 }

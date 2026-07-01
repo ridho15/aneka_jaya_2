@@ -60,10 +60,29 @@ describe("ERP product and stock source contract", () => {
       success: true,
       data: {
         data: [expect.objectContaining({ productId: "7", productCode: "BRG-001", quantity: 5 })],
-        meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 }
+        meta: { page: 1, pageSize: 50, total: 1000, totalPages: 20 }
       }
     });
     expect(mocks.anikaRequest).toHaveBeenCalledWith("/stocks?product_id=7&per_page=50&page=1");
+  });
+
+  it("requests the selected stock page directly from ERP", async () => {
+    mocks.anikaRequest.mockResolvedValue({
+      success: true,
+      data: {
+        data: [{ id: "ST-11", product_id: 11, product_sku: "BRG-011", product_name: "Barang Page 2", qty_available: 3, warehouse: { name: "Toko" } }],
+        meta: { current_page: 2, last_page: 4, per_page: 10, total: 31 }
+      }
+    });
+
+    await expect(listStocksPage({ page: 2, pageSize: 10, warehouse: "Toko" })).resolves.toMatchObject({
+      success: true,
+      data: {
+        data: [expect.objectContaining({ productCode: "BRG-011" })],
+        meta: { page: 2, pageSize: 10, total: 31, totalPages: 4 }
+      }
+    });
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/stocks?warehouse=Toko&per_page=10&page=2");
   });
 
   it("does not synthesize local fallback products when ERP payload shape is invalid", async () => {
