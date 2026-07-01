@@ -7,7 +7,7 @@ import { getSalesRecord, updateSalesApprovalStatus } from "@/lib/sales/store";
 import { updateExpenseApprovalStatus } from "@/lib/expenses/store";
 import { createTempoReceivable } from "@/lib/tempo/store";
 import { prisma } from "@/lib/db/prisma";
-import type { Prisma } from "@prisma/client";
+import { ApprovalStatus as PrismaApprovalStatus, type Prisma } from "@prisma/client";
 import { type ApprovalAction, isApprovalAction, validateApprovalTransition } from "./validation";
 
 export type ApprovalStatus = "draft" | "pending_approval" | "approved" | "rejected" | "cancelled";
@@ -44,6 +44,32 @@ export type ApprovalRequest = {
 export { isApprovalAction };
 const fileName = "approval-requests.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
+const DEFAULT_APPROVAL_PAGE_SIZE = 10;
+const MAX_APPROVAL_PAGE_SIZE = 50;
+
+export type ApprovalListFilter = {
+  status?: ApprovalStatus | "active" | "history";
+};
+
+export type PaginatedApprovalRequests = {
+  data: ApprovalRequest[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
+};
+
+function cleanPage(value?: number) {
+  return Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 1;
+}
+
+function cleanPageSize(value?: number) {
+  if (!Number.isFinite(value) || !value || value <= 0) return DEFAULT_APPROVAL_PAGE_SIZE;
+  return Math.min(Math.max(Math.floor(value), 1), MAX_APPROVAL_PAGE_SIZE);
+}
+
+function statusWhere(status?: ApprovalListFilter["status"]): Prisma.ApprovalRequestWhereInput {
+  if (status === "active") return { status: PrismaApprovalStatus.pending_approval };
+  if (status === "history") return { NOT: { status: PrismaApprovalStatus.pending_approval } };
+  return status ? { status: status as PrismaApprovalStatus } : {};
+}
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
@@ -134,6 +160,41 @@ export async function listApprovalRequests(): Promise<ApprovalRequest[]> {
     return rows.map(toApprovalRequest);
   }
   return readJsonArray<ApprovalRequest>(fileName);
+}
+
+export async function listApprovalRequestsPage(input: { page?: number; pageSize?: number; filter?: ApprovalListFilter } = {}): Promise<PaginatedApprovalRequests> {
+  const page = cleanPage(input.page);
+  const pageSize = cleanPageSize(input.pageSize);
+  if (isProductionMode()) {
+    const where = statusWhere(input.filter?.status);
+    const [total, rows] = await Promise.all([
+      prisma.approvalRequest.count({ where }),
+      prisma.approvalRequest.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize
+      })
+    ]);
+    return { data: rows.map(toApprovalRequest), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+  }
+  const rows = await readJsonArray<ApprovalRequest>(fileName);
+  const filtered = rows.filter((row) => {
+    if (input.filter?.status === "active") return row.status === "pending_approval";
+    if (input.filter?.status === "history") return row.status !== "pending_approval";
+    return input.filter?.status ? row.status === input.filter.status : true;
+  });
+  const start = (page - 1) * pageSize;
+  return { data: filtered.slice(start, start + pageSize), meta: { page, pageSize, total: filtered.length, totalPages: Math.max(1, Math.ceil(filtered.length / pageSize)) } };
+}
+
+export async function getApprovalRequest(id: string): Promise<ApprovalRequest | null> {
+  if (isProductionMode()) {
+    const row = await prisma.approvalRequest.findUnique({ where: { id } });
+    return row ? toApprovalRequest(row) : null;
+  }
+  const rows = await readJsonArray<ApprovalRequest>(fileName);
+  return rows.find((row) => row.id === id) || null;
 }
 
 export async function updateApprovalStatus(id: string, action: ApprovalAction, reason?: string): Promise<ApprovalRequest> {

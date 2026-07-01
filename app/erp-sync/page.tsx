@@ -9,8 +9,31 @@ import { getExpenseSyncOverview } from "@/lib/erpSync/expenseRetry";
 import { getErpSyncPreflight } from "@/lib/erpSync/preflight";
 import { ErpRetryButton } from "@/components/erpSync/ErpRetryButton";
 
+type SearchParams = Record<string, string | string[] | undefined>;
+const PAGE_SIZE = 10;
+
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+}
+
+function valueOf(params: SearchParams, key: string) {
+  const value = params[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function toPage(value?: string) {
+  const page = Number(value || "1");
+  return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+}
+
+function pageHref(params: SearchParams, key: "salesPage" | "expensePage", page: number) {
+  const next = new URLSearchParams();
+  for (const [paramKey, raw] of Object.entries(params)) {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value && paramKey !== key) next.set(paramKey, value);
+  }
+  next.set(key, String(page));
+  return `/erp-sync?${next.toString()}`;
 }
 
 async function erpConfigStatus() {
@@ -24,10 +47,18 @@ async function erpConfigStatus() {
   return { ok: false, label: provider === "anika_erp" ? "Perlu login ulang" : "Token belum dikonfigurasi", message: provider === "anika_erp" ? "Sesi ERP tidak tersedia. Silakan login ulang sebelum retry." : "ANIKA_ERP_API_TOKEN belum tersedia di server.", warning: provider === "anika_erp" ? "Sesi ERP tidak tersedia. Silakan login ulang sebelum retry." : "Token ERP server-side belum tersedia.", note: undefined };
 }
 
-export default async function ErpSyncPage() {
+export default async function ErpSyncPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
   if (!can(role, "erp_sync.retry")) redirect("/");
-  const [salesOverview, expenseOverview, config, preflight] = await Promise.all([getErpSyncOverview(), getExpenseSyncOverview(), erpConfigStatus(), getErpSyncPreflight()]);
+  const params = await searchParams || {};
+  const salesPage = toPage(valueOf(params, "salesPage"));
+  const expensePage = toPage(valueOf(params, "expensePage"));
+  const [salesOverview, expenseOverview, config, preflight] = await Promise.all([
+    getErpSyncOverview({ page: salesPage, pageSize: PAGE_SIZE }),
+    getExpenseSyncOverview({ page: expensePage, pageSize: PAGE_SIZE }),
+    erpConfigStatus(),
+    getErpSyncPreflight()
+  ]);
   const summary = {
     pending: salesOverview.summary.pending + expenseOverview.summary.pending,
     failed: salesOverview.summary.failed + expenseOverview.summary.failed,
@@ -48,7 +79,19 @@ export default async function ErpSyncPage() {
       <div className="aj-surface p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Auto-create Customer</p><p className={preflight.autoCreateCustomer.enabled ? "mt-1 text-lg font-bold text-emerald-700" : "mt-1 text-lg font-bold text-amber-700"}>{preflight.autoCreateCustomer.enabled ? "Aktif" : "Nonaktif"}</p><p className="mt-1 text-xs text-slate-500">{preflight.autoCreateCustomer.message}</p></div>
       <div className="aj-surface p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Preflight ERP</p><p className={preflight.erp.baseUrlConfigured && preflight.erp.authReady ? "mt-1 text-lg font-bold text-emerald-700" : "mt-1 text-lg font-bold text-amber-700"}>{preflight.erp.baseUrlConfigured && preflight.erp.authReady ? "Bisa dicek" : "Belum lengkap"}</p><p className="mt-1 text-xs text-slate-500">Base URL {preflight.erp.baseUrlConfigured ? "tersedia" : "belum tersedia"} · Auth {preflight.erp.authReady ? "tersedia" : "belum tersedia"}</p></div>
     </div>
-    <section className="aj-surface mb-5 overflow-hidden"><div className="border-b border-slate-100 p-5"><p className="font-bold text-slate-900">Penjualan perlu retry</p><p className="mt-1 text-sm text-slate-500">Endpoint cron: <code>/api/jobs/retry-erp-sync</code>. Token ERP tetap server-side dan tidak tampil di browser.</p></div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Tanggal</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3 text-right">Nominal</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Error</th><th className="px-5 py-3">Terakhir dicoba</th><th className="px-5 py-3">Aksi</th></tr></thead><tbody>{salesOverview.items.map((item) => <tr key={item.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{item.saleDate}</td><td className="px-5 py-4 font-semibold">{item.tipeCode}</td><td className="px-5 py-4">{item.customerName}</td><td className="px-5 py-4 text-right">{rupiah(item.total)}</td><td className="px-5 py-4"><span className={item.syncStatus === "failed" ? "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700" : "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"}>{item.syncStatus}</span></td><td className="max-w-xs px-5 py-4 text-slate-600">{item.syncError || "—"}</td><td className="px-5 py-4 text-slate-500">{item.syncAttemptedAt ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.syncAttemptedAt)) : "—"}</td><td className="px-5 py-4">{item.retryable ? <ErpRetryButton id={item.id} kind="sales" /> : "—"}</td></tr>)}{salesOverview.items.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan ERP pending atau gagal.</td></tr>}</tbody></table></div></section>
-    <section className="aj-surface overflow-hidden"><div className="border-b border-slate-100 p-5"><p className="font-bold text-slate-900">Pengeluaran perlu retry</p><p className="mt-1 text-sm text-slate-500">Pengeluaran AJ memakai command Kas & Bank dan bisa diretry dari sini.</p></div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Tanggal</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Rekening</th><th className="px-5 py-3">COA / Kategori</th><th className="px-5 py-3">Vendor</th><th className="px-5 py-3 text-right">Nominal</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Error</th><th className="px-5 py-3">Terakhir dicoba</th><th className="px-5 py-3">Aksi</th></tr></thead><tbody>{expenseOverview.items.map((item) => <tr key={item.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{item.expenseDate}</td><td className="px-5 py-4 font-semibold">{item.tipeCode}</td><td className="px-5 py-4">{item.rekeningName}</td><td className="px-5 py-4">{item.coaName} / {item.category}</td><td className="px-5 py-4">{item.vendorName}</td><td className="px-5 py-4 text-right">{rupiah(item.amount)}</td><td className="px-5 py-4"><span className={item.erpSyncStatus === "failed" ? "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700" : "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"}>{item.erpSyncStatus}</span></td><td className="max-w-xs px-5 py-4 text-slate-600">{item.erpSyncError || "—"}</td><td className="px-5 py-4 text-slate-500">{item.erpSyncAttemptedAt ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.erpSyncAttemptedAt)) : "—"}</td><td className="px-5 py-4">{item.retryable ? <ErpRetryButton id={item.id} kind="expenses" /> : "—"}</td></tr>)}{expenseOverview.items.length === 0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-500">Tidak ada pengeluaran ERP pending atau gagal.</td></tr>}</tbody></table></div></section>
+    <section className="aj-surface mb-5 overflow-hidden"><div className="border-b border-slate-100 p-5"><p className="font-bold text-slate-900">Penjualan perlu retry</p><p className="mt-1 text-sm text-slate-500">Endpoint cron: <code>/api/jobs/retry-erp-sync</code>. Token ERP tetap server-side dan tidak tampil di browser.</p></div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Tanggal</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Customer</th><th className="px-5 py-3 text-right">Nominal</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Error</th><th className="px-5 py-3">Terakhir dicoba</th><th className="px-5 py-3">Aksi</th></tr></thead><tbody>{salesOverview.items.map((item) => <tr key={item.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{item.saleDate}</td><td className="px-5 py-4 font-semibold">{item.tipeCode}</td><td className="px-5 py-4">{item.customerName}</td><td className="px-5 py-4 text-right">{rupiah(item.total)}</td><td className="px-5 py-4"><span className={item.syncStatus === "failed" ? "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700" : "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"}>{item.syncStatus}</span></td><td className="max-w-xs px-5 py-4 text-slate-600">{item.syncError || "—"}</td><td className="px-5 py-4 text-slate-500">{item.syncAttemptedAt ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.syncAttemptedAt)) : "—"}</td><td className="px-5 py-4">{item.retryable ? <ErpRetryButton id={item.id} kind="sales" /> : "—"}</td></tr>)}{salesOverview.items.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan ERP pending atau gagal.</td></tr>}</tbody></table></div><Pagination current={salesOverview.meta.page} totalPages={salesOverview.meta.totalPages} total={salesOverview.meta.total} hrefFor={(page) => pageHref(params, "salesPage", page)} /></section>
+    <section className="aj-surface overflow-hidden"><div className="border-b border-slate-100 p-5"><p className="font-bold text-slate-900">Pengeluaran perlu retry</p><p className="mt-1 text-sm text-slate-500">Pengeluaran AJ memakai command Kas & Bank dan bisa diretry dari sini.</p></div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Tanggal</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Rekening</th><th className="px-5 py-3">COA / Kategori</th><th className="px-5 py-3">Vendor</th><th className="px-5 py-3 text-right">Nominal</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Error</th><th className="px-5 py-3">Terakhir dicoba</th><th className="px-5 py-3">Aksi</th></tr></thead><tbody>{expenseOverview.items.map((item) => <tr key={item.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{item.expenseDate}</td><td className="px-5 py-4 font-semibold">{item.tipeCode}</td><td className="px-5 py-4">{item.rekeningName}</td><td className="px-5 py-4">{item.coaName} / {item.category}</td><td className="px-5 py-4">{item.vendorName}</td><td className="px-5 py-4 text-right">{rupiah(item.amount)}</td><td className="px-5 py-4"><span className={item.erpSyncStatus === "failed" ? "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700" : "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"}>{item.erpSyncStatus}</span></td><td className="max-w-xs px-5 py-4 text-slate-600">{item.erpSyncError || "—"}</td><td className="px-5 py-4 text-slate-500">{item.erpSyncAttemptedAt ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.erpSyncAttemptedAt)) : "—"}</td><td className="px-5 py-4">{item.retryable ? <ErpRetryButton id={item.id} kind="expenses" /> : "—"}</td></tr>)}{expenseOverview.items.length === 0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-500">Tidak ada pengeluaran ERP pending atau gagal.</td></tr>}</tbody></table></div><Pagination current={expenseOverview.meta.page} totalPages={expenseOverview.meta.totalPages} total={expenseOverview.meta.total} hrefFor={(page) => pageHref(params, "expensePage", page)} /></section>
   </AppShell>;
+}
+
+function Pagination({ current, totalPages, total, hrefFor }: { current: number; totalPages: number; total: number; hrefFor: (page: number) => string }) {
+  return (
+    <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
+      <span className="text-slate-500">Menampilkan halaman {current} dari {totalPages} • {total} item retry</span>
+      <div className="flex gap-2">
+        {current > 1 && <a className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={hrefFor(current - 1)}>Sebelumnya</a>}
+        {current < totalPages && <a className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={hrefFor(current + 1)}>Berikutnya</a>}
+      </div>
+    </div>
+  );
 }

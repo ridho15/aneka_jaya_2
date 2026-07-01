@@ -28,11 +28,23 @@ export type ErpSyncExpenseItem = {
 export type ExpenseSyncOverview = {
   summary: { pending: number; failed: number; synced: number; totalErp: number };
   items: ErpSyncExpenseItem[];
+  meta: { page: number; pageSize: number; total: number; totalPages: number };
   storageReady: boolean;
   warning?: string;
 };
 
 const PRISMA_SYNC_WARNING = "Prisma Client belum tersinkron. Jalankan generate/migrate dan restart server.";
+const DEFAULT_SYNC_PAGE_SIZE = 10;
+const MAX_SYNC_PAGE_SIZE = 50;
+
+function cleanPage(value?: number) {
+  return Number.isFinite(value) && value && value > 0 ? Math.floor(value) : 1;
+}
+
+function cleanPageSize(value?: number) {
+  if (!Number.isFinite(value) || !value || value <= 0) return DEFAULT_SYNC_PAGE_SIZE;
+  return Math.min(Math.max(Math.floor(value), 1), MAX_SYNC_PAGE_SIZE);
+}
 
 function correlationIdFromFailure(response: { success: false; details?: unknown }) {
   const details = response.details && typeof response.details === "object" ? response.details as Record<string, unknown> : {};
@@ -78,9 +90,12 @@ function buildRetryCommand(row: ExpenseRow) {
   });
 }
 
-export async function getExpenseSyncOverview(): Promise<ExpenseSyncOverview> {
+export async function getExpenseSyncOverview(input: { page?: number; pageSize?: number } = {}): Promise<ExpenseSyncOverview> {
   const delegate = expenseDelegate();
-  if (!delegate) return { summary: { pending: 0, failed: 0, synced: 0, totalErp: 0 }, items: [], storageReady: false, warning: PRISMA_SYNC_WARNING };
+  const page = cleanPage(input.page);
+  const pageSize = cleanPageSize(input.pageSize);
+  const emptyMeta = { page, pageSize, total: 0, totalPages: 1 };
+  if (!delegate) return { summary: { pending: 0, failed: 0, synced: 0, totalErp: 0 }, items: [], meta: emptyMeta, storageReady: false, warning: PRISMA_SYNC_WARNING };
   const [pending, failed, synced, items] = await Promise.all([
     delegate.count({ where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: "pending" } }),
     delegate.count({ where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: "failed" } }),
@@ -88,10 +103,17 @@ export async function getExpenseSyncOverview(): Promise<ExpenseSyncOverview> {
     delegate.findMany({
       where: { erpSyncTarget: "erp", approvalStatus: "approved", erpSyncStatus: { in: ["pending", "failed"] } },
       orderBy: [{ erpSyncAttemptedAt: "asc" }, { createdAt: "asc" }],
-      take: 100
+      skip: (page - 1) * pageSize,
+      take: pageSize
     })
   ]);
-  return { summary: { pending, failed, synced, totalErp: pending + failed + synced }, items: items.map(toSyncItem), storageReady: true };
+  const retryTotal = pending + failed;
+  return {
+    summary: { pending, failed, synced, totalErp: retryTotal + synced },
+    items: items.map(toSyncItem),
+    meta: { page, pageSize, total: retryTotal, totalPages: Math.max(1, Math.ceil(retryTotal / pageSize)) },
+    storageReady: true
+  };
 }
 
 export async function retryExpenseErpSync(id: string): Promise<{ success: boolean; item?: ErpSyncExpenseItem; message: string }> {

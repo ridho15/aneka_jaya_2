@@ -62,7 +62,7 @@ export function safeErpSyncError(response: ApiResponse<unknown>) {
 }
 
 type ErpCustomer = { id?: unknown; code?: unknown; name?: unknown; perusahaan?: unknown };
-type ErpSaleSyncItem = { productRef: string; productId?: string; productInputMode?: "erp" | "manual"; manualProduct?: ManualSalesProduct; quantity: number; unitPrice: number; discount?: number };
+type ErpSaleSyncItem = { productRef: string; productId?: string; productInputMode?: "erp" | "manual"; manualProduct?: ManualSalesProduct; unitSnapshot?: string; uomIdSnapshot?: number; quantity: number; unitPrice: number; discount?: number };
 type ErpSaleSyncInput = {
   saleDate: string;
   customerName: string;
@@ -479,6 +479,8 @@ async function persistErpSale(input: {
             productRef: item.productRef,
             productId: item.productId,
             manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
+            unitSnapshot: item.unitSnapshot,
+            uomIdSnapshot: item.uomIdSnapshot,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             discount: item.discount || 0,

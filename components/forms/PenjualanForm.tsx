@@ -111,7 +111,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       dueDate: sale?.dueDate,
       transferAccount: sale?.transferAccount,
       notes: sale?.notes,
-      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, productInputMode: item.productInputMode || (item.manualProduct ? "manual" : "erp"), manualProduct: item.manualProduct, quantity: item.quantity, unitPrice: item.unitPrice, discount: discountPercentFromAmount(item.discount, item.quantity, item.unitPrice) })) : [{ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 }]
+      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, productInputMode: item.productInputMode || (item.manualProduct ? "manual" : "erp"), manualProduct: item.manualProduct, unitSnapshot: item.unitSnapshot, uomIdSnapshot: item.uomIdSnapshot, quantity: item.quantity, unitPrice: item.unitPrice, discount: discountPercentFromAmount(item.discount, item.quantity, item.unitPrice) })) : [{ productRef: "", productId: undefined, productInputMode: "erp", unitSnapshot: undefined, uomIdSnapshot: undefined, quantity: 1, unitPrice: 0, discount: 0 }]
     }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -135,7 +135,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
 
   const addItem = () => {
     const newIndex = fields.length;
-    append({ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 });
+    append({ productRef: "", productId: undefined, productInputMode: "erp", unitSnapshot: undefined, uomIdSnapshot: undefined, quantity: 1, unitPrice: 0, discount: 0 });
     window.setTimeout(() => document.getElementById(`sale-item-${newIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   };
 
@@ -435,6 +435,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                       onClick={() => {
                         setValue(`items.${index}.productInputMode`, "erp", { shouldDirty: true, shouldValidate: true });
                         setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
+                        setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
                       }}
                     >
                       Pilih dari ERP
@@ -446,6 +448,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                         const currentRef = values[index]?.productRef || "";
                         setValue(`items.${index}.productInputMode`, "manual", { shouldDirty: true, shouldValidate: true });
                         setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
+                        setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
                         setValue(`items.${index}.manualProduct.sku`, currentRef, { shouldDirty: true, shouldValidate: true });
                         setValue(`items.${index}.manualProduct.sellingPrice`, Number(values[index]?.unitPrice || 0), { shouldDirty: true, shouldValidate: true });
                       }}
@@ -457,6 +461,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                   <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
                     <Field label="Barang" error={errors.items?.[index]?.productRef?.message || erpSelectionError}>
                       <input type="hidden" {...register(`items.${index}.productId`)} />
+                      <input type="hidden" {...register(`items.${index}.unitSnapshot`)} />
                       {mode === "manual" ? (
                         <div className="flex gap-2">
                           <Input
@@ -490,6 +495,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                             setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productId`, option.product.productId || option.product.id, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.unitSnapshot`, option.unit || option.stockRows.find((stock) => Boolean(stock.unit))?.unit || undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.uomIdSnapshot`, option.product.uomId, { shouldDirty: true, shouldValidate: true });
                             if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
                               setValue(`items.${index}.unitPrice`, option.product.sellingPrice, { shouldDirty: true, shouldValidate: true });
                             }
@@ -497,6 +504,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                           onInvalidInput={(value) => {
                             setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
+                            setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
                           }}
                           onSearch={setProductQuery}
                         />
@@ -597,10 +606,12 @@ function mergeProductsWithSaleItems(products: Product[], sale?: Sale): Product[]
     .filter((item) => item.productRef && !existingCodes.has(normalizeCode(item.productRef)))
     .map((item): Product => ({
       id: `saved-${item.productRef}`,
+      productId: item.productId,
       code: item.productRef,
       name: `Produk tersimpan ${item.productRef}`,
       category: null,
-      unit: null,
+      unit: item.unitSnapshot || null,
+      uomId: item.uomIdSnapshot,
       sellingPrice: item.unitPrice,
       costPrice: null,
       minimumStock: null,
@@ -652,7 +663,14 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
   }, [options, query]);
 
   useEffect(() => {
-    if (!open) setQuery(selected ? optionLabel(selected) : value);
+    if (open) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setQuery(selected ? optionLabel(selected) : value);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open, selected, value]);
 
   const choose = (option: ProductOption) => {
@@ -778,7 +796,17 @@ function ManualProductFields({ index, register, setValue, values, referenceState
           </Select>
         </Field>
         <Field label="Satuan ERP">
-          <Select {...register(`items.${index}.manualProduct.uomId`, { valueAsNumber: true })} disabled={referenceState.status !== "ready"}>
+          <Select
+            {...register(`items.${index}.manualProduct.uomId`, { valueAsNumber: true })}
+            disabled={referenceState.status !== "ready"}
+            onChange={(event) => {
+              const uomId = Number(event.target.value);
+              const selectedUom = referenceState.status === "ready" ? referenceState.uoms.find((item) => item.id === uomId) : undefined;
+              setValue(`items.${index}.manualProduct.uomId`, Number.isFinite(uomId) && uomId > 0 ? uomId : undefined, { shouldDirty: true, shouldValidate: true });
+              setValue(`items.${index}.uomIdSnapshot`, Number.isFinite(uomId) && uomId > 0 ? uomId : undefined, { shouldDirty: true, shouldValidate: true });
+              setValue(`items.${index}.unitSnapshot`, selectedUom?.code || selectedUom?.name || undefined, { shouldDirty: true, shouldValidate: true });
+            }}
+          >
             <option value="">— pilih satuan —</option>
             {referenceState.status === "ready" && referenceState.uoms.map((item) => <option key={item.id} value={item.id}>{item.name}{item.code ? ` (${item.code})` : ""}</option>)}
           </Select>

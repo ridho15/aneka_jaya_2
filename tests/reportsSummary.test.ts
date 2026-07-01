@@ -70,15 +70,24 @@ describe("report summaries", () => {
     const report = buildPaidSalesReport([
       baseSale,
       { ...baseSale, id: "S-2", paymentMethod: "TF", total: 200_000 },
+      { ...baseSale, id: "S-ERP-FAILED", paymentMethod: "Cash", total: 50_000, syncTarget: "erp", syncStatus: "failed" },
+      { ...baseSale, id: "S-ERP-PENDING", paymentMethod: "TF", total: 25_000, syncTarget: "erp", syncStatus: "pending" },
+      { ...baseSale, id: "S-ERP-SYNCED", paymentMethod: "Cash", total: 10_000, syncTarget: "erp", syncStatus: "synced" },
+      { ...baseSale, id: "S-LOCAL", paymentMethod: "TF", total: 15_000, syncTarget: "local", syncStatus: "local" },
+      { ...baseSale, id: "S-QA", paymentMethod: "Cash", total: 999_000, isTestTransaction: true },
       { ...baseSale, id: "S-3", paymentMethod: "Tempo", total: 300_000 },
       { ...baseSale, id: "S-4", paymentMethod: "Cash", approvalStatus: "pending_approval", total: 400_000 },
       { ...baseSale, id: "S-5", saleDate: "2026-06-28", total: 500_000 }
     ], "2026-06-29");
 
-    expect(report.grandTotal).toBe(300_000);
-    expect(report.totalCash).toBe(100_000);
-    expect(report.totalTf).toBe(200_000);
-    expect(report.byTipe).toEqual([{ tipe: "AJ", cash: 100_000, tf: 200_000, total: 300_000 }]);
+    expect(report.grandTotal).toBe(400_000);
+    expect(report.totalCash).toBe(160_000);
+    expect(report.totalTf).toBe(240_000);
+    expect(report.excludedTestCount).toBe(1);
+    expect(report.excludedTestTotal).toBe(999_000);
+    expect(report.unsyncedErpCount).toBe(2);
+    expect(report.unsyncedErpTotal).toBe(75_000);
+    expect(report.byTipe).toEqual([{ tipe: "AJ", cash: 160_000, tf: 240_000, total: 400_000 }]);
   });
 
   it("summarizes finance from active Tempo, monthly payments, and approved expenses only", () => {

@@ -205,6 +205,8 @@ model SalesRecordItem {
   productRef    String
   productId      String?
   manualProduct  Json?
+  unitSnapshot   String?
+  uomIdSnapshot  Int?
   quantity      Decimal     @db.Decimal(18, 2)
   unitPrice     Decimal     @db.Decimal(18, 2)
   discount      Decimal     @default(0) @db.Decimal(18, 2)

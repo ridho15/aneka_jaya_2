@@ -9,6 +9,10 @@ export type PaidSalesReport = {
   totalCash: number;
   totalTf: number;
   byTipe: Array<{ tipe: string; cash: number; tf: number; total: number }>;
+  excludedTestCount: number;
+  excludedTestTotal: number;
+  unsyncedErpCount: number;
+  unsyncedErpTotal: number;
 };
 
 export type FinanceReportSummary = {
@@ -25,15 +29,23 @@ const finalTempoStatuses = ["paid", "cancelled", "written_off"];
 const isPaidPaymentMethod = (value: string): value is "Cash" | "TF" => value === "Cash" || value === "TF";
 
 export function buildPaidSalesReport(sales: Sale[], reportDate: string): PaidSalesReport {
-  const paidSales = sales.filter((sale) => sale.saleDate === reportDate && isPaidPaymentMethod(sale.paymentMethod) && (!sale.approvalStatus || sale.approvalStatus === "approved"));
+  const eligibleSales = sales.filter((sale) => sale.saleDate === reportDate && isPaidPaymentMethod(sale.paymentMethod) && (!sale.approvalStatus || sale.approvalStatus === "approved"));
+  const excludedTestSales = eligibleSales.filter((sale) => sale.isTestTransaction === true);
+  const paidSales = eligibleSales.filter((sale) => sale.isTestTransaction !== true);
   const byTipeMap = new Map<string, { tipe: string; cash: number; tf: number; total: number }>();
   let totalCash = 0;
   let totalTf = 0;
+  let unsyncedErpCount = 0;
+  let unsyncedErpTotal = 0;
 
   for (const sale of paidSales) {
     const amount = Number(sale.total) || 0;
     if (sale.paymentMethod === "Cash") totalCash += amount;
     if (sale.paymentMethod === "TF") totalTf += amount;
+    if (sale.syncTarget === "erp" && (sale.syncStatus === "pending" || sale.syncStatus === "failed")) {
+      unsyncedErpCount += 1;
+      unsyncedErpTotal += amount;
+    }
     const tipe = sale.tipeCodeSnapshot || "W";
     const current = byTipeMap.get(tipe) || { tipe, cash: 0, tf: 0, total: 0 };
     if (sale.paymentMethod === "Cash") current.cash += amount;
@@ -48,7 +60,11 @@ export function buildPaidSalesReport(sales: Sale[], reportDate: string): PaidSal
     grandTotal: totalCash + totalTf,
     totalCash,
     totalTf,
-    byTipe: Array.from(byTipeMap.values()).sort((a, b) => a.tipe.localeCompare(b.tipe))
+    byTipe: Array.from(byTipeMap.values()).sort((a, b) => a.tipe.localeCompare(b.tipe)),
+    excludedTestCount: excludedTestSales.length,
+    excludedTestTotal: excludedTestSales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0),
+    unsyncedErpCount,
+    unsyncedErpTotal
   };
 }
 

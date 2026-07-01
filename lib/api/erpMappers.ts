@@ -173,6 +173,8 @@ export function toProductListItem(product: Product): ProductListItem {
     code: product.code,
     name: product.name,
     category: product.category,
+    unit: product.unit,
+    uomId: product.uomId,
     sellingPrice: product.sellingPrice,
     minimumStock: product.minimumStock,
     isActive: product.isActive,

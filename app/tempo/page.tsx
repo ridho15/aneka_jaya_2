@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 
 export const dynamic = "force-dynamic";
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 type SearchParams = Record<string, string | string[] | undefined>;
 

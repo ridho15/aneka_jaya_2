@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listApprovalRequests, type ApprovalRequest } from "@/lib/approval/store";
+import { getApprovalRequest } from "@/lib/approval/store";
 import { ApprovalActionForm } from "@/components/approval/ApprovalActionForm";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,7 @@ export default async function ApprovalDetailPage({ params }: { params: Promise<{
   const { id } = await params;
   const role = await getCurrentRole();
   if (!can(role, "approval.view")) redirect("/");
-  const approvals: ApprovalRequest[] = await listApprovalRequests();
-  const item = approvals.find((row: ApprovalRequest) => row.id === id);
+  const item = await getApprovalRequest(id);
   if (!item) redirect("/approval");
   const canPrintSale = item.module === "penjualan" && item.status === "approved" && item.entityId;
 

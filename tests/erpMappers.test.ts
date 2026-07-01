@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { normalizeProductCode, toProduct, toStockItem } from "@/lib/api/erpMappers";
+import { normalizeProductCode, toProduct, toProductListItem, toStockItem } from "@/lib/api/erpMappers";
 
 describe("ERP product and stock mappers", () => {
   it("normalizes object-backed product fields without rendering [object Object]", () => {
@@ -108,6 +108,23 @@ describe("ERP product and stock mappers", () => {
     expect(product.dataQualityWarnings).toEqual(expect.arrayContaining(["minimum stock"]));
     expect(product.dataQualityWarnings).not.toEqual(expect.arrayContaining(["harga jual", "harga modal", "status aktif", "satuan"]));
     warn.mockRestore();
+  });
+
+  it("keeps UOM fields in the lightweight product list response", () => {
+    const product = toProduct({
+      id: 99,
+      sku: "ERP-UOM-99",
+      name: "Produk dengan UOM",
+      category: { id: 4, name: "Aksesoris" },
+      uom: { id: 12, abbreviation: "BOX" },
+      prices: { sell_price: 10000, cost_price: 5000 },
+      flags: { is_active: true }
+    });
+
+    expect(toProductListItem(product)).toMatchObject({
+      unit: "BOX",
+      uomId: 12
+    });
   });
 
   it("reads latest ERP product stock summary and stock breakdown", () => {

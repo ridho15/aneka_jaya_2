@@ -85,14 +85,15 @@ function splitProductRef(productRef: string) {
   return { code: first || productRef, name: rest.join(" ") || productRef };
 }
 
-function itemLines(index: number, productRef: string, quantity: number, unitPrice: number, discount = 0) {
+function itemLines(index: number, productRef: string, quantity: number, unitPrice: number, discount = 0, unit?: string) {
   const total = quantity * unitPrice - discount;
   const { code, name } = splitProductRef(productRef);
+  const quantityWithUnit = [quantity, unit].filter((value) => value !== undefined && value !== null && value !== "").join(" ");
   const firstLine = [
     column(index + 1, 3),
     column(code, 8),
     column(name, 15),
-    column(quantity, 6, "right")
+    column(quantityWithUnit, 6, "right")
   ].join("");
   const secondLine = [
     column("", 3),
@@ -135,7 +136,7 @@ export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber
     `${column("NO", 3)}${column("KODE", 8)}${column("NAMA PRODUK", 15)}${column("QTY", 6, "right")}`,
     `${column("", 3)}${column("", 8)}${column("", 5)}${column("HARGA", 10, "right")}${column("TOTAL", 18, "right")}`,
     line("-"),
-    ...sale.items.flatMap((item, index) => itemLines(index, item.productRef, item.quantity, item.unitPrice, item.discount || 0)),
+    ...sale.items.flatMap((item, index) => itemLines(index, item.productRef, item.quantity, item.unitPrice, item.discount || 0, item.unitSnapshot)),
     line("-"),
     amountLine("TOTAL", sale.total),
     statusLine("STATUS", sale.approvalStatus || "approved"),

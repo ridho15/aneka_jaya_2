@@ -54,11 +54,18 @@ export function StockList({ initialStocks, initialMeta, initialFilters = {} }: {
   ]);
 
   useEffect(() => {
-    setStocks(initialStocks);
-    setMeta(initialMeta);
-    setDraftFilters(initialFilters);
-    setUpdated(timeLabel());
-    setSyncError(null);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setStocks(initialStocks);
+      setMeta(initialMeta);
+      setDraftFilters(initialFilters);
+      setUpdated(timeLabel());
+      setSyncError(null);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [activeFiltersKey, initialFilters, initialMeta, initialStocks]);
 
   const refresh = useCallback(async () => {
@@ -92,7 +99,7 @@ export function StockList({ initialStocks, initialMeta, initialFilters = {} }: {
         setRefreshing(false);
       }
     }
-  }, [activeFiltersKey, initialFilters, initialMeta.page, initialMeta.pageSize]);
+  }, [initialFilters, initialMeta.page, initialMeta.pageSize]);
 
   useEffect(() => {
     let cancelled = false;

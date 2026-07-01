@@ -1,17 +1,45 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listApprovalRequests, type ApprovalRequest } from "@/lib/approval/store";
+import { listApprovalRequestsPage } from "@/lib/approval/store";
 
 export const dynamic = "force-dynamic";
+const PAGE_SIZE = 10;
 
-export default async function ApprovalPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function valueOf(params: SearchParams, key: string) {
+  const value = params[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function toPage(value?: string) {
+  const page = Number(value || "1");
+  return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+}
+
+function pageHref(params: SearchParams, key: "pendingPage" | "historyPage", page: number) {
+  const next = new URLSearchParams();
+  for (const [paramKey, raw] of Object.entries(params)) {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    if (value && paramKey !== key) next.set(paramKey, value);
+  }
+  next.set(key, String(page));
+  return `/approval?${next.toString()}`;
+}
+
+export default async function ApprovalPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
   if (!can(role, "approval.view")) redirect("/");
-  const rows: ApprovalRequest[] = await listApprovalRequests();
-  const pending = rows.filter((row: ApprovalRequest) => row.status === "pending_approval");
-  const history = rows.filter((row: ApprovalRequest) => row.status !== "pending_approval");
+  const params = await searchParams || {};
+  const pendingPage = toPage(valueOf(params, "pendingPage"));
+  const historyPage = toPage(valueOf(params, "historyPage"));
+  const [{ data: pending, meta: pendingMeta }, { data: history, meta: historyMeta }] = await Promise.all([
+    listApprovalRequestsPage({ page: pendingPage, pageSize: PAGE_SIZE, filter: { status: "active" } }),
+    listApprovalRequestsPage({ page: historyPage, pageSize: PAGE_SIZE, filter: { status: "history" } })
+  ]);
   const rupiah = (value = 0) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
   const statusBadge = (status: string) => {
     if (status === "approved") return "bg-emerald-50 text-emerald-700";
@@ -30,7 +58,7 @@ export default async function ApprovalPage() {
       <section className="mb-8">
         <div className="mb-3 flex items-center gap-3">
           <h3 className="text-lg font-bold">Menunggu Approval</h3>
-          {pending.length > 0 && <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-white">{pending.length}</span>}
+          {pendingMeta.total > 0 && <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-white">{pendingMeta.total}</span>}
         </div>
         <div className="aj-surface overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -45,12 +73,13 @@ export default async function ApprovalPage() {
                   <td className="px-5 py-4">{row.tipeCodeSnapshot || "-"}</td>
                   <td className="px-5 py-4">{row.createdByNameSnapshot}<span className="ml-2 text-xs text-slate-500">{row.createdByRoleSnapshot}</span></td>
                   <td className="px-5 py-4 font-semibold">{rupiah(row.amount)}</td>
-                  <td className="px-5 py-4"><a className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href={`/approval/${row.id}`}>Approve / Reject →</a></td>
+                  <td className="px-5 py-4"><Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href={`/approval/${row.id}`}>Approve / Reject →</Link></td>
                 </tr>
               ))}
               {pending.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-500">Tidak ada transaksi yang menunggu approval.</td></tr>}
             </tbody>
           </table>
+          <Pagination current={pendingMeta.page} totalPages={pendingMeta.totalPages} hrefFor={(page) => pageHref(params, "pendingPage", page)} />
         </div>
       </section>
 
@@ -70,14 +99,27 @@ export default async function ApprovalPage() {
                   <td className="px-5 py-4">{row.createdByNameSnapshot}<span className="ml-2 text-xs text-slate-500">{row.createdByRoleSnapshot}</span></td>
                   <td className="px-5 py-4">{rupiah(row.amount)}</td>
                   <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge(row.status)}`}>{row.status}</span></td>
-                  <td className="px-5 py-4"><a className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href={`/approval/${row.id}`}>Lihat →</a></td>
+                  <td className="px-5 py-4"><Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href={`/approval/${row.id}`}>Lihat →</Link></td>
                 </tr>
               ))}
               {history.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-500">Belum ada riwayat approval.</td></tr>}
             </tbody>
           </table>
+          <Pagination current={historyMeta.page} totalPages={historyMeta.totalPages} hrefFor={(page) => pageHref(params, "historyPage", page)} />
         </div>
       </section>
     </AppShell>
+  );
+}
+
+function Pagination({ current, totalPages, hrefFor }: { current: number; totalPages: number; hrefFor: (page: number) => string }) {
+  return (
+    <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
+      <span className="text-slate-500">Halaman {current} dari {totalPages}</span>
+      <div className="flex gap-2">
+        {current > 1 && <Link className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={hrefFor(current - 1)}>Sebelumnya</Link>}
+        {current < totalPages && <Link className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={hrefFor(current + 1)}>Berikutnya</Link>}
+      </div>
+    </div>
   );
 }

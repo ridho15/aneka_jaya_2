@@ -32,6 +32,8 @@ export const penjualanSchema = z.object({
     productId: z.string().trim().max(50).optional(),
     productInputMode: z.enum(["erp", "manual"]).default("erp").optional(),
     manualProduct: manualProductSchema.optional(),
+    unitSnapshot: z.string().trim().max(50).optional(),
+    uomIdSnapshot: z.coerce.number().int().positive().optional(),
     quantity: z.coerce.number().positive("Quantity harus lebih dari 0"),
     unitPrice: z.coerce.number().min(0, "Harga satuan tidak boleh negatif"),
     discount: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Diskon tidak boleh negatif")).default(0)

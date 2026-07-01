@@ -37,4 +37,7 @@ export type Product = {
   dataQualityWarnings?: string[];
 };
 
-export type ProductListItem = Pick<Product, "id" | "productId" | "code" | "name" | "category" | "sellingPrice" | "minimumStock" | "isActive" | "updatedAt" | "stockSummary" | "stockBreakdown" | "dataQualityWarnings">;
+export type ProductListItem = Pick<Product, "id" | "productId" | "code" | "name" | "category" | "sellingPrice" | "minimumStock" | "isActive" | "updatedAt" | "stockSummary" | "stockBreakdown" | "dataQualityWarnings"> & {
+  unit?: Product["unit"];
+  uomId?: Product["uomId"];
+};

@@ -128,7 +128,7 @@ describe("dot matrix print formatter", () => {
       total: 1_234_000,
       createdByNameSnapshot: "Admin Cetak",
       items: [
-        { productRef: "BRG-001 Nama barang yang panjang sekali", quantity: 10, unitPrice: 275_000, discount: 0 }
+        { productRef: "BRG-001 Nama barang yang panjang sekali", unitSnapshot: "PCS", quantity: 10, unitPrice: 275_000, discount: 0 }
       ]
     });
     const lines = text.trimEnd().split("\n");
@@ -139,6 +139,7 @@ describe("dot matrix print formatter", () => {
     expect(text).toContain("TOTAL:");
     expect(text).toContain("Rp 1.234 jt");
     expect(text).toContain("Admin Cetak");
+    expect(text).toContain("10 PCS");
     expect(lines.some((line) => line.includes("BRG-001") && line.includes("Nama barang"))).toBe(true);
   });
 

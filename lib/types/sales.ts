@@ -13,6 +13,8 @@ export type SalesItem = {
   productId?: string;
   productInputMode?: "erp" | "manual";
   manualProduct?: ManualSalesProduct;
+  unitSnapshot?: string;
+  uomIdSnapshot?: number;
   quantity: number;
   unitPrice: number;
   discount?: number;
