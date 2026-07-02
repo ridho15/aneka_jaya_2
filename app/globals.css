@@ -9,6 +9,37 @@ body { margin: 0; background: #f6f6f5; color: #171717; font-family: Inter, ui-sa
 button, input, select, textarea { font: inherit; }
 input[type="date"] { min-height: 42px; }
 
+.top-loading-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 9999;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.top-loading-bar span {
+  display: block;
+  height: 100%;
+  width: var(--top-loading-progress, 0%);
+  background: #059669;
+  box-shadow: 0 0 12px rgba(5, 150, 105, 0.45);
+  transition: width 280ms ease;
+}
+
+.top-loading-bar--active {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top-loading-bar { transition: none; }
+  .top-loading-bar span { transition: none; }
+}
+
 @layer components {
   .aj-surface { border: 1px solid #e5e5e5; border-radius: 2px; background: #ffffff; box-shadow: none; }
   .aj-page-title { letter-spacing: -0.035em; color: #111111; }

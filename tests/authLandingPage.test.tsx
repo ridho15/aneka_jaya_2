@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AuthLandingPage } from "@/components/auth/AuthLandingPage";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+
 describe("auth landing page CTA", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
