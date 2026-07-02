@@ -5,6 +5,7 @@ describe("transaction routing by tipe", () => {
   it("routes AJ to ERP by default and keeps non-AJ local", () => {
     expect(transactionTargetForType("AJ", {})).toBe("erp");
     expect(transactionTargetForType("W", {})).toBe("local");
+    expect(transactionTargetForType("SLM", {})).toBe("local");
     expect(transactionTargetForType("ONLINE", {})).toBe("local");
   });
 

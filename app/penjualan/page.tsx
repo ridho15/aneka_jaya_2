@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listSalesRecordsPage, listSalesTipeOptions, type SalesRecordFilters } from "@/lib/sales/store";
+import { listSalesRecordsPage, type SalesRecordFilters } from "@/lib/sales/store";
+import { listBookkeepingTypes } from "@/lib/business/masterData";
 import type { Sale } from "@/lib/types/sales";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 
@@ -72,8 +73,9 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
   const [{ data: paged, meta }, tipeOptions] = await Promise.all([
     listSalesRecordsPage({ page, pageSize: PAGE_SIZE, filters: filtersFromParams(params) }),
-    listSalesTipeOptions()
+    listBookkeepingTypes()
   ]);
+  const activeTipeOptions = tipeOptions.filter((item) => item.isActive).sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
   const totalPages = meta.totalPages;
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 
@@ -93,7 +95,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
           <label className="text-sm font-medium text-slate-700">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
           <label className="text-sm font-medium text-slate-700">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
           <label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Customer / No transaksi" className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{tipeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+          <label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{activeTipeOptions.map((item) => <option key={item.id} value={item.code}>{item.code}</option>)}</Select></label>
           <label className="text-sm font-medium text-slate-700">Pembayaran<Select name="paymentMethod" defaultValue={valueOf(params, "paymentMethod") || ""} className="mt-1"><option value="">Semua</option>{paymentMethods.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
           <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{approvalStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
           <label className="text-sm font-medium text-slate-700">ERP Sync<Select name="syncStatus" defaultValue={valueOf(params, "syncStatus") || ""} className="mt-1"><option value="">Semua</option>{syncStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
