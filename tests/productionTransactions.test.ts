@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
     listErpPaginated: vi.fn(),
     findTipe: vi.fn(),
     rekeningForTipe: vi.fn(),
+    resolveSalesRekening: vi.fn(),
     saveSalesRecord: vi.fn()
   };
 });
@@ -41,6 +42,7 @@ vi.mock("@/lib/api/pagination", () => ({ listErpPaginated: mocks.listErpPaginate
 vi.mock("@/lib/business/masterData", () => ({
   findTipe: mocks.findTipe,
   rekeningForTipe: mocks.rekeningForTipe,
+  resolveSalesRekening: mocks.resolveSalesRekening,
   MasterDataError: class MasterDataError extends Error {}
 }));
 vi.mock("@/lib/sales/store", () => ({ saveSalesRecord: mocks.saveSalesRecord }));
@@ -84,6 +86,8 @@ describe("production Prisma transactions", () => {
     mocks.listErpPaginated.mockResolvedValue({ success: true, data: [{ id: 77, name: "Budi", code: "BUDI" }] });
     mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
     mocks.rekeningForTipe.mockResolvedValue([]);
+    mocks.resolveSalesRekening.mockReset();
+    mocks.resolveSalesRekening.mockResolvedValue(undefined);
     mocks.saveSalesRecord.mockReset();
     mocks.prisma.$transaction.mockClear();
     Object.values(mocks.tx).forEach((model) => Object.values(model).forEach((fn) => "mockReset" in fn && fn.mockReset()));
@@ -569,9 +573,9 @@ describe("production Prisma transactions", () => {
     }));
   });
 
-  it("rejects Cash AJ when the selected rekening is not assigned to AJ", async () => {
+  it("uses Kas Walk In for Cash sales even when the request omits rekening", async () => {
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
-    mocks.rekeningForTipe.mockResolvedValue([]);
+    mocks.resolveSalesRekening.mockResolvedValue({ id: "cash-w", name: "Kas Walk In", tipeIds: ["W"] });
 
     await expect(createSale({
       ...saleInput,
@@ -579,16 +583,18 @@ describe("production Prisma transactions", () => {
       tipeCodeSnapshot: "AJ",
       tipeNameSnapshot: "AJ",
       paymentMethod: "Cash",
-      dueDate: undefined,
-      rekeningId: "cash-aj"
-    })).rejects.toThrow("Rekening penerima tidak tersedia");
+      dueDate: undefined
+    })).resolves.toMatchObject({ success: true, data: { target: "erp", rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In" } });
 
-    expect(mocks.anikaRequest).not.toHaveBeenCalled();
+    expect(mocks.resolveSalesRekening).toHaveBeenCalledWith("Cash", "AJ", undefined);
+    expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ rekeningId: "cash-w" })
+    }));
   });
 
-  it("sends Cash AJ when a real assigned rekening is available", async () => {
+  it("ignores tampered Cash rekening and persists Kas Walk In", async () => {
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
-    mocks.rekeningForTipe.mockResolvedValue([{ id: "cash-aj", name: "Kas AJ", tipeIds: ["AJ"] }]);
+    mocks.resolveSalesRekening.mockResolvedValue({ id: "cash-w", name: "Kas Walk In", tipeIds: ["W"] });
 
     await expect(createSale({
       ...saleInput,
@@ -599,10 +605,10 @@ describe("production Prisma transactions", () => {
       dueDate: undefined,
       rekeningId: "cash-aj",
       rekeningNameSnapshot: "Kas AJ"
-    })).resolves.toMatchObject({ success: true, data: { target: "erp" } });
+    })).resolves.toMatchObject({ success: true, data: { target: "erp", rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In" } });
 
-    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
-      body: expect.stringContaining("\"customer_id\":77")
+    expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ rekeningId: "cash-w" })
     }));
   });
 

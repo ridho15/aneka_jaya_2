@@ -42,8 +42,8 @@ export const penjualanSchema = z.object({
   if (data.deliveryDate && Number.isNaN(Date.parse(data.deliveryDate))) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal kirim tidak valid", path: ["deliveryDate"] });
   }
-  if (["Cash", "TF"].includes(data.paymentMethod) && !data.rekeningId && !data.transferAccount) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih rekening penerima untuk Cash/TF", path: ["rekeningId"] });
+  if (data.paymentMethod === "TF" && !data.rekeningId && !data.transferAccount) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih rekening penerima untuk TF", path: ["rekeningId"] });
   }
   if (data.paymentMethod === "Tempo") {
     if (!data.dueDate || Number.isNaN(Date.parse(data.dueDate))) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal jatuh tempo wajib diisi untuk Tempo", path: ["dueDate"] });

@@ -6,7 +6,7 @@ import type { Role } from "@/lib/auth/roles";
 import type { Prisma } from "@prisma/client";
 import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
 import { recordAudit } from "@/lib/audit/store";
-import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
+import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -293,11 +293,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   assertSaleManageable(before);
   const total = saleTotal(input);
   const tipe = await findTipe(input.tipeId || before.tipeId);
-  const rekenings = await rekeningForTipe(tipe.id);
-  const requiresRekening = ["Cash", "TF"].includes(input.paymentMethod);
-  const rekening = input.rekeningId ? rekenings.find((item) => item.id === input.rekeningId) : undefined;
-  if (requiresRekening && !rekening) throw new Error("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.");
-  if (input.rekeningId && !rekening) throw new Error("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.");
+  const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
   if (isProductionMode()) {
     const row = await prisma.$transaction(async (tx) => {

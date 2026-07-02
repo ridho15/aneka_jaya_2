@@ -20,6 +20,8 @@ import { useRouter } from "next/navigation";
 const draftKey = "aneka-jaya-draft-penjualan";
 const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
 const today = new Date().toISOString().slice(0, 10);
+const CASH_WALK_IN_REKENING_ID = "cash-w";
+const CASH_WALK_IN_REKENING_NAME = "Kas Walk In";
 const clampDiscountPercent = (value: number) => Math.min(Math.max(Number.isFinite(value) ? value : 0, 0), 100);
 const itemGross = (item: { quantity?: number; unitPrice?: number }) => Number(item.quantity || 0) * Number(item.unitPrice || 0);
 const itemDiscountAmount = (item: { quantity?: number; unitPrice?: number; discount?: number }) => Math.round(itemGross(item) * clampDiscountPercent(Number(item.discount || 0)) / 100);
@@ -83,14 +85,17 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
   const defaultTipe = sale ? activeTipes.find((tipe) => tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot) || activeTipes[0] : activeTipes[0];
   const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
+  const cashWalkInRekening = useMemo(() => rekenings.find((rekening) => rekening.id === CASH_WALK_IN_REKENING_ID), [rekenings]);
   const defaultRekening = useMemo(() => {
     if (sale?.rekeningId && defaultTipe) {
       const saleRekening = rekenings.find((rekening) => rekening.id === sale.rekeningId && rekening.tipeIds.includes(defaultTipe.id));
       if (saleRekening) return saleRekening;
     }
+    if (!sale && cashWalkInRekening) return cashWalkInRekening;
     return defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
-  }, [defaultTipe, rekeningForTipe, rekenings, sale?.rekeningId]);
+  }, [cashWalkInRekening, defaultTipe, rekeningForTipe, rekenings, sale, sale?.rekeningId]);
   const initialTipeRef = useRef(sale?.tipeId || defaultTipe?.id || "");
+  const previousPaymentMethodRef = useRef(sale?.paymentMethod || "Cash");
 
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string }>();
   const [createdSale, setCreatedSale] = useState<CreatedSale>();
@@ -106,7 +111,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
       saleDate: sale?.saleDate || today, tipeId: sale?.tipeId || defaultTipe?.id || "", tipeCodeSnapshot: sale?.tipeCodeSnapshot || defaultTipe?.code || "", tipeNameSnapshot: sale?.tipeNameSnapshot || defaultTipe?.name || "",
-      rekeningId: defaultRekening?.id || "", rekeningNameSnapshot: defaultRekening?.name || "",
+      rekeningId: sale?.rekeningId || defaultRekening?.id || "", rekeningNameSnapshot: sale?.rekeningNameSnapshot || defaultRekening?.name || "",
       customerName: sale?.customerName || "Walk In", customerLocation: sale?.customerLocation || "Toko", shippingMethod: sale?.shippingMethod || "di Tempat", paymentMethod: sale?.paymentMethod || "Cash",
       dueDate: sale?.dueDate,
       transferAccount: sale?.transferAccount,
@@ -125,7 +130,20 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const subtotal = values.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
   const discountTotal = values.reduce((sum, item) => sum + itemDiscountAmount(item), 0);
   const filteredRekenings = useMemo(() => rekeningForTipe(tipeId), [rekeningForTipe, tipeId]);
-  const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || filteredRekenings.length > 0);
+  const currentSaleRekening = useMemo(() => {
+    if (!sale?.rekeningId) return undefined;
+    const existing = rekenings.find((rekening) => rekening.id === sale.rekeningId);
+    return existing ?? { id: sale.rekeningId, bank: sale.rekeningNameSnapshot || sale.rekeningId, name: sale.rekeningNameSnapshot || sale.rekeningId, accountNumber: "-", tipeIds: sale.tipeId ? [sale.tipeId] : [] };
+  }, [rekenings, sale?.rekeningId, sale?.rekeningNameSnapshot, sale?.tipeId]);
+  const rekeningOptions = useMemo(() => {
+    if (paymentMethod !== "Cash") return filteredRekenings;
+    const options = cashWalkInRekening ? [cashWalkInRekening] : [];
+    if (isEdit && sale?.paymentMethod === "Cash" && currentSaleRekening && !options.some((rekening) => rekening.id === currentSaleRekening.id)) {
+      options.unshift(currentSaleRekening);
+    }
+    return options;
+  }, [cashWalkInRekening, currentSaleRekening, filteredRekenings, isEdit, paymentMethod, sale?.paymentMethod]);
+  const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || (paymentMethod === "Cash" ? Boolean(cashWalkInRekening) : filteredRekenings.length > 0));
   const effectiveProducts = useMemo(() => mergeProductsWithSaleItems(products, sale), [products, sale]);
   const productOptions = useMemo(() => buildProductOptions(effectiveProducts, stocks), [effectiveProducts, stocks]);
   const allItemsManual = values.length > 0 && values.every((item) => item.productInputMode === "manual");
@@ -254,17 +272,28 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     if (!tipe) return;
     setValue("tipeCodeSnapshot", tipe.code);
     setValue("tipeNameSnapshot", tipe.name);
+    if (paymentMethod === "Cash") return;
     const reks = rekeningForTipe(tipe.id);
     const currentRekening = reks.find((rekening) => rekening.id === getValues("rekeningId"));
     if (isEdit && initialTipeRef.current === tipe.id && currentRekening) {
       setValue("rekeningNameSnapshot", currentRekening.name);
       return;
     }
+    if (isEdit && initialTipeRef.current === tipe.id && !currentRekening) return;
     const first = reks[0];
     setValue("rekeningId", first?.id || "");
     setValue("rekeningNameSnapshot", first?.name || "");
     initialTipeRef.current = tipe.id;
-  }, [activeTipes, getValues, isEdit, rekeningForTipe, setValue, tipeId]);
+  }, [activeTipes, getValues, isEdit, paymentMethod, rekeningForTipe, setValue, tipeId]);
+
+  useEffect(() => {
+    const previousPaymentMethod = previousPaymentMethodRef.current;
+    if (paymentMethod === "Cash" && (!isEdit || previousPaymentMethod !== "Cash")) {
+      setValue("rekeningId", cashWalkInRekening?.id || "");
+      setValue("rekeningNameSnapshot", cashWalkInRekening?.name || CASH_WALK_IN_REKENING_NAME);
+    }
+    previousPaymentMethodRef.current = paymentMethod;
+  }, [cashWalkInRekening, isEdit, paymentMethod, setValue]);
 
   const submit = async (data: PenjualanInput) => {
     setNotice(undefined);
@@ -306,7 +335,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       testReference: result.data.testReference,
       erpReference: result.data.erpReference
     });
-    const defaultRek = defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
+    const defaultRek = cashWalkInRekening ?? (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
     reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 }] });
     const isRetryableErp = result.data?.target === "erp" && (result.data?.retryable === true || result.data?.syncStatus === "failed");
     const isSyncedErp = result.data?.target === "erp" && result.data?.syncStatus === "synced" && result.data?.erpReference;
@@ -391,10 +420,11 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
               {paymentMethod !== "Tempo" && (
                 <Field label="Rekening penerima" error={errors.rekeningId?.message}>
                   <Select {...register("rekeningId")} onChange={(event) => { const label = event.currentTarget.selectedOptions[0]?.text || ""; setValue("rekeningId", event.target.value); setValue("rekeningNameSnapshot", label); }}>
-                    {filteredRekenings.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    {filteredRekenings.length === 0 && <option value="">— tidak ada rekening untuk tipe ini —</option>}
+                    {rekeningOptions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    {rekeningOptions.length === 0 && <option value="">— tidak ada rekening untuk tipe ini —</option>}
                   </Select>
-                  {filteredRekenings.length === 0 && <span className="mt-1 block text-xs font-normal text-amber-700">Belum ada rekening untuk tipe ini. Tambah di Pengaturan → Rekening.</span>}
+                  {paymentMethod === "Cash" && !cashWalkInRekening && <span className="mt-1 block text-xs font-normal text-amber-700">Kas Walk In belum tersedia. Jalankan seed master data atau aktifkan rekening cash-w.</span>}
+                  {paymentMethod !== "Cash" && filteredRekenings.length === 0 && <span className="mt-1 block text-xs font-normal text-amber-700">Belum ada rekening untuk tipe ini. Tambah di Pengaturan → Rekening.</span>}
                 </Field>
               )}
               {paymentMethod === "Tempo" && <Field label="Tanggal Jatuh Tempo" error={errors.dueDate?.message}><Input type="date" {...register("dueDate")} /></Field>}

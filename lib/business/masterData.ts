@@ -19,6 +19,9 @@ export type RekeningAccount = {
   tipeIds: string[];
 };
 
+export const CASH_WALK_IN_REKENING_ID = "cash-w";
+export const CASH_WALK_IN_REKENING_NAME = "Kas Walk In";
+
 export async function listBookkeepingTypes(): Promise<BookkeepingType[]> {
   const rows = await prisma.bookkeepingType.findMany({ orderBy: [{ sortOrder: "asc" }, { code: "asc" }] });
   return rows.map((row) => ({
@@ -129,4 +132,27 @@ export async function rekeningForTipe(tipeId?: string): Promise<RekeningAccount[
   const tipe = await findTipe(tipeId);
   const all = await listRekeningAccounts();
   return all.filter((r) => r.tipeIds.includes(tipe.id));
+}
+
+export async function resolveSalesRekening(paymentMethod: string, tipeId: string, rekeningId?: string): Promise<RekeningAccount | undefined> {
+  if (paymentMethod === "Cash") {
+    const cashWalkIn = (await listRekeningAccounts()).find((rekening) => rekening.id === CASH_WALK_IN_REKENING_ID);
+    if (!cashWalkIn) throw new MasterDataError(`${CASH_WALK_IN_REKENING_NAME} belum tersedia atau belum aktif. Jalankan seed master data sebelum input penjualan Cash.`, "REKENING_NOT_FOUND");
+    return cashWalkIn;
+  }
+
+  const rekenings = await rekeningForTipe(tipeId);
+  if (paymentMethod === "TF") {
+    const rekening = rekeningId ? rekenings.find((item) => item.id === rekeningId) : undefined;
+    if (!rekening) throw new MasterDataError("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.", "REKENING_NOT_FOUND");
+    return rekening;
+  }
+
+  if (rekeningId) {
+    const rekening = rekenings.find((item) => item.id === rekeningId);
+    if (!rekening) throw new MasterDataError("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.", "REKENING_NOT_FOUND");
+    return rekening;
+  }
+
+  return undefined;
 }

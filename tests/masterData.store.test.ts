@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 
-import { findTipe, listBookkeepingTypes, listRekeningAccounts, saveRekeningAccounts } from "@/lib/business/masterData";
+import { findTipe, listBookkeepingTypes, listRekeningAccounts, resolveSalesRekening, saveRekeningAccounts } from "@/lib/business/masterData";
 
 describe("master data normalized persistence", () => {
   beforeEach(() => {
@@ -85,5 +85,37 @@ describe("master data normalized persistence", () => {
       ],
       skipDuplicates: true
     });
+  });
+
+  it("resolves Cash sales to the active Kas Walk In account", async () => {
+    mocks.prisma.rekeningAccount.findMany.mockResolvedValue([
+      { id: "dummy-bca-w", bankName: "BCA", name: "BCA Operasional", accountNumber: "123", isActive: true, tipeLinks: [{ bookkeepingTypeId: "W" }] },
+      { id: "cash-w", bankName: "Cash", name: "Kas Walk In", accountNumber: "-", isActive: true, tipeLinks: [{ bookkeepingTypeId: "W" }] }
+    ]);
+
+    await expect(resolveSalesRekening("Cash", "AJ")).resolves.toMatchObject({ id: "cash-w", name: "Kas Walk In" });
+  });
+
+  it("rejects Cash sales when Kas Walk In is not active or missing", async () => {
+    mocks.prisma.rekeningAccount.findMany.mockResolvedValue([
+      { id: "dummy-bca-w", bankName: "BCA", name: "BCA Operasional", accountNumber: "123", isActive: true, tipeLinks: [{ bookkeepingTypeId: "W" }] }
+    ]);
+
+    await expect(resolveSalesRekening("Cash", "W")).rejects.toMatchObject({
+      code: "REKENING_NOT_FOUND",
+      message: "Kas Walk In belum tersedia atau belum aktif. Jalankan seed master data sebelum input penjualan Cash."
+    });
+  });
+
+  it("keeps TF validation tied to the selected tipe rekening", async () => {
+    mocks.prisma.bookkeepingType.findMany.mockResolvedValue([
+      { id: "W", code: "W", name: "Walk In", isActive: true, sortOrder: 1 }
+    ]);
+    mocks.prisma.rekeningAccount.findMany.mockResolvedValue([
+      { id: "dummy-bca-w", bankName: "BCA", name: "BCA Operasional", accountNumber: "123", isActive: true, tipeLinks: [{ bookkeepingTypeId: "W" }] }
+    ]);
+
+    await expect(resolveSalesRekening("TF", "W", "dummy-bca-w")).resolves.toMatchObject({ id: "dummy-bca-w" });
+    await expect(resolveSalesRekening("TF", "W")).rejects.toMatchObject({ code: "REKENING_NOT_FOUND" });
   });
 });

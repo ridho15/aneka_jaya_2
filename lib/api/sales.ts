@@ -7,7 +7,7 @@ import type { Sale } from "@/lib/types/sales";
 import { recordAudit } from "@/lib/audit/store";
 import { createTempoReceivable } from "@/lib/tempo/store";
 import { getCurrentUser } from "@/lib/auth/session";
-import { findTipe, MasterDataError, rekeningForTipe } from "@/lib/business/masterData";
+import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
 import { saveSalesRecord } from "@/lib/sales/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
@@ -561,12 +561,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const total = input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
   const user = await getCurrentUser();
   const tipe = await findTipe(input.tipeId);
-  if (["Cash", "TF"].includes(input.paymentMethod)) {
-    const rekenings = await rekeningForTipe(tipe.id);
-    if (!input.rekeningId || !rekenings.some((rekening) => rekening.id === input.rekeningId)) {
-      throw new MasterDataError("Rekening penerima tidak tersedia untuk tipe pembukuan yang dipilih.", "REKENING_NOT_FOUND");
-    }
-  }
+  const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
   const approvalStatus: NonNullable<Sale["approvalStatus"]> = "approved";
   const target = salesTargetForType(tipe.code);
   const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
@@ -576,7 +571,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const normalizedItems = normalizeManualSaleItems(input.items);
   const preparedManualItems = await resolveManualProductsForSaleItems(normalizedItems);
   const effectiveItems = preparedManualItems.success ? preparedManualItems.data : normalizedItems;
-  const effectiveInput = { ...input, customerName, notes, isTestTransaction, items: effectiveItems };
+  const effectiveInput = { ...input, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name };
 
   if (!preparedManualItems.success) {
     if (target === "local") return preparedManualItems;
