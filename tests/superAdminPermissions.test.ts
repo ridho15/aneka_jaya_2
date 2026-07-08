@@ -36,4 +36,12 @@ describe("Super Admin permission contract", () => {
     expect(can("MANAGER", "pengeluaran.create")).toBe(false);
     expect(can("VIEWER", "pengeluaran.create")).toBe(false);
   });
+
+  it("keeps Profit SLM settings and dashboard visibility Super Admin only", () => {
+    expect(can("OWNER", "settings.profit.manage")).toBe(true);
+    expect(can("ADMIN", "settings.profit.manage")).toBe(false);
+    expect(can("FINANCE", "settings.profit.manage")).toBe(false);
+    expect(can("MANAGER", "settings.profit.manage")).toBe(false);
+    expect(can("VIEWER", "settings.profit.manage")).toBe(false);
+  });
 });

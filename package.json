@@ -23,7 +23,8 @@
     "db:seed-owner": "node scripts/seed-initial-owner.mjs",
     "db:seed-core": "node scripts/seed-core-master-data.mjs",
     "seed:dashboard-dummy": "node scripts/seed-dashboard-dummy-sales.mjs",
-    "db:verify": "node scripts/verify-prisma-db.mjs"
+    "db:verify": "node scripts/verify-prisma-db.mjs",
+    "audit:dashboard": "node scripts/audit-dashboard-values.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

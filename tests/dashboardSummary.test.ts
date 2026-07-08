@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityStatusText, buildCategorySummary, buildDashboardSalesMetrics, buildMonthlyPerformance, buildPaymentBreakdown, filterDashboardSales, formatDashboardMoney, productKpi } from "@/lib/dashboard/summary";
+import { activityStatusText, buildCategorySummary, buildDashboardSalesMetrics, buildMonthlyPerformance, buildPaymentBreakdown, buildSlmProfitSummary, filterDashboardSales, formatDashboardMoney, productKpi } from "@/lib/dashboard/summary";
 import type { AuditLog } from "@/lib/audit/store";
 import type { Expense } from "@/lib/types/expenses";
 import type { Product } from "@/lib/types/product";
@@ -57,6 +57,19 @@ describe("dashboard summaries", () => {
     expect(metrics.totalThisMonth).toBe(950_000);
   });
 
+  it("separates approved omzet from received Cash/TF totals", () => {
+    const cashSale: Sale = { ...sale, id: "cash", saleDate: "2026-07-02", paymentMethod: "Cash", total: 100_000 };
+    const transferSale: Sale = { ...sale, id: "tf", saleDate: "2026-07-03", paymentMethod: "TF", total: 200_000 };
+    const tempoSale: Sale = { ...sale, id: "tempo", saleDate: "2026-07-04", paymentMethod: "Tempo", total: 900_000 };
+    const pendingSale: Sale = { ...sale, id: "pending", saleDate: "2026-07-05", paymentMethod: "Cash", total: 700_000, approvalStatus: "pending_approval" };
+
+    const metrics = buildDashboardSalesMetrics([cashSale, transferSale, tempoSale, pendingSale], "2026-07-02", "2026-07");
+
+    expect(metrics.totalThisMonth).toBe(1_200_000);
+    expect(metrics.totalReceivedThisMonth).toBe(300_000);
+    expect(metrics.receivedThisMonth).toEqual([cashSale, transferSale]);
+  });
+
   it("filters dashboard sales by date, payment method, and rekening", () => {
     const bcaTransfer: Sale = { ...sale, id: "bca", saleDate: "2026-07-02", paymentMethod: "TF", rekeningId: "bca", rekeningNameSnapshot: "BCA Operasional", total: 300_000 };
     const mandiriTransfer: Sale = { ...sale, id: "mandiri", saleDate: "2026-07-03", paymentMethod: "TF", rekeningId: "mandiri", rekeningNameSnapshot: "Mandiri", total: 400_000 };
@@ -93,6 +106,58 @@ describe("dashboard summaries", () => {
     const result = buildMonthlyPerformance([sale], [expense], new Date("2026-06-29T00:00:00.000Z"));
     expect(result).toHaveLength(6);
     expect(result.at(-1)).toMatchObject({ key: "2026-06", sales: 200_000, expenses: 50_000 });
+  });
+
+  it("uses the dashboard date filter range for performance buckets", () => {
+    const result = buildMonthlyPerformance([
+      { ...sale, id: "filtered-sale", saleDate: "2026-01-10", total: 100_000 }
+    ], [
+      { ...expense, id: "filtered-expense", expenseDate: "2026-03-11", amount: 50_000 }
+    ], new Date("2026-07-02T00:00:00.000Z"), { from: "2026-01-01", to: "2026-03-31" });
+
+    expect(result.map((row) => row.key)).toEqual(["2026-01", "2026-02", "2026-03"]);
+    expect(result[0]).toMatchObject({ sales: 100_000, expenses: 0 });
+    expect(result[2]).toMatchObject({ sales: 0, expenses: 50_000 });
+  });
+
+  it("calculates SLM profit summary from approved SLM transaction dates and custom percent", () => {
+    const slmSale: Sale = { ...sale, id: "slm-month", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-02", total: 1_000_000 };
+    const slmToday: Sale = { ...sale, id: "slm-today", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 500_000 };
+    const ajSale: Sale = { ...sale, id: "aj", tipeId: "AJ", tipeCodeSnapshot: "AJ", saleDate: "2026-07-08", total: 900_000 };
+    const pendingSlm: Sale = { ...sale, id: "pending-slm", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 700_000, approvalStatus: "pending_approval" };
+    const backdatedCreatedToday: Sale = { ...sale, id: "backdated-created", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-06-30", createdAt: "2026-07-08T10:00:00.000Z", total: 300_000 };
+    const slmExpense: Expense = { ...expense, id: "slm-expense", tipeId: "SLM", tipeCodeSnapshot: "SLM", expenseDate: "2026-07-03", amount: 200_000 };
+    const slmTodayExpense: Expense = { ...expense, id: "slm-today-expense", tipeId: "SLM", tipeCodeSnapshot: "SLM", expenseDate: "2026-07-08", amount: 50_000 };
+    const ajExpense: Expense = { ...expense, id: "aj-expense", tipeId: "AJ", tipeCodeSnapshot: "AJ", expenseDate: "2026-07-08", amount: 900_000 };
+    const rejectedSlmExpense: Expense = { ...expense, id: "rejected-slm", tipeId: "SLM", tipeCodeSnapshot: "SLM", expenseDate: "2026-07-08", amount: 70_000, approvalStatus: "rejected" };
+
+    const result = buildSlmProfitSummary(
+      [slmSale, slmToday, ajSale, pendingSlm, backdatedCreatedToday],
+      [slmExpense, slmTodayExpense, ajExpense, rejectedSlmExpense],
+      "2026-07-08",
+      "2026-07",
+      20
+    );
+
+    expect(result).toMatchObject({
+      grossProfitPercent: 20,
+      monthlyRevenue: 1_500_000,
+      monthlyExpenses: 250_000,
+      todayRevenue: 500_000,
+      todayExpenses: 50_000,
+      grossProfit: 300_000,
+      nettProfit: 50_000,
+      monthlySalesCount: 2,
+      todaySalesCount: 1
+    });
+  });
+
+  it("defaults SLM gross profit percent to zero when no setting is provided", () => {
+    const result = buildSlmProfitSummary([{ ...sale, tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 1_000_000 }], [], "2026-07-08", "2026-07");
+
+    expect(result.grossProfitPercent).toBe(0);
+    expect(result.grossProfit).toBe(0);
+    expect(result.nettProfit).toBe(0);
   });
 
   it("does not count pending or rejected expenses", () => {

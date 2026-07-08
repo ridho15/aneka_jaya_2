@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => {
     saveBookkeepingTypes: vi.fn(),
     saveRekeningAccounts: vi.fn(),
     getOpenCloudStatus: vi.fn(),
+    checkAppSettingTable: vi.fn(),
     checkStockMinimumAlert: vi.fn(),
     updateApprovalStatus: vi.fn(),
     ApprovalForbiddenError
@@ -65,6 +66,10 @@ vi.mock("@/lib/opencloud/auth", () => ({
   getOpenCloudStatus: mocks.getOpenCloudStatus
 }));
 
+vi.mock("@/lib/db/migrationHealth", () => ({
+  checkAppSettingTable: mocks.checkAppSettingTable
+}));
+
 vi.mock("@/lib/approval/store", () => ({
   ApprovalForbiddenError: mocks.ApprovalForbiddenError,
   isApprovalAction: (value: unknown) => value === "approve" || value === "reject",
@@ -94,8 +99,11 @@ describe("api route permission enforcement", () => {
     mocks.saveBookkeepingTypes.mockReset();
     mocks.saveRekeningAccounts.mockReset();
     mocks.getOpenCloudStatus.mockReset();
+    mocks.checkAppSettingTable.mockReset();
     mocks.checkStockMinimumAlert.mockReset();
     mocks.updateApprovalStatus.mockReset();
+    mocks.getOpenCloudStatus.mockReturnValue({ configured: true, message: "OpenCloud siap." });
+    mocks.checkAppSettingTable.mockResolvedValue({ ready: true, message: "AppSetting siap digunakan." });
   });
 
   it("rejects product detail for roles without stock.view", async () => {
@@ -289,5 +297,25 @@ describe("api route permission enforcement", () => {
     expect(await response.json()).toEqual({ status: "ok" });
     expect(mocks.listProducts).not.toHaveBeenCalled();
     expect(mocks.getOpenCloudStatus).not.toHaveBeenCalled();
+    expect(mocks.checkAppSettingTable).not.toHaveBeenCalled();
+  });
+
+  it("reports AppSetting migration readiness to owners from health checks", async () => {
+    mocks.role = "OWNER";
+    mocks.listProducts.mockResolvedValue({ success: true, data: [] });
+    mocks.checkAppSettingTable.mockResolvedValue({ ready: false, message: "Database belum dimigrasi. Jalankan npx prisma migrate deploy lalu restart aplikasi." });
+
+    const response = await getHealth();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      status: "ok",
+      database: {
+        appSetting: {
+          ready: false,
+          message: "Database belum dimigrasi. Jalankan npx prisma migrate deploy lalu restart aplikasi."
+        }
+      }
+    });
   });
 });

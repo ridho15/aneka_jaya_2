@@ -190,6 +190,31 @@ The project includes `Dockerfile` and `docker-compose.yml`. Set the production E
 
 Database migration is intentionally container-first. Run `docker compose --profile tools run --rm db-migrate` before starting or updating the app, then run `db-import` if legacy JSON data must be copied into PostgreSQL, and finish with `db-verify`. This avoids relying on host-local Prisma behavior and matches the network topology used by Docker/CI.
 
+For VPS deployments that run the Node.js app directly, apply database migrations before restarting the app:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+Then restart the running service, for example with your PM2/systemd/Docker process manager. The Profit SLM dashboard setting requires migration `20260708090000_add_app_settings`, which creates the `AppSetting` table and inserts the default `slm_gross_profit_percent = 0`. If `/settings/profit-slm` reports that the database has not been migrated, run the commands above against the same `DATABASE_URL` used by the running app.
+
+### Dashboard value audit
+
+Use the read-only dashboard audit before/after deployment or after changing Profit SLM settings:
+
+```bash
+npm run audit:dashboard
+npm run audit:dashboard -- --json
+npm run audit:dashboard -- --from=2026-07-01 --to=2026-07-31
+```
+
+The audit reads `AppSetting`, sales, expenses, and rekening labels from the active `DATABASE_URL` and recomputes the dashboard values, including `Gross Profit SLM = omset SLM bulan ini x grossProfitPercent / 100` and `Nett Profit SLM = Gross Profit - pengeluaran SLM bulan ini`. To compare against the actual browser UI, run the optional Playwright audit with an active database and OWNER session fallback:
+
+```bash
+AUDIT_DASHBOARD_BROWSER=1 npx playwright test tests/visual/dashboard-audit.spec.ts --project=desktop
+```
+
 ## Catatan keamanan
 
 - Jangan memasukkan `.env.local` ke repositori.

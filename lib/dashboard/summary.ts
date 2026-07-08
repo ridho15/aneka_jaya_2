@@ -20,13 +20,29 @@ export type DashboardSalesMetrics = {
   paidSales: Sale[];
   salesThisMonth: Sale[];
   salesToday: Sale[];
+  receivedThisMonth: Sale[];
+  receivedToday: Sale[];
   totalThisMonth: number;
   totalToday: number;
+  totalReceivedThisMonth: number;
+  totalReceivedToday: number;
 };
 
 export type DashboardProductKpi = {
   value: string;
   change: string;
+};
+
+export type DashboardSlmProfitSummary = {
+  grossProfitPercent: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  todayRevenue: number;
+  todayExpenses: number;
+  grossProfit: number;
+  nettProfit: number;
+  monthlySalesCount: number;
+  todaySalesCount: number;
 };
 
 export type DashboardSalesFilters = {
@@ -54,6 +70,30 @@ function monthKey(value: string | Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function monthStart(value: string | Date) {
+  const key = monthKey(value);
+  if (!key) return null;
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month - 1, 1);
+}
+
+function monthsBetween(start: Date, end: Date) {
+  const months: MonthlyPerformance[] = [];
+  for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
+    months.push({
+      key: monthKey(cursor) as string,
+      label: new Intl.DateTimeFormat("id-ID", { month: "short" }).format(cursor),
+      sales: 0,
+      expenses: 0
+    });
+  }
+  return months;
+}
+
 export function formatDashboardMoney(value: number) {
   const amount = Number.isFinite(value) ? value : 0;
   if (Math.abs(amount) >= 1_000_000) return `Rp ${Math.round(amount / 1_000).toLocaleString("id-ID")} jt`;
@@ -64,13 +104,51 @@ export function buildDashboardSalesMetrics(sales: Sale[], todayKey: string, mont
   const paidSales = sales.filter((sale) => sale.approvalStatus === "approved");
   const salesThisMonth = paidSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
   const salesToday = paidSales.filter((sale) => sale.saleDate === todayKey);
+  const receivedThisMonth = salesThisMonth.filter((sale) => sale.paymentMethod === "Cash" || sale.paymentMethod === "TF");
+  const receivedToday = salesToday.filter((sale) => sale.paymentMethod === "Cash" || sale.paymentMethod === "TF");
   return {
     paidSales,
     salesThisMonth,
     salesToday,
+    receivedThisMonth,
+    receivedToday,
     totalThisMonth: salesThisMonth.reduce((sum, sale) => sum + (sale.total || 0), 0),
-    totalToday: salesToday.reduce((sum, sale) => sum + (sale.total || 0), 0)
+    totalToday: salesToday.reduce((sum, sale) => sum + (sale.total || 0), 0),
+    totalReceivedThisMonth: receivedThisMonth.reduce((sum, sale) => sum + (sale.total || 0), 0),
+    totalReceivedToday: receivedToday.reduce((sum, sale) => sum + (sale.total || 0), 0)
   };
+}
+
+function isSlmType(row: { tipeId?: string; tipeCodeSnapshot?: string }) {
+  return row.tipeCodeSnapshot === "SLM" || row.tipeId === "SLM";
+}
+
+export function buildSlmProfitSummary(sales: Sale[], expenses: Expense[], todayKey: string, monthKeyValue: string, grossProfitPercent = 0): DashboardSlmProfitSummary {
+  const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
+  const approvedSlmSales = sales.filter((sale) => sale.approvalStatus === "approved" && isSlmType(sale));
+  const approvedSlmExpenses = expenses.filter((expense) => expense.approvalStatus === "approved" && isSlmType(expense));
+  const monthlySales = approvedSlmSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
+  const todaySales = approvedSlmSales.filter((sale) => sale.saleDate === todayKey);
+  const monthlyExpenses = approvedSlmExpenses.filter((expense) => expense.expenseDate?.startsWith(monthKeyValue));
+  const todayExpenses = approvedSlmExpenses.filter((expense) => expense.expenseDate === todayKey);
+  const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
+  const monthlyExpenseTotal = monthlyExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
+  const grossProfit = monthlyRevenue * percent / 100;
+  return {
+    grossProfitPercent: percent,
+    monthlyRevenue,
+    monthlyExpenses: monthlyExpenseTotal,
+    todayRevenue: todaySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0),
+    todayExpenses: todayExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0),
+    grossProfit,
+    nettProfit: grossProfit - monthlyExpenseTotal,
+    monthlySalesCount: monthlySales.length,
+    todaySalesCount: todaySales.length
+  };
+}
+
+export function dashboardDataSourceNotice(appMode = process.env.NEXT_PUBLIC_APP_MODE) {
+  return appMode === "production" ? undefined : "Mode development: dashboard dapat membaca gabungan DB dan JSON lokal.";
 }
 
 export function productKpi(success: boolean, count: number, message?: string): DashboardProductKpi {
@@ -113,16 +191,10 @@ export function buildPaymentBreakdown(sales: Sale[], rekeningLabels: Record<stri
   };
 }
 
-export function buildMonthlyPerformance(sales: Sale[], expenses: Expense[], now = new Date()): MonthlyPerformance[] {
-  const months = Array.from({ length: 6 }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
-    return {
-      key: monthKey(date) as string,
-      label: new Intl.DateTimeFormat("id-ID", { month: "short" }).format(date),
-      sales: 0,
-      expenses: 0
-    };
-  });
+export function buildMonthlyPerformance(sales: Sale[], expenses: Expense[], now = new Date(), range: { from?: string; to?: string } = {}): MonthlyPerformance[] {
+  const end = range.to ? monthStart(range.to) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const start = range.from ? monthStart(range.from) : end ? addMonths(end, -5) : new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const months = start && end && start <= end ? monthsBetween(start, end) : monthsBetween(new Date(now.getFullYear(), now.getMonth() - 5, 1), new Date(now.getFullYear(), now.getMonth(), 1));
   const byMonth = new Map(months.map((month) => [month.key, month]));
 
   for (const sale of sales) {

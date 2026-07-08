@@ -1,5 +1,24 @@
 [
   {
+    "id": "667acdc0-1242-495a-bbf9-687b918f9576",
+    "createdAt": "2026-07-08T04:37:43.369Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "entityType": "app_setting",
+    "entityId": "slm_gross_profit_percent",
+    "action": "update",
+    "beforeValue": {
+      "grossProfitPercent": 0
+    },
+    "afterValue": {
+      "grossProfitPercent": 10
+    },
+    "reason": "Update persentase Gross Profit SLM"
+  },
+  {
     "id": "4c62099a-f3ba-4407-9528-9921d30461b1",
     "createdAt": "2026-07-01T08:22:48.409Z",
     "userId": "unauthenticated",

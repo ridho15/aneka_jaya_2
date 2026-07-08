@@ -128,6 +128,14 @@ components:
           type: string
         notes:
           type: string
+    SlmProfitSetting:
+      type: object
+      required: [grossProfitPercent]
+      properties:
+        grossProfitPercent:
+          type: number
+          minimum: 0
+          maximum: 100
     CancelInput:
       type: object
       required: [reason]
@@ -385,11 +393,11 @@ paths:
           $ref: "#/components/responses/BadGateway"
   /api/health:
     get:
-      summary: Cek koneksi ERP dan OpenCloud.
+      summary: Cek koneksi ERP, OpenCloud, dan readiness database untuk Owner.
       security: []
       responses:
         "200":
-          description: Status integrasi.
+          description: Status integrasi dan warning migration bila tabel AppSetting belum tersedia.
   /api/docs:
     get:
       summary: Halaman dokumentasi API untuk Owner.
@@ -950,6 +958,40 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/settings/profit-slm:
+    get:
+      summary: Membaca setting Profit SLM.
+      description: Permission settings.profit.manage.
+      responses:
+        "200":
+          description: Setting Profit SLM.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SlmProfitSetting"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      summary: Update setting Profit SLM.
+      description: Permission settings.profit.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlmProfitSetting"
+      responses:
+        "200":
+          description: Setting Profit SLM diupdate.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/auth/login:
     post:
       summary: Login internal.

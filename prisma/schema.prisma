@@ -262,6 +262,16 @@ model RekeningAccountBookkeepingType {
   @@index([bookkeepingTypeId])
 }
 
+model AppSetting {
+  key                  String   @id
+  value                String
+  description          String?
+  updatedByUserId      String?
+  updatedByNameSnapshot String?
+  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now())
+}
+
 model WhatsAppRecipient {
   id                    String   @id
   name                  String
