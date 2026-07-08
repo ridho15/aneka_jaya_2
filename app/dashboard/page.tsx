@@ -16,12 +16,12 @@ import { listExpenseRecords } from "@/lib/expenses/store";
 import { listTempoReceivables } from "@/lib/tempo/store";
 import { summarizeOpenTempo } from "@/lib/tempo/summary";
 import { listAudit } from "@/lib/audit/store";
-import { activityStatusText, activityText, buildDashboardSalesMetrics, buildMonthlyPerformance, buildPaymentBreakdown, buildSlmProfitSummary, dashboardDataSourceNotice, filterDashboardSales, formatDashboardMoney, productKpi, type DashboardSalesFilters } from "@/lib/dashboard/summary";
+import { activityStatusText, activityText, buildDashboardSalesMetrics, buildMonthlyPerformance, buildOperationalProfitSummary, buildPaymentBreakdown, dashboardDataSourceNotice, filterDashboardSales, formatDashboardMoney, productKpi, type DashboardSalesFilters } from "@/lib/dashboard/summary";
 import { jakartaDateKey, jakartaMonthKey } from "@/lib/date/jakarta";
 import { getWhatsappProviderStatus } from "@/lib/whatsapp/whatsappClient";
 import type { Sale } from "@/lib/types/sales";
 import { listRekeningAccounts, type RekeningAccount } from "@/lib/business/masterData";
-import { getSlmProfitSetting } from "@/lib/settings/profit";
+import { getOperationalProfitSetting } from "@/lib/settings/profit";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +81,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     listExpenseRecords(),
     listRekeningAccounts()
   ]);
-  const canViewSlmProfit = can(role, "settings.profit.manage");
+  const canViewOperationalProfit = can(role, "settings.profit.manage");
   const rekeningLabels = rekeningLabelMap(allRekenings);
   const filteredSales = filterDashboardSales(allSales, filters);
   const { salesThisMonth, salesToday, receivedThisMonth, totalThisMonth, totalToday, totalReceivedThisMonth } = buildDashboardSalesMetrics(filteredSales, todayStr, monthStr);
@@ -92,8 +92,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   });
   const allTempo = await listTempoReceivables();
   const { openTempo, openTempoAmount } = summarizeOpenTempo(allTempo);
-  const slmProfit = canViewSlmProfit
-    ? buildSlmProfitSummary(allSales, allExpenses, todayStr, monthStr, (await getSlmProfitSetting()).grossProfitPercent)
+  const operationalProfit = canViewOperationalProfit
+    ? buildOperationalProfitSummary(allSales, allExpenses, todayStr, monthStr, (await getOperationalProfitSetting()).grossProfitPercent)
     : null;
   const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), { from: filters.from, to: filters.to });
   const paymentBreakdown = buildPaymentBreakdown(filteredSales, rekeningLabels);
@@ -121,21 +121,21 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
         <KpiCard testId="dashboard-kpi-products" label="Produk ERP" value={productStats.value} change={productStats.change} tone="green" />
       </div>
 
-      {slmProfit && <section className="mt-5">
+      {operationalProfit && <section className="mt-5">
         <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">SLM</p>
-            <h3 className="text-lg font-bold tracking-tight">Profit SLM</h3>
+            <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">OPERASIONAL</p>
+            <h3 className="text-lg font-bold tracking-tight">Profit Operasional</h3>
           </div>
-          <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href="/settings/profit-slm">Atur Gross Profit {slmProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}% →</Link>
+          <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href="/settings/profit-slm">Atur Gross Profit {operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}% →</Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard testId="dashboard-kpi-slm-month-revenue" label="Omset SLM bulan ini" value={formatDashboardMoney(slmProfit.monthlyRevenue)} change={`${slmProfit.monthlySalesCount} transaksi SLM`} tone="blue" />
-          <KpiCard testId="dashboard-kpi-slm-month-expenses" label="Pengeluaran SLM bulan ini" value={formatDashboardMoney(slmProfit.monthlyExpenses)} change="Expense approved SLM" tone="orange" />
-          <KpiCard testId="dashboard-kpi-slm-today-revenue" label="Omset SLM hari ini" value={formatDashboardMoney(slmProfit.todayRevenue)} change={`${slmProfit.todaySalesCount} transaksi hari ini`} tone="violet" />
-          <KpiCard testId="dashboard-kpi-slm-today-expenses" label="Pengeluaran SLM hari ini" value={formatDashboardMoney(slmProfit.todayExpenses)} change="Expense approved hari ini" tone="orange" />
-          <KpiCard testId="dashboard-kpi-slm-gross-profit" label="Gross Profit SLM" value={formatDashboardMoney(slmProfit.grossProfit)} change={`Gross Profit ${slmProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`} tone="green" />
-          <KpiCard testId="dashboard-kpi-slm-nett-profit" label="Nett Profit SLM" value={formatDashboardMoney(slmProfit.nettProfit)} change="Gross Profit - pengeluaran bulanan" tone={slmProfit.nettProfit >= 0 ? "green" : "orange"} />
+          <KpiCard testId="dashboard-kpi-operational-month-revenue" label="Omset operasional bulan ini" value={formatDashboardMoney(operationalProfit.monthlyRevenue)} change={`${operationalProfit.monthlySalesCount} transaksi operasional`} tone="blue" />
+          <KpiCard testId="dashboard-kpi-operational-month-expenses" label="Pengeluaran operasional bulan ini" value={formatDashboardMoney(operationalProfit.monthlyExpenses)} change="Expense approved operasional" tone="orange" />
+          <KpiCard testId="dashboard-kpi-operational-today-revenue" label="Omset operasional hari ini" value={formatDashboardMoney(operationalProfit.todayRevenue)} change={`${operationalProfit.todaySalesCount} transaksi hari ini`} tone="violet" />
+          <KpiCard testId="dashboard-kpi-operational-today-expenses" label="Pengeluaran operasional hari ini" value={formatDashboardMoney(operationalProfit.todayExpenses)} change="Expense approved hari ini" tone="orange" />
+          <KpiCard testId="dashboard-kpi-operational-gross-profit" label="Gross Profit Operasional" value={formatDashboardMoney(operationalProfit.grossProfit)} change={`Gross Profit ${operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`} tone="green" />
+          <KpiCard testId="dashboard-kpi-operational-nett-profit" label="Nett Profit Operasional" value={formatDashboardMoney(operationalProfit.nettProfit)} change="Gross Profit - pengeluaran bulanan" tone={operationalProfit.nettProfit >= 0 ? "green" : "orange"} />
         </div>
       </section>}
 

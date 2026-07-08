@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   listTempoReceivables: vi.fn(),
   listAudit: vi.fn(),
   listRekeningAccounts: vi.fn(),
-  getSlmProfitSetting: vi.fn(),
+  getOperationalProfitSetting: vi.fn(),
   getOpenCloudStatus: vi.fn(),
   getWhatsappProviderStatus: vi.fn()
 }));
@@ -26,7 +26,7 @@ vi.mock("@/lib/expenses/store", () => ({ listExpenseRecords: mocks.listExpenseRe
 vi.mock("@/lib/tempo/store", () => ({ listTempoReceivables: mocks.listTempoReceivables }));
 vi.mock("@/lib/audit/store", () => ({ listAudit: mocks.listAudit }));
 vi.mock("@/lib/business/masterData", () => ({ listRekeningAccounts: mocks.listRekeningAccounts }));
-vi.mock("@/lib/settings/profit", () => ({ getSlmProfitSetting: mocks.getSlmProfitSetting }));
+vi.mock("@/lib/settings/profit", () => ({ getOperationalProfitSetting: mocks.getOperationalProfitSetting }));
 vi.mock("@/lib/opencloud/auth", () => ({ getOpenCloudStatus: mocks.getOpenCloudStatus }));
 vi.mock("@/lib/whatsapp/whatsappClient", () => ({ getWhatsappProviderStatus: mocks.getWhatsappProviderStatus }));
 
@@ -47,7 +47,7 @@ describe("DashboardPage data source notice", () => {
     mocks.listTempoReceivables.mockResolvedValue([]);
     mocks.listAudit.mockResolvedValue([]);
     mocks.listRekeningAccounts.mockResolvedValue([]);
-    mocks.getSlmProfitSetting.mockResolvedValue({ grossProfitPercent: 20 });
+    mocks.getOperationalProfitSetting.mockResolvedValue({ grossProfitPercent: 20 });
     mocks.getOpenCloudStatus.mockReturnValue({ configured: false, message: "OpenCloud belum dikonfigurasi." });
     mocks.getWhatsappProviderStatus.mockReturnValue({ ready: false, message: "WhatsApp belum dikonfigurasi." });
   });
@@ -68,36 +68,39 @@ describe("DashboardPage data source notice", () => {
     expect(html).not.toContain("Mode development: dashboard dapat membaca gabungan DB dan JSON lokal.");
   });
 
-  it("renders dynamic SLM profit cards from SLM sales, expenses, and setting", async () => {
+  it("renders dynamic operational profit cards from non-AJ sales, expenses, and setting", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_MODE", "production");
     mocks.listSalesRecords.mockResolvedValue([
+      { id: "W-1", saleDate: "2026-07-08", tipeId: "W", tipeCodeSnapshot: "W", customerName: "Customer", paymentMethod: "Cash", total: 1_000_000, approvalStatus: "approved", items: [] },
       { id: "SLM-1", saleDate: "2026-07-08", tipeId: "SLM", tipeCodeSnapshot: "SLM", customerName: "Customer", paymentMethod: "Cash", total: 1_000_000, approvalStatus: "approved", items: [] },
+      { id: "ONLINE-1", saleDate: "2026-07-08", tipeId: "ONLINE", tipeCodeSnapshot: "ONLINE", customerName: "Customer", paymentMethod: "Cash", total: 1_000_000, approvalStatus: "approved", items: [] },
       { id: "AJ-1", saleDate: "2026-07-08", tipeId: "AJ", tipeCodeSnapshot: "AJ", customerName: "Customer", paymentMethod: "Cash", total: 9_000_000, approvalStatus: "approved", items: [] }
     ]);
     mocks.listExpenseRecords.mockResolvedValue([
-      { id: "EXP-SLM", expenseDate: "2026-07-08", tipeId: "SLM", tipeCodeSnapshot: "SLM", amount: 100_000, approvalStatus: "approved", category: "Operasional", vendorName: "Vendor", description: "Biaya", paymentMethod: "Cash" }
+      { id: "EXP-W", expenseDate: "2026-07-08", tipeId: "W", tipeCodeSnapshot: "W", amount: 100_000, approvalStatus: "approved", category: "Operasional", vendorName: "Vendor", description: "Biaya", paymentMethod: "Cash" }
     ]);
 
     const html = renderToStaticMarkup(await DashboardPage({ searchParams: Promise.resolve({}) }));
 
-    expect(html).toContain("Profit SLM");
+    expect(html).toContain("Profit Operasional");
     expect(html).toContain("Gross Profit 20%");
-    expect(html).toContain("Nett Profit SLM");
+    expect(html).toContain("Nett Profit Operasional");
+    expect(html).not.toContain("Profit SLM");
   });
 
-  it("hides SLM profit for non-owner dashboard viewers and does not read profit settings", async () => {
+  it("hides operational profit for non-owner dashboard viewers and does not read profit settings", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_MODE", "production");
     mocks.getCurrentRole.mockResolvedValue("ADMIN");
-    mocks.getSlmProfitSetting.mockClear();
+    mocks.getOperationalProfitSetting.mockClear();
     ROLE_PERMISSIONS.ADMIN.push("dashboard.view");
     try {
       const html = renderToStaticMarkup(await DashboardPage({ searchParams: Promise.resolve({}) }));
 
-      expect(html).not.toContain("Profit SLM");
-      expect(html).not.toContain("Gross Profit SLM");
-      expect(html).not.toContain("Nett Profit SLM");
+      expect(html).not.toContain("Profit Operasional");
+      expect(html).not.toContain("Gross Profit Operasional");
+      expect(html).not.toContain("Nett Profit Operasional");
       expect(html).not.toContain("/settings/profit-slm");
-      expect(mocks.getSlmProfitSetting).not.toHaveBeenCalled();
+      expect(mocks.getOperationalProfitSetting).not.toHaveBeenCalled();
     } finally {
       ROLE_PERMISSIONS.ADMIN = ROLE_PERMISSIONS.ADMIN.filter((permission) => permission !== "dashboard.view");
     }

@@ -35,7 +35,7 @@ function auditReport() {
     };
     paymentBreakdown: { rows: Array<{ label: string; formatted: string }> };
     performance: Array<{ key: string; sales: number; expenses: number }>;
-    slmProfit: {
+    operationalProfit: {
       grossProfitPercent: number;
       formatted: {
         monthlyRevenue: string;
@@ -66,13 +66,13 @@ test("dashboard rendered values match read-only audit report", async ({ page }) 
   await expect(page.getByTestId("dashboard-kpi-omzet-month")).toContainText(expected.kpis.omzetMonth.formatted);
   await expect(page.getByTestId("dashboard-kpi-omzet-today")).toContainText(expected.kpis.omzetToday.formatted);
   await expect(page.getByTestId("dashboard-kpi-received-month")).toContainText(expected.kpis.receivedMonth.formatted);
-  await expect(page.getByTestId("dashboard-kpi-slm-month-revenue")).toContainText(expected.slmProfit.formatted.monthlyRevenue);
-  await expect(page.getByTestId("dashboard-kpi-slm-month-expenses")).toContainText(expected.slmProfit.formatted.monthlyExpenses);
-  await expect(page.getByTestId("dashboard-kpi-slm-today-revenue")).toContainText(expected.slmProfit.formatted.todayRevenue);
-  await expect(page.getByTestId("dashboard-kpi-slm-today-expenses")).toContainText(expected.slmProfit.formatted.todayExpenses);
-  await expect(page.getByTestId("dashboard-kpi-slm-gross-profit")).toContainText(expected.slmProfit.formatted.grossProfit);
-  await expect(page.getByTestId("dashboard-kpi-slm-gross-profit")).toContainText(`Gross Profit ${expected.slmProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`);
-  await expect(page.getByTestId("dashboard-kpi-slm-nett-profit")).toContainText(expected.slmProfit.formatted.nettProfit);
+  await expect(page.getByTestId("dashboard-kpi-operational-month-revenue")).toContainText(expected.operationalProfit.formatted.monthlyRevenue);
+  await expect(page.getByTestId("dashboard-kpi-operational-month-expenses")).toContainText(expected.operationalProfit.formatted.monthlyExpenses);
+  await expect(page.getByTestId("dashboard-kpi-operational-today-revenue")).toContainText(expected.operationalProfit.formatted.todayRevenue);
+  await expect(page.getByTestId("dashboard-kpi-operational-today-expenses")).toContainText(expected.operationalProfit.formatted.todayExpenses);
+  await expect(page.getByTestId("dashboard-kpi-operational-gross-profit")).toContainText(expected.operationalProfit.formatted.grossProfit);
+  await expect(page.getByTestId("dashboard-kpi-operational-gross-profit")).toContainText(`Gross Profit ${expected.operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`);
+  await expect(page.getByTestId("dashboard-kpi-operational-nett-profit")).toContainText(expected.operationalProfit.formatted.nettProfit);
 
   const actualPaymentRows = await page.getByTestId("dashboard-payment-breakdown-row").evaluateAll((rows) => rows.map((row) => ({
     label: row.getAttribute("data-label"),

@@ -128,7 +128,7 @@ components:
           type: string
         notes:
           type: string
-    SlmProfitSetting:
+    OperationalProfitSetting:
       type: object
       required: [grossProfitPercent]
       properties:
@@ -960,11 +960,11 @@ paths:
           $ref: "#/components/responses/NotFound"
   /api/settings/profit-slm:
     get:
-      summary: Membaca setting Profit SLM.
+      summary: Membaca setting Profit Operasional.
       description: Permission settings.profit.manage.
       responses:
         "200":
-          description: Setting Profit SLM.
+          description: Setting Profit Operasional.
           content:
             application/json:
               schema:
@@ -973,21 +973,21 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/SlmProfitSetting"
+                        $ref: "#/components/schemas/OperationalProfitSetting"
         "403":
           $ref: "#/components/responses/Forbidden"
     put:
-      summary: Update setting Profit SLM.
+      summary: Update setting Profit Operasional.
       description: Permission settings.profit.manage.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SlmProfitSetting"
+              $ref: "#/components/schemas/OperationalProfitSetting"
       responses:
         "200":
-          description: Setting Profit SLM diupdate.
+          description: Setting Profit Operasional diupdate.
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":

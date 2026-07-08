@@ -54,9 +54,11 @@ export const whatsappRecipientUpdateSchema = whatsappRecipientCreateSchema.parti
   id: cleanString(80)
 });
 
-export const slmProfitSettingSchema = z.object({
+export const operationalProfitSettingSchema = z.object({
   grossProfitPercent: z.coerce.number().min(0, "Persentase tidak boleh kurang dari 0.").max(100, "Persentase tidak boleh lebih dari 100.")
 });
+
+export const slmProfitSettingSchema = operationalProfitSettingSchema;
 
 export function validationMessage(error: unknown, fallback: string) {
   if (error instanceof z.ZodError) return error.issues[0]?.message || fallback;

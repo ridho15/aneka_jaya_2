@@ -33,7 +33,7 @@ export type DashboardProductKpi = {
   change: string;
 };
 
-export type DashboardSlmProfitSummary = {
+export type DashboardOperationalProfitSummary = {
   grossProfitPercent: number;
   monthlyRevenue: number;
   monthlyExpenses: number;
@@ -119,18 +119,26 @@ export function buildDashboardSalesMetrics(sales: Sale[], todayKey: string, mont
   };
 }
 
-function isSlmType(row: { tipeId?: string; tipeCodeSnapshot?: string }) {
-  return row.tipeCodeSnapshot === "SLM" || row.tipeId === "SLM";
+function typeCode(row: { tipeId?: string; tipeCodeSnapshot?: string }) {
+  return (row.tipeCodeSnapshot || row.tipeId || "").trim().toUpperCase();
 }
 
-export function buildSlmProfitSummary(sales: Sale[], expenses: Expense[], todayKey: string, monthKeyValue: string, grossProfitPercent = 0): DashboardSlmProfitSummary {
+function isOperationalSale(row: Pick<Sale, "tipeId" | "tipeCodeSnapshot" | "syncTarget">) {
+  return typeCode(row) !== "AJ" && row.syncTarget !== "erp";
+}
+
+function isOperationalExpense(row: Pick<Expense, "tipeId" | "tipeCodeSnapshot">) {
+  return typeCode(row) !== "AJ";
+}
+
+export function buildOperationalProfitSummary(sales: Sale[], expenses: Expense[], todayKey: string, monthKeyValue: string, grossProfitPercent = 0): DashboardOperationalProfitSummary {
   const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
-  const approvedSlmSales = sales.filter((sale) => sale.approvalStatus === "approved" && isSlmType(sale));
-  const approvedSlmExpenses = expenses.filter((expense) => expense.approvalStatus === "approved" && isSlmType(expense));
-  const monthlySales = approvedSlmSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
-  const todaySales = approvedSlmSales.filter((sale) => sale.saleDate === todayKey);
-  const monthlyExpenses = approvedSlmExpenses.filter((expense) => expense.expenseDate?.startsWith(monthKeyValue));
-  const todayExpenses = approvedSlmExpenses.filter((expense) => expense.expenseDate === todayKey);
+  const approvedOperationalSales = sales.filter((sale) => sale.approvalStatus === "approved" && isOperationalSale(sale));
+  const approvedOperationalExpenses = expenses.filter((expense) => expense.approvalStatus === "approved" && isOperationalExpense(expense));
+  const monthlySales = approvedOperationalSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
+  const todaySales = approvedOperationalSales.filter((sale) => sale.saleDate === todayKey);
+  const monthlyExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate?.startsWith(monthKeyValue));
+  const todayExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate === todayKey);
   const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
   const monthlyExpenseTotal = monthlyExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
   const grossProfit = monthlyRevenue * percent / 100;

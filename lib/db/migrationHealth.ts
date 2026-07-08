@@ -11,7 +11,7 @@ export function isMissingAppSettingTableError(error: unknown) {
 
 export async function checkAppSettingTable() {
   try {
-    await prisma.appSetting.findUnique({ where: { key: "slm_gross_profit_percent" } });
+    await prisma.appSetting.findUnique({ where: { key: "operational_gross_profit_percent" } });
     return { ready: true, message: "AppSetting siap digunakan." };
   } catch (error) {
     if (isMissingAppSettingTableError(error)) return { ready: false, message: APP_SETTING_MIGRATION_MESSAGE };

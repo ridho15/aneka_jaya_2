@@ -18,7 +18,7 @@ export default async function SettingsPage() {
   const cards = [
     can(role, "settings.tipe.manage") ? { href: "/settings/tipe", title: "Tipe Pembukuan", description: "Kelola tipe transaksi (AJ, W, Online, …)", tone: "emerald" } : null,
     can(role, "settings.rekening.manage") ? { href: "/settings/rekening", title: "Rekening", description: "Kelola rekening bank / kas per tipe", tone: "emerald" } : null,
-    can(role, "settings.profit.manage") ? { href: "/settings/profit-slm", title: "Profit SLM", description: "Atur persentase Gross Profit dashboard SLM", tone: "emerald" } : null,
+    can(role, "settings.profit.manage") ? { href: "/settings/profit-slm", title: "Profit Operasional", description: "Atur persentase Gross Profit dashboard operasional", tone: "emerald" } : null,
     can(role, "users.manage") ? { href: "/settings/users", title: "Users", description: "Kelola login internal dan role database", tone: "slate" } : null,
     can(role, "settings.whatsapp.manage") ? { href: "/settings/whatsapp", title: "WhatsApp", description: "Konfigurasi provider dan nomor tujuan", tone: "emerald" } : null,
     can(role, "approval.view") ? { href: "/approval", title: "Approval", description: "Approve / reject transaksi tertunda", tone: "amber" } : null,

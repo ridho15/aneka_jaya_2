@@ -2,33 +2,38 @@ import { describe, expect, it } from "vitest";
 import { buildDashboardAuditReport } from "@/scripts/audit-dashboard-values.mjs";
 
 describe("dashboard audit report", () => {
-  it("recomputes SLM gross and nett profit with custom percentage", () => {
+  it("recomputes operational gross and nett profit with custom percentage", () => {
     const report = buildDashboardAuditReport({
       todayKey: "2026-07-08",
       monthKey: "2026-07",
       grossProfitPercent: 10,
       rekeningLabels: { bca: "BCA Operasional - BCA" },
       sales: [
+        { id: "w-month", saleDate: "2026-07-02", tipeId: "W", tipeCodeSnapshot: "W", paymentMethod: "Cash", total: 1_000_000, approvalStatus: "approved" },
         { id: "slm-month", saleDate: "2026-07-02", tipeId: "SLM", tipeCodeSnapshot: "SLM", paymentMethod: "Cash", total: 1_000_000, approvalStatus: "approved" },
         { id: "slm-today", saleDate: "2026-07-08", tipeId: "SLM", tipeCodeSnapshot: "SLM", paymentMethod: "TF", rekeningId: "bca", total: 500_000, approvalStatus: "approved" },
+        { id: "online-today", saleDate: "2026-07-08", tipeId: "ONLINE", tipeCodeSnapshot: "ONLINE", paymentMethod: "Cash", total: 250_000, approvalStatus: "approved" },
         { id: "aj", saleDate: "2026-07-08", tipeId: "AJ", tipeCodeSnapshot: "AJ", paymentMethod: "Cash", total: 9_000_000, approvalStatus: "approved" },
+        { id: "erp", saleDate: "2026-07-08", tipeId: "SLM", tipeCodeSnapshot: "SLM", paymentMethod: "Cash", total: 8_000_000, approvalStatus: "approved", syncTarget: "erp" },
         { id: "pending-slm", saleDate: "2026-07-08", tipeId: "SLM", tipeCodeSnapshot: "SLM", paymentMethod: "Cash", total: 700_000, approvalStatus: "pending_approval" },
         { id: "backdated", saleDate: "2026-06-30", createdAt: "2026-07-08T08:00:00.000Z", tipeId: "SLM", tipeCodeSnapshot: "SLM", paymentMethod: "Cash", total: 300_000, approvalStatus: "approved" }
       ],
       expenses: [
+        { id: "w-expense", expenseDate: "2026-07-03", tipeId: "W", tipeCodeSnapshot: "W", amount: 100_000, approvalStatus: "approved" },
         { id: "slm-expense", expenseDate: "2026-07-03", tipeId: "SLM", tipeCodeSnapshot: "SLM", amount: 100_000, approvalStatus: "approved" },
         { id: "slm-today-expense", expenseDate: "2026-07-08", tipeId: "SLM", tipeCodeSnapshot: "SLM", amount: 25_000, approvalStatus: "approved" },
+        { id: "aj-expense", expenseDate: "2026-07-08", tipeId: "AJ", tipeCodeSnapshot: "AJ", amount: 900_000, approvalStatus: "approved" },
         { id: "rejected-slm", expenseDate: "2026-07-08", tipeId: "SLM", tipeCodeSnapshot: "SLM", amount: 99_000, approvalStatus: "rejected" }
       ]
     });
 
-    expect(report.slmProfit.monthlyRevenue).toBe(1_500_000);
-    expect(report.slmProfit.todayRevenue).toBe(500_000);
-    expect(report.slmProfit.monthlyExpenses).toBe(125_000);
-    expect(report.slmProfit.todayExpenses).toBe(25_000);
-    expect(report.slmProfit.grossProfit).toBe(150_000);
-    expect(report.slmProfit.nettProfit).toBe(25_000);
-    expect(report.slmProfit.formulas.grossProfit).toBe("omset SLM bulan ini x 10% / 100");
+    expect(report.operationalProfit.monthlyRevenue).toBe(2_750_000);
+    expect(report.operationalProfit.todayRevenue).toBe(750_000);
+    expect(report.operationalProfit.monthlyExpenses).toBe(225_000);
+    expect(report.operationalProfit.todayExpenses).toBe(25_000);
+    expect(report.operationalProfit.grossProfit).toBe(275_000);
+    expect(report.operationalProfit.nettProfit).toBe(50_000);
+    expect(report.operationalProfit.formulas.grossProfit).toBe("omset operasional bulan ini x 10% / 100");
   });
 
   it("builds dashboard KPI and payment expected values with compact money formatting", () => {

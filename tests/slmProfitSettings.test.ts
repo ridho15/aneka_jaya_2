@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   prisma: {
     appSetting: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       upsert: vi.fn()
     }
   }
@@ -22,36 +23,43 @@ vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 
 import { GET, PUT } from "@/app/api/settings/profit-slm/route";
-import { getSlmProfitSetting, updateSlmProfitSetting } from "@/lib/settings/profit";
+import { getOperationalProfitSetting, updateOperationalProfitSetting } from "@/lib/settings/profit";
 
-describe("SLM profit setting", () => {
+describe("operational profit setting", () => {
   beforeEach(() => {
     mocks.role = "OWNER";
     mocks.getCurrentUser.mockResolvedValue({ id: "user-1", name: "Owner", role: "OWNER" });
     mocks.recordAudit.mockReset();
     mocks.prisma.appSetting.findUnique.mockReset();
+    mocks.prisma.appSetting.findFirst.mockReset();
     mocks.prisma.appSetting.upsert.mockReset();
   });
 
   it("reads default zero when the setting does not exist", async () => {
-    mocks.prisma.appSetting.findUnique.mockResolvedValue(null);
+    mocks.prisma.appSetting.findFirst.mockResolvedValue(null);
 
-    await expect(getSlmProfitSetting()).resolves.toEqual({ grossProfitPercent: 0 });
+    await expect(getOperationalProfitSetting()).resolves.toEqual({ grossProfitPercent: 0 });
+  });
+
+  it("reads the legacy SLM percentage when the operational setting does not exist yet", async () => {
+    mocks.prisma.appSetting.findFirst.mockResolvedValue({ key: "slm_gross_profit_percent", value: "10" });
+
+    await expect(getOperationalProfitSetting()).resolves.toEqual({ grossProfitPercent: 10 });
   });
 
   it("updates a custom percentage and records audit", async () => {
-    mocks.prisma.appSetting.findUnique.mockResolvedValue({ key: "slm_gross_profit_percent", value: "10" });
+    mocks.prisma.appSetting.findFirst.mockResolvedValue({ key: "slm_gross_profit_percent", value: "10" });
     mocks.prisma.appSetting.upsert.mockResolvedValue({});
 
-    await expect(updateSlmProfitSetting(22.5)).resolves.toEqual({ grossProfitPercent: 22.5 });
+    await expect(updateOperationalProfitSetting(22.5)).resolves.toEqual({ grossProfitPercent: 22.5 });
 
     expect(mocks.prisma.appSetting.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { key: "slm_gross_profit_percent" },
+      where: { key: "operational_gross_profit_percent" },
       update: expect.objectContaining({ value: "22.5", updatedByUserId: "user-1", updatedByNameSnapshot: "Owner" })
     }));
     expect(mocks.recordAudit).toHaveBeenCalledWith(expect.objectContaining({
       entityType: "app_setting",
-      entityId: "slm_gross_profit_percent",
+      entityId: "operational_gross_profit_percent",
       action: "update",
       beforeValue: { grossProfitPercent: 10 },
       afterValue: { grossProfitPercent: 22.5 }
@@ -70,7 +78,7 @@ describe("SLM profit setting", () => {
   });
 
   it("returns a clear migration message when AppSetting table is missing", async () => {
-    mocks.prisma.appSetting.findUnique.mockResolvedValue(null);
+    mocks.prisma.appSetting.findFirst.mockResolvedValue(null);
     mocks.prisma.appSetting.upsert.mockRejectedValue(Object.assign(new Error("The table `public.AppSetting` does not exist in the current database."), { code: "P2021" }));
 
     const response = await PUT(new Request("http://local/api/settings/profit-slm", {

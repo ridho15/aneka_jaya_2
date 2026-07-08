@@ -5,7 +5,8 @@ import { PrismaClient } from "@prisma/client";
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const SALES_FILE = path.join(DATA_DIR, "sales-records.json");
-const PROFIT_KEY = "slm_gross_profit_percent";
+const PROFIT_KEY = "operational_gross_profit_percent";
+const LEGACY_PROFIT_KEY = "slm_gross_profit_percent";
 
 function parseArgs(argv = process.argv.slice(2)) {
   const filters = {};
@@ -91,8 +92,16 @@ function isReceivedSale(row) {
   return row.paymentMethod === "Cash" || row.paymentMethod === "TF";
 }
 
-function isSlm(row) {
-  return row.tipeCodeSnapshot === "SLM" || row.tipeId === "SLM";
+function typeCode(row) {
+  return String(row.tipeCodeSnapshot || row.tipeId || "").trim().toUpperCase();
+}
+
+function isOperationalSale(row) {
+  return typeCode(row) !== "AJ" && row.syncTarget !== "erp";
+}
+
+function isOperationalExpense(row) {
+  return typeCode(row) !== "AJ";
 }
 
 function filterSales(sales, filters) {
@@ -165,14 +174,14 @@ function buildMonthlyPerformance(sales, expenses, now = new Date(), range = {}) 
   return months;
 }
 
-function buildSlmProfitSummary(sales, expenses, todayKey, monthKeyValue, grossProfitPercent = 0) {
+function buildOperationalProfitSummary(sales, expenses, todayKey, monthKeyValue, grossProfitPercent = 0) {
   const percent = Number.isFinite(Number(grossProfitPercent)) ? Math.min(100, Math.max(0, Number(grossProfitPercent))) : 0;
-  const approvedSlmSales = sales.filter((sale) => approved(sale) && isSlm(sale));
-  const approvedSlmExpenses = expenses.filter((expense) => approved(expense) && isSlm(expense));
-  const monthlySales = approvedSlmSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
-  const todaySales = approvedSlmSales.filter((sale) => sale.saleDate === todayKey);
-  const monthlyExpenses = approvedSlmExpenses.filter((expense) => expense.expenseDate?.startsWith(monthKeyValue));
-  const todayExpenses = approvedSlmExpenses.filter((expense) => expense.expenseDate === todayKey);
+  const approvedOperationalSales = sales.filter((sale) => approved(sale) && isOperationalSale(sale));
+  const approvedOperationalExpenses = expenses.filter((expense) => approved(expense) && isOperationalExpense(expense));
+  const monthlySales = approvedOperationalSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
+  const todaySales = approvedOperationalSales.filter((sale) => sale.saleDate === todayKey);
+  const monthlyExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate?.startsWith(monthKeyValue));
+  const todayExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate === todayKey);
   const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const monthlyExpenseTotal = monthlyExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const grossProfit = monthlyRevenue * percent / 100;
@@ -214,6 +223,8 @@ function toSale(row) {
     paymentMethod: row.paymentMethod,
     total: Number(row.total),
     approvalStatus: row.approvalStatus,
+    syncTarget: row.syncTarget || undefined,
+    syncStatus: row.syncStatus || undefined,
     createdAt: row.createdAt?.toISOString?.() || row.createdAt,
     items: []
   };
@@ -238,7 +249,7 @@ async function readDataFromPrisma(prisma, appMode) {
   const [salesRows, expenseRows, setting, rekeningRows] = await Promise.all([
     prisma.salesRecord.findMany(),
     prisma.expenseRecord.findMany(),
-    prisma.appSetting.findUnique({ where: { key: PROFIT_KEY } }),
+    prisma.appSetting.findFirst({ where: { key: { in: [PROFIT_KEY, LEGACY_PROFIT_KEY] } }, orderBy: { key: "asc" } }),
     prisma.rekeningAccount.findMany()
   ]);
   const prismaSales = salesRows.map(toSale);
@@ -264,7 +275,7 @@ export function buildDashboardAuditReport(input) {
   const filteredSales = filterSales(input.sales || [], filters);
   const filteredExpenses = filterExpenses(input.expenses || [], filters);
   const salesMetrics = buildSalesMetrics(filteredSales, todayKey, monthKeyValue);
-  const slmProfit = buildSlmProfitSummary(input.sales || [], input.expenses || [], todayKey, monthKeyValue, input.grossProfitPercent || 0);
+  const operationalProfit = buildOperationalProfitSummary(input.sales || [], input.expenses || [], todayKey, monthKeyValue, input.grossProfitPercent || 0);
   const paymentBreakdown = buildPaymentBreakdown(filteredSales, input.rekeningLabels || {});
   const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), filters);
   return {
@@ -280,19 +291,19 @@ export function buildDashboardAuditReport(input) {
     },
     paymentBreakdown,
     performance,
-    slmProfit: {
-      ...slmProfit,
+    operationalProfit: {
+      ...operationalProfit,
       formatted: {
-        monthlyRevenue: formatDashboardMoney(slmProfit.monthlyRevenue),
-        monthlyExpenses: formatDashboardMoney(slmProfit.monthlyExpenses),
-        todayRevenue: formatDashboardMoney(slmProfit.todayRevenue),
-        todayExpenses: formatDashboardMoney(slmProfit.todayExpenses),
-        grossProfit: formatDashboardMoney(slmProfit.grossProfit),
-        nettProfit: formatDashboardMoney(slmProfit.nettProfit)
+        monthlyRevenue: formatDashboardMoney(operationalProfit.monthlyRevenue),
+        monthlyExpenses: formatDashboardMoney(operationalProfit.monthlyExpenses),
+        todayRevenue: formatDashboardMoney(operationalProfit.todayRevenue),
+        todayExpenses: formatDashboardMoney(operationalProfit.todayExpenses),
+        grossProfit: formatDashboardMoney(operationalProfit.grossProfit),
+        nettProfit: formatDashboardMoney(operationalProfit.nettProfit)
       },
       formulas: {
-        grossProfit: `omset SLM bulan ini x ${slmProfit.grossProfitPercent}% / 100`,
-        nettProfit: "grossProfit - pengeluaran SLM bulan ini"
+        grossProfit: `omset operasional bulan ini x ${operationalProfit.grossProfitPercent}% / 100`,
+        nettProfit: "grossProfit - pengeluaran operasional bulan ini"
       }
     }
   };
@@ -304,10 +315,10 @@ function printTextReport(report) {
   console.log(`Omzet bulan ini: ${report.kpis.omzetMonth.formatted} (${report.kpis.omzetMonth.count} transaksi)`);
   console.log(`Omzet hari ini: ${report.kpis.omzetToday.formatted} (${report.kpis.omzetToday.count} transaksi)`);
   console.log(`Kas/TF bulan ini: ${report.kpis.receivedMonth.formatted} (${report.kpis.receivedMonth.count} transaksi)`);
-  console.log(`Gross Profit SLM ${report.slmProfit.grossProfitPercent}%: ${report.slmProfit.formatted.grossProfit}`);
-  console.log(`Nett Profit SLM: ${report.slmProfit.formatted.nettProfit}`);
-  console.log(`Rumus Gross: ${report.slmProfit.formulas.grossProfit}`);
-  console.log(`Rumus Nett: ${report.slmProfit.formulas.nettProfit}`);
+  console.log(`Gross Profit Operasional ${report.operationalProfit.grossProfitPercent}%: ${report.operationalProfit.formatted.grossProfit}`);
+  console.log(`Nett Profit Operasional: ${report.operationalProfit.formatted.nettProfit}`);
+  console.log(`Rumus Gross: ${report.operationalProfit.formulas.grossProfit}`);
+  console.log(`Rumus Nett: ${report.operationalProfit.formulas.nettProfit}`);
 }
 
 async function main() {

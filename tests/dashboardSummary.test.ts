@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityStatusText, buildCategorySummary, buildDashboardSalesMetrics, buildMonthlyPerformance, buildPaymentBreakdown, buildSlmProfitSummary, filterDashboardSales, formatDashboardMoney, productKpi } from "@/lib/dashboard/summary";
+import { activityStatusText, buildCategorySummary, buildDashboardSalesMetrics, buildMonthlyPerformance, buildOperationalProfitSummary, buildPaymentBreakdown, filterDashboardSales, formatDashboardMoney, productKpi } from "@/lib/dashboard/summary";
 import type { AuditLog } from "@/lib/audit/store";
 import type { Expense } from "@/lib/types/expenses";
 import type { Product } from "@/lib/types/product";
@@ -120,20 +120,23 @@ describe("dashboard summaries", () => {
     expect(result[2]).toMatchObject({ sales: 0, expenses: 50_000 });
   });
 
-  it("calculates SLM profit summary from approved SLM transaction dates and custom percent", () => {
-    const slmSale: Sale = { ...sale, id: "slm-month", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-02", total: 1_000_000 };
+  it("calculates operational profit summary from approved non-AJ local transaction dates and custom percent", () => {
+    const walkInSale: Sale = { ...sale, id: "w-month", tipeId: "W", tipeCodeSnapshot: "W", saleDate: "2026-07-02", total: 1_000_000 };
     const slmToday: Sale = { ...sale, id: "slm-today", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 500_000 };
+    const onlineSale: Sale = { ...sale, id: "online", tipeId: "ONLINE", tipeCodeSnapshot: "ONLINE", saleDate: "2026-07-08", total: 250_000 };
     const ajSale: Sale = { ...sale, id: "aj", tipeId: "AJ", tipeCodeSnapshot: "AJ", saleDate: "2026-07-08", total: 900_000 };
-    const pendingSlm: Sale = { ...sale, id: "pending-slm", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 700_000, approvalStatus: "pending_approval" };
-    const backdatedCreatedToday: Sale = { ...sale, id: "backdated-created", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-06-30", createdAt: "2026-07-08T10:00:00.000Z", total: 300_000 };
-    const slmExpense: Expense = { ...expense, id: "slm-expense", tipeId: "SLM", tipeCodeSnapshot: "SLM", expenseDate: "2026-07-03", amount: 200_000 };
+    const erpSale: Sale = { ...sale, id: "erp", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 800_000, syncTarget: "erp" };
+    const pendingOperational: Sale = { ...sale, id: "pending-operational", tipeId: "W", tipeCodeSnapshot: "W", saleDate: "2026-07-08", total: 700_000, approvalStatus: "pending_approval" };
+    const backdatedCreatedToday: Sale = { ...sale, id: "backdated-created", tipeId: "ONLINE", tipeCodeSnapshot: "ONLINE", saleDate: "2026-06-30", createdAt: "2026-07-08T10:00:00.000Z", total: 300_000 };
+    const walkInExpense: Expense = { ...expense, id: "w-expense", tipeId: "W", tipeCodeSnapshot: "W", expenseDate: "2026-07-03", amount: 200_000 };
     const slmTodayExpense: Expense = { ...expense, id: "slm-today-expense", tipeId: "SLM", tipeCodeSnapshot: "SLM", expenseDate: "2026-07-08", amount: 50_000 };
+    const onlineExpense: Expense = { ...expense, id: "online-expense", tipeId: "ONLINE", tipeCodeSnapshot: "ONLINE", expenseDate: "2026-07-08", amount: 25_000 };
     const ajExpense: Expense = { ...expense, id: "aj-expense", tipeId: "AJ", tipeCodeSnapshot: "AJ", expenseDate: "2026-07-08", amount: 900_000 };
-    const rejectedSlmExpense: Expense = { ...expense, id: "rejected-slm", tipeId: "SLM", tipeCodeSnapshot: "SLM", expenseDate: "2026-07-08", amount: 70_000, approvalStatus: "rejected" };
+    const rejectedOperationalExpense: Expense = { ...expense, id: "rejected-operational", tipeId: "SLM", tipeCodeSnapshot: "SLM", expenseDate: "2026-07-08", amount: 70_000, approvalStatus: "rejected" };
 
-    const result = buildSlmProfitSummary(
-      [slmSale, slmToday, ajSale, pendingSlm, backdatedCreatedToday],
-      [slmExpense, slmTodayExpense, ajExpense, rejectedSlmExpense],
+    const result = buildOperationalProfitSummary(
+      [walkInSale, slmToday, onlineSale, ajSale, erpSale, pendingOperational, backdatedCreatedToday],
+      [walkInExpense, slmTodayExpense, onlineExpense, ajExpense, rejectedOperationalExpense],
       "2026-07-08",
       "2026-07",
       20
@@ -141,19 +144,19 @@ describe("dashboard summaries", () => {
 
     expect(result).toMatchObject({
       grossProfitPercent: 20,
-      monthlyRevenue: 1_500_000,
-      monthlyExpenses: 250_000,
-      todayRevenue: 500_000,
-      todayExpenses: 50_000,
-      grossProfit: 300_000,
-      nettProfit: 50_000,
-      monthlySalesCount: 2,
-      todaySalesCount: 1
+      monthlyRevenue: 1_750_000,
+      monthlyExpenses: 275_000,
+      todayRevenue: 750_000,
+      todayExpenses: 75_000,
+      grossProfit: 350_000,
+      nettProfit: 75_000,
+      monthlySalesCount: 3,
+      todaySalesCount: 2
     });
   });
 
-  it("defaults SLM gross profit percent to zero when no setting is provided", () => {
-    const result = buildSlmProfitSummary([{ ...sale, tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 1_000_000 }], [], "2026-07-08", "2026-07");
+  it("defaults operational gross profit percent to zero when no setting is provided", () => {
+    const result = buildOperationalProfitSummary([{ ...sale, tipeId: "W", tipeCodeSnapshot: "W", saleDate: "2026-07-08", total: 1_000_000 }], [], "2026-07-08", "2026-07");
 
     expect(result.grossProfitPercent).toBe(0);
     expect(result.grossProfit).toBe(0);

@@ -22,10 +22,10 @@ describe("SettingsPage", () => {
     mocks.getWhatsappProviderStatus.mockReturnValue({ provider: null, ready: false, message: "WhatsApp belum dikonfigurasi." });
   });
 
-  it("shows the Profit SLM settings card for authorized users", async () => {
+  it("shows the Profit Operasional settings card for authorized users", async () => {
     const html = renderToStaticMarkup(await SettingsPage());
 
-    expect(html).toContain("Profit SLM");
+    expect(html).toContain("Profit Operasional");
     expect(html).toContain("/settings/profit-slm");
   });
 });

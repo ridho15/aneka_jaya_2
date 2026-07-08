@@ -8,6 +8,7 @@ const cwd = process.cwd();
 const salesFile = path.join(cwd, "data", "sales-records.json");
 const DUMMY_PREFIX = "DUMMY-DASH-";
 const DUMMY_COUNT = 90;
+const DUMMY_TIPE = { id: "SLM", code: "SLM", name: "SLM" };
 
 if (process.env.NEXT_PUBLIC_APP_MODE === "production") {
   console.error("Refusing to seed dashboard dummy data when NEXT_PUBLIC_APP_MODE=production.");
@@ -78,9 +79,9 @@ const customers = [
 const locations = ["Jakarta Barat", "Jakarta Selatan", "Tangerang", "Bekasi", "Depok", "Bogor"];
 
 const paymentProfiles = [
-  { method: "Cash", weight: 45, rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In" },
-  { method: "TF", weight: 25, rekeningId: "dummy-bca-w", rekeningNameSnapshot: "BCA Operasional - BCA", transferAccount: "BCA Operasional - BCA" },
-  { method: "TF", weight: 20, rekeningId: "dummy-mandiri-w", rekeningNameSnapshot: "Mandiri Utama - Bank Mandiri", transferAccount: "Mandiri Utama - Bank Mandiri" },
+  { method: "Cash", weight: 45, rekeningId: "cash-slm", rekeningNameSnapshot: "Kas SLM" },
+  { method: "TF", weight: 25, rekeningId: "dummy-bca-slm", rekeningNameSnapshot: "BCA Operasional SLM - BCA", transferAccount: "BCA Operasional SLM - BCA" },
+  { method: "TF", weight: 20, rekeningId: "dummy-mandiri-slm", rekeningNameSnapshot: "Mandiri SLM - Bank Mandiri", transferAccount: "Mandiri SLM - Bank Mandiri" },
   { method: "Tempo", weight: 10 }
 ];
 
@@ -133,6 +134,7 @@ function itemTotal(items) {
 function assertSafeDummy(rows) {
   for (const row of rows) {
     if (!String(row.id || "").startsWith(DUMMY_PREFIX)) throw new Error(`Unsafe dummy id: ${row.id}`);
+    if (row.tipeCodeSnapshot !== DUMMY_TIPE.code || row.tipeId !== DUMMY_TIPE.id) throw new Error(`Dummy ${row.id} must use ${DUMMY_TIPE.code} local type.`);
     if (row.tipeCodeSnapshot === "AJ" || row.tipeId === "AJ") throw new Error(`Dummy ${row.id} uses forbidden AJ type.`);
     if (row.syncTarget === "erp" || row.syncStatus === "erp") throw new Error(`Dummy ${row.id} uses forbidden ERP sync.`);
     if (row.isTestTransaction !== true) throw new Error(`Dummy ${row.id} must be marked as test transaction.`);
@@ -161,9 +163,9 @@ for (let index = 0; index < DUMMY_COUNT; index += 1) {
   dummyRows.push({
     id: `${DUMMY_PREFIX}${dateKey.replaceAll("-", "")}-${String(index + 1).padStart(3, "0")}`,
     saleDate: dateKey,
-    tipeId: "W",
-    tipeCodeSnapshot: "W",
-    tipeNameSnapshot: "Walk In",
+    tipeId: DUMMY_TIPE.id,
+    tipeCodeSnapshot: DUMMY_TIPE.code,
+    tipeNameSnapshot: DUMMY_TIPE.name,
     rekeningId: payment.rekeningId,
     rekeningNameSnapshot: payment.rekeningNameSnapshot,
     customerName: pick(random, customers),
@@ -191,8 +193,8 @@ assertSafeDummy(dummyRows);
 
 const totals = dummyRows.reduce((summary, row) => {
   if (row.paymentMethod === "Cash") summary.cash += row.total;
-  if (row.paymentMethod === "TF" && row.rekeningId === "dummy-bca-w") summary.bca += row.total;
-  if (row.paymentMethod === "TF" && row.rekeningId === "dummy-mandiri-w") summary.mandiri += row.total;
+  if (row.paymentMethod === "TF" && row.rekeningId === "dummy-bca-slm") summary.bca += row.total;
+  if (row.paymentMethod === "TF" && row.rekeningId === "dummy-mandiri-slm") summary.mandiri += row.total;
   if (row.paymentMethod === "Tempo") summary.tempo += 1;
   return summary;
 }, { cash: 0, bca: 0, mandiri: 0, tempo: 0 });
@@ -203,8 +205,9 @@ writeFileSync(salesFile, `${JSON.stringify(nextRows, null, 2)}\n`);
 console.log("Dashboard dummy sales seeded safely.");
 console.log(`Created: ${dummyRows.length} transactions (${DUMMY_PREFIX}*)`);
 console.log(`Range: ${jakartaDateKey(from)} to ${jakartaDateKey(today)}`);
-console.log(`Cash: ${rupiah(totals.cash)}`);
-console.log(`TF BCA Operasional - BCA: ${rupiah(totals.bca)}`);
-console.log(`TF Mandiri Utama - Bank Mandiri: ${rupiah(totals.mandiri)}`);
+console.log(`Type: ${DUMMY_TIPE.code} / ${DUMMY_TIPE.name}`);
+console.log(`Cash Kas SLM: ${rupiah(totals.cash)}`);
+console.log(`TF BCA Operasional SLM - BCA: ${rupiah(totals.bca)}`);
+console.log(`TF Mandiri SLM - Bank Mandiri: ${rupiah(totals.mandiri)}`);
 console.log(`Tempo sales count: ${totals.tempo}`);
-console.log("Safety: local JSON only, W / Walk In only, syncTarget=local, no ERP/API calls.");
+console.log("Safety: local JSON only, SLM only, syncTarget=local, no ERP/API calls.");
