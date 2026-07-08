@@ -31,6 +31,16 @@ function pageHref(params: Record<string, string | string[] | undefined>, page: n
   return `/audit-trail?${next.toString()}`;
 }
 
+function activeFilterLabels(params: Record<string, string | string[] | undefined>) {
+  return [
+    valueOf(params, "from") ? `Dari ${valueOf(params, "from")}` : null,
+    valueOf(params, "to") ? `Sampai ${valueOf(params, "to")}` : null,
+    valueOf(params, "entityType") ? `Entity: ${valueOf(params, "entityType")}` : null,
+    valueOf(params, "action") ? `Aksi: ${valueOf(params, "action")}` : null,
+    valueOf(params, "keyword") ? `Keyword: ${valueOf(params, "keyword")}` : null
+  ].filter(Boolean) as string[];
+}
+
 export default async function AuditTrailPage({ searchParams }: Props) {
   const role = await getCurrentRole();
   if (!can(role, "audit.view")) redirect("/no-access");
@@ -46,6 +56,7 @@ export default async function AuditTrailPage({ searchParams }: Props) {
     pageSize: 50
   });
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
+  const activeFilters = activeFilterLabels(params);
 
   return (
     <AppShell>
@@ -83,24 +94,49 @@ export default async function AuditTrailPage({ searchParams }: Props) {
             Keyword
             <Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="User, alasan, referensi" className="mt-1" />
           </label>
-          <div className="flex gap-2 md:col-span-5">
+          <div className="grid gap-2 md:col-span-5 sm:flex">
             <button className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" type="submit">Filter</button>
-            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/audit-trail">Reset</Link>
+            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/audit-trail">Reset</Link>
           </div>
         </form>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+          {activeFilters.length > 0 ? activeFilters.map((item) => <span key={item} className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{item}</span>) : <span className="text-slate-500">Filter aktif: semua aktivitas.</span>}
+        </div>
       </section>
 
-      <section className="aj-surface overflow-x-auto">
+      <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {result.entries.length} dari {result.total} aktivitas.</div>
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-            <tr><th className="px-5 py-3">Waktu</th><th className="px-5 py-3">User</th><th className="px-5 py-3">Entity</th><th className="px-5 py-3">Aksi</th><th className="px-5 py-3">Referensi</th><th className="px-5 py-3">Alasan / Tujuan</th><th className="px-5 py-3">Role</th></tr>
-          </thead>
-          <tbody>
-            {result.entries.map((entry) => <tr key={entry.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(entry.createdAt))}</td><td className="px-5 py-4"><b>{entry.userNameSnapshot}</b></td><td className="px-5 py-4">{entry.entityType}</td><td className="px-5 py-4">{entry.action}</td><td className="px-5 py-4">{entry.entityId}</td><td className="px-5 py-4">{entry.reason || "-"}</td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{entry.userRoleSnapshot}</span></td></tr>)}
-            {result.entries.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-500">Belum ada aktivitas sesuai filter.</td></tr>}
-          </tbody>
-        </table>
+        <div data-testid="audit-mobile-cards" className="space-y-3 p-4 md:hidden">
+          {result.entries.map((entry) => (
+            <article key={entry.id} className="relative rounded-md border border-slate-200 bg-white p-4 pl-5 shadow-sm">
+              <span className="absolute left-0 top-4 h-10 w-1 rounded-r-full bg-emerald-500" />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-900">{entry.action}</p>
+                  <p className="mt-1 text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(entry.createdAt))}</p>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{entry.userRoleSnapshot}</span>
+              </div>
+              <dl className="mt-3 grid gap-2 text-sm text-slate-600">
+                <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">User</dt><dd className="mt-0.5 font-semibold text-slate-900">{entry.userNameSnapshot}</dd></div>
+                <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Entity</dt><dd className="mt-0.5">{entry.entityType} • {entry.entityId}</dd></div>
+                <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Alasan / Tujuan</dt><dd className="mt-0.5">{entry.reason || "-"}</dd></div>
+              </dl>
+            </article>
+          ))}
+          {result.entries.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Belum ada aktivitas sesuai filter.</p>}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <tr><th className="px-5 py-3">Waktu</th><th className="px-5 py-3">User</th><th className="px-5 py-3">Entity</th><th className="px-5 py-3">Aksi</th><th className="px-5 py-3">Referensi</th><th className="px-5 py-3">Alasan / Tujuan</th><th className="px-5 py-3">Role</th></tr>
+            </thead>
+            <tbody>
+              {result.entries.map((entry) => <tr key={entry.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(entry.createdAt))}</td><td className="px-5 py-4"><b>{entry.userNameSnapshot}</b></td><td className="px-5 py-4">{entry.entityType}</td><td className="px-5 py-4">{entry.action}</td><td className="px-5 py-4">{entry.entityId}</td><td className="px-5 py-4">{entry.reason || "-"}</td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{entry.userRoleSnapshot}</span></td></tr>)}
+              {result.entries.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-500">Belum ada aktivitas sesuai filter.</td></tr>}
+            </tbody>
+          </table>
+        </div>
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
           <span className="text-slate-500">Halaman {result.page} dari {totalPages}</span>
           <div className="flex gap-2">

@@ -32,6 +32,10 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], browserName: "chromium", viewport: { width: 1366, height: 768 } }
     },
     {
+      name: "tablet",
+      use: { ...devices["Desktop Chrome"], browserName: "chromium", viewport: { width: 820, height: 1180 }, hasTouch: true }
+    },
+    {
       name: "mobile",
       use: { ...devices["Desktop Chrome"], browserName: "chromium", viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }
     }

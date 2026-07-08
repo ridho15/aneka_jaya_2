@@ -13,10 +13,8 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentRole, getCurrentUser } from "@/lib/auth/session";
 import { listSalesRecords } from "@/lib/sales/store";
 import { listExpenseRecords } from "@/lib/expenses/store";
-import { listTempoReceivables } from "@/lib/tempo/store";
-import { summarizeOpenTempo } from "@/lib/tempo/summary";
 import { listAudit } from "@/lib/audit/store";
-import { activityStatusText, activityText, buildDashboardSalesMetrics, buildMonthlyPerformance, buildOperationalProfitSummary, buildPaymentBreakdown, dashboardDataSourceNotice, filterDashboardSales, formatDashboardMoney, productKpi, type DashboardSalesFilters } from "@/lib/dashboard/summary";
+import { activityStatusText, activityText, buildMonthlyPerformance, buildOperationalProfitSummary, buildPaymentBreakdown, dashboardDataSourceNotice, filterDashboardSales, formatDashboardMoney, type DashboardSalesFilters } from "@/lib/dashboard/summary";
 import { jakartaDateKey, jakartaMonthKey } from "@/lib/date/jakarta";
 import { getWhatsappProviderStatus } from "@/lib/whatsapp/whatsappClient";
 import type { Sale } from "@/lib/types/sales";
@@ -84,20 +82,16 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   const canViewOperationalProfit = can(role, "settings.profit.manage");
   const rekeningLabels = rekeningLabelMap(allRekenings);
   const filteredSales = filterDashboardSales(allSales, filters);
-  const { salesThisMonth, salesToday, receivedThisMonth, totalThisMonth, totalToday, totalReceivedThisMonth } = buildDashboardSalesMetrics(filteredSales, todayStr, monthStr);
   const filteredExpenses = allExpenses.filter((expense) => {
     if (filters.from && expense.expenseDate < filters.from) return false;
     if (filters.to && expense.expenseDate > filters.to) return false;
     return true;
   });
-  const allTempo = await listTempoReceivables();
-  const { openTempo, openTempoAmount } = summarizeOpenTempo(allTempo);
   const operationalProfit = canViewOperationalProfit
     ? buildOperationalProfitSummary(allSales, allExpenses, todayStr, monthStr, (await getOperationalProfitSetting()).grossProfitPercent)
     : null;
   const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), { from: filters.from, to: filters.to });
   const paymentBreakdown = buildPaymentBreakdown(filteredSales, rekeningLabels);
-  const productStats = productKpi(products.success, products.success ? products.data.length : 0, products.success ? undefined : products.message);
   const rekenings = rekeningOptions(allSales, allRekenings);
   const whatsappStatus = getWhatsappProviderStatus();
   const dataSourceNotice = dashboardDataSourceNotice();
@@ -113,15 +107,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
         {can(role, "penjualan.create") && <Link href="/penjualan/input"><Button>+ Input Penjualan</Button></Link>}
       </div>
       {dataSourceNotice && <p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">{dataSourceNotice}</p>}
-      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <KpiCard testId="dashboard-kpi-omzet-month" label="Omzet approved bulan ini" value={formatDashboardMoney(totalThisMonth)} change={`${salesThisMonth.length} transaksi`} tone="blue" />
-        <KpiCard testId="dashboard-kpi-omzet-today" label="Omzet approved hari ini" value={formatDashboardMoney(totalToday)} change={`${salesToday.length} transaksi hari ini`} tone="violet" />
-        <KpiCard testId="dashboard-kpi-received-month" label="Kas/TF diterima bulan ini" value={formatDashboardMoney(totalReceivedThisMonth)} change={`${receivedThisMonth.length} transaksi Cash/TF`} tone="green" />
-        <KpiCard testId="dashboard-kpi-open-tempo" label="Tempo terbuka" value={formatDashboardMoney(openTempoAmount)} change={`${openTempo.length} piutang belum lunas`} tone="orange" />
-        <KpiCard testId="dashboard-kpi-products" label="Produk ERP" value={productStats.value} change={productStats.change} tone="green" />
-      </div>
-
-      {operationalProfit && <section className="mt-5">
+      {operationalProfit && <section className="mt-7">
         <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">OPERASIONAL</p>

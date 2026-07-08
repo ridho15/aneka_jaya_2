@@ -175,7 +175,9 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
           <div className="md:col-span-2"><Field label="Catatan"><Textarea rows={2} placeholder="Opsional" {...register("notes")} /></Field></div>
         </div>
       </section>
-      <div className="flex justify-end"><Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Pengeluaran"}</Button></div>
+      <div className="sticky bottom-3 z-20 rounded-md border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur md:static md:flex md:justify-end md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+        <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Pengeluaran"}</Button>
+      </div>
     </form>
   );
 }

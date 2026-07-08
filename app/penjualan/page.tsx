@@ -64,6 +64,18 @@ function statusTone(value?: string) {
   return "slate";
 }
 
+function activeFilterLabels(params: SearchParams) {
+  return [
+    valueOf(params, "from") ? `Dari ${valueOf(params, "from")}` : null,
+    valueOf(params, "to") ? `Sampai ${valueOf(params, "to")}` : null,
+    valueOf(params, "keyword") ? `Keyword: ${valueOf(params, "keyword")}` : null,
+    valueOf(params, "tipe") ? `Tipe: ${valueOf(params, "tipe")}` : null,
+    valueOf(params, "paymentMethod") ? `Pembayaran: ${valueOf(params, "paymentMethod")}` : null,
+    valueOf(params, "approvalStatus") ? `Approval: ${valueOf(params, "approvalStatus")}` : null,
+    valueOf(params, "syncStatus") ? `ERP: ${valueOf(params, "syncStatus")}` : null
+  ].filter(Boolean) as string[];
+}
+
 export default async function PenjualanHistoryPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
   if (!can(role, "penjualan.create") && !can(role, "reports.view")) redirect("/");
@@ -78,6 +90,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
   const activeTipeOptions = tipeOptions.filter((item) => item.isActive).sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code));
   const totalPages = meta.totalPages;
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+  const activeFilters = activeFilterLabels(params);
 
   return (
     <AppShell>
@@ -99,21 +112,54 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
           <label className="text-sm font-medium text-slate-700">Pembayaran<Select name="paymentMethod" defaultValue={valueOf(params, "paymentMethod") || ""} className="mt-1"><option value="">Semua</option>{paymentMethods.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
           <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{approvalStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
           <label className="text-sm font-medium text-slate-700">ERP Sync<Select name="syncStatus" defaultValue={valueOf(params, "syncStatus") || ""} className="mt-1"><option value="">Semua</option>{syncStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <div className="flex gap-2 md:col-span-4 xl:col-span-7">
+          <div className="grid gap-2 md:col-span-4 sm:flex xl:col-span-7">
             <button className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" type="submit">Filter</button>
-            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/penjualan">Reset</Link>
+            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/penjualan">Reset</Link>
           </div>
         </form>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+          {activeFilters.length > 0 ? activeFilters.map((item) => <span key={item} className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{item}</span>) : <span className="text-slate-500">Filter aktif: semua transaksi.</span>}
+        </div>
       </section>
 
-      <section className="aj-surface overflow-x-auto">
+      <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} transaksi.</div>
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-            <tr><th className="px-5 py-3">Tanggal</th>{canViewTransactionNumber && <th className="px-5 py-3">No Transaksi</th>}<th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Pembayaran</th><th className="px-5 py-3 text-right">Total</th><th className="px-5 py-3">Approval</th><th className="px-5 py-3">ERP Sync</th><th className="px-5 py-3">Pembuat</th><th className="px-5 py-3">Aksi</th></tr>
-          </thead>
-          <tbody>
-            {paged.map((sale) => (
+        <div className="space-y-3 p-4 md:hidden">
+          {paged.map((sale) => (
+            <article key={sale.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900">{sale.customerName}</p>
+                  <p className="mt-1 text-xs text-slate-500">{sale.saleDate} • {sale.tipeCodeSnapshot || sale.tipeId || "W"} • {sale.paymentMethod}</p>
+                </div>
+                <p className="shrink-0 text-right font-bold text-slate-900">{rupiah(sale.total)}</p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} />
+                <Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} />
+              </div>
+              <dl className="mt-3 grid gap-2 text-sm text-slate-600">
+                {canViewTransactionNumber && <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">No Transaksi</dt><dd className="mt-0.5 font-mono text-xs">{sale.id}</dd></div>}
+                <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Lokasi</dt><dd className="mt-0.5">{sale.customerLocation || "—"}</dd></div>
+                <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pembuat</dt><dd className="mt-0.5">{sale.createdByNameSnapshot || "—"}</dd></div>
+              </dl>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Link className="rounded-sm bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700" href={`/penjualan/${sale.id}`}>Detail</Link>
+                <Link className="rounded-sm border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/print/sales/${sale.id}`}>Cetak</Link>
+                {canManage && sale.approvalStatus !== "cancelled" && <Link className="rounded-sm border border-blue-200 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50" href={`/penjualan/${sale.id}/edit`}>Edit</Link>}
+                {canManage && <TransactionCancelButton id={sale.id} kind="sales" disabled={sale.approvalStatus === "cancelled" || (sale.syncTarget === "erp" && sale.syncStatus === "synced")} disabledReason={sale.syncTarget === "erp" && sale.syncStatus === "synced" ? "Transaksi AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Transaksi sudah dibatalkan."} />}
+              </div>
+            </article>
+          ))}
+          {paged.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Tidak ada penjualan sesuai filter.</p>}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <tr><th className="px-5 py-3">Tanggal</th>{canViewTransactionNumber && <th className="px-5 py-3">No Transaksi</th>}<th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Pembayaran</th><th className="px-5 py-3 text-right">Total</th><th className="px-5 py-3">Approval</th><th className="px-5 py-3">ERP Sync</th><th className="px-5 py-3">Pembuat</th><th className="px-5 py-3">Aksi</th></tr>
+            </thead>
+            <tbody>
+              {paged.map((sale) => (
               <tr key={sale.id} className="border-b border-slate-100">
                 <td className="px-5 py-4 text-slate-600">{sale.saleDate}</td>
                 {canViewTransactionNumber && <td className="px-5 py-4 font-mono text-xs text-slate-700">{sale.id}</td>}
@@ -142,10 +188,11 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                   </div>
                 </td>
               </tr>
-            ))}
-            {paged.length === 0 && <tr><td colSpan={canViewTransactionNumber ? 10 : 9} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan sesuai filter.</td></tr>}
-          </tbody>
-        </table>
+              ))}
+              {paged.length === 0 && <tr><td colSpan={canViewTransactionNumber ? 10 : 9} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan sesuai filter.</td></tr>}
+            </tbody>
+          </table>
+        </div>
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
           <span className="text-slate-500">Halaman {page} dari {totalPages}</span>
           <div className="flex gap-2">

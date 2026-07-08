@@ -581,7 +581,9 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
               <div className="flex justify-between"><dt className="text-neutral-500">Diskon</dt><dd>{rupiah(discountTotal)}</dd></div>
               <div className="border-t border-neutral-300 pt-4"><dt className="text-sm font-semibold">Total</dt><dd className="mt-1 text-3xl font-bold tracking-tight">{rupiah(total)}</dd></div>
             </dl>
-            <Button type="submit" className="mt-6 w-full" disabled={isSubmitting || !dependenciesReady || !selectedProductsReady}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penjualan"}</Button>
+            <div className="sticky bottom-3 z-20 mt-6 rounded-md border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">
+              <Button type="submit" className="w-full" disabled={isSubmitting || !dependenciesReady || !selectedProductsReady}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penjualan"}</Button>
+            </div>
             {!dependenciesReady && <p className="mt-2 text-center text-xs text-slate-500">Lengkapi konfigurasi master data dan pastikan produk ERP berhasil dimuat.</p>}
             {dependenciesReady && !selectedProductsReady && <p className="mt-2 text-center text-xs text-slate-500">Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP.</p>}
           </section>
