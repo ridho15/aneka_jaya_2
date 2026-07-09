@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import type { StockItem } from "@/lib/types/stock";
 import type { StockPageMeta } from "@/lib/api/stocks";
 import { stockDetailHref } from "@/lib/stocks/detail";
@@ -125,7 +126,35 @@ export function StockList({ initialStocks, initialMeta, initialFilters = {} }: {
   const end = Math.min(meta.page * meta.pageSize, meta.total);
 
   const currentListHref = pageHref(initialFilters, meta.page, meta.pageSize);
-  return <section className="aj-surface overflow-hidden"><div className="border-b border-slate-100 p-5 sm:p-6"><form className="grid gap-3 md:grid-cols-5"><label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" className="mt-1" placeholder="Kode, nama, gudang, rak" value={draftFilters.keyword || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, keyword: event.target.value }))} /></label><label className="text-sm font-medium text-slate-700">Product ID<Input name="productId" className="mt-1" value={draftFilters.productId || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, productId: event.target.value }))} /></label><label className="text-sm font-medium text-slate-700">SKU<Input name="sku" className="mt-1" value={draftFilters.sku || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, sku: event.target.value }))} /></label><label className="text-sm font-medium text-slate-700">Gudang<Input name="warehouse" className="mt-1" value={draftFilters.warehouse || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, warehouse: event.target.value }))} /></label><div className="grid gap-2 sm:flex sm:items-end"><button type="submit" className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Filter</button><Link href="/stok-barang" className="rounded-sm border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Reset</Link></div></form><div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-slate-500">Menampilkan {start}–{end} dari {meta.total} stok. Sinkron otomatis tiap 30 detik · terakhir berhasil {updated}</p><Button type="button" variant="secondary" onClick={refresh} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh ERP"}</Button></div>{syncError && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">Refresh gagal, memakai data terakhir. {syncError}</p>}</div><div className="space-y-3 p-4 md:hidden">{shown.map((stock) => {
+  const activeFilters = [
+    initialFilters.keyword ? `Keyword: ${initialFilters.keyword}` : null,
+    initialFilters.productId ? `Product ID: ${initialFilters.productId}` : null,
+    initialFilters.sku ? `SKU: ${initialFilters.sku}` : null,
+    initialFilters.warehouse ? `Gudang: ${initialFilters.warehouse}` : null
+  ].filter(Boolean) as string[];
+
+  return <section className="aj-surface overflow-hidden">
+    <div className="border-b border-slate-100">
+      <ResponsiveFilterPanel
+        title="Filter stok"
+        resetHref="/stok-barang"
+        activeFilters={activeFilters}
+        emptyText="Filter aktif: semua stok."
+        formClassName="grid gap-3 md:grid-cols-5"
+        surface={false}
+      >
+        <label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" className="mt-1" placeholder="Kode, nama, gudang, rak" value={draftFilters.keyword || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, keyword: event.target.value }))} /></label>
+        <label className="text-sm font-medium text-slate-700">Product ID<Input name="productId" className="mt-1" value={draftFilters.productId || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, productId: event.target.value }))} /></label>
+        <label className="text-sm font-medium text-slate-700">SKU<Input name="sku" className="mt-1" value={draftFilters.sku || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, sku: event.target.value }))} /></label>
+        <label className="text-sm font-medium text-slate-700">Gudang<Input name="warehouse" className="mt-1" value={draftFilters.warehouse || ""} onChange={(event) => setDraftFilters((current) => ({ ...current, warehouse: event.target.value }))} /></label>
+      </ResponsiveFilterPanel>
+      <div className="flex flex-col gap-2 px-5 pb-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p className="text-xs text-slate-500">Menampilkan {start}-{end} dari {meta.total} stok. Sinkron otomatis tiap 30 detik - terakhir berhasil {updated}</p>
+        <Button type="button" variant="secondary" onClick={refresh} disabled={refreshing}>{refreshing ? "Refresh..." : "Refresh ERP"}</Button>
+      </div>
+      {syncError && <p className="mx-5 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 sm:mx-6">Refresh gagal, memakai data terakhir. {syncError}</p>}
+    </div>
+    <div className="space-y-3 p-4 md:hidden">{shown.map((stock) => {
     const shouldAlert = stock.isLowStock ?? (stock.quantity !== null && stock.minimumStock !== null && stock.minimumStock !== undefined && stock.minimumStock > 0 && stock.quantity <= stock.minimumStock);
     return <article key={stock.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs font-semibold text-emerald-700">{stock.productCode}</p><h3 className="mt-1 font-semibold text-slate-900">{stock.productName}</h3>{warningBadge(stock)}</div><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${shouldAlert ? "bg-red-50 text-red-700" : stock.quantity === null ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700"}`}>{formatNumber(stock.quantity)}</span></div><dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Gudang</dt><dd className="mt-0.5">{stock.warehouse ?? dash}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Rak</dt><dd className="mt-0.5">{stock.rack || dash}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Free / On hand</dt><dd className="mt-0.5">{formatNumber(stock.freeQuantity)} / {formatNumber(stock.onHandQuantity)}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Minimum</dt><dd className="mt-0.5">{formatNumber(stock.minimumStock)}</dd></div></dl><Link className="mt-4 block rounded-sm bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700" href={stockDetailHref({ id: stock.id, productId: stock.productId, sku: stock.productCode }, currentListHref)}>Detail</Link></article>;
   })}{shown.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Tidak ada data stok yang sesuai.</p>}</div><div className="hidden overflow-x-auto md:block"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Kode</th><th className="px-5 py-3">Nama barang</th><th className="px-5 py-3">Gudang</th><th className="px-5 py-3">Rak</th><th className="px-5 py-3 text-right">Qty tersedia</th><th className="px-5 py-3 text-right">Free</th><th className="px-5 py-3 text-right">On hand</th><th className="px-5 py-3 text-right">Reserved</th><th className="px-5 py-3 text-right">Minimum</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Satuan</th><th className="px-5 py-3 text-right">Aksi</th></tr></thead><tbody>{shown.map((stock) => {

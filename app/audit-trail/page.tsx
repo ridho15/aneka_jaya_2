@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Input } from "@/components/ui/Input";
+import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
@@ -66,43 +67,42 @@ export default async function AuditTrailPage({ searchParams }: Props) {
         <p className="mt-2 text-sm text-slate-600">Riwayat siapa yang membuat, mengubah, approve/reject, membayar tempo, mengirim WhatsApp, dan sinkron ERP.</p>
       </div>
 
-      <section className="aj-surface mb-5 p-5">
-        <form className="grid gap-3 md:grid-cols-5">
-          <label className="text-sm font-medium text-slate-700">
-            Dari tanggal
-            <Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" />
-          </label>
-          <label className="text-sm font-medium text-slate-700">
-            Sampai tanggal
-            <Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" />
-          </label>
-          <label className="text-sm font-medium text-slate-700">
-            Entity
-            <Select name="entityType" defaultValue={valueOf(params, "entityType") || ""} className="mt-1">
-              <option value="">Semua entity</option>
-              {ENTITY_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}
-            </Select>
-          </label>
-          <label className="text-sm font-medium text-slate-700">
-            Aksi
-            <Select name="action" defaultValue={valueOf(params, "action") || ""} className="mt-1">
-              <option value="">Semua aksi</option>
-              {ACTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-            </Select>
-          </label>
-          <label className="text-sm font-medium text-slate-700">
-            Keyword
-            <Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="User, alasan, referensi" className="mt-1" />
-          </label>
-          <div className="grid gap-2 md:col-span-5 sm:flex">
-            <button className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" type="submit">Filter</button>
-            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/audit-trail">Reset</Link>
-          </div>
-        </form>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          {activeFilters.length > 0 ? activeFilters.map((item) => <span key={item} className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{item}</span>) : <span className="text-slate-500">Filter aktif: semua aktivitas.</span>}
-        </div>
-      </section>
+      <ResponsiveFilterPanel
+        title="Filter audit trail"
+        resetHref="/audit-trail"
+        activeFilters={activeFilters}
+        emptyText="Filter aktif: semua aktivitas."
+        className="mb-5"
+        formClassName="grid gap-3 md:grid-cols-5"
+        actionsClassName="md:col-span-5"
+      >
+        <label className="text-sm font-medium text-slate-700">
+          Dari tanggal
+          <Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" />
+        </label>
+        <label className="text-sm font-medium text-slate-700">
+          Sampai tanggal
+          <Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" />
+        </label>
+        <label className="text-sm font-medium text-slate-700">
+          Entity
+          <Select name="entityType" defaultValue={valueOf(params, "entityType") || ""} className="mt-1">
+            <option value="">Semua entity</option>
+            {ENTITY_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}
+          </Select>
+        </label>
+        <label className="text-sm font-medium text-slate-700">
+          Aksi
+          <Select name="action" defaultValue={valueOf(params, "action") || ""} className="mt-1">
+            <option value="">Semua aksi</option>
+            {ACTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+          </Select>
+        </label>
+        <label className="text-sm font-medium text-slate-700">
+          Keyword
+          <Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="User, alasan, referensi" className="mt-1" />
+        </label>
+      </ResponsiveFilterPanel>
 
       <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {result.entries.length} dari {result.total} aktivitas.</div>

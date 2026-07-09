@@ -104,6 +104,26 @@ function isOperationalExpense(row) {
   return typeCode(row) !== "AJ";
 }
 
+export function auditSalesSyncSafety(sales) {
+  const nonAjErp = sales
+    .filter((sale) => typeCode(sale) !== "AJ" && sale.syncTarget === "erp")
+    .map((sale) => ({ id: sale.id, tipe: typeCode(sale) || "UNKNOWN", syncTarget: sale.syncTarget }));
+  const dummyNonLocal = sales
+    .filter((sale) => String(sale.id || "").startsWith("DUMMY-DASH-") && sale.syncTarget !== "local")
+    .map((sale) => ({ id: sale.id, tipe: typeCode(sale) || "UNKNOWN", syncTarget: sale.syncTarget || "missing" }));
+  const violations = [
+    ...nonAjErp.map((sale) => ({ rule: "NON_AJ_MUST_NOT_TARGET_ERP", ...sale })),
+    ...dummyNonLocal.map((sale) => ({ rule: "DUMMY_MUST_BE_LOCAL", ...sale }))
+  ];
+  return {
+    status: violations.length === 0 ? "PASS" : "FAIL",
+    checkedSales: sales.length,
+    nonAjErp,
+    dummyNonLocal,
+    violations
+  };
+}
+
 function filterSales(sales, filters) {
   return sales.filter((sale) => {
     if (filters.from && sale.saleDate < filters.from) return false;
@@ -278,8 +298,9 @@ export function buildDashboardAuditReport(input) {
   const operationalProfit = buildOperationalProfitSummary(input.sales || [], input.expenses || [], todayKey, monthKeyValue, input.grossProfitPercent || 0);
   const paymentBreakdown = buildPaymentBreakdown(filteredSales, input.rekeningLabels || {});
   const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), filters);
+  const syncSafety = auditSalesSyncSafety(input.sales || []);
   return {
-    status: "PASS",
+    status: syncSafety.status,
     generatedAt: new Date().toISOString(),
     filters,
     period: { today: todayKey, month: monthKeyValue },
@@ -291,6 +312,7 @@ export function buildDashboardAuditReport(input) {
     },
     paymentBreakdown,
     performance,
+    syncSafety,
     operationalProfit: {
       ...operationalProfit,
       formatted: {
@@ -310,7 +332,7 @@ export function buildDashboardAuditReport(input) {
 }
 
 function printTextReport(report) {
-  console.log("Dashboard Audit: PASS");
+  console.log(`Dashboard Audit: ${report.status}`);
   console.log(`Periode: today=${report.period.today}, month=${report.period.month}`);
   console.log(`Omzet bulan ini: ${report.kpis.omzetMonth.formatted} (${report.kpis.omzetMonth.count} transaksi)`);
   console.log(`Omzet hari ini: ${report.kpis.omzetToday.formatted} (${report.kpis.omzetToday.count} transaksi)`);
@@ -319,6 +341,10 @@ function printTextReport(report) {
   console.log(`Nett Profit Operasional: ${report.operationalProfit.formatted.nettProfit}`);
   console.log(`Rumus Gross: ${report.operationalProfit.formulas.grossProfit}`);
   console.log(`Rumus Nett: ${report.operationalProfit.formulas.nettProfit}`);
+  console.log(`Keamanan sync: ${report.syncSafety.status} (${report.syncSafety.checkedSales} transaksi diperiksa)`);
+  for (const violation of report.syncSafety.violations) {
+    console.log(`- ${violation.rule}: ${violation.id} [${violation.tipe}] syncTarget=${violation.syncTarget}`);
+  }
 }
 
 async function main() {
@@ -330,6 +356,7 @@ async function main() {
     const report = buildDashboardAuditReport({ ...data, filters });
     if (json) console.log(JSON.stringify(report, null, 2));
     else printTextReport(report);
+    if (report.status !== "PASS") process.exitCode = 1;
   } catch (error) {
     console.error(`Dashboard Audit: FAIL - ${auditErrorMessage(error)}`);
     process.exitCode = 1;

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -61,6 +62,15 @@ function rekeningOptions(sales: Sale[], rekenings: RekeningAccount[]) {
   return Array.from(options.entries()).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
 }
 
+function activeFilterLabels(params: SearchParams) {
+  return [
+    valueOf(params, "from") ? `Dari ${valueOf(params, "from")}` : null,
+    valueOf(params, "to") ? `Sampai ${valueOf(params, "to")}` : null,
+    valueOf(params, "paymentMethod") ? `Pembayaran: ${valueOf(params, "paymentMethod")}` : null,
+    valueOf(params, "rekening") ? `Rekening: ${valueOf(params, "rekening")}` : null
+  ].filter(Boolean) as string[];
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
   if (!can(role, "dashboard.view")) redirect("/no-access");
@@ -95,6 +105,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   const rekenings = rekeningOptions(allSales, allRekenings);
   const whatsappStatus = getWhatsappProviderStatus();
   const dataSourceNotice = dashboardDataSourceNotice();
+  const activeFilters = activeFilterLabels(params);
 
   return (
     <AppShell>
@@ -125,18 +136,20 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
         </div>
       </section>}
 
-      <section className="aj-surface mt-5 p-5">
-        <form className="grid gap-3 md:grid-cols-4 xl:grid-cols-6">
-          <label className="text-sm font-medium text-slate-700">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Pembayaran<Select name="paymentMethod" defaultValue={valueOf(params, "paymentMethod") || ""} className="mt-1"><option value="">Semua</option>{paymentMethods.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <label className="text-sm font-medium text-slate-700">Rekening / bank<Select name="rekening" defaultValue={valueOf(params, "rekening") || ""} className="mt-1"><option value="">Semua</option>{rekenings.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></label>
-          <div className="flex items-end gap-2 md:col-span-4 xl:col-span-2">
-            <button className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" type="submit">Filter</button>
-            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/dashboard">Reset</Link>
-          </div>
-        </form>
-      </section>
+      <ResponsiveFilterPanel
+        title="Filter dashboard"
+        resetHref="/dashboard"
+        activeFilters={activeFilters}
+        emptyText="Filter aktif: semua dashboard."
+        className="mt-5"
+        formClassName="grid gap-3 md:grid-cols-4 xl:grid-cols-6"
+        actionsClassName="md:col-span-4 xl:col-span-2"
+      >
+        <label className="text-sm font-medium text-slate-700">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Pembayaran<Select name="paymentMethod" defaultValue={valueOf(params, "paymentMethod") || ""} className="mt-1"><option value="">Semua</option>{paymentMethods.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">Rekening / bank<Select name="rekening" defaultValue={valueOf(params, "rekening") || ""} className="mt-1"><option value="">Semua</option>{rekenings.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></label>
+      </ResponsiveFilterPanel>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,.9fr)]">
         <PerformanceChart data={performance} />

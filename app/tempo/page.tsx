@@ -5,6 +5,7 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { listTempoReceivablesPage, listTempoTipeOptions, type TempoReceivableFilters } from "@/lib/tempo/store";
 import { Input } from "@/components/ui/Input";
+import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
 
 export const dynamic = "force-dynamic";
@@ -75,23 +76,22 @@ export default async function TempoPage({ searchParams }: { searchParams?: Promi
         <h2 className="aj-page-title text-3xl font-bold">Tempo</h2>
         <p className="mt-2 text-sm text-slate-600">Default menampilkan open Tempo. Aktifkan final status untuk melihat paid, cancelled, atau written off.</p>
       </div>
-      <section className="aj-surface mb-5 p-5">
-        <form className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Customer / No tempo / No sales" className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{tipeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <label className="text-sm font-medium text-slate-700">Status<Select name="status" defaultValue={valueOf(params, "status") || ""} className="mt-1"><option value="">Semua</option>{["open", "overdue", "partial_paid", "paid", "cancelled", "written_off"].map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <label className="text-sm font-medium text-slate-700">Jatuh tempo dari<Input type="date" name="dueFrom" defaultValue={valueOf(params, "dueFrom") || ""} className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Jatuh tempo sampai<Input type="date" name="dueTo" defaultValue={valueOf(params, "dueTo") || ""} className="mt-1" /></label>
-          <label className="flex items-end gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input type="checkbox" name="includeFinal" value="1" defaultChecked={valueOf(params, "includeFinal") === "1"} /> Tampilkan final</label>
-          <div className="grid gap-2 md:col-span-3 sm:flex xl:col-span-6">
-            <button className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" type="submit">Filter</button>
-            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/tempo">Reset</Link>
-          </div>
-        </form>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          {activeFilters.length > 0 ? activeFilters.map((item) => <span key={item} className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{item}</span>) : <span className="text-slate-500">Filter aktif: tempo open.</span>}
-        </div>
-      </section>
+      <ResponsiveFilterPanel
+        title="Filter tempo"
+        resetHref="/tempo"
+        activeFilters={activeFilters}
+        emptyText="Filter aktif: tempo open."
+        className="mb-5"
+        formClassName="grid gap-3 md:grid-cols-3 xl:grid-cols-6"
+        actionsClassName="md:col-span-3 xl:col-span-6"
+      >
+        <label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Customer / No tempo / No sales" className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{tipeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">Status<Select name="status" defaultValue={valueOf(params, "status") || ""} className="mt-1"><option value="">Semua</option>{["open", "overdue", "partial_paid", "paid", "cancelled", "written_off"].map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">Jatuh tempo dari<Input type="date" name="dueFrom" defaultValue={valueOf(params, "dueFrom") || ""} className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Jatuh tempo sampai<Input type="date" name="dueTo" defaultValue={valueOf(params, "dueTo") || ""} className="mt-1" /></label>
+        <label className="flex items-end gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"><input type="checkbox" name="includeFinal" value="1" defaultChecked={valueOf(params, "includeFinal") === "1"} /> Tampilkan final</label>
+      </ResponsiveFilterPanel>
       <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} tempo.</div>
         <div className="space-y-3 p-4 md:hidden">

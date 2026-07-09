@@ -86,3 +86,35 @@ test("all operational pages remain usable within the viewport", async ({ page },
   console.log(`[responsive-audit:${testInfo.project.name}] ${JSON.stringify(findings)}`);
   expect(findings.filter((item) => item.documentOverflow > 1)).toEqual([]);
 });
+
+test("mobile filter bottom sheets open and close on data-heavy pages", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "bottom sheet filter is mobile-only");
+  await page.context().addCookies([{
+    name: "aneka_jaya_session",
+    value: ownerSessionCookie(),
+    url: "http://127.0.0.1:3010",
+    httpOnly: true,
+    sameSite: "Lax"
+  }]);
+
+  const filterRoutes = [
+    { route: "/dashboard", title: "Filter dashboard" },
+    { route: "/penjualan", title: "Filter penjualan" },
+    { route: "/pengeluaran", title: "Filter pengeluaran" },
+    { route: "/tempo", title: "Filter tempo" },
+    { route: "/audit-trail", title: "Filter audit trail" },
+    { route: "/stok-barang", title: "Filter stok", optionalWhenUnavailable: true }
+  ];
+
+  for (const item of filterRoutes) {
+    const response = await page.goto(item.route, { waitUntil: "domcontentloaded" });
+    expect(response?.status(), `${item.route} should load`).toBe(200);
+    const trigger = page.getByRole("button", { name: new RegExp(item.title) });
+    if (item.optionalWhenUnavailable && await trigger.count() === 0) continue;
+    await trigger.click();
+    await expect(page.getByRole("dialog", { name: item.title })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Tutup filter", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Tutup filter", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: item.title })).toBeHidden();
+  }
+});

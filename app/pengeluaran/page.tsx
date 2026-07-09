@@ -5,6 +5,7 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { listExpenseFilterOptions, listExpenseRecordsPage, type ExpenseRecordFilters } from "@/lib/expenses/store";
 import { Input } from "@/components/ui/Input";
+import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 
@@ -86,24 +87,23 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
         </div>
         {can(role, "pengeluaran.create") && <Link href="/pengeluaran/input" className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700">+ Input Pengeluaran</Link>}
       </div>
-      <section className="aj-surface mb-5 p-5">
-        <form className="grid gap-3 md:grid-cols-4 xl:grid-cols-7">
-          <label className="text-sm font-medium text-slate-700">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Vendor / deskripsi / nomor" className="mt-1" /></label>
-          <label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{tipeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <label className="text-sm font-medium text-slate-700">Rekening<Select name="rekening" defaultValue={valueOf(params, "rekening") || ""} className="mt-1"><option value="">Semua</option>{rekeningOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{["draft", "pending_approval", "approved", "rejected", "cancelled"].map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <label className="text-sm font-medium text-slate-700">ERP Sync<Select name="erpSyncStatus" defaultValue={valueOf(params, "erpSyncStatus") || ""} className="mt-1"><option value="">Semua</option>{["pending", "synced", "failed", "not_required"].map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-          <div className="grid gap-2 md:col-span-4 sm:flex xl:col-span-7">
-            <button className="rounded-sm bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700" type="submit">Filter</button>
-            <Link className="rounded-sm border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href="/pengeluaran">Reset</Link>
-          </div>
-        </form>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          {activeFilters.length > 0 ? activeFilters.map((item) => <span key={item} className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">{item}</span>) : <span className="text-slate-500">Filter aktif: semua pengeluaran.</span>}
-        </div>
-      </section>
+      <ResponsiveFilterPanel
+        title="Filter pengeluaran"
+        resetHref="/pengeluaran"
+        activeFilters={activeFilters}
+        emptyText="Filter aktif: semua pengeluaran."
+        className="mb-5"
+        formClassName="grid gap-3 md:grid-cols-4 xl:grid-cols-7"
+        actionsClassName="md:col-span-4 xl:col-span-7"
+      >
+        <label className="text-sm font-medium text-slate-700">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Vendor / deskripsi / nomor" className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{tipeOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">Rekening<Select name="rekening" defaultValue={valueOf(params, "rekening") || ""} className="mt-1"><option value="">Semua</option>{rekeningOptions.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{["draft", "pending_approval", "approved", "rejected", "cancelled"].map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">ERP Sync<Select name="erpSyncStatus" defaultValue={valueOf(params, "erpSyncStatus") || ""} className="mt-1"><option value="">Semua</option>{["pending", "synced", "failed", "not_required"].map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+      </ResponsiveFilterPanel>
       <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} pengeluaran.</div>
         <div className="space-y-3 p-4 md:hidden">

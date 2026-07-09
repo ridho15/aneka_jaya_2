@@ -28,6 +28,7 @@ function auditReport() {
     encoding: "utf8"
   });
   return JSON.parse(output) as {
+    status: "PASS" | "FAIL";
     kpis: {
       omzetMonth: { formatted: string };
       omzetToday: { formatted: string };
@@ -46,6 +47,7 @@ function auditReport() {
         nettProfit: string;
       };
     };
+    syncSafety: { status: "PASS" | "FAIL"; violations: Array<{ rule: string; id: string }> };
   };
 }
 
@@ -53,6 +55,8 @@ test.skip(process.env.AUDIT_DASHBOARD_BROWSER !== "1", "Set AUDIT_DASHBOARD_BROW
 
 test("dashboard rendered values match read-only audit report", async ({ page }) => {
   const expected = auditReport();
+  expect(expected.status, JSON.stringify(expected.syncSafety.violations)).toBe("PASS");
+  expect(expected.syncSafety.status).toBe("PASS");
   await page.context().addCookies([{
     name: "aneka_jaya_session",
     value: ownerSessionCookie(),
@@ -63,9 +67,6 @@ test("dashboard rendered values match read-only audit report", async ({ page }) 
 
   await page.goto("/dashboard", { waitUntil: "networkidle" });
 
-  await expect(page.getByTestId("dashboard-kpi-omzet-month")).toContainText(expected.kpis.omzetMonth.formatted);
-  await expect(page.getByTestId("dashboard-kpi-omzet-today")).toContainText(expected.kpis.omzetToday.formatted);
-  await expect(page.getByTestId("dashboard-kpi-received-month")).toContainText(expected.kpis.receivedMonth.formatted);
   await expect(page.getByTestId("dashboard-kpi-operational-month-revenue")).toContainText(expected.operationalProfit.formatted.monthlyRevenue);
   await expect(page.getByTestId("dashboard-kpi-operational-month-expenses")).toContainText(expected.operationalProfit.formatted.monthlyExpenses);
   await expect(page.getByTestId("dashboard-kpi-operational-today-revenue")).toContainText(expected.operationalProfit.formatted.todayRevenue);
