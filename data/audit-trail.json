@@ -1,5 +1,89 @@
 [
   {
+    "id": "bc0dacb0-c55f-4bc4-b4e8-f7b02b3c6377",
+    "createdAt": "2026-07-13T19:22:08.856Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783969674229-3b8b4a64",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "COA ERP rekening penerima belum valid."
+    },
+    "reason": "Retry payment sales gagal • COA ERP rekening penerima belum valid."
+  },
+  {
+    "id": "5926d978-cb9e-450d-868e-593873ef6051",
+    "createdAt": "2026-07-13T19:20:25.343Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783970425332",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1783970425332",
+      "productId": "10",
+      "productCodeSnapshot": "FG-SEED-001",
+      "productNameSnapshot": "Panel Kontrol Industri",
+      "currentStock": 0,
+      "minimumStock": 8,
+      "warehouseSnapshot": "Gudang Utama",
+      "rackSnapshot": "Rak A1",
+      "status": "failed",
+      "createdAt": "2026-07-13T19:20:25.332Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "2e4a9012-f82a-4d6b-99dc-54d8c4266a4c",
+    "createdAt": "2026-07-13T19:18:24.958Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783970304946",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1783970304946",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
+      "status": "failed",
+      "createdAt": "2026-07-13T19:18:24.946Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "0cd2b207-1518-4037-9af0-4b4e03472512",
+    "createdAt": "2026-07-13T19:16:21.030Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783969674229-3b8b4a64",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "COA ERP rekening penerima belum valid."
+    },
+    "reason": "Retry payment sales gagal • COA ERP rekening penerima belum valid."
+  },
+  {
     "id": "7c606716-4289-4dd7-9801-6f19bb786188",
     "createdAt": "2026-07-13T19:08:10.306Z",
     "userId": "anika:1",

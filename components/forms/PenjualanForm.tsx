@@ -1,8 +1,16 @@
 "use client";
 import Link from "next/link";
-import { useFieldArray, useForm, type UseFormRegister, type UseFormSetValue } from "react-hook-form";
+import {
+  useFieldArray,
+  useForm,
+  type UseFormRegister,
+  type UseFormSetValue,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { penjualanSchema, type PenjualanInput } from "@/lib/validation/penjualanSchema";
+import {
+  penjualanSchema,
+  type PenjualanInput,
+} from "@/lib/validation/penjualanSchema";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/ui/MoneyInput";
@@ -13,35 +21,86 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product } from "@/lib/types/product";
 import type { StockItem } from "@/lib/types/stock";
 import type { Sale } from "@/lib/types/sales";
-import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
+import type {
+  BookkeepingType,
+  RekeningAccount,
+} from "@/lib/business/masterData";
 import { APP_BRAND_NAME, EXTERNAL_ERP_NAME } from "@/lib/appBrand";
 import { useRouter } from "next/navigation";
 
 const draftKey = "aneka-jaya-draft-penjualan";
-const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
+const rupiah = (value: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
 const today = new Date().toISOString().slice(0, 10);
 const CASH_WALK_IN_REKENING_ID = "cash-w";
 const CASH_WALK_IN_REKENING_NAME = "Kas Walk In";
-const clampDiscountPercent = (value: number) => Math.min(Math.max(Number.isFinite(value) ? value : 0, 0), 100);
-const itemGross = (item: { quantity?: number; unitPrice?: number }) => Number(item.quantity || 0) * Number(item.unitPrice || 0);
-const itemDiscountAmount = (item: { quantity?: number; unitPrice?: number; discount?: number }) => Math.round(itemGross(item) * clampDiscountPercent(Number(item.discount || 0)) / 100);
-const itemNetTotal = (item: { quantity?: number; unitPrice?: number; discount?: number }) => Math.max(0, itemGross(item) - itemDiscountAmount(item));
-const discountPercentFromAmount = (amount: number | undefined, quantity: number, unitPrice: number) => {
+const clampDiscountPercent = (value: number) =>
+  Math.min(Math.max(Number.isFinite(value) ? value : 0, 0), 100);
+const itemGross = (item: { quantity?: number; unitPrice?: number }) =>
+  Number(item.quantity || 0) * Number(item.unitPrice || 0);
+const itemDiscountAmount = (item: {
+  quantity?: number;
+  unitPrice?: number;
+  discount?: number;
+}) =>
+  Math.round(
+    (itemGross(item) * clampDiscountPercent(Number(item.discount || 0))) / 100,
+  );
+const itemNetTotal = (item: {
+  quantity?: number;
+  unitPrice?: number;
+  discount?: number;
+}) => Math.max(0, itemGross(item) - itemDiscountAmount(item));
+const discountPercentFromAmount = (
+  amount: number | undefined,
+  quantity: number,
+  unitPrice: number,
+) => {
   const gross = quantity * unitPrice;
   if (!gross) return 0;
-  return Math.min(100, Number(((Number(amount || 0) / gross) * 100).toFixed(2)));
+  return Math.min(
+    100,
+    Number(((Number(amount || 0) / gross) * 100).toFixed(2)),
+  );
 };
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const generateManualSku = (tipeCode?: string | null) => {
   const now = new Date();
   const timestamp = `${String(now.getFullYear()).slice(-2)}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}`;
   const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  const code = String(tipeCode || "X").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "") || "X";
+  const code =
+    String(tipeCode || "X")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "X";
   return `SLM-${code}-${timestamp}-${suffix}`.toUpperCase();
 };
 
-type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; allowTestTransaction?: boolean; erpTypeCodes?: string[]; sale?: Sale };
-type CreatedSale = { id: string; approvalStatus?: string; target?: "erp" | "local"; syncStatus?: string; stockReleaseStatus?: string; stockReleaseError?: string; erpPaymentStatus?: string; erpPaymentError?: string; retryable?: boolean; testReference?: string; erpReference?: string };
+type Props = {
+  tipes: BookkeepingType[];
+  rekenings: RekeningAccount[];
+  allowTestTransaction?: boolean;
+  erpTypeCodes?: string[];
+  sale?: Sale;
+};
+type CreatedSale = {
+  id: string;
+  approvalStatus?: string;
+  target?: "erp" | "local";
+  syncStatus?: string;
+  stockReleaseStatus?: string;
+  stockReleaseError?: string;
+  erpPaymentStatus?: string;
+  erpPaymentError?: string;
+  retryable?: boolean;
+  testReference?: string;
+  erpReference?: string;
+};
 type ProductState =
   | { status: "loading" }
   | { status: "ready" }
@@ -63,129 +122,336 @@ type ProductOption = {
 type ProductReferenceOption = { id: number; name: string; code?: string };
 type ProductReferenceState =
   | { status: "idle" | "loading" }
-  | { status: "ready"; categories: ProductReferenceOption[]; uoms: ProductReferenceOption[] }
+  | {
+      status: "ready";
+      categories: ProductReferenceOption[];
+      uoms: ProductReferenceOption[];
+    }
   | { status: "error"; message: string };
 
-const normalizeCode = (value?: string | null) => String(value ?? "").trim().toLowerCase();
+const normalizeCode = (value?: string | null) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase();
 
 function extractProductRows(result: unknown): Product[] {
   const data = (result as { data?: unknown } | null)?.data;
   if (Array.isArray(data)) return data as Product[];
   const pagedData = (data as { data?: unknown } | null)?.data;
-  return Array.isArray(pagedData) ? pagedData as Product[] : [];
+  return Array.isArray(pagedData) ? (pagedData as Product[]) : [];
 }
 
-export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, erpTypeCodes = ["AJ"], sale }: Props) {
+export function PenjualanForm({
+  tipes,
+  rekenings,
+  allowTestTransaction = false,
+  erpTypeCodes = ["AJ"],
+  sale,
+}: Props) {
   const router = useRouter();
   const isEdit = Boolean(sale);
   const erpTypeCodeSet = useMemo(
-    () => new Set(erpTypeCodes.map((code) => code.trim().toUpperCase()).filter(Boolean)),
+    () =>
+      new Set(
+        erpTypeCodes.map((code) => code.trim().toUpperCase()).filter(Boolean),
+      ),
     [erpTypeCodes],
   );
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
-  const defaultTipe = sale ? activeTipes.find((tipe) => tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot) || activeTipes[0] : activeTipes[0];
-  const rekeningForTipe = useCallback((selectedTipeId: string) => rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)), [rekenings]);
-  const cashWalkInRekening = useMemo(() => rekenings.find((rekening) => rekening.id === CASH_WALK_IN_REKENING_ID), [rekenings]);
+  const defaultTipe = sale
+    ? activeTipes.find(
+        (tipe) =>
+          tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot,
+      ) || activeTipes[0]
+    : activeTipes[0];
+  const rekeningForTipe = useCallback(
+    (selectedTipeId: string) =>
+      rekenings.filter((r) => r.tipeIds.includes(selectedTipeId)),
+    [rekenings],
+  );
+  const cashWalkInRekening = useMemo(
+    () =>
+      rekenings.find((rekening) => rekening.id === CASH_WALK_IN_REKENING_ID),
+    [rekenings],
+  );
   const defaultRekening = useMemo(() => {
     if (sale?.rekeningId && defaultTipe) {
-      const saleRekening = rekenings.find((rekening) => rekening.id === sale.rekeningId && rekening.tipeIds.includes(defaultTipe.id));
+      const saleRekening = rekenings.find(
+        (rekening) =>
+          rekening.id === sale.rekeningId &&
+          rekening.tipeIds.includes(defaultTipe.id),
+      );
       if (saleRekening) return saleRekening;
     }
     if (!sale && cashWalkInRekening) return cashWalkInRekening;
     return defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
-  }, [cashWalkInRekening, defaultTipe, rekeningForTipe, rekenings, sale, sale?.rekeningId]);
+  }, [
+    cashWalkInRekening,
+    defaultTipe,
+    rekeningForTipe,
+    rekenings,
+    sale,
+    sale?.rekeningId,
+  ]);
   const initialTipeRef = useRef(sale?.tipeId || defaultTipe?.id || "");
   const previousPaymentMethodRef = useRef(sale?.paymentMethod || "Cash");
 
-  const [notice, setNotice] = useState<{ type: "success" | "error"; message: string }>();
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  }>();
   const [createdSale, setCreatedSale] = useState<CreatedSale>();
   const [products, setProducts] = useState<Product[]>([]);
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [productQuery, setProductQuery] = useState("");
-  const [productState, setProductState] = useState<ProductState>({ status: "loading" });
-  const [stockState, setStockState] = useState<StockState>({ status: "loading" });
-  const [referenceState, setReferenceState] = useState<ProductReferenceState>({ status: "idle" });
+  const [productState, setProductState] = useState<ProductState>({
+    status: "loading",
+  });
+  const [stockState, setStockState] = useState<StockState>({
+    status: "loading",
+  });
+  const [referenceState, setReferenceState] = useState<ProductReferenceState>({
+    status: "idle",
+  });
   const productSearchControllerRef = useRef<AbortController>();
   const productSearchRequestRef = useRef(0);
-  const { register, control, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<PenjualanInput>({
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<PenjualanInput>({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
-      saleDate: sale?.saleDate || today, tipeId: sale?.tipeId || defaultTipe?.id || "", tipeCodeSnapshot: sale?.tipeCodeSnapshot || defaultTipe?.code || "", tipeNameSnapshot: sale?.tipeNameSnapshot || defaultTipe?.name || "",
-      rekeningId: sale?.rekeningId || defaultRekening?.id || "", rekeningNameSnapshot: sale?.rekeningNameSnapshot || defaultRekening?.name || "",
-      customerName: sale?.customerName || "Walk In", customerLocation: sale?.customerLocation || "Toko", shippingMethod: sale?.shippingMethod || "di Tempat", paymentMethod: sale?.paymentMethod || "Cash",
+      saleDate: sale?.saleDate || today,
+      tipeId: sale?.tipeId || defaultTipe?.id || "",
+      tipeCodeSnapshot: sale?.tipeCodeSnapshot || defaultTipe?.code || "",
+      tipeNameSnapshot: sale?.tipeNameSnapshot || defaultTipe?.name || "",
+      rekeningId: sale?.rekeningId || defaultRekening?.id || "",
+      rekeningNameSnapshot:
+        sale?.rekeningNameSnapshot || defaultRekening?.name || "",
+      customerName: sale?.customerName || "Walk In",
+      customerLocation: sale?.customerLocation || "Toko",
+      shippingMethod: sale?.shippingMethod || "di Tempat",
+      paymentMethod: sale?.paymentMethod || "Cash",
       dueDate: sale?.dueDate,
       transferAccount: sale?.transferAccount,
       notes: sale?.notes,
-      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, productInputMode: item.productInputMode || (item.manualProduct ? "manual" : "erp"), manualProduct: item.manualProduct, warehouseId: item.warehouseId, warehouseNameSnapshot: item.warehouseNameSnapshot, rackId: item.rackId, rackNameSnapshot: item.rackNameSnapshot, unitSnapshot: item.unitSnapshot, uomIdSnapshot: item.uomIdSnapshot, quantity: item.quantity, unitPrice: item.unitPrice, discount: discountPercentFromAmount(item.discount, item.quantity, item.unitPrice) })) : [{ productRef: "", productId: undefined, productInputMode: "erp", unitSnapshot: undefined, uomIdSnapshot: undefined, quantity: 1, unitPrice: 0, discount: 0 }]
-    }
+      items: sale?.items?.length
+        ? sale.items.map((item) => ({
+            productRef: item.productRef,
+            productId: item.productId,
+            productInputMode:
+              item.productInputMode || (item.manualProduct ? "manual" : "erp"),
+            manualProduct: item.manualProduct,
+            warehouseId: item.warehouseId,
+            warehouseNameSnapshot: item.warehouseNameSnapshot,
+            rackId: item.rackId,
+            rackNameSnapshot: item.rackNameSnapshot,
+            unitSnapshot: item.unitSnapshot,
+            uomIdSnapshot: item.uomIdSnapshot,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            discount: discountPercentFromAmount(
+              item.discount,
+              item.quantity,
+              item.unitPrice,
+            ),
+          }))
+        : [
+            {
+              productRef: "",
+              productId: undefined,
+              productInputMode: "erp",
+              unitSnapshot: undefined,
+              uomIdSnapshot: undefined,
+              quantity: 1,
+              unitPrice: 0,
+              discount: 0,
+            },
+          ],
+    },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const values = watch("items");
   const paymentMethod = watch("paymentMethod");
   const tipeId = watch("tipeId");
   const selectedTipe = activeTipes.find((tipe) => tipe.id === tipeId);
-  const targetsErp = Boolean(selectedTipe && erpTypeCodeSet.has(selectedTipe.code.trim().toUpperCase()));
+  const targetsErp = Boolean(
+    selectedTipe && erpTypeCodeSet.has(selectedTipe.code.trim().toUpperCase()),
+  );
   const selectedLooksAj = selectedTipe?.code.trim().toUpperCase() === "AJ";
   const total = values.reduce((sum, item) => sum + itemNetTotal(item), 0);
-  const subtotal = values.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unitPrice || 0), 0);
-  const discountTotal = values.reduce((sum, item) => sum + itemDiscountAmount(item), 0);
-  const filteredRekenings = useMemo(() => rekeningForTipe(tipeId), [rekeningForTipe, tipeId]);
+  const subtotal = values.reduce(
+    (sum, item) =>
+      sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
+    0,
+  );
+  const discountTotal = values.reduce(
+    (sum, item) => sum + itemDiscountAmount(item),
+    0,
+  );
+  const filteredRekenings = useMemo(
+    () => rekeningForTipe(tipeId),
+    [rekeningForTipe, tipeId],
+  );
   const currentSaleRekening = useMemo(() => {
     if (!sale?.rekeningId) return undefined;
-    const existing = rekenings.find((rekening) => rekening.id === sale.rekeningId);
-    return existing ?? { id: sale.rekeningId, bank: sale.rekeningNameSnapshot || sale.rekeningId, name: sale.rekeningNameSnapshot || sale.rekeningId, accountNumber: "-", tipeIds: sale.tipeId ? [sale.tipeId] : [] };
+    const existing = rekenings.find(
+      (rekening) => rekening.id === sale.rekeningId,
+    );
+    return (
+      existing ?? {
+        id: sale.rekeningId,
+        bank: sale.rekeningNameSnapshot || sale.rekeningId,
+        name: sale.rekeningNameSnapshot || sale.rekeningId,
+        accountNumber: "-",
+        tipeIds: sale.tipeId ? [sale.tipeId] : [],
+      }
+    );
   }, [rekenings, sale?.rekeningId, sale?.rekeningNameSnapshot, sale?.tipeId]);
   const rekeningOptions = useMemo(() => {
     if (paymentMethod !== "Cash") return filteredRekenings;
     const options = cashWalkInRekening ? [cashWalkInRekening] : [];
-    if (isEdit && sale?.paymentMethod === "Cash" && currentSaleRekening && !options.some((rekening) => rekening.id === currentSaleRekening.id)) {
+    if (
+      isEdit &&
+      sale?.paymentMethod === "Cash" &&
+      currentSaleRekening &&
+      !options.some((rekening) => rekening.id === currentSaleRekening.id)
+    ) {
       options.unshift(currentSaleRekening);
     }
     return options;
-  }, [cashWalkInRekening, currentSaleRekening, filteredRekenings, isEdit, paymentMethod, sale?.paymentMethod]);
-  const masterDataReady = activeTipes.length > 0 && (paymentMethod === "Tempo" || paymentMethod === "Other" || (paymentMethod === "Cash" ? Boolean(cashWalkInRekening) : filteredRekenings.length > 0));
-  const effectiveProducts = useMemo(() => mergeProductsWithSaleItems(products, sale), [products, sale]);
-  const productOptions = useMemo(() => buildProductOptions(effectiveProducts, stocks), [effectiveProducts, stocks]);
-  const allItemsManual = values.length > 0 && values.every((item) => item.productInputMode === "manual");
-  const releaseSelectionsReady = !targetsErp || values.every((item) => item.productInputMode === "manual" || Boolean(item.warehouseId));
-  const releaseQuantitiesReady = !targetsErp || values.every((item) => {
-    if (item.productInputMode === "manual" || !item.warehouseId) return true;
-    const option = productOptions.find((row) => normalizeCode(row.product.code) === normalizeCode(item.productRef));
-    const stock = option?.stockRows.find((row) => row.warehouseId === item.warehouseId && (row.rackId || "") === (item.rackId || ""));
-    return typeof stock?.quantity !== "number" || Number(item.quantity || 0) <= stock.quantity;
-  });
-  const selectedProductsReady = values.length > 0 && values.every(isSalesItemReady) && releaseSelectionsReady && releaseQuantitiesReady;
-  const hasManualItems = values.some((item) => item.productInputMode === "manual");
-  const dependenciesReady = (productState.status === "ready" || allItemsManual) && masterDataReady;
+  }, [
+    cashWalkInRekening,
+    currentSaleRekening,
+    filteredRekenings,
+    isEdit,
+    paymentMethod,
+    sale?.paymentMethod,
+  ]);
+  const masterDataReady =
+    activeTipes.length > 0 &&
+    (paymentMethod === "Tempo" ||
+      paymentMethod === "Other" ||
+      (paymentMethod === "Cash"
+        ? Boolean(cashWalkInRekening)
+        : filteredRekenings.length > 0));
+  const effectiveProducts = useMemo(
+    () => mergeProductsWithSaleItems(products, sale),
+    [products, sale],
+  );
+  const productOptions = useMemo(
+    () => buildProductOptions(effectiveProducts, stocks),
+    [effectiveProducts, stocks],
+  );
+  const allItemsManual =
+    values.length > 0 &&
+    values.every((item) => item.productInputMode === "manual");
+  const releaseSelectionsReady =
+    !targetsErp ||
+    values.every(
+      (item) => item.productInputMode === "manual" || Boolean(item.warehouseId),
+    );
+  const releaseQuantitiesReady =
+    !targetsErp ||
+    values.every((item) => {
+      if (item.productInputMode === "manual" || !item.warehouseId) return true;
+      const option = productOptions.find(
+        (row) =>
+          normalizeCode(row.product.code) === normalizeCode(item.productRef),
+      );
+      const stock = option?.stockRows.find(
+        (row) =>
+          row.warehouseId === item.warehouseId &&
+          (row.rackId || "") === (item.rackId || ""),
+      );
+      return (
+        typeof stock?.quantity !== "number" ||
+        Number(item.quantity || 0) <= stock.quantity
+      );
+    });
+  const selectedProductsReady =
+    values.length > 0 &&
+    values.every(isSalesItemReady) &&
+    releaseSelectionsReady &&
+    releaseQuantitiesReady;
+  const hasManualItems = values.some(
+    (item) => item.productInputMode === "manual",
+  );
+  const dependenciesReady =
+    (productState.status === "ready" || allItemsManual) && masterDataReady;
 
   const addItem = () => {
     const newIndex = fields.length;
-    append({ productRef: "", productId: undefined, productInputMode: "erp", unitSnapshot: undefined, uomIdSnapshot: undefined, quantity: 1, unitPrice: 0, discount: 0 });
-    window.setTimeout(() => document.getElementById(`sale-item-${newIndex}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    append({
+      productRef: "",
+      productId: undefined,
+      productInputMode: "erp",
+      unitSnapshot: undefined,
+      uomIdSnapshot: undefined,
+      quantity: 1,
+      unitPrice: 0,
+      discount: 0,
+    });
+    window.setTimeout(
+      () =>
+        document
+          .getElementById(`sale-item-${newIndex}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      0,
+    );
   };
 
   const refreshProducts = useCallback(async () => {
     setProductState({ status: "loading" });
     setStockState({ status: "loading" });
     try {
-      const productResponse = await fetch("/api/products?page=1&pageSize=100", { cache: "no-store" });
+      const productResponse = await fetch("/api/products?page=1&pageSize=100", {
+        cache: "no-store",
+      });
       const productResult = await productResponse.json().catch(() => null);
       if (!productResponse.ok || !productResult?.success) {
         setProducts([]);
         setStocks([]);
-        setProductState({ status: "error", message: productResult?.message || "Produk ERP gagal dimuat.", code: productResult?.code });
-        setStockState({ status: "failed", message: "Stok ERP tidak berhasil dimuat karena daftar barang belum siap." });
+        setProductState({
+          status: "error",
+          message: productResult?.message || "Produk ERP gagal dimuat.",
+          code: productResult?.code,
+        });
+        setStockState({
+          status: "failed",
+          message:
+            "Stok ERP tidak berhasil dimuat karena daftar barang belum siap.",
+        });
         return;
       }
       const rows = extractProductRows(productResult);
       setProducts((current) => mergeErpProductResults(current, rows));
-      setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP belum memiliki produk aktif untuk dipilih." });
+      setProductState(
+        rows.length > 0
+          ? { status: "ready" }
+          : {
+              status: "empty",
+              message: "ERP belum memiliki produk aktif untuk dipilih.",
+            },
+      );
       await refreshStocksForProducts();
     } catch {
       setProducts([]);
       setStocks([]);
-      setProductState({ status: "error", message: "Koneksi ke layanan produk bermasalah." });
-      setStockState({ status: "failed", message: "Koneksi ke layanan stok bermasalah." });
+      setProductState({
+        status: "error",
+        message: "Koneksi ke layanan produk bermasalah.",
+      });
+      setStockState({
+        status: "failed",
+        message: "Koneksi ke layanan stok bermasalah.",
+      });
     }
   }, []);
 
@@ -197,44 +463,85 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     const requestId = ++productSearchRequestRef.current;
     productSearchControllerRef.current = controller;
     try {
-      const response = await fetch(`/api/products?page=1&pageSize=100&keyword=${encodeURIComponent(value)}`, { cache: "no-store", signal: controller.signal });
+      const response = await fetch(
+        `/api/products?page=1&pageSize=100&keyword=${encodeURIComponent(value)}`,
+        { cache: "no-store", signal: controller.signal },
+      );
       const result = await response.json().catch(() => null);
-      if (controller.signal.aborted || requestId !== productSearchRequestRef.current) return;
+      if (
+        controller.signal.aborted ||
+        requestId !== productSearchRequestRef.current
+      )
+        return;
       if (!response.ok || !result?.success) return;
       const rows = extractProductRows(result);
       setProducts((current) => mergeErpProductResults(current, rows));
       setProductState({ status: "ready" });
       await refreshStocksForProducts();
     } catch (error) {
-      if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return;
-      setProductState({ status: "error", message: "Pencarian produk ERP bermasalah." });
+      if (
+        controller.signal.aborted ||
+        (error instanceof DOMException && error.name === "AbortError")
+      )
+        return;
+      setProductState({
+        status: "error",
+        message: "Pencarian produk ERP bermasalah.",
+      });
     }
   }, []);
 
   const refreshProductReferences = useCallback(async () => {
     setReferenceState({ status: "loading" });
     try {
-      const response = await fetch("/api/product-references", { cache: "no-store" });
+      const response = await fetch("/api/product-references", {
+        cache: "no-store",
+      });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) {
-        setReferenceState({ status: "error", message: result?.message || "Referensi produk ERP gagal dimuat." });
+        setReferenceState({
+          status: "error",
+          message: result?.message || "Referensi produk ERP gagal dimuat.",
+        });
         return;
       }
-      setReferenceState({ status: "ready", categories: result.data?.categories || [], uoms: result.data?.uoms || [] });
+      setReferenceState({
+        status: "ready",
+        categories: result.data?.categories || [],
+        uoms: result.data?.uoms || [],
+      });
     } catch {
-      setReferenceState({ status: "error", message: "Koneksi referensi produk ERP bermasalah." });
+      setReferenceState({
+        status: "error",
+        message: "Koneksi referensi produk ERP bermasalah.",
+      });
     }
   }, []);
 
   async function refreshStocksForProducts() {
     const stockResponse = await fetch("/api/stocks", { cache: "no-store" });
     const stockResult = await stockResponse.json().catch(() => null);
-    if (stockResponse.ok && stockResult?.success && Array.isArray(stockResult.data)) {
+    if (
+      stockResponse.ok &&
+      stockResult?.success &&
+      Array.isArray(stockResult.data)
+    ) {
       setStocks(stockResult.data);
-      setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
+      setStockState({
+        status: "success",
+        updatedAt: new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
     } else {
       setStocks([]);
-      setStockState({ status: "failed", message: stockResult?.message || "Stok ERP tidak berhasil dimuat. Pilih barang tanpa memakai angka stok palsu." });
+      setStockState({
+        status: "failed",
+        message:
+          stockResult?.message ||
+          "Stok ERP tidak berhasil dimuat. Pilih barang tanpa memakai angka stok palsu.",
+      });
     }
   }
 
@@ -249,7 +556,10 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
 
   useEffect(() => {
     if (productQuery.trim().length < 2) return;
-    const timer = window.setTimeout(() => void searchProducts(productQuery), 350);
+    const timer = window.setTimeout(
+      () => void searchProducts(productQuery),
+      350,
+    );
     return () => window.clearTimeout(timer);
   }, [productQuery, searchProducts]);
 
@@ -259,8 +569,15 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     if (isEdit) return;
     const saved = localStorage.getItem(draftKey);
     if (saved) {
-      try { reset(JSON.parse(saved)); setNotice({ type: "error", message: "Draf yang belum terkirim telah dipulihkan." }); }
-      catch { localStorage.removeItem(draftKey); }
+      try {
+        reset(JSON.parse(saved));
+        setNotice({
+          type: "error",
+          message: "Draf yang belum terkirim telah dipulihkan.",
+        });
+      } catch {
+        localStorage.removeItem(draftKey);
+      }
     }
   }, [isEdit, reset]);
 
@@ -271,23 +588,40 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     setValue("tipeNameSnapshot", tipe.name);
     if (paymentMethod === "Cash") return;
     const reks = rekeningForTipe(tipe.id);
-    const currentRekening = reks.find((rekening) => rekening.id === getValues("rekeningId"));
+    const currentRekening = reks.find(
+      (rekening) => rekening.id === getValues("rekeningId"),
+    );
     if (isEdit && initialTipeRef.current === tipe.id && currentRekening) {
       setValue("rekeningNameSnapshot", currentRekening.name);
       return;
     }
-    if (isEdit && initialTipeRef.current === tipe.id && !currentRekening) return;
+    if (isEdit && initialTipeRef.current === tipe.id && !currentRekening)
+      return;
     const first = reks[0];
     setValue("rekeningId", first?.id || "");
     setValue("rekeningNameSnapshot", first?.name || "");
     initialTipeRef.current = tipe.id;
-  }, [activeTipes, getValues, isEdit, paymentMethod, rekeningForTipe, setValue, tipeId]);
+  }, [
+    activeTipes,
+    getValues,
+    isEdit,
+    paymentMethod,
+    rekeningForTipe,
+    setValue,
+    tipeId,
+  ]);
 
   useEffect(() => {
     const previousPaymentMethod = previousPaymentMethodRef.current;
-    if (paymentMethod === "Cash" && (!isEdit || previousPaymentMethod !== "Cash")) {
+    if (
+      paymentMethod === "Cash" &&
+      (!isEdit || previousPaymentMethod !== "Cash")
+    ) {
       setValue("rekeningId", cashWalkInRekening?.id || "");
-      setValue("rekeningNameSnapshot", cashWalkInRekening?.name || CASH_WALK_IN_REKENING_NAME);
+      setValue(
+        "rekeningNameSnapshot",
+        cashWalkInRekening?.name || CASH_WALK_IN_REKENING_NAME,
+      );
     }
     previousPaymentMethodRef.current = paymentMethod;
   }, [cashWalkInRekening, isEdit, paymentMethod, setValue]);
@@ -296,63 +630,132 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     setNotice(undefined);
     setCreatedSale(undefined);
     if (!dependenciesReady) {
-      setNotice({ type: "error", message: "Form belum siap. Pastikan produk, tipe pembukuan, dan rekening telah tersedia." });
+      setNotice({
+        type: "error",
+        message:
+          "Form belum siap. Pastikan produk, tipe pembukuan, dan rekening telah tersedia.",
+      });
       return;
     }
     if (!selectedProductsReady) {
-      setNotice({ type: "error", message: "Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP." });
+      setNotice({
+        type: "error",
+        message:
+          "Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP.",
+      });
       return;
     }
     const payload: PenjualanInput = {
       ...data,
       items: data.items.map((item) => ({
         ...item,
-        discount: itemDiscountAmount(item)
-      }))
+        discount: itemDiscountAmount(item),
+      })),
     };
-    const response = await fetch(isEdit && sale ? `/api/sales/${encodeURIComponent(sale.id)}` : "/api/sales", { method: isEdit ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const response = await fetch(
+      isEdit && sale
+        ? `/api/sales/${encodeURIComponent(sale.id)}`
+        : "/api/sales",
+      {
+        method: isEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
     const result = await response.json();
     if (!response.ok || !result.success) {
       if (!isEdit) localStorage.setItem(draftKey, JSON.stringify(data));
-      setNotice({ type: "error", message: result.message || (isEdit ? "Data gagal diperbarui." : "Data gagal dikirim ke ERP. Draf disimpan di perangkat ini.") });
+      setNotice({
+        type: "error",
+        message:
+          result.message ||
+          (isEdit
+            ? "Data gagal diperbarui."
+            : "Data gagal dikirim ke ERP. Draf disimpan di perangkat ini."),
+      });
       return;
     }
     if (isEdit) {
-      setNotice({ type: "success", message: "Transaksi penjualan berhasil diperbarui." });
+      setNotice({
+        type: "success",
+        message: "Transaksi penjualan berhasil diperbarui.",
+      });
       setTimeout(() => router.push("/penjualan"), 700);
       return;
     }
     localStorage.removeItem(draftKey);
-    if (result.data?.id) setCreatedSale({
-      id: String(result.data.id),
-      approvalStatus: result.data.approvalStatus,
-      target: result.data.target,
-      syncStatus: result.data.syncStatus,
-      stockReleaseStatus: result.data.stockReleaseStatus,
-      stockReleaseError: result.data.stockReleaseError,
-      erpPaymentStatus: result.data.erpPaymentStatus,
-      erpPaymentError: result.data.erpPaymentError,
-      retryable: result.data.retryable === true,
-      testReference: result.data.testReference,
-      erpReference: result.data.erpReference
+    if (result.data?.id)
+      setCreatedSale({
+        id: String(result.data.id),
+        approvalStatus: result.data.approvalStatus,
+        target: result.data.target,
+        syncStatus: result.data.syncStatus,
+        stockReleaseStatus: result.data.stockReleaseStatus,
+        stockReleaseError: result.data.stockReleaseError,
+        erpPaymentStatus: result.data.erpPaymentStatus,
+        erpPaymentError: result.data.erpPaymentError,
+        retryable: result.data.retryable === true,
+        testReference: result.data.testReference,
+        erpReference: result.data.erpReference,
+      });
+    const defaultRek =
+      cashWalkInRekening ??
+      (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
+    reset({
+      saleDate: today,
+      tipeId: defaultTipe?.id || "",
+      tipeCodeSnapshot: defaultTipe?.code || "",
+      tipeNameSnapshot: defaultTipe?.name || "",
+      rekeningId: defaultRek?.id || "",
+      rekeningNameSnapshot: defaultRek?.name || "",
+      customerName: "Walk In",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Cash",
+      items: [
+        {
+          productRef: "",
+          productId: undefined,
+          productInputMode: "erp",
+          quantity: 1,
+          unitPrice: 0,
+          discount: 0,
+        },
+      ],
     });
-    const defaultRek = cashWalkInRekening ?? (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
-    reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 }] });
-    const isRetryableErp = result.data?.target === "erp" && (result.data?.retryable === true || result.data?.syncStatus === "failed" || result.data?.stockReleaseStatus === "failed" || result.data?.erpPaymentStatus === "failed" || result.data?.erpPaymentStatus === "pending");
-    const isSyncedErp = result.data?.target === "erp" && result.data?.syncStatus === "synced" && result.data?.erpReference;
+    const isRetryableErp =
+      result.data?.target === "erp" &&
+      (result.data?.retryable === true ||
+        result.data?.syncStatus === "failed" ||
+        result.data?.stockReleaseStatus === "failed" ||
+        result.data?.erpPaymentStatus === "failed" ||
+        result.data?.erpPaymentStatus === "pending");
+    const isSyncedErp =
+      result.data?.target === "erp" &&
+      result.data?.syncStatus === "synced" &&
+      result.data?.erpReference;
     setNotice({
       type: isRetryableErp ? "error" : "success",
       message: isRetryableErp
-          ? result.data?.syncStatus === "synced" && result.data?.stockReleaseStatus === "failed"
-            ? `Invoice terkirim ke ${EXTERNAL_ERP_NAME}, tetapi release stok gagal. Silakan cek ERP Sync.`
-            : result.data?.syncStatus === "synced" && result.data?.stockReleaseStatus === "released" && (result.data?.erpPaymentStatus === "failed" || result.data?.erpPaymentStatus === "pending")
-              ? `Invoice terkirim dan stok released, tetapi payment ERP perlu dicek di ERP Sync.`
-          : `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
+        ? result.data?.syncStatus === "synced" &&
+          result.data?.stockReleaseStatus === "failed"
+          ? `Invoice terkirim ke ${EXTERNAL_ERP_NAME}, tetapi release stok gagal. Silakan cek ERP Sync.`
+          : result.data?.syncStatus === "synced" &&
+              result.data?.stockReleaseStatus === "released" &&
+              (result.data?.erpPaymentStatus === "failed" ||
+                result.data?.erpPaymentStatus === "pending")
+            ? `Invoice terkirim dan stok released, tetapi payment ERP perlu dicek di ERP Sync.`
+            : `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
         : isSyncedErp
-          ? result.data?.stockReleaseStatus === "released" ? (result.data?.erpPaymentStatus === "paid" || result.data?.erpPaymentStatus === "partial" ? `Invoice terkirim, stok released, dan payment tercatat di ${EXTERNAL_ERP_NAME}.` : `Invoice terkirim dan stok berhasil direlease di ${EXTERNAL_ERP_NAME}.`) : `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.`
+          ? result.data?.stockReleaseStatus === "released"
+            ? result.data?.erpPaymentStatus === "paid" ||
+              result.data?.erpPaymentStatus === "partial"
+              ? `Invoice terkirim, stok released, dan payment tercatat di ${EXTERNAL_ERP_NAME}.`
+              : `Invoice terkirim dan stok berhasil direlease di ${EXTERNAL_ERP_NAME}.`
+            : `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.`
           : result.data?.approvalStatus === "pending_approval"
             ? "Data berhasil disimpan dan menunggu approval."
-            : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.`
+            : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.`,
     });
   };
 
@@ -360,29 +763,73 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
     <form onSubmit={handleSubmit(submit)} className="space-y-5">
       {notice && <Toast {...notice} />}
       {createdSale && (
-        <div className={`rounded-lg border px-4 py-3 text-sm ${createdSale.retryable || createdSale.syncStatus === "failed" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
-          {createdSale.testReference && <p className="mb-2 font-semibold">Referensi pengujian: <code>{createdSale.testReference}</code></p>}
-          {createdSale.erpReference && <p className="mb-2">Referensi ERP: <code>{createdSale.erpReference}</code></p>}
-          {(createdSale.retryable || createdSale.syncStatus === "failed") && <p className="mb-2 font-semibold">{createdSale.syncStatus === "synced" && createdSale.stockReleaseStatus === "failed" ? "Invoice sudah terkirim, tetapi release stok perlu retry ERP." : createdSale.syncStatus === "synced" && createdSale.stockReleaseStatus === "released" && (createdSale.erpPaymentStatus === "failed" || createdSale.erpPaymentStatus === "pending") ? "Invoice dan stok sudah aman, tetapi payment ERP perlu retry." : "Transaksi tersimpan untuk retry ERP. Status belum synced."}</p>}
-          {createdSale.erpPaymentError && <p className="mb-2">{createdSale.erpPaymentError}</p>}
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${createdSale.retryable || createdSale.syncStatus === "failed" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}
+        >
+          {createdSale.testReference && (
+            <p className="mb-2 font-semibold">
+              Referensi pengujian: <code>{createdSale.testReference}</code>
+            </p>
+          )}
+          {createdSale.erpReference && (
+            <p className="mb-2">
+              Referensi ERP: <code>{createdSale.erpReference}</code>
+            </p>
+          )}
+          {(createdSale.retryable || createdSale.syncStatus === "failed") && (
+            <p className="mb-2 font-semibold">
+              {createdSale.syncStatus === "synced" &&
+              createdSale.stockReleaseStatus === "failed"
+                ? "Invoice sudah terkirim, tetapi release stok perlu retry ERP."
+                : createdSale.syncStatus === "synced" &&
+                    createdSale.stockReleaseStatus === "released" &&
+                    (createdSale.erpPaymentStatus === "failed" ||
+                      createdSale.erpPaymentStatus === "pending")
+                  ? "Invoice dan stok sudah aman, tetapi payment ERP perlu retry."
+                  : "Transaksi tersimpan untuk retry ERP. Status belum synced."}
+            </p>
+          )}
+          {createdSale.erpPaymentError && (
+            <p className="mb-2">{createdSale.erpPaymentError}</p>
+          )}
           {createdSale.approvalStatus === "approved" ? (
             <div className="flex flex-wrap gap-3">
-              <Link href={`/penjualan/${createdSale.id}`} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">
+              <Link
+                href={`/penjualan/${createdSale.id}`}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+              >
                 Lihat Transaksi
               </Link>
-              {!(createdSale.retryable || createdSale.syncStatus === "failed") && (createdSale.target !== "erp" || Boolean(createdSale.erpReference)) && (
-                <Link href={`/print/sales/${createdSale.id}`} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
-                  Cetak Penjualan
-                </Link>
-              )}
-              <button type="button" onClick={() => setCreatedSale(undefined)} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+              {!(
+                createdSale.retryable || createdSale.syncStatus === "failed"
+              ) &&
+                (createdSale.target !== "erp" ||
+                  Boolean(createdSale.erpReference)) && (
+                  <Link
+                    href={`/print/sales/${createdSale.id}`}
+                    className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+                  >
+                    Cetak Penjualan
+                  </Link>
+                )}
+              <button
+                type="button"
+                onClick={() => setCreatedSale(undefined)}
+                className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+              >
                 Input Lagi
               </button>
-              {createdSale.target === "erp" && (createdSale.retryable || createdSale.syncStatus === "failed" || !createdSale.erpReference) && (
-                <Link href="/erp-sync" className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100">
-                  Lihat ERP Sync
-                </Link>
-              )}
+              {createdSale.target === "erp" &&
+                (createdSale.retryable ||
+                  createdSale.syncStatus === "failed" ||
+                  !createdSale.erpReference) && (
+                  <Link
+                    href="/erp-sync"
+                    className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100"
+                  >
+                    Lihat ERP Sync
+                  </Link>
+                )}
             </div>
           ) : (
             <span>Cetak final tersedia setelah approval.</span>
@@ -390,8 +837,23 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
         </div>
       )}
       <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-        Tujuan transaksi: {targetsErp ? <><b>{EXTERNAL_ERP_NAME}</b> sebagai Invoice Penjualan dan release stok untuk tipe {selectedTipe?.code || "ERP"}.</> : <><b>Sistem {APP_BRAND_NAME}</b>. Tipe ini disimpan lokal.</>}
-        {selectedLooksAj && !targetsErp && <span className="mt-1 block text-xs font-semibold text-amber-700">Tipe terpilih AJ tetapi belum masuk daftar ERP. Cek SALES_ERP_TYPE_CODES di server.</span>}
+        Tujuan transaksi:{" "}
+        {targetsErp ? (
+          <>
+            <b>{EXTERNAL_ERP_NAME}</b> sebagai Invoice Penjualan dan release
+            stok untuk tipe {selectedTipe?.code || "ERP"}.
+          </>
+        ) : (
+          <>
+            <b>Sistem {APP_BRAND_NAME}</b>. Tipe ini disimpan lokal.
+          </>
+        )}
+        {selectedLooksAj && !targetsErp && (
+          <span className="mt-1 block text-xs font-semibold text-amber-700">
+            Tipe terpilih AJ tetapi belum masuk daftar ERP. Cek
+            SALES_ERP_TYPE_CODES di server.
+          </span>
+        )}
       </p>
       {activeTipes.length === 0 && (
         <DependencyNotice message="Tipe pembukuan aktif belum tersedia. Jalankan seed master data atau atur tipe di Pengaturan." />
@@ -399,246 +861,737 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-4">
           <section className="aj-surface overflow-hidden">
-            <div className="border-b border-neutral-200 px-5 py-4 sm:px-6"><h2 className="text-base font-bold tracking-tight">Informasi customer</h2></div>
+            <div className="border-b border-neutral-200 px-5 py-4 sm:px-6">
+              <h2 className="text-base font-bold tracking-tight">
+                Informasi customer
+              </h2>
+            </div>
             <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-              <Field label="Tanggal penjualan" error={errors.saleDate?.message}><Input type="date" {...register("saleDate")} /></Field>
+              <Field label="Tanggal penjualan" error={errors.saleDate?.message}>
+                <Input type="date" {...register("saleDate")} />
+              </Field>
               <Field label="Tipe" error={errors.tipeId?.message}>
-                <Select {...register("tipeId")} disabled={activeTipes.length === 0}>
-                  {activeTipes.length === 0 && <option value="">— tipe belum tersedia —</option>}
-                  {activeTipes.map((t) => <option key={t.id} value={t.id}>{t.code}</option>)}
+                <Select
+                  {...register("tipeId")}
+                  disabled={activeTipes.length === 0}
+                >
+                  {activeTipes.length === 0 && (
+                    <option value="">— tipe belum tersedia —</option>
+                  )}
+                  {activeTipes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.code}
+                    </option>
+                  ))}
                 </Select>
               </Field>
-              <Field label="Nama customer" error={errors.customerName?.message}><Input placeholder="Walk In" {...register("customerName")} /></Field>
-              <Field label="Lokasi customer"><Input placeholder="Toko" {...register("customerLocation")} /></Field>
-              <Field label="Ekspedisi"><Input placeholder="di Tempat" {...register("shippingMethod")} /></Field>
+              <Field label="Nama customer" error={errors.customerName?.message}>
+                <Input placeholder="Walk In" {...register("customerName")} />
+              </Field>
+              <Field label="Lokasi customer">
+                <Input placeholder="Toko" {...register("customerLocation")} />
+              </Field>
+              <Field label="Ekspedisi">
+                <Input
+                  placeholder="di Tempat"
+                  {...register("shippingMethod")}
+                />
+              </Field>
               <div className="sm:col-span-2">
-                <p className="mb-1 text-sm font-medium text-slate-700">Status Pembayaran</p>
+                <p className="mb-1 text-sm font-medium text-slate-700">
+                  Status Pembayaran
+                </p>
                 <div className="inline-flex flex-wrap border border-neutral-300 bg-white">
                   {["Cash", "TF", "Tempo", "Other"].map((method, i) => (
-                    <label key={method} className={`cursor-pointer${i > 0 ? " border-l border-neutral-300" : ""}`}>
-                      <input className="peer sr-only" type="radio" value={method} {...register("paymentMethod")} />
-                      <span className="block min-w-24 px-5 py-2 text-center text-sm font-semibold text-neutral-600 peer-checked:bg-emerald-600 peer-checked:text-white">{method}</span>
+                    <label
+                      key={method}
+                      className={`cursor-pointer${i > 0 ? " border-l border-neutral-300" : ""}`}
+                    >
+                      <input
+                        className="peer sr-only"
+                        type="radio"
+                        value={method}
+                        {...register("paymentMethod")}
+                      />
+                      <span className="block min-w-24 px-5 py-2 text-center text-sm font-semibold text-neutral-600 peer-checked:bg-emerald-600 peer-checked:text-white">
+                        {method}
+                      </span>
                     </label>
                   ))}
                 </div>
-                {errors.paymentMethod?.message && <span className="mt-1 block text-xs text-red-600">{errors.paymentMethod.message}</span>}
+                {errors.paymentMethod?.message && (
+                  <span className="mt-1 block text-xs text-red-600">
+                    {errors.paymentMethod.message}
+                  </span>
+                )}
               </div>
               {paymentMethod !== "Tempo" && (
-                <Field label="Rekening penerima" error={errors.rekeningId?.message}>
-                  <Select {...register("rekeningId")} onChange={(event) => { const label = event.currentTarget.selectedOptions[0]?.text || ""; setValue("rekeningId", event.target.value); setValue("rekeningNameSnapshot", label); }}>
-                    {rekeningOptions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    {rekeningOptions.length === 0 && <option value="">— tidak ada rekening untuk tipe ini —</option>}
+                <Field
+                  label="Rekening penerima"
+                  error={errors.rekeningId?.message}
+                >
+                  <Select
+                    {...register("rekeningId")}
+                    onChange={(event) => {
+                      const label =
+                        event.currentTarget.selectedOptions[0]?.text || "";
+                      setValue("rekeningId", event.target.value);
+                      setValue("rekeningNameSnapshot", label);
+                    }}
+                  >
+                    {rekeningOptions.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                    {rekeningOptions.length === 0 && (
+                      <option value="">
+                        — tidak ada rekening untuk tipe ini —
+                      </option>
+                    )}
                   </Select>
-                  {paymentMethod === "Cash" && !cashWalkInRekening && <span className="mt-1 block text-xs font-normal text-amber-700">Kas Walk In belum tersedia. Jalankan seed master data atau aktifkan rekening cash-w.</span>}
-                  {paymentMethod !== "Cash" && filteredRekenings.length === 0 && <span className="mt-1 block text-xs font-normal text-amber-700">Belum ada rekening untuk tipe ini. Tambah di Pengaturan → Rekening.</span>}
+                  {paymentMethod === "Cash" && !cashWalkInRekening && (
+                    <span className="mt-1 block text-xs font-normal text-amber-700">
+                      Kas Walk In belum tersedia. Jalankan seed master data atau
+                      aktifkan rekening cash-w.
+                    </span>
+                  )}
+                  {paymentMethod !== "Cash" &&
+                    filteredRekenings.length === 0 && (
+                      <span className="mt-1 block text-xs font-normal text-amber-700">
+                        Belum ada rekening untuk tipe ini. Tambah di Pengaturan
+                        → Rekening.
+                      </span>
+                    )}
                 </Field>
               )}
-              {paymentMethod === "Tempo" && <Field label="Tanggal Jatuh Tempo" error={errors.dueDate?.message}><Input type="date" {...register("dueDate")} /></Field>}
-              <Field label="Tanggal kirim"><Input type="date" {...register("deliveryDate")} /></Field>
-              <div className="sm:col-span-2"><Field label="Catatan"><Textarea rows={1} placeholder="Opsional" {...register("notes")} /></Field></div>
+              {paymentMethod === "Tempo" && (
+                <Field
+                  label="Tanggal Jatuh Tempo"
+                  error={errors.dueDate?.message}
+                >
+                  <Input type="date" {...register("dueDate")} />
+                </Field>
+              )}
+              <Field label="Tanggal kirim">
+                <Input type="date" {...register("deliveryDate")} />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Catatan">
+                  <Textarea
+                    rows={1}
+                    placeholder="Opsional"
+                    {...register("notes")}
+                  />
+                </Field>
+              </div>
               {allowTestTransaction && targetsErp && (
                 <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-emerald-600" {...register("isTestTransaction")} />
-                  <span><b>Transaksi pengujian</b><span className="mt-0.5 block text-xs">Nama customer dan catatan akan diberi referensi TEST agar mudah ditemukan dan dihapus manual di ERP.</span></span>
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-emerald-600"
+                    {...register("isTestTransaction")}
+                  />
+                  <span>
+                    <b>Transaksi pengujian</b>
+                    <span className="mt-0.5 block text-xs">
+                      Nama customer dan catatan akan diberi referensi TEST agar
+                      mudah ditemukan dan dihapus manual di ERP.
+                    </span>
+                  </span>
                 </label>
               )}
             </div>
           </section>
           <section className="aj-surface overflow-visible">
             <div className="sticky top-2 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
-              <div><h2 className="text-base font-bold tracking-tight">Barang</h2><p className="mt-0.5 text-xs text-neutral-500">{fields.length} item</p></div>
-              <Button type="button" variant="secondary" onClick={addItem} disabled={productState.status !== "ready"}>+ Tambah barang</Button>
+              <div>
+                <h2 className="text-base font-bold tracking-tight">Barang</h2>
+                <p className="mt-0.5 text-xs text-neutral-500">
+                  {fields.length} item
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={addItem}
+                disabled={productState.status !== "ready"}
+              >
+                + Tambah barang
+              </Button>
             </div>
-            <ProductDependencyState state={productState} onRetry={refreshProducts} />
+            <ProductDependencyState
+              state={productState}
+              onRetry={refreshProducts}
+            />
             <StockDependencyState state={stockState} />
-            <div className="hidden grid-cols-[minmax(0,2fr)_78px_120px_100px_120px] gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 md:grid sm:px-6"><span>Barang</span><span>Qty</span><span>Harga satuan</span><span>Diskon</span><span>Subtotal</span></div>
+            <div className="hidden grid-cols-[minmax(0,2fr)_78px_120px_100px_120px] gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 md:grid sm:px-6">
+              <span>Barang</span>
+              <span>Qty</span>
+              <span>Harga satuan</span>
+              <span>Diskon</span>
+              <span>Subtotal</span>
+            </div>
             <div className="divide-y divide-neutral-200">
               {fields.map((field, index) => {
-                const selected = productOptions.find((option) => normalizeCode(option.product.code) === normalizeCode(values[index]?.productRef));
+                const selected = productOptions.find(
+                  (option) =>
+                    normalizeCode(option.product.code) ===
+                    normalizeCode(values[index]?.productRef),
+                );
                 const mode = values[index]?.productInputMode || "erp";
-                const erpSelectionError = mode === "erp" && values[index]?.productRef?.trim() && !values[index]?.productId?.trim()
-                  ? "Pilih barang dari hasil pencarian ERP."
-                  : undefined;
+                const erpSelectionError =
+                  mode === "erp" &&
+                  values[index]?.productRef?.trim() &&
+                  !values[index]?.productId?.trim()
+                    ? "Pilih barang dari hasil pencarian ERP."
+                    : undefined;
                 const quantity = Number(values[index]?.quantity || 0);
-                const selectedStock = selected?.stockRows.find((row) => row.warehouseId === values[index]?.warehouseId && (row.rackId || "") === (values[index]?.rackId || ""));
-                const stockExceeded = selectedStock?.quantity !== null && selectedStock?.quantity !== undefined ? quantity > selectedStock.quantity : selected?.quantity !== null && selected?.quantity !== undefined && quantity > selected.quantity;
+                const selectedStock = selected?.stockRows.find(
+                  (row) =>
+                    row.warehouseId === values[index]?.warehouseId &&
+                    (row.rackId || "") === (values[index]?.rackId || ""),
+                );
+                const stockExceeded =
+                  selectedStock?.quantity !== null &&
+                  selectedStock?.quantity !== undefined
+                    ? quantity > selectedStock.quantity
+                    : selected?.quantity !== null &&
+                      selected?.quantity !== undefined &&
+                      quantity > selected.quantity;
                 return (
-                <div id={`sale-item-${index}`} key={field.id} className="scroll-mt-24 p-5 sm:p-6">
-                  <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
-                    <input type="hidden" {...register(`items.${index}.productInputMode`)} />
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1 ${mode === "erp" ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-slate-200 text-slate-600"}`}
-                      onClick={() => {
-                        setValue(`items.${index}.productInputMode`, "erp", { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
-                        setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
-                      }}
-                    >
-                      Pilih dari ERP
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-full border px-3 py-1 ${mode === "manual" ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-600"}`}
-                      onClick={() => {
-                        const currentRef = values[index]?.productRef || "";
-                        setValue(`items.${index}.productInputMode`, "manual", { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
-                        setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
-                        setValue(`items.${index}.manualProduct.sku`, currentRef, { shouldDirty: true, shouldValidate: true });
-                        setValue(`items.${index}.manualProduct.sellingPrice`, Number(values[index]?.unitPrice || 0), { shouldDirty: true, shouldValidate: true });
-                      }}
-                    >
-                      Barang baru/manual
-                    </button>
-                    {mode === "manual" && <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">Produk baru akan dibuat di ERP bila SKU belum ada</span>}
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
-                    <Field label="Barang" error={errors.items?.[index]?.productRef?.message || erpSelectionError}>
-                      <input type="hidden" {...register(`items.${index}.productId`)} />
-                      <input type="hidden" {...register(`items.${index}.warehouseId`)} />
-                      <input type="hidden" {...register(`items.${index}.warehouseNameSnapshot`)} />
-                      <input type="hidden" {...register(`items.${index}.rackId`)} />
-                      <input type="hidden" {...register(`items.${index}.rackNameSnapshot`)} />
-                      <input type="hidden" {...register(`items.${index}.unitSnapshot`)} />
-                      {mode === "manual" ? (
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="SKU produk baru"
-                            {...register(`items.${index}.manualProduct.sku`)}
-                            onChange={(event) => {
-                              setValue(`items.${index}.manualProduct.sku`, event.target.value, { shouldDirty: true, shouldValidate: true });
-                              setValue(`items.${index}.productRef`, event.target.value, { shouldDirty: true, shouldValidate: true });
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => {
-                              const sku = generateManualSku(selectedTipe?.code);
-                              setValue(`items.${index}.manualProduct.sku`, sku, { shouldDirty: true, shouldValidate: true });
-                              setValue(`items.${index}.productRef`, sku, { shouldDirty: true, shouldValidate: true });
-                            }}
-                          >
-                            Generate SKU
-                          </Button>
-                        </div>
-                      ) : (
-                        <ProductSearchSelect
-                          name={`items.${index}.productRef`}
-                          value={values[index]?.productRef || ""}
-                          disabled={productState.status !== "ready"}
-                          options={productOptions}
-                          onSelect={(option) => {
-                            setValue(`items.${index}.productInputMode`, "erp", { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.productId`, option.product.productId || option.product.id, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.unitSnapshot`, option.unit || option.stockRows.find((stock) => Boolean(stock.unit))?.unit || undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.uomIdSnapshot`, option.product.uomId, { shouldDirty: true, shouldValidate: true });
-                            if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
-                              setValue(`items.${index}.unitPrice`, option.product.sellingPrice, { shouldDirty: true, shouldValidate: true });
-                            }
-                          }}
-                          onInvalidInput={(value) => {
-                            setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
-                            setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
-                            setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
-                          }}
-                          onSearch={setProductQuery}
-                        />
+                  <div
+                    id={`sale-item-${index}`}
+                    key={field.id}
+                    className="scroll-mt-24 p-5 sm:p-6"
+                  >
+                    <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
+                      <input
+                        type="hidden"
+                        {...register(`items.${index}.productInputMode`)}
+                      />
+                      <button
+                        type="button"
+                        className={`rounded-full border px-3 py-1 ${mode === "erp" ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-slate-200 text-slate-600"}`}
+                        onClick={() => {
+                          setValue(`items.${index}.productInputMode`, "erp", {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(`items.${index}.manualProduct`, undefined, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(`items.${index}.warehouseId`, undefined, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(
+                            `items.${index}.warehouseNameSnapshot`,
+                            undefined,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(`items.${index}.rackId`, undefined, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(
+                            `items.${index}.rackNameSnapshot`,
+                            undefined,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(`items.${index}.unitSnapshot`, undefined, {
+                            shouldDirty: true,
+                          });
+                          setValue(`items.${index}.uomIdSnapshot`, undefined, {
+                            shouldDirty: true,
+                          });
+                        }}
+                      >
+                        Pilih dari ERP
+                      </button>
+                      <button
+                        type="button"
+                        className={`rounded-full border px-3 py-1 ${mode === "manual" ? "border-amber-500 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-600"}`}
+                        onClick={() => {
+                          const currentRef = values[index]?.productRef || "";
+                          setValue(
+                            `items.${index}.productInputMode`,
+                            "manual",
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(`items.${index}.productId`, undefined, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(`items.${index}.warehouseId`, undefined, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(
+                            `items.${index}.warehouseNameSnapshot`,
+                            undefined,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(`items.${index}.rackId`, undefined, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(
+                            `items.${index}.rackNameSnapshot`,
+                            undefined,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(`items.${index}.unitSnapshot`, undefined, {
+                            shouldDirty: true,
+                          });
+                          setValue(`items.${index}.uomIdSnapshot`, undefined, {
+                            shouldDirty: true,
+                          });
+                          setValue(
+                            `items.${index}.manualProduct.sku`,
+                            currentRef,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(
+                            `items.${index}.manualProduct.sellingPrice`,
+                            Number(values[index]?.unitPrice || 0),
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                        }}
+                      >
+                        Barang baru/manual
+                      </button>
+                      {mode === "manual" && (
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">
+                          Produk baru akan dibuat di ERP bila SKU belum ada
+                        </span>
                       )}
-                    </Field>
-                    <Field label="Qty" error={errors.items?.[index]?.quantity?.message}><Input type="number" min="1" step="1" {...register(`items.${index}.quantity`, { valueAsNumber: true })} /></Field>
-                    <Field label="Harga" error={errors.items?.[index]?.unitPrice?.message}>
-                      <MoneyInput
-                        value={values[index]?.unitPrice}
-                        min={0}
-                        onValueChange={(value) => {
-                          setValue(`items.${index}.unitPrice`, value, { shouldDirty: true, shouldValidate: true });
-                          if (mode === "manual") setValue(`items.${index}.manualProduct.sellingPrice`, value, { shouldDirty: true, shouldValidate: true });
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
+                      <Field
+                        label="Barang"
+                        error={
+                          errors.items?.[index]?.productRef?.message ||
+                          erpSelectionError
+                        }
+                      >
+                        <input
+                          type="hidden"
+                          {...register(`items.${index}.productId`)}
+                        />
+                        <input
+                          type="hidden"
+                          {...register(`items.${index}.warehouseId`)}
+                        />
+                        <input
+                          type="hidden"
+                          {...register(`items.${index}.warehouseNameSnapshot`)}
+                        />
+                        <input
+                          type="hidden"
+                          {...register(`items.${index}.rackId`)}
+                        />
+                        <input
+                          type="hidden"
+                          {...register(`items.${index}.rackNameSnapshot`)}
+                        />
+                        <input
+                          type="hidden"
+                          {...register(`items.${index}.unitSnapshot`)}
+                        />
+                        {mode === "manual" ? (
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="SKU produk baru"
+                              {...register(`items.${index}.manualProduct.sku`)}
+                              onChange={(event) => {
+                                setValue(
+                                  `items.${index}.manualProduct.sku`,
+                                  event.target.value,
+                                  { shouldDirty: true, shouldValidate: true },
+                                );
+                                setValue(
+                                  `items.${index}.productRef`,
+                                  event.target.value,
+                                  { shouldDirty: true, shouldValidate: true },
+                                );
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => {
+                                const sku = generateManualSku(
+                                  selectedTipe?.code,
+                                );
+                                setValue(
+                                  `items.${index}.manualProduct.sku`,
+                                  sku,
+                                  { shouldDirty: true, shouldValidate: true },
+                                );
+                                setValue(`items.${index}.productRef`, sku, {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                });
+                              }}
+                            >
+                              Generate SKU
+                            </Button>
+                          </div>
+                        ) : (
+                          <ProductSearchSelect
+                            name={`items.${index}.productRef`}
+                            value={values[index]?.productRef || ""}
+                            disabled={productState.status !== "ready"}
+                            options={productOptions}
+                            onSelect={(option) => {
+                              setValue(
+                                `items.${index}.productInputMode`,
+                                "erp",
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.manualProduct`,
+                                undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.productRef`,
+                                option.product.code,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.productId`,
+                                option.product.productId || option.product.id,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.warehouseId`,
+                                undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.warehouseNameSnapshot`,
+                                undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(`items.${index}.rackId`, undefined, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              setValue(
+                                `items.${index}.rackNameSnapshot`,
+                                undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.unitSnapshot`,
+                                option.unit ||
+                                  option.stockRows.find((stock) =>
+                                    Boolean(stock.unit),
+                                  )?.unit ||
+                                  undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.uomIdSnapshot`,
+                                option.product.uomId,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              if (
+                                typeof option.product.sellingPrice ===
+                                  "number" &&
+                                Number.isFinite(option.product.sellingPrice)
+                              ) {
+                                setValue(
+                                  `items.${index}.unitPrice`,
+                                  option.product.sellingPrice,
+                                  { shouldDirty: true, shouldValidate: true },
+                                );
+                              }
+                            }}
+                            onInvalidInput={(value) => {
+                              setValue(`items.${index}.productRef`, value, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              setValue(`items.${index}.productId`, undefined, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              setValue(
+                                `items.${index}.warehouseId`,
+                                undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.warehouseNameSnapshot`,
+                                undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(`items.${index}.rackId`, undefined, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                              setValue(
+                                `items.${index}.rackNameSnapshot`,
+                                undefined,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                              setValue(
+                                `items.${index}.unitSnapshot`,
+                                undefined,
+                                { shouldDirty: true },
+                              );
+                              setValue(
+                                `items.${index}.uomIdSnapshot`,
+                                undefined,
+                                { shouldDirty: true },
+                              );
+                            }}
+                            onSearch={setProductQuery}
+                          />
+                        )}
+                      </Field>
+                      <Field
+                        label="Qty"
+                        error={errors.items?.[index]?.quantity?.message}
+                      >
+                        <Input
+                          type="number"
+                          min="1"
+                          step="1"
+                          {...register(`items.${index}.quantity`, {
+                            valueAsNumber: true,
+                          })}
+                        />
+                      </Field>
+                      <Field
+                        label="Harga"
+                        error={errors.items?.[index]?.unitPrice?.message}
+                      >
+                        <MoneyInput
+                          value={values[index]?.unitPrice}
+                          min={0}
+                          onValueChange={(value) => {
+                            setValue(`items.${index}.unitPrice`, value, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                            if (mode === "manual")
+                              setValue(
+                                `items.${index}.manualProduct.sellingPrice`,
+                                value,
+                                { shouldDirty: true, shouldValidate: true },
+                              );
+                          }}
+                        />
+                      </Field>
+                      <Field
+                        label="Diskon (%)"
+                        error={errors.items?.[index]?.discount?.message}
+                      >
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={values[index]?.discount ?? 0}
+                          onChange={(event) =>
+                            setValue(
+                              `items.${index}.discount`,
+                              clampDiscountPercent(Number(event.target.value)),
+                              { shouldDirty: true, shouldValidate: true },
+                            )
+                          }
+                        />
+                      </Field>
+                      <div>
+                        <p className="mb-1 text-sm font-medium text-slate-700">
+                          Subtotal
+                        </p>
+                        <p className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold">
+                          {rupiah(itemNetTotal(values[index] || {}))}
+                        </p>
+                      </div>
+                    </div>
+                    {mode === "manual" ? (
+                      <ManualProductFields
+                        index={index}
+                        register={register}
+                        setValue={setValue}
+                        values={values}
+                        referenceState={referenceState}
+                      />
+                    ) : (
+                      <ProductSelectionInfo
+                        option={selected}
+                        selectedWarehouseId={values[index]?.warehouseId}
+                        selectedRackId={values[index]?.rackId}
+                        stockExceeded={stockExceeded}
+                        stockState={stockState}
+                        targetsErp={targetsErp}
+                        onStockSelect={(stock) => {
+                          setValue(
+                            `items.${index}.warehouseId`,
+                            stock.warehouseId,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(
+                            `items.${index}.warehouseNameSnapshot`,
+                            stock.warehouse || undefined,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
+                          setValue(`items.${index}.rackId`, stock.rackId, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue(
+                            `items.${index}.rackNameSnapshot`,
+                            stock.rack || undefined,
+                            { shouldDirty: true, shouldValidate: true },
+                          );
                         }}
                       />
-                    </Field>
-                    <Field label="Diskon (%)" error={errors.items?.[index]?.discount?.message}>
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={values[index]?.discount ?? 0}
-                        onChange={(event) => setValue(`items.${index}.discount`, clampDiscountPercent(Number(event.target.value)), { shouldDirty: true, shouldValidate: true })}
-                      />
-                    </Field>
-                    <div><p className="mb-1 text-sm font-medium text-slate-700">Subtotal</p><p className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold">{rupiah(itemNetTotal(values[index] || {}))}</p></div>
+                    )}
+                    {fields.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="mt-3 text-xs font-semibold text-red-600"
+                      >
+                        Hapus barang
+                      </button>
+                    )}
                   </div>
-                  {mode === "manual" ? <ManualProductFields index={index} register={register} setValue={setValue} values={values} referenceState={referenceState} /> : <ProductSelectionInfo option={selected} selectedWarehouseId={values[index]?.warehouseId} selectedRackId={values[index]?.rackId} stockExceeded={stockExceeded} stockState={stockState} targetsErp={targetsErp} onStockSelect={(stock) => {
-                    setValue(`items.${index}.warehouseId`, stock.warehouseId, { shouldDirty: true, shouldValidate: true });
-                    setValue(`items.${index}.warehouseNameSnapshot`, stock.warehouse || undefined, { shouldDirty: true, shouldValidate: true });
-                    setValue(`items.${index}.rackId`, stock.rackId, { shouldDirty: true, shouldValidate: true });
-                    setValue(`items.${index}.rackNameSnapshot`, stock.rack || undefined, { shouldDirty: true, shouldValidate: true });
-                  }} />}
-                  {fields.length > 1 && <button type="button" onClick={() => remove(index)} className="mt-3 text-xs font-semibold text-red-600">Hapus barang</button>}
-                </div>
-              );})}
+                );
+              })}
             </div>
-            {errors.items?.root?.message && <p className="px-5 py-3 text-sm text-red-600">{errors.items.root.message}</p>}
+            {errors.items?.root?.message && (
+              <p className="px-5 py-3 text-sm text-red-600">
+                {errors.items.root.message}
+              </p>
+            )}
           </section>
         </div>
         <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
           <section className="aj-surface p-5">
-            <h2 className="text-base font-bold tracking-tight">Ringkasan penjualan</h2>
+            <h2 className="text-base font-bold tracking-tight">
+              Ringkasan penjualan
+            </h2>
             <dl className="mt-5 space-y-3 text-sm">
-              <div className="flex justify-between"><dt className="text-neutral-500">Subtotal</dt><dd>{rupiah(subtotal)}</dd></div>
-              <div className="flex justify-between"><dt className="text-neutral-500">Diskon</dt><dd>{rupiah(discountTotal)}</dd></div>
-              <div className="border-t border-neutral-300 pt-4"><dt className="text-sm font-semibold">Total</dt><dd className="mt-1 text-3xl font-bold tracking-tight">{rupiah(total)}</dd></div>
+              <div className="flex justify-between">
+                <dt className="text-neutral-500">Subtotal</dt>
+                <dd>{rupiah(subtotal)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-neutral-500">Diskon</dt>
+                <dd>{rupiah(discountTotal)}</dd>
+              </div>
+              <div className="border-t border-neutral-300 pt-4">
+                <dt className="text-sm font-semibold">Total</dt>
+                <dd className="mt-1 text-3xl font-bold tracking-tight">
+                  {rupiah(total)}
+                </dd>
+              </div>
             </dl>
             <div className="sticky bottom-3 z-20 mt-6 rounded-md border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">
-              <Button type="submit" className="w-full" disabled={isSubmitting || !dependenciesReady || !selectedProductsReady}>{isSubmitting ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penjualan"}</Button>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={
+                  isSubmitting || !dependenciesReady || !selectedProductsReady
+                }
+              >
+                {isSubmitting
+                  ? "Menyimpan..."
+                  : isEdit
+                    ? "Simpan Perubahan"
+                    : "Simpan Penjualan"}
+              </Button>
             </div>
-            {!dependenciesReady && <p className="mt-2 text-center text-xs text-slate-500">Lengkapi konfigurasi master data dan pastikan produk ERP berhasil dimuat.</p>}
-            {dependenciesReady && !selectedProductsReady && <p className="mt-2 text-center text-xs text-slate-500">Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP.</p>}
+            {!dependenciesReady && (
+              <p className="mt-2 text-center text-xs text-slate-500">
+                Lengkapi konfigurasi master data dan pastikan produk ERP
+                berhasil dimuat.
+              </p>
+            )}
+            {dependenciesReady && !selectedProductsReady && (
+              <p className="mt-2 text-center text-xs text-slate-500">
+                Pilih barang dari ERP atau lengkapi data barang manual untuk
+                dibuat di ERP.
+              </p>
+            )}
           </section>
         </aside>
       </div>
-      <p className="flex items-center gap-2 text-xs text-neutral-500"><span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-400 text-[10px]">i</span> Barang dapat dipilih dari ERP atau dibuat sebagai produk baru di Aneka Jaya ERP. Transaksi non-AJ tetap lokal, tetapi produk manual tetap disinkronkan ke ERP.</p>
+      <p className="flex items-center gap-2 text-xs text-neutral-500">
+        <span className="grid h-4 w-4 place-items-center rounded-full border border-neutral-400 text-[10px]">
+          i
+        </span>{" "}
+        Barang dapat dipilih dari ERP atau dibuat sebagai produk baru di Aneka
+        Jaya ERP. Transaksi non-AJ tetap lokal, tetapi produk manual tetap
+        disinkronkan ke ERP.
+      </p>
     </form>
   );
 }
 
-export function buildProductOptions(products: Product[], stocks: StockItem[]): ProductOption[] {
+export function buildProductOptions(
+  products: Product[],
+  stocks: StockItem[],
+): ProductOption[] {
   return products.map((product) => {
-    const stockRows = stocks.filter((stock) => normalizeCode(stock.productCode) === normalizeCode(product.code));
-    const validQuantities = stockRows.map((stock) => stock.quantity).filter((quantity): quantity is number => typeof quantity === "number" && Number.isFinite(quantity));
-    const quantity = product.stockSummary?.quantity ?? (stockRows.length > 0 && validQuantities.length === stockRows.length ? validQuantities.reduce((sum, value) => sum + value, 0) : null);
-    const stockMinimum = product.stockSummary?.minimumStock ?? stockRows.find((stock) => stock.minimumStock !== null && stock.minimumStock !== undefined)?.minimumStock ?? null;
-    const unit = product.unit ?? stockRows.find((stock) => stock.unit)?.unit ?? null;
-    const warehouses = Array.from(new Set(stockRows.map((stock) => stock.warehouse).filter((warehouse): warehouse is string => Boolean(warehouse))));
-    const warnings = [...(product.dataQualityWarnings ?? []), ...stockRows.flatMap((stock) => stock.dataQualityWarnings ?? [])];
-    if (stockRows.length === 0 && !product.stockSummary) warnings.push("stok ERP");
+    const stockRows = stocks.filter(
+      (stock) =>
+        normalizeCode(stock.productCode) === normalizeCode(product.code),
+    );
+    const validQuantities = stockRows
+      .map((stock) => stock.quantity)
+      .filter(
+        (quantity): quantity is number =>
+          typeof quantity === "number" && Number.isFinite(quantity),
+      );
+    const quantity =
+      product.stockSummary?.quantity ??
+      (stockRows.length > 0 && validQuantities.length === stockRows.length
+        ? validQuantities.reduce((sum, value) => sum + value, 0)
+        : null);
+    const stockMinimum =
+      product.stockSummary?.minimumStock ??
+      stockRows.find(
+        (stock) =>
+          stock.minimumStock !== null && stock.minimumStock !== undefined,
+      )?.minimumStock ??
+      null;
+    const unit =
+      product.unit ?? stockRows.find((stock) => stock.unit)?.unit ?? null;
+    const warehouses = Array.from(
+      new Set(
+        stockRows
+          .map((stock) => stock.warehouse)
+          .filter((warehouse): warehouse is string => Boolean(warehouse)),
+      ),
+    );
+    const warnings = [
+      ...(product.dataQualityWarnings ?? []),
+      ...stockRows.flatMap((stock) => stock.dataQualityWarnings ?? []),
+    ];
+    if (stockRows.length === 0 && !product.stockSummary)
+      warnings.push("stok ERP");
     if (quantity === null) warnings.push("qty ERP");
     if (product.sellingPrice === null) warnings.push("harga jual");
-    return { product, stockRows, quantity, minimumStock: product.minimumStock ?? stockMinimum, unit, warehouses, warnings: Array.from(new Set(warnings)) };
+    return {
+      product,
+      stockRows,
+      quantity,
+      minimumStock: product.minimumStock ?? stockMinimum,
+      unit,
+      warehouses,
+      warnings: Array.from(new Set(warnings)),
+    };
   });
 }
 
@@ -648,66 +1601,144 @@ function productCacheKey(product: Product) {
     : `sku:${normalizeCode(product.code)}`;
 }
 
-export function mergeErpProductResults(current: Product[], incoming: Product[]): Product[] {
-  const products = new Map(current.map((product) => [productCacheKey(product), product]));
-  for (const product of incoming) products.set(productCacheKey(product), product);
+export function mergeErpProductResults(
+  current: Product[],
+  incoming: Product[],
+): Product[] {
+  const products = new Map(
+    current.map((product) => [productCacheKey(product), product]),
+  );
+  for (const product of incoming)
+    products.set(productCacheKey(product), product);
   return Array.from(products.values());
 }
 
 export function isSalesItemReady(item: PenjualanInput["items"][number]) {
   if (item.productInputMode === "manual") {
     const sku = item.manualProduct?.sku || item.productRef;
-    const hasBasic = Boolean(String(sku || "").trim() && String(item.manualProduct?.name || "").trim());
-    return hasBasic && Boolean(item.manualProduct?.productCategoryId && item.manualProduct?.uomId && String(item.manualProduct?.brandCode || "").trim());
+    const hasBasic = Boolean(
+      String(sku || "").trim() && String(item.manualProduct?.name || "").trim(),
+    );
+    return (
+      hasBasic &&
+      Boolean(
+        item.manualProduct?.productCategoryId &&
+        item.manualProduct?.uomId &&
+        String(item.manualProduct?.brandCode || "").trim(),
+      )
+    );
   }
   return Boolean(item.productRef?.trim() && item.productId?.trim());
 }
 
-function mergeProductsWithSaleItems(products: Product[], sale?: Sale): Product[] {
+function mergeProductsWithSaleItems(
+  products: Product[],
+  sale?: Sale,
+): Product[] {
   if (!sale?.items?.length) return products;
-  const existingCodes = new Set(products.map((product) => normalizeCode(product.code)));
+  const existingCodes = new Set(
+    products.map((product) => normalizeCode(product.code)),
+  );
   const fallbacks = sale.items
-    .filter((item) => item.productRef && !existingCodes.has(normalizeCode(item.productRef)))
-    .map((item): Product => ({
-      id: `saved-${item.productRef}`,
-      productId: item.productId,
-      code: item.productRef,
-      name: `Produk tersimpan ${item.productRef}`,
-      category: null,
-      unit: item.unitSnapshot || null,
-      uomId: item.uomIdSnapshot,
-      sellingPrice: item.unitPrice,
-      costPrice: null,
-      minimumStock: null,
-      isActive: true,
-      updatedAt: sale.createdAt || new Date().toISOString(),
-      dataQualityWarnings: ["Produk tidak masuk hasil produk ERP awal. Cari dan pilih ulang bila ingin mengganti barang."]
-    }));
+    .filter(
+      (item) =>
+        item.productRef && !existingCodes.has(normalizeCode(item.productRef)),
+    )
+    .map(
+      (item): Product => ({
+        id: `saved-${item.productRef}`,
+        productId: item.productId,
+        code: item.productRef,
+        name: `Produk tersimpan ${item.productRef}`,
+        category: null,
+        unit: item.unitSnapshot || null,
+        uomId: item.uomIdSnapshot,
+        sellingPrice: item.unitPrice,
+        costPrice: null,
+        minimumStock: null,
+        isActive: true,
+        updatedAt: sale.createdAt || new Date().toISOString(),
+        dataQualityWarnings: [
+          "Produk tidak masuk hasil produk ERP awal. Cari dan pilih ulang bila ingin mengganti barang.",
+        ],
+      }),
+    );
   return [...products, ...fallbacks];
 }
 
 function DependencyNotice({ message }: { message: string }) {
-  return <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{message}</div>;
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      {message}
+    </div>
+  );
 }
 
-function ProductDependencyState({ state, onRetry }: { state: ProductState; onRetry: () => Promise<void> }) {
-  if (state.status === "ready") return <p className="border-b border-emerald-100 bg-emerald-50 px-5 py-2 text-xs text-emerald-800 sm:px-6">Produk ERP siap digunakan.</p>;
-  if (state.status === "loading") return <p className="border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-sm text-neutral-600 sm:px-6">Memuat produk dari ERP...</p>;
+function ProductDependencyState({
+  state,
+  onRetry,
+}: {
+  state: ProductState;
+  onRetry: () => Promise<void>;
+}) {
+  if (state.status === "ready")
+    return (
+      <p className="border-b border-emerald-100 bg-emerald-50 px-5 py-2 text-xs text-emerald-800 sm:px-6">
+        Produk ERP siap digunakan.
+      </p>
+    );
+  if (state.status === "loading")
+    return (
+      <p className="border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-sm text-neutral-600 sm:px-6">
+        Memuat produk dari ERP...
+      </p>
+    );
   return (
     <div className="flex flex-col gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-      <div><p className="font-semibold">{state.status === "empty" ? "Produk belum tersedia" : "Produk gagal dimuat"}</p><p className="mt-0.5 text-xs">{state.message}</p></div>
-      <Button type="button" variant="secondary" onClick={() => void onRetry()}>Muat ulang</Button>
+      <div>
+        <p className="font-semibold">
+          {state.status === "empty"
+            ? "Produk belum tersedia"
+            : "Produk gagal dimuat"}
+        </p>
+        <p className="mt-0.5 text-xs">{state.message}</p>
+      </div>
+      <Button type="button" variant="secondary" onClick={() => void onRetry()}>
+        Muat ulang
+      </Button>
     </div>
   );
 }
 
 function StockDependencyState({ state }: { state: StockState }) {
-  if (state.status === "loading") return <p className="border-b border-neutral-100 bg-neutral-50 px-5 py-2 text-xs text-neutral-600 sm:px-6">Memuat stok ERP...</p>;
-  if (state.status === "success") return <p className="border-b border-blue-100 bg-blue-50 px-5 py-2 text-xs text-blue-800 sm:px-6">Stok ERP berhasil dimuat · terakhir {state.updatedAt}</p>;
-  return <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 sm:px-6">{state.message}</p>;
+  if (state.status === "loading")
+    return (
+      <p className="border-b border-neutral-100 bg-neutral-50 px-5 py-2 text-xs text-neutral-600 sm:px-6">
+        Memuat stok ERP...
+      </p>
+    );
+  if (state.status === "success")
+    return (
+      <p className="border-b border-blue-100 bg-blue-50 px-5 py-2 text-xs text-blue-800 sm:px-6">
+        Stok ERP berhasil dimuat · terakhir {state.updatedAt}
+      </p>
+    );
+  return (
+    <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 sm:px-6">
+      {state.message}
+    </p>
+  );
 }
 
-function ProductSearchSelect({ name, value, options, disabled, onSelect, onInvalidInput, onSearch }: {
+function ProductSearchSelect({
+  name,
+  value,
+  options,
+  disabled,
+  onSelect,
+  onInvalidInput,
+  onSearch,
+}: {
   name: string;
   value: string;
   options: ProductOption[];
@@ -716,13 +1747,21 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
   onInvalidInput: (value: string) => void;
   onSearch?: (value: string) => void;
 }) {
-  const selected = options.find((option) => normalizeCode(option.product.code) === normalizeCode(value));
+  const selected = options.find(
+    (option) => normalizeCode(option.product.code) === normalizeCode(value),
+  );
   const [query, setQuery] = useState(selected ? optionLabel(selected) : value);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const rows = normalized ? options.filter((option) => `${option.product.code} ${option.product.name}`.toLowerCase().includes(normalized)) : options;
+    const rows = normalized
+      ? options.filter((option) =>
+          `${option.product.code} ${option.product.name}`
+            .toLowerCase()
+            .includes(normalized),
+        )
+      : options;
     return rows.slice(0, 12);
   }, [options, query]);
 
@@ -769,7 +1808,9 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
           if (event.key === "ArrowDown") {
             event.preventDefault();
             setOpen(true);
-            setActiveIndex((current) => Math.min(current + 1, Math.max(0, filtered.length - 1)));
+            setActiveIndex((current) =>
+              Math.min(current + 1, Math.max(0, filtered.length - 1)),
+            );
           }
           if (event.key === "ArrowUp") {
             event.preventDefault();
@@ -783,41 +1824,102 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
         onBlur={() => window.setTimeout(() => setOpen(false), 120)}
       />
       {open && !disabled && (
-        <div id={`${name}-options`} role="listbox" className="absolute z-[100] mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-xl">
+        <div
+          id={`${name}-options`}
+          role="listbox"
+          className="absolute z-[100] mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-xl"
+        >
           {filtered.map((option, index) => (
             <button
               key={option.product.id || option.product.code}
               type="button"
               role="option"
-              aria-selected={normalizeCode(option.product.code) === normalizeCode(value)}
+              aria-selected={
+                normalizeCode(option.product.code) === normalizeCode(value)
+              }
               className={`w-full rounded-lg px-3 py-2 text-left transition ${index === activeIndex ? "bg-emerald-50" : "hover:bg-neutral-50"}`}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => choose(option)}
             >
-              <span className="block font-bold text-slate-900">{option.product.code} · {option.product.name}</span>
-              <span className="mt-0.5 block text-xs text-slate-600">Stok {formatNumber(option.quantity)} {option.unit ?? ""} · {option.warehouses.length ? option.warehouses.join(", ") : "Gudang —"} · Harga {rupiah(option.product.sellingPrice ?? 0)}</span>
+              <span className="block font-bold text-slate-900">
+                {option.product.code} · {option.product.name}
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-600">
+                Stok {formatNumber(option.quantity)} {option.unit ?? ""} ·{" "}
+                {option.warehouses.length
+                  ? option.warehouses.join(", ")
+                  : "Gudang —"}{" "}
+                · Harga {rupiah(option.product.sellingPrice ?? 0)}
+              </span>
             </button>
           ))}
-          {filtered.length === 0 && <p className="px-3 py-4 text-center text-sm text-slate-500">Barang ERP tidak ditemukan.</p>}
+          {filtered.length === 0 && (
+            <p className="px-3 py-4 text-center text-sm text-slate-500">
+              Barang ERP tidak ditemukan.
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function ProductSelectionInfo({ option, selectedWarehouseId, selectedRackId, stockExceeded, stockState, targetsErp, onStockSelect }: { option?: ProductOption; selectedWarehouseId?: string; selectedRackId?: string; stockExceeded: boolean; stockState: StockState; targetsErp: boolean; onStockSelect: (stock: StockItem) => void }) {
-  if (!option) return <p className="mt-2 text-xs text-amber-700">Pilih barang dari dropdown ERP. Input bebas tidak dapat disimpan.</p>;
+function ProductSelectionInfo({
+  option,
+  selectedWarehouseId,
+  selectedRackId,
+  stockExceeded,
+  stockState,
+  targetsErp,
+  onStockSelect,
+}: {
+  option?: ProductOption;
+  selectedWarehouseId?: string;
+  selectedRackId?: string;
+  stockExceeded: boolean;
+  stockState: StockState;
+  targetsErp: boolean;
+  onStockSelect: (stock: StockItem) => void;
+}) {
+  if (!option)
+    return (
+      <p className="mt-2 text-xs text-amber-700">
+        Pilih barang dari dropdown ERP. Input bebas tidak dapat disimpan.
+      </p>
+    );
   const stockOptions = option.stockRows.filter((stock) => stock.warehouseId);
-  const selectedKey = selectedWarehouseId ? `${selectedWarehouseId}::${selectedRackId || ""}` : "";
+  const selectedKey = selectedWarehouseId
+    ? `${selectedWarehouseId}::${selectedRackId || ""}`
+    : "";
   return (
     <div className="mt-2 space-y-2 text-xs text-slate-600">
       <div className="flex flex-wrap gap-2">
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">Stok ERP: <b>{formatNumber(option.quantity)}</b>{option.unit ? ` ${option.unit}` : ""}</span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">Gudang: <b>{option.warehouses.length ? option.warehouses.join(", ") : "—"}</b></span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">Minimum: <b>{formatNumber(option.minimumStock)}</b></span>
-        {stockExceeded && <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">Qty melebihi stok lokasi</span>}
-        {stockState.status === "failed" && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Stok tidak terverifikasi</span>}
-        {option.warnings.length > 0 && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Data ERP tidak lengkap</span>}
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+          Stok ERP: <b>{formatNumber(option.quantity)}</b>
+          {option.unit ? ` ${option.unit}` : ""}
+        </span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+          Gudang:{" "}
+          <b>{option.warehouses.length ? option.warehouses.join(", ") : "—"}</b>
+        </span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+          Minimum: <b>{formatNumber(option.minimumStock)}</b>
+        </span>
+        {stockExceeded && (
+          <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">
+            Qty melebihi stok lokasi
+          </span>
+        )}
+        {stockState.status === "failed" && (
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+            Stok tidak terverifikasi
+          </span>
+        )}
+        {option.warnings.length > 0 && (
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+            Data ERP tidak lengkap
+          </span>
+        )}
       </div>
       {targetsErp && (
         <label className="block max-w-xl text-xs font-semibold text-slate-700">
@@ -826,25 +1928,44 @@ function ProductSelectionInfo({ option, selectedWarehouseId, selectedRackId, sto
             className="mt-1 block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-slate-900"
             value={selectedKey}
             onChange={(event) => {
-              const stock = stockOptions.find((row) => `${row.warehouseId || ""}::${row.rackId || ""}` === event.target.value);
+              const stock = stockOptions.find(
+                (row) =>
+                  `${row.warehouseId || ""}::${row.rackId || ""}` ===
+                  event.target.value,
+              );
               if (stock) onStockSelect(stock);
             }}
           >
             <option value="">Pilih gudang/rak untuk release stok</option>
             {stockOptions.map((stock) => (
-              <option key={`${stock.warehouseId || ""}::${stock.rackId || ""}`} value={`${stock.warehouseId || ""}::${stock.rackId || ""}`}>
-                {stock.warehouse || "Gudang"}{stock.rack ? ` / ${stock.rack}` : ""} · stok {formatNumber(stock.quantity)} {stock.unit || ""}
+              <option
+                key={`${stock.warehouseId || ""}::${stock.rackId || ""}`}
+                value={`${stock.warehouseId || ""}::${stock.rackId || ""}`}
+              >
+                {stock.warehouse || "Gudang"}
+                {stock.rack ? ` / ${stock.rack}` : ""} · stok{" "}
+                {formatNumber(stock.quantity)} {stock.unit || ""}
               </option>
             ))}
           </select>
-          {stockOptions.length === 0 && <span className="mt-1 block font-normal text-amber-700">ERP belum mengirim warehouse_id untuk produk ini.</span>}
+          {stockOptions.length === 0 && (
+            <span className="mt-1 block font-normal text-amber-700">
+              ERP belum mengirim warehouse_id untuk produk ini.
+            </span>
+          )}
         </label>
       )}
     </div>
   );
 }
 
-function ManualProductFields({ index, register, setValue, values, referenceState }: {
+function ManualProductFields({
+  index,
+  register,
+  setValue,
+  values,
+  referenceState,
+}: {
   index: number;
   register: UseFormRegister<PenjualanInput>;
   setValue: UseFormSetValue<PenjualanInput>;
@@ -856,58 +1977,114 @@ function ManualProductFields({ index, register, setValue, values, referenceState
     <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <Field label="Nama produk manual">
-          <Input placeholder="Nama produk baru" {...register(`items.${index}.manualProduct.name`)} />
+          <Input
+            placeholder="Nama produk baru"
+            {...register(`items.${index}.manualProduct.name`)}
+          />
         </Field>
         <Field label="Harga modal">
           <MoneyInput
             value={values[index]?.manualProduct?.costPrice}
             min={0}
-            onValueChange={(value) => setValue(`items.${index}.manualProduct.costPrice`, value, { shouldDirty: true, shouldValidate: true })}
+            onValueChange={(value) =>
+              setValue(`items.${index}.manualProduct.costPrice`, value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
           />
         </Field>
         <Field label="Kode merk">
-          <Input placeholder="Contoh: UMUM" {...register(`items.${index}.manualProduct.brandCode`)} />
+          <Input
+            placeholder="Contoh: UMUM"
+            {...register(`items.${index}.manualProduct.brandCode`)}
+          />
         </Field>
         <Field label="Harga jual ERP">
           <MoneyInput
             min={0}
             value={unitPrice}
             onValueChange={(value) => {
-              setValue(`items.${index}.unitPrice`, value, { shouldDirty: true, shouldValidate: true });
-              setValue(`items.${index}.manualProduct.sellingPrice`, value, { shouldDirty: true, shouldValidate: true });
+              setValue(`items.${index}.unitPrice`, value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              setValue(`items.${index}.manualProduct.sellingPrice`, value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
             }}
           />
         </Field>
         <Field label="Kategori ERP">
-          <Select {...register(`items.${index}.manualProduct.productCategoryId`, { valueAsNumber: true })} disabled={referenceState.status !== "ready"}>
+          <Select
+            {...register(`items.${index}.manualProduct.productCategoryId`, {
+              valueAsNumber: true,
+            })}
+            disabled={referenceState.status !== "ready"}
+          >
             <option value="">— pilih kategori —</option>
-            {referenceState.status === "ready" && referenceState.categories.map((item) => <option key={item.id} value={item.id}>{item.name}{item.code ? ` (${item.code})` : ""}</option>)}
+            {referenceState.status === "ready" &&
+              referenceState.categories.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                  {item.code ? ` (${item.code})` : ""}
+                </option>
+              ))}
           </Select>
         </Field>
         <Field label="Satuan ERP">
           <Select
-            {...register(`items.${index}.manualProduct.uomId`, { valueAsNumber: true })}
+            {...register(`items.${index}.manualProduct.uomId`, {
+              valueAsNumber: true,
+            })}
             disabled={referenceState.status !== "ready"}
             onChange={(event) => {
               const uomId = Number(event.target.value);
-              const selectedUom = referenceState.status === "ready" ? referenceState.uoms.find((item) => item.id === uomId) : undefined;
-              setValue(`items.${index}.manualProduct.uomId`, Number.isFinite(uomId) && uomId > 0 ? uomId : undefined, { shouldDirty: true, shouldValidate: true });
-              setValue(`items.${index}.uomIdSnapshot`, Number.isFinite(uomId) && uomId > 0 ? uomId : undefined, { shouldDirty: true, shouldValidate: true });
-              setValue(`items.${index}.unitSnapshot`, selectedUom?.code || selectedUom?.name || undefined, { shouldDirty: true, shouldValidate: true });
+              const selectedUom =
+                referenceState.status === "ready"
+                  ? referenceState.uoms.find((item) => item.id === uomId)
+                  : undefined;
+              setValue(
+                `items.${index}.manualProduct.uomId`,
+                Number.isFinite(uomId) && uomId > 0 ? uomId : undefined,
+                { shouldDirty: true, shouldValidate: true },
+              );
+              setValue(
+                `items.${index}.uomIdSnapshot`,
+                Number.isFinite(uomId) && uomId > 0 ? uomId : undefined,
+                { shouldDirty: true, shouldValidate: true },
+              );
+              setValue(
+                `items.${index}.unitSnapshot`,
+                selectedUom?.code || selectedUom?.name || undefined,
+                { shouldDirty: true, shouldValidate: true },
+              );
             }}
           >
             <option value="">— pilih satuan —</option>
-            {referenceState.status === "ready" && referenceState.uoms.map((item) => <option key={item.id} value={item.id}>{item.name}{item.code ? ` (${item.code})` : ""}</option>)}
+            {referenceState.status === "ready" &&
+              referenceState.uoms.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                  {item.code ? ` (${item.code})` : ""}
+                </option>
+              ))}
           </Select>
         </Field>
         <div className="md:col-span-2">
           <Field label="Catatan produk">
-            <Input placeholder="Opsional, tersimpan sebagai deskripsi produk ERP" {...register(`items.${index}.manualProduct.description`)} />
+            <Input
+              placeholder="Opsional, tersimpan sebagai deskripsi produk ERP"
+              {...register(`items.${index}.manualProduct.description`)}
+            />
           </Field>
         </div>
       </div>
       <p className="mt-2 text-xs font-medium text-amber-800">
-        {referenceState.status === "error" ? referenceState.message : "SKU akan dicek ke ERP. Jika belum ada, produk dibuat otomatis di Aneka Jaya ERP sebelum transaksi disimpan."}
+        {referenceState.status === "error"
+          ? referenceState.message
+          : "SKU akan dicek ke ERP. Jika belum ada, produk dibuat otomatis di Aneka Jaya ERP sebelum transaksi disimpan."}
       </p>
     </div>
   );
@@ -922,6 +2099,24 @@ function formatNumber(value: number | null | undefined) {
   return value.toLocaleString("id-ID");
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">{label}</span>{children}{error && <span className="mt-1 block text-xs font-normal text-red-600">{error}</span>}</label>;
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block text-sm font-medium text-slate-700">
+      <span className="mb-1 block">{label}</span>
+      {children}
+      {error && (
+        <span className="mt-1 block text-xs font-normal text-red-600">
+          {error}
+        </span>
+      )}
+    </label>
+  );
 }

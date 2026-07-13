@@ -3,9 +3,16 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { retrySalesErpSync } from "@/lib/erpSync/salesRetry";
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  _: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const role = await getCurrentRole();
-  if (!can(role, "erp_sync.retry")) return NextResponse.json({ success: false, message: "Tidak punya akses ERP Sync." }, { status: 403 });
+  if (!can(role, "erp_sync.retry"))
+    return NextResponse.json(
+      { success: false, message: "Tidak punya akses ERP Sync." },
+      { status: 403 },
+    );
   const { id } = await params;
   const result = await retrySalesErpSync(id);
   return NextResponse.json(result, { status: result.success ? 200 : 502 });
