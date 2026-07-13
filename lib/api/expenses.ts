@@ -6,7 +6,7 @@ import { sendNeoCommand } from "./neo";
 import { recordAudit } from "@/lib/audit/store";
 import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
-import { transactionTargetForType } from "@/lib/api/transactionRouting";
+import { expenseTargetForTypeCode } from "@/lib/api/transactionRouting";
 import { saveExpenseRecord } from "@/lib/expenses/store";
 import { erpReferenceFrom, safeErpSyncError } from "@/lib/api/sales";
 
@@ -21,7 +21,7 @@ export async function createExpense(input: PengeluaranInput): Promise<ApiRespons
   const tipe = await findTipe(input.tipeId);
   const rekening = (await rekeningForTipe(tipe.id)).find((item) => item.id === input.rekeningId);
   if (!rekening) throw new Error("Rekening pengeluaran tidak tersedia untuk tipe transaksi ini.");
-  const target = transactionTargetForType(tipe.code);
+  const target = expenseTargetForTypeCode(tipe.code);
   const approvalStatus: NonNullable<Expense["approvalStatus"]> = "approved";
   const baseExpense: Expense = {
     id: `E-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,

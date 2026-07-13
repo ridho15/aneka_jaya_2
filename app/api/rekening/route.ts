@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const tipeError = await validateTipeIds(parsed.data.tipeIds);
   if (tipeError) return NextResponse.json({ success: false, message: tipeError }, { status: 400 });
   const all = await listAllRekeningAccounts();
-  const newRek = { id: `rek-${Date.now()}`, bank: parsed.data.bank, name: parsed.data.name, accountNumber: parsed.data.accountNumber, isCash: parsed.data.bank === "Cash", isActive: true, tipeIds: parsed.data.tipeIds };
+  const newRek = { id: `rek-${Date.now()}`, bank: parsed.data.bank, name: parsed.data.name, accountNumber: parsed.data.accountNumber, erpCoaId: parsed.data.erpCoaId, erpCoaNameSnapshot: parsed.data.erpCoaNameSnapshot, isCash: parsed.data.bank === "Cash", isActive: true, tipeIds: parsed.data.tipeIds };
   all.push(newRek);
   await saveRekeningAccounts(all);
   await recordAudit({ entityType: "rekening", entityId: newRek.id, action: "create", afterValue: newRek, reason: "Rekening baru ditambahkan" });

@@ -1,906 +1,74 @@
 [
   {
-    "id": "187592a6-d35c-4c8c-bfbd-8a5497b7e8a6",
-    "createdAt": "2026-07-09T02:25:12.253Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "e1fbbaa0-e8c2-483c-8240-7a03a7594b74",
-    "createdAt": "2026-07-09T02:21:41.136Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "7f33c957-0c45-4c38-9217-8bd0ac0f9eec",
-    "createdAt": "2026-07-08T19:55:11.552Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "6af15132-9ca0-463f-b8a3-c2f984a7f79d",
-    "createdAt": "2026-07-08T19:10:55.056Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "26260be9-80ba-4fbc-b0e2-871050db9840",
-    "createdAt": "2026-07-08T19:08:42.008Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "d387fe6c-db2c-499f-a059-2127ab1d0c1d",
-    "createdAt": "2026-07-08T17:53:07.226Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "b272c3ea-0aa1-4c13-92ef-dfdaf9a2376b",
-    "createdAt": "2026-07-08T17:26:52.110Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "13a43acc-e495-4524-8390-b385843885c2",
-    "createdAt": "2026-07-08T16:42:58.085Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "e13e6cb1-0793-4bc7-9407-5e5baad06624",
-    "createdAt": "2026-07-08T08:48:55.365Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "667acdc0-1242-495a-bbf9-687b918f9576",
-    "createdAt": "2026-07-08T04:37:43.369Z",
+    "id": "7c606716-4289-4dd7-9801-6f19bb786188",
+    "createdAt": "2026-07-13T19:08:10.306Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "app_setting",
-    "entityId": "slm_gross_profit_percent",
-    "action": "update",
-    "beforeValue": {
-      "grossProfitPercent": 0
-    },
-    "afterValue": {
-      "grossProfitPercent": 10
-    },
-    "reason": "Update persentase Gross Profit SLM"
-  },
-  {
-    "id": "4c62099a-f3ba-4407-9528-9921d30461b1",
-    "createdAt": "2026-07-01T08:22:48.409Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "6f91feb4-b1b4-4f4d-99b5-5a3074ff29ea",
-    "createdAt": "2026-07-01T05:16:01.653Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "df542e58-10d4-4f8b-9ac5-3515d0683959",
-    "createdAt": "2026-07-01T04:57:24.441Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "2ca9de5f-1f92-4907-91a8-e4526a74c9d4",
-    "createdAt": "2026-07-01T04:28:39.595Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "44d9a61a-8f97-4581-8392-2086cd82b76d",
-    "createdAt": "2026-07-01T04:28:27.620Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "1492085c-e783-42d7-b176-cfc8d17cf24e",
-    "createdAt": "2026-07-01T04:27:41.262Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "5d6202d4-7627-40a4-b974-d3c6fd9eacd6",
-    "createdAt": "2026-07-01T04:27:09.688Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "68819776-3540-4284-b2c8-928cf73b5c32",
-    "createdAt": "2026-07-01T04:26:39.480Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "a529cb49-4a81-4f65-9a75-608c6ce30176",
-    "createdAt": "2026-06-30T20:49:12.555Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "expense",
-    "entityId": "E-1782852551133-174197be",
-    "action": "create",
-    "afterValue": {
-      "id": "E-1782852551133-174197be",
-      "expenseDate": "2026-06-30",
-      "tipeId": "AJ",
-      "tipeCodeSnapshot": "AJ",
-      "tipeNameSnapshot": "Aneka Jaya",
-      "rekeningId": "cash-aj",
-      "rekeningNameSnapshot": "Kas AJ",
-      "coaId": "Kas",
-      "coaNameSnapshot": "Kas",
-      "category": "QA Operasional",
-      "vendorName": "QA SLM EXPENSE DELETE 1782852519265",
-      "description": "QA SLM EXPENSE DELETE 1782852519265 - live QA pengeluaran AJ Kas Bank",
-      "amount": 1000,
-      "paymentMethod": "Tunai",
-      "notes": "QA SLM EXPENSE DELETE 1782852519265 - boleh dihapus manual",
-      "approvalStatus": "approved",
-      "erpSyncTarget": "erp",
-      "erpSyncStatus": "synced",
-      "erpSyncError": "",
-      "erpSyncAttemptedAt": "2026-06-30T20:49:11.133Z",
-      "erpSyncedAt": "2026-06-30T20:49:11.783Z",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-30T20:49:11.133Z"
-    },
-    "reason": "Kas & Bank / COA Kas • Terkirim ERP"
-  },
-  {
-    "id": "57aa6841-3581-46b3-a6f0-0cc949e85647",
-    "createdAt": "2026-06-30T20:46:12.006Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "08f776f3-8420-412b-ac76-bfc4784dc8e2",
-    "createdAt": "2026-06-30T20:29:51.512Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
     "entityType": "erp_sync",
-    "entityId": "SLM-QA-SLM-MIXED-DELETE-1782-MR13OPRSF7BE",
+    "entityId": "S-1783969674229-3b8b4a64",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "COA ERP rekening penerima belum valid."
+    },
+    "reason": "Retry payment sales gagal • COA ERP rekening penerima belum valid."
+  },
+  {
+    "id": "7f81c657-f6b9-4283-b806-262dcd10e333",
+    "createdAt": "2026-07-13T19:07:53.858Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "SLM-RIDHO-MRJLHDX2011E",
     "action": "create",
     "afterValue": {
-      "customerCode": "SLM-QA-SLM-MIXED-DELETE-1782-MR13OPRSF7BE",
-      "customerName": "QA SLM MIXED DELETE 1782851235338",
+      "customerCode": "SLM-RIDHO-MRJLHDX2011E",
+      "customerName": "Ridho",
       "source": "sales_customer_auto_create"
     },
     "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
   },
   {
-    "id": "ba210ef2-3012-4158-ae5d-c46bf9bb0e13",
-    "createdAt": "2026-06-30T20:29:50.926Z",
+    "id": "399366cd-d6dd-4e7c-95bf-7d0d70c64420",
+    "createdAt": "2026-07-13T19:06:19.715Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "product",
-    "entityId": "QA-SLM-MIXED-1782851235338",
-    "action": "create",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783969579708",
+    "action": "send_whatsapp",
     "afterValue": {
-      "sku": "QA-SLM-MIXED-1782851235338",
-      "name": "QA SLM MIXED PRODUCT DELETE 1782851235338",
-      "source": "sales_manual_product"
+      "id": "SAL-1783969579708",
+      "productId": "10",
+      "productCodeSnapshot": "FG-SEED-001",
+      "productNameSnapshot": "Panel Kontrol Industri",
+      "currentStock": 0,
+      "minimumStock": 8,
+      "warehouseSnapshot": "Gudang Utama",
+      "rackSnapshot": "Rak A1",
+      "status": "failed",
+      "createdAt": "2026-07-13T19:06:19.708Z"
     },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+    "reason": "Stock sudah mencapai minimum"
   },
   {
-    "id": "2c166be5-584e-45aa-a867-45dec7156526",
-    "createdAt": "2026-06-30T20:25:38.336Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "32a8a076-563a-4616-9045-15459ebd13df",
-    "createdAt": "2026-06-30T20:08:36.757Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "00ee9204-9f2c-405c-9e58-6ac1cbbc39d7",
-    "createdAt": "2026-06-30T19:52:31.205Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "c28e62b6-b411-47ed-ae63-91a4e7a67ae2",
-    "createdAt": "2026-06-30T19:39:56.657Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "43203bd6-f2fb-4a3d-955e-d3118187bc71",
-    "createdAt": "2026-06-30T19:33:04.552Z",
+    "id": "52891c5f-afe0-4e41-ba4b-2269ade8a335",
+    "createdAt": "2026-07-13T18:54:59.025Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
     "entityType": "erp_sync",
-    "entityId": "SLM-QA-SLM-DELETE-AJ-1782847-MR11NOXL783C",
-    "action": "create",
-    "afterValue": {
-      "customerCode": "SLM-QA-SLM-DELETE-AJ-1782847-MR11NOXL783C",
-      "customerName": "QA SLM DELETE AJ 1782847955217",
-      "source": "sales_customer_auto_create"
-    },
-    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "f75b2064-6254-4621-8194-1e735c880ea6",
-    "createdAt": "2026-06-30T19:33:04.034Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "product",
-    "entityId": "QA-SLM-AJ-1782847955217",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-AJ-1782847955217",
-      "name": "QA SLM PRODUCT AJ DELETE 1782847955217",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "a268b87f-7fee-4101-a585-ff3994b8bcaa",
-    "createdAt": "2026-06-30T19:30:02.248Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "sales",
-    "entityId": "S-1782847802242",
-    "action": "create",
-    "afterValue": {
-      "id": "S-1782847802242",
-      "saleDate": "2026-06-30",
-      "tipeId": "W",
-      "tipeCodeSnapshot": "W",
-      "tipeNameSnapshot": "Walk In",
-      "rekeningId": "cash-w",
-      "rekeningNameSnapshot": "Kas Walk In",
-      "customerName": "QA SLM DELETE LOCAL 1782847751614",
-      "customerLocation": "QA TEST DELETE",
-      "deliveryDate": "",
-      "shippingMethod": "di Tempat",
-      "paymentMethod": "Cash",
-      "notes": "QA SLM DELETE - non AJ local transaction live test",
-      "items": [
-        {
-          "productRef": "QA-SLM-LOCAL-1782847751614",
-          "productInputMode": "manual",
-          "manualProduct": {
-            "sku": "QA-SLM-LOCAL-1782847751614",
-            "name": "QA SLM PRODUCT LOCAL DELETE 1782847751614",
-            "productCategoryId": 8,
-            "uomId": 5,
-            "brandCode": "UMUM",
-            "costPrice": 500,
-            "sellingPrice": 1000,
-            "description": "QA SLM DELETE - non AJ manual product live test"
-          },
-          "quantity": 1,
-          "unitPrice": 1000,
-          "discount": 0,
-          "productId": "1374"
-        }
-      ],
-      "isTestTransaction": false,
-      "total": 1000,
-      "approvalStatus": "approved",
-      "syncTarget": "local",
-      "syncStatus": "local",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-30T19:30:02.242Z"
-    },
-    "reason": "Invoice Penjualan lokal • approved • Cash"
-  },
-  {
-    "id": "d3c18b72-d5ec-4f0a-bda9-de2d3a355570",
-    "createdAt": "2026-06-30T19:30:02.234Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "product",
-    "entityId": "QA-SLM-LOCAL-1782847751614",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-LOCAL-1782847751614",
-      "name": "QA SLM PRODUCT LOCAL DELETE 1782847751614",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "a6057e46-fb5d-49a7-ad9f-57464a590060",
-    "createdAt": "2026-06-30T19:24:16.490Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "de4b98d3-b475-4ca3-9359-31b9d26d11fa",
-    "createdAt": "2026-06-30T19:16:37.524Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "c03c8d68-b489-4eba-a14d-39973e3ab1bb",
-    "createdAt": "2026-06-30T18:18:32.920Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "51168176-a73a-411d-87c4-4993228f096e",
-    "createdAt": "2026-06-30T18:07:25.232Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "product",
-    "entityId": "QA-SLM-1782842806776",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-1782842806776",
-      "name": "QA SLM PRODUCT DELETE 1782842806776",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "0a424e21-05f2-463f-a097-4f063faf6274",
-    "createdAt": "2026-06-30T18:07:24.859Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0YLJ3EF833",
-    "action": "create",
-    "afterValue": {
-      "customerCode": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0YLJ3EF833",
-      "customerName": "QA SLM PRODUCT DELETE 1782842806776",
-      "source": "sales_customer_auto_create"
-    },
-    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "aa9cc0c8-4a81-40d8-9e07-cbfc35a48450",
-    "createdAt": "2026-06-30T18:02:29.041Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "2bfa3e98-51a1-4473-8a63-68de5e83104c",
-    "createdAt": "2026-06-30T18:02:11.237Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "207ea7bc-93f1-4d70-84bb-15e08399f804",
-    "createdAt": "2026-06-30T18:00:46.287Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "1c39fd80-ea39-4c95-878a-ddf1f55ac8e1",
-    "createdAt": "2026-06-30T17:43:56.807Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "product",
-    "entityId": "QA-SLM-BROWSER-1782841401784",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-BROWSER-1782841401784",
-      "name": "QA SLM BROWSER PRODUCT DELETE 1782841401784",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "7c9f593e-927d-498e-829b-493f1cccc500",
-    "createdAt": "2026-06-30T17:43:56.446Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "SLM-QA-SLM-BROWSER-DELETE-17-MR0XRCD127ED",
-    "action": "create",
-    "afterValue": {
-      "customerCode": "SLM-QA-SLM-BROWSER-DELETE-17-MR0XRCD127ED",
-      "customerName": "QA SLM BROWSER DELETE 1782841401784",
-      "source": "sales_customer_auto_create"
-    },
-    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "ba4c6757-8760-4e5b-87f6-01f48d82a896",
-    "createdAt": "2026-06-30T17:30:02.276Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::ffff:127.0.0.1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "product",
-    "entityId": "QA-SLM-1782840577271",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-1782840577271",
-      "name": "QA SLM PRODUCT DELETE 1782840577271",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "b4ffbbba-b664-4bbe-aa32-b77f5e52eaca",
-    "createdAt": "2026-06-30T17:30:01.063Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::ffff:127.0.0.1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0X9FFK5A3B",
-    "action": "create",
-    "afterValue": {
-      "customerCode": "SLM-QA-SLM-PRODUCT-DELETE-17-MR0X9FFK5A3B",
-      "customerName": "QA SLM PRODUCT DELETE 1782840577271",
-      "source": "sales_customer_auto_create"
-    },
-    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "27cb3533-55af-4b29-9de9-8fd431ac5e8e",
-    "createdAt": "2026-06-30T17:11:48.164Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "cab7499b-8d60-4481-aebf-6bbe7d9c1c59",
-    "createdAt": "2026-06-30T17:10:20.710Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "4a972bea-9437-489d-8b7b-540cc262e2f4",
-    "createdAt": "2026-06-30T17:03:47.357Z",
-    "userId": "unauthenticated",
-    "userNameSnapshot": "Viewer",
-    "userRoleSnapshot": "VIEWER",
-    "entityType": "product",
-    "entityId": "QA-SLM-001",
-    "action": "create",
-    "afterValue": {
-      "sku": "QA-SLM-001",
-      "name": "QA Product",
-      "source": "sales_manual_product"
-    },
-    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "f24b9d49-08f0-486e-bc9b-9566893f0fec",
-    "createdAt": "2026-06-30T14:27:47.107Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "expense",
-    "entityId": "E-1782829667080-36047eb3",
-    "action": "create",
-    "afterValue": {
-      "id": "E-1782829667080-36047eb3",
-      "expenseDate": "2026-06-30",
-      "tipeId": "W",
-      "tipeCodeSnapshot": "W",
-      "tipeNameSnapshot": "Walk In",
-      "rekeningId": "cash-w",
-      "rekeningNameSnapshot": "Kas Walk In",
-      "coaId": "Kas",
-      "coaNameSnapshot": "Kas",
-      "category": "QA TEST",
-      "vendorName": "QA SLM DELETE 1782829662415",
-      "description": "QA SLM DELETE browser expense detail test",
-      "amount": 1000,
-      "paymentMethod": "Tunai",
-      "approvalStatus": "approved",
-      "erpSyncTarget": "local",
-      "erpSyncStatus": "not_required",
-      "erpSyncError": "",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-30T14:27:47.080Z"
-    },
-    "reason": "Tipe W disimpan lokal, ERP sync not_required"
-  },
-  {
-    "id": "c34e9e92-7564-4a05-9d93-69f7b7ceb9ce",
-    "createdAt": "2026-06-30T14:26:51.368Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "sales",
-    "entityId": "S-1782829611358",
-    "action": "create",
-    "afterValue": {
-      "id": "S-1782829611358",
-      "saleDate": "2026-06-30",
-      "tipeId": "W",
-      "tipeCodeSnapshot": "W",
-      "tipeNameSnapshot": "Walk In",
-      "rekeningId": "cash-w",
-      "rekeningNameSnapshot": "Kas Walk In",
-      "customerName": "QA SLM DELETE 1782829604317",
-      "customerLocation": "QA TEST DELETE",
-      "deliveryDate": "",
-      "shippingMethod": "di Tempat",
-      "paymentMethod": "Cash",
-      "items": [
-        {
-          "productRef": "KcrE060311",
-          "productId": "1289",
-          "quantity": 1,
-          "unitPrice": 40000,
-          "discount": 0
-        }
-      ],
-      "isTestTransaction": false,
-      "total": 40000,
-      "approvalStatus": "approved",
-      "syncTarget": "local",
-      "syncStatus": "local",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-30T14:26:51.358Z"
-    },
-    "reason": "Invoice Penjualan lokal • approved • Cash"
-  },
-  {
-    "id": "d6fa960b-a0f5-4250-9460-3569a328a192",
-    "createdAt": "2026-06-30T13:12:12.500Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796427910-da16e52d",
+    "entityId": "S-1783968884980-b5ac8d3f",
     "action": "retry_sync",
     "afterValue": {
       "syncStatus": "failed",
@@ -909,32 +77,15 @@
     "reason": "Retry ERP sales gagal • Customer manual belum cukup jelas untuk dibuat di ERP."
   },
   {
-    "id": "6f60a666-29e2-4bc6-9367-13bc30bf75c3",
-    "createdAt": "2026-06-30T13:12:09.821Z",
+    "id": "7c3edca2-0b68-4120-b15e-eb4aa10254ea",
+    "createdAt": "2026-07-13T18:53:27.451Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
     "entityType": "erp_sync",
-    "entityId": "S-1782799862292-3257312b",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "synced",
-      "erpReference": "479"
-    },
-    "reason": "Retry ERP sales berhasil"
-  },
-  {
-    "id": "12adde05-95cf-4f85-b005-b0817e57ce8d",
-    "createdAt": "2026-06-30T13:11:59.898Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796427910-da16e52d",
+    "entityId": "S-1783968787249-247fac68",
     "action": "retry_sync",
     "afterValue": {
       "syncStatus": "failed",
@@ -943,1088 +94,177 @@
     "reason": "Retry ERP sales gagal • Customer manual belum cukup jelas untuk dibuat di ERP."
   },
   {
-    "id": "d7eab5cf-7ef7-42b6-82b3-af6c8afa02d1",
-    "createdAt": "2026-06-30T13:11:55.781Z",
+    "id": "261f8cdd-3b46-4eb7-8507-c43d154dcd0d",
+    "createdAt": "2026-07-13T18:52:57.386Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782799830164-e583e45f",
-    "action": "retry_sync",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783968777380",
+    "action": "send_whatsapp",
     "afterValue": {
-      "syncStatus": "synced",
-      "erpReference": "478"
+      "id": "SAL-1783968777380",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
+      "status": "failed",
+      "createdAt": "2026-07-13T18:52:57.380Z"
     },
-    "reason": "Retry ERP sales berhasil"
+    "reason": "Stock sudah mencapai minimum"
   },
   {
-    "id": "cda9913f-d71c-4b79-a689-0ab641e728d9",
-    "createdAt": "2026-06-30T13:11:47.340Z",
+    "id": "b8d7ad1a-cfdf-44ee-95d4-4cc5a8418e48",
+    "createdAt": "2026-07-13T18:52:54.256Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796427910-da16e52d",
-    "action": "retry_sync",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783968774248",
+    "action": "send_whatsapp",
     "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "Customer manual belum cukup jelas untuk dibuat di ERP."
+      "id": "SAL-1783968774248",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
+      "status": "failed",
+      "createdAt": "2026-07-13T18:52:54.248Z"
     },
-    "reason": "Retry ERP sales gagal • Customer manual belum cukup jelas untuk dibuat di ERP."
+    "reason": "Stock sudah mencapai minimum"
   },
   {
-    "id": "2c6c0e90-446d-475c-8fd5-dc6426e3666d",
-    "createdAt": "2026-06-30T13:07:00.871Z",
+    "id": "16efcc84-454f-4223-811f-c5fe64905595",
+    "createdAt": "2026-07-13T18:50:59.215Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796460370-839475f7",
-    "action": "retry_sync",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783968659208",
+    "action": "send_whatsapp",
     "afterValue": {
-      "syncStatus": "synced",
-      "erpReference": "477"
+      "id": "SAL-1783968659208",
+      "productId": "10",
+      "productCodeSnapshot": "FG-SEED-001",
+      "productNameSnapshot": "Panel Kontrol Industri",
+      "currentStock": 0,
+      "minimumStock": 8,
+      "warehouseSnapshot": "Gudang Utama",
+      "rackSnapshot": "Rak A1",
+      "status": "failed",
+      "createdAt": "2026-07-13T18:50:59.208Z"
     },
-    "reason": "Retry ERP sales berhasil"
+    "reason": "Stock sudah mencapai minimum"
   },
   {
-    "id": "dda4a01f-c90e-49a7-b0b2-a915f1ec156e",
-    "createdAt": "2026-06-30T13:06:58.001Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "SLM-RIDHO-MR0NV5FW767C",
+    "id": "216cb442-4035-43d6-a95e-e55f20c73576",
+    "createdAt": "2026-07-13T18:43:47.888Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
     "action": "create",
     "afterValue": {
-      "customerCode": "SLM-RIDHO-MR0NV5FW767C",
-      "customerName": "Ridho",
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "b956f765-d256-4c49-ac3a-3ee8c396e262",
+    "createdAt": "2026-07-13T18:21:58.053Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "286cd1b5-4d07-4b4c-9cfe-310b664912e3",
+    "createdAt": "2026-07-13T18:21:01.345Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.55 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "SLM-BROWSER-RELEASE-TEST-178-MRJJT3RGC931",
+    "action": "create",
+    "afterValue": {
+      "customerCode": "SLM-BROWSER-RELEASE-TEST-178-MRJJT3RGC931",
+      "customerName": "Browser Release Test 1783966857400",
       "source": "sales_customer_auto_create"
     },
     "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
   },
   {
-    "id": "d77f6400-d0b3-4dd0-8402-bcc435d5b295",
-    "createdAt": "2026-06-30T13:03:03.104Z",
+    "id": "fdafa6e1-a983-4bbe-8143-31b02377aa17",
+    "createdAt": "2026-07-13T18:20:59.188Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "synced",
-      "erpReference": "476"
-    },
-    "reason": "Retry ERP sales berhasil"
-  },
-  {
-    "id": "3c60ac67-34c7-4b72-8654-e5b53ab6b64b",
-    "createdAt": "2026-06-30T13:01:28.407Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP service error: ERP menolak data karena constraint database."
-    },
-    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
-  },
-  {
-    "id": "ed3fda66-f4b8-4672-8fa4-a8c5467e6aa3",
-    "createdAt": "2026-06-30T12:59:41.567Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP service error: ERP menolak data karena constraint database."
-    },
-    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
-  },
-  {
-    "id": "34435e50-9700-4d80-9494-c6ad79ef20ed",
-    "createdAt": "2026-06-30T12:56:15.024Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP service error: ERP menolak data karena constraint database."
-    },
-    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
-  },
-  {
-    "id": "52a0b4e4-8251-41f1-aa32-dd5985b8f8e7",
-    "createdAt": "2026-06-30T12:55:18.940Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP service error: ERP menolak data karena constraint database."
-    },
-    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
-  },
-  {
-    "id": "0f910411-059b-4a16-a65d-e8a371ed9700",
-    "createdAt": "2026-06-30T12:50:43.461Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP service error: ERP menolak data karena constraint database."
-    },
-    "reason": "Retry ERP sales gagal • ERP service error: ERP menolak data karena constraint database."
-  },
-  {
-    "id": "b87f1101-c549-45ca-a69b-b9eac8a8eee9",
-    "createdAt": "2026-06-30T12:50:39.777Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "SLM-QA-SLM-DELETE-1782810523-MR0NA6GMFD9D",
-    "action": "create",
-    "afterValue": {
-      "customerCode": "SLM-QA-SLM-DELETE-1782810523-MR0NA6GMFD9D",
-      "customerName": "QA SLM DELETE 1782810523404",
-      "source": "sales_customer_auto_create"
-    },
-    "reason": "Customer ERP dibuat otomatis dari transaksi SLM"
-  },
-  {
-    "id": "77dc55db-13d7-48ac-976c-2338b22b7c2d",
-    "createdAt": "2026-06-30T10:44:18.399Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "Koneksi ERP bermasalah."
-    },
-    "reason": "Retry ERP sales gagal • Koneksi ERP bermasalah."
-  },
-  {
-    "id": "8f5cea8d-2ef4-4123-b788-faea89f257bb",
-    "createdAt": "2026-06-30T09:42:07.691Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "curl/8.7.1",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP menolak create customer: isSpecial wajib diisi."
-    },
-    "reason": "Retry ERP sales gagal • ERP menolak create customer: isSpecial wajib diisi."
-  },
-  {
-    "id": "6de4b3c4-b65b-40dc-bbc5-ffff1c302dc4",
-    "createdAt": "2026-06-30T09:36:35.195Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP menolak payload: validation.string"
-    },
-    "reason": "Retry ERP sales gagal • ERP menolak payload: validation.string"
-  },
-  {
-    "id": "42482304-0a63-4d56-8fd8-6f7e3f3c0367",
-    "createdAt": "2026-06-30T09:33:14.317Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP menolak create customer: isSpecial wajib diisi."
-    },
-    "reason": "Retry ERP sales gagal • ERP menolak create customer: isSpecial wajib diisi."
-  },
-  {
-    "id": "f090884c-b094-47dc-8108-d2024ab07d39",
-    "createdAt": "2026-06-30T09:12:05.244Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782810597403-8bdacd5e",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP menolak create customer: isSpecial wajib diisi."
-    },
-    "reason": "Retry ERP sales gagal • ERP menolak create customer: isSpecial wajib diisi."
-  },
-  {
-    "id": "60817ffe-535e-4f38-bb95-e7e0b633157e",
-    "createdAt": "2026-06-30T08:57:57.922Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782799862292-3257312b",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`co…"
-    },
-    "reason": "Retry ERP sales gagal • ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`code`, `name`, `address`, `telephone`, `phone`, `email`, `perusahaan`, `tipe`, `fax`, `isSpecial`, `tempo_kredit`, `kredit_limit`, `tipe_pembayaran`, `nik_npwp`,…"
-  },
-  {
-    "id": "5a085cbf-8f6f-4719-95ee-a72dad3885ef",
-    "createdAt": "2026-06-30T08:57:50.724Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782799830164-e583e45f",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`co…"
-    },
-    "reason": "Retry ERP sales gagal • ERP service error: SQLSTATE[23000]: Integrity constraint violation: 1048 Column 'isSpecial' cannot be null (Connection: mysql, SQL: insert into `customers` (`code`, `name`, `address`, `telephone`, `phone`, `email`, `perusahaan`, `tipe`, `fax`, `isSpecial`, `tempo_kredit`, `kredit_limit`, `tipe_pembayaran`, `nik_npwp`,…"
-  },
-  {
-    "id": "fd2c92be-4d36-4509-8461-1dc013ba05d9",
-    "createdAt": "2026-06-30T08:20:42.990Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796427910-da16e52d",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "Auto-create customer ERP gagal: Customer manual belum cukup jelas untuk dibuat di ERP. Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemu…"
-    },
-    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: Customer manual belum cukup jelas untuk dibuat di ERP. Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
-  },
-  {
-    "id": "83b9ada4-6fc8-451f-856c-c0e6c2ff7adf",
-    "createdAt": "2026-06-30T08:20:41.341Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796460370-839475f7",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka J…"
-    },
-    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
-  },
-  {
-    "id": "c33e677d-e7b3-4fbb-badc-78cbd24cf261",
-    "createdAt": "2026-06-30T08:20:39.001Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782799862292-3257312b",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka J…"
-    },
-    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
-  },
-  {
-    "id": "ef765409-ddc8-4e37-a809-c252545239c0",
-    "createdAt": "2026-06-30T08:20:26.977Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782799830164-e583e45f",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka J…"
-    },
-    "reason": "Retry ERP sales gagal • Auto-create customer ERP gagal: ERP menolak payload: validation.required Fallback: Customer fallback ERP belum tersedia: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
-  },
-  {
-    "id": "ae46dd36-434e-4953-b8e2-e04e0bf81639",
-    "createdAt": "2026-06-30T06:27:43.052Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796460370-839475f7",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "Customer fallback ERP belum dikonfigurasi: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
-    },
-    "reason": "Retry ERP sales gagal • Customer fallback ERP belum dikonfigurasi: code WALK-IN tidak ditemukan di Aneka Jaya ERP."
-  },
-  {
-    "id": "40e56fad-ffc2-457d-8440-43665eb9367c",
-    "createdAt": "2026-06-30T05:27:49.294Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796460370-839475f7",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP sedang tidak dapat melayani permintaan."
-    },
-    "reason": "Retry ERP sales gagal • ERP sedang tidak dapat melayani permintaan."
-  },
-  {
-    "id": "74114cab-be60-49cd-9ee7-96c28bd78645",
-    "createdAt": "2026-06-30T05:27:46.762Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "erp_sync",
-    "entityId": "S-1782796427910-da16e52d",
-    "action": "retry_sync",
-    "afterValue": {
-      "syncStatus": "failed",
-      "syncError": "ERP sedang tidak dapat melayani permintaan."
-    },
-    "reason": "Retry ERP sales gagal • ERP sedang tidak dapat melayani permintaan."
-  },
-  {
-    "id": "3d2de02c-c171-40d3-a389-ef9c3df71f3c",
-    "createdAt": "2026-06-30T05:15:22.455Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "sales",
-    "entityId": "S-1782729047060",
-    "action": "update",
-    "beforeValue": {
-      "id": "S-1782729047060",
-      "saleDate": "2026-06-30",
-      "tipeId": "W",
-      "tipeCodeSnapshot": "W",
-      "tipeNameSnapshot": "Walk In",
-      "rekeningId": "cash-w",
-      "rekeningNameSnapshot": "Kas Walk In",
-      "customerName": "Ridho",
-      "customerLocation": "Ridho",
-      "deliveryDate": "2026-06-30",
-      "shippingMethod": "di Tempat",
-      "paymentMethod": "Cash",
-      "items": [
-        {
-          "productRef": "Ubr120H",
-          "quantity": 1,
-          "unitPrice": 0,
-          "discount": 0
-        }
-      ],
-      "isTestTransaction": false,
-      "total": 0,
-      "approvalStatus": "approved",
-      "syncTarget": "local",
-      "syncStatus": "local",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-29T10:30:47.060Z",
-      "notes": ""
-    },
-    "afterValue": {
-      "id": "S-1782729047060",
-      "saleDate": "2026-06-30",
-      "tipeId": "AJ",
-      "tipeCodeSnapshot": "AJ",
-      "tipeNameSnapshot": "Aneka Jaya",
-      "rekeningId": "cash-aj",
-      "rekeningNameSnapshot": "Kas AJ",
-      "customerName": "Ridho",
-      "customerLocation": "Ridho",
-      "deliveryDate": "2026-06-30",
-      "shippingMethod": "di Tempat",
-      "paymentMethod": "Cash",
-      "items": [
-        {
-          "productRef": "Kcr12881085",
-          "quantity": 10,
-          "unitPrice": 550000,
-          "discount": 0
-        }
-      ],
-      "isTestTransaction": false,
-      "total": 5500000,
-      "approvalStatus": "approved",
-      "syncTarget": "local",
-      "syncStatus": "local",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-29T10:30:47.060Z",
-      "notes": "",
-      "syncError": ""
-    },
-    "reason": "Edit transaksi lokal"
-  },
-  {
-    "id": "387897c8-0d57-4f85-932d-5881317f62ec",
-    "createdAt": "2026-06-30T05:14:53.045Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "sales",
-    "entityId": "S-1782729047060",
-    "action": "update",
-    "beforeValue": {
-      "id": "S-1782729047060",
-      "saleDate": "2026-06-29",
-      "tipeId": "W",
-      "tipeCodeSnapshot": "W",
-      "tipeNameSnapshot": "W",
-      "rekeningId": "cash-w",
-      "rekeningNameSnapshot": "Kas Walk In",
-      "customerName": "Walk In",
-      "customerLocation": "Toko",
-      "deliveryDate": "2026-06-29",
-      "shippingMethod": "di Tempat",
-      "paymentMethod": "Cash",
-      "items": [
-        {
-          "productRef": "Ubr120H",
-          "quantity": 1,
-          "unitPrice": 0,
-          "discount": 0
-        }
-      ],
-      "isTestTransaction": false,
-      "total": 0,
-      "approvalStatus": "approved",
-      "syncTarget": "local",
-      "syncStatus": "local",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-29T10:30:47.060Z"
-    },
-    "afterValue": {
-      "id": "S-1782729047060",
-      "saleDate": "2026-06-30",
-      "tipeId": "W",
-      "tipeCodeSnapshot": "W",
-      "tipeNameSnapshot": "Walk In",
-      "rekeningId": "cash-w",
-      "rekeningNameSnapshot": "Kas Walk In",
-      "customerName": "Ridho",
-      "customerLocation": "Ridho",
-      "deliveryDate": "2026-06-30",
-      "shippingMethod": "di Tempat",
-      "paymentMethod": "Cash",
-      "items": [
-        {
-          "productRef": "Ubr120H",
-          "quantity": 1,
-          "unitPrice": 0,
-          "discount": 0
-        }
-      ],
-      "isTestTransaction": false,
-      "total": 0,
-      "approvalStatus": "approved",
-      "syncTarget": "local",
-      "syncStatus": "local",
-      "createdByUserId": "anika:1",
-      "createdByNameSnapshot": "Ridho Al Amzah",
-      "createdByRoleSnapshot": "OWNER",
-      "createdAt": "2026-06-29T10:30:47.060Z",
-      "notes": "",
-      "syncError": ""
-    },
-    "reason": "Edit transaksi lokal"
-  },
-  {
-    "id": "7d6e476d-4336-4fb7-afef-f41d69ea1e45",
-    "createdAt": "2026-06-30T03:17:44.581Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.55 Safari/537.36",
     "entityType": "stock_alert",
-    "entityId": "SAL-1782789464575",
+    "entityId": "SAL-1783966859178",
     "action": "send_whatsapp",
     "afterValue": {
-      "id": "SAL-1782789464575",
-      "productId": "3",
-      "productCodeSnapshot": "SKU-20260401-6602",
-      "productNameSnapshot": "Kuncir Cepol",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
+      "id": "SAL-1783966859178",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
       "status": "failed",
-      "createdAt": "2026-06-30T03:17:44.575Z"
+      "createdAt": "2026-07-13T18:20:59.178Z"
     },
     "reason": "Stock sudah mencapai minimum"
   },
   {
-    "id": "fd064ab8-40bd-4a6c-a94f-fb2a4ebb21f5",
-    "createdAt": "2026-06-30T03:17:14.744Z",
+    "id": "6da9e558-6869-4b01-8212-935a335610ae",
+    "createdAt": "2026-07-13T18:18:13.261Z",
     "userId": "anika:1",
     "userNameSnapshot": "Ridho Al Amzah",
     "userRoleSnapshot": "OWNER",
     "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.55 Safari/537.36",
     "entityType": "stock_alert",
-    "entityId": "SAL-1782789434736",
+    "entityId": "SAL-1783966693251",
     "action": "send_whatsapp",
     "afterValue": {
-      "id": "SAL-1782789434736",
-      "productId": "3",
-      "productCodeSnapshot": "SKU-20260401-6602",
-      "productNameSnapshot": "Kuncir Cepol",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
+      "id": "SAL-1783966693251",
+      "productId": "10",
+      "productCodeSnapshot": "FG-SEED-001",
+      "productNameSnapshot": "Panel Kontrol Industri",
+      "currentStock": 0,
+      "minimumStock": 8,
+      "warehouseSnapshot": "Gudang Utama",
+      "rackSnapshot": "Rak A1",
       "status": "failed",
-      "createdAt": "2026-06-30T03:17:14.736Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "e960dd6a-e013-4af0-9ce0-dbf324a2e240",
-    "createdAt": "2026-06-30T03:16:44.653Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789404613",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789404613",
-      "productId": "3",
-      "productCodeSnapshot": "SKU-20260401-6602",
-      "productNameSnapshot": "Kuncir Cepol",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:16:44.613Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "0f18747d-6478-420e-8a90-d7b8f9193786",
-    "createdAt": "2026-06-30T03:15:55.817Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789355802",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789355802",
-      "productId": "4",
-      "productCodeSnapshot": "SKU-20260401-6983",
-      "productNameSnapshot": "Giwang Box Mata",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:15:55.802Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "41f488ce-07b0-4f5b-8cbc-d0790fb096ab",
-    "createdAt": "2026-06-30T03:15:52.906Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789352855",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789352855",
-      "productId": "5",
-      "productCodeSnapshot": "SKU-20260401-3162",
-      "productNameSnapshot": "Gelang Kristal",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:15:52.855Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "43327161-b354-4518-a135-eeb75aacbd7b",
-    "createdAt": "2026-06-30T03:15:52.880Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789352854",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789352854",
-      "productId": "3",
-      "productCodeSnapshot": "SKU-20260401-6602",
-      "productNameSnapshot": "Kuncir Cepol",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:15:52.854Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "aad769c9-0c8e-4b76-b3b3-1efce6182fa0",
-    "createdAt": "2026-06-30T03:15:25.635Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789325631",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789325631",
-      "productId": "5",
-      "productCodeSnapshot": "SKU-20260401-3162",
-      "productNameSnapshot": "Gelang Kristal",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:15:25.631Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "7bdc7d18-9ac3-4fe8-9bc6-dfd90e07f990",
-    "createdAt": "2026-06-30T03:14:55.580Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789295555",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789295555",
-      "productId": "4",
-      "productCodeSnapshot": "SKU-20260401-6983",
-      "productNameSnapshot": "Giwang Box Mata",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:14:55.555Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "4f06b2ae-8e89-4d86-93bd-a53618f4cddd",
-    "createdAt": "2026-06-30T03:14:52.670Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789292663",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789292663",
-      "productId": "3",
-      "productCodeSnapshot": "SKU-20260401-6602",
-      "productNameSnapshot": "Kuncir Cepol",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:14:52.663Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "77b3b4cb-14ce-4113-b29c-4e2fdd9d59a5",
-    "createdAt": "2026-06-30T03:14:25.624Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789265616",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789265616",
-      "productId": "5",
-      "productCodeSnapshot": "SKU-20260401-3162",
-      "productNameSnapshot": "Gelang Kristal",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:14:25.616Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "75c429fd-bb9a-45af-a7e1-360019cd57eb",
-    "createdAt": "2026-06-30T03:13:55.724Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789235719",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789235719",
-      "productId": "3",
-      "productCodeSnapshot": "SKU-20260401-6602",
-      "productNameSnapshot": "Kuncir Cepol",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:13:55.719Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "4e42d722-a762-4191-9e1b-c6a7ca86fa77",
-    "createdAt": "2026-06-30T03:13:52.772Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789232763",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789232763",
-      "productId": "5",
-      "productCodeSnapshot": "SKU-20260401-3162",
-      "productNameSnapshot": "Gelang Kristal",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:13:52.764Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "a6f1133d-9522-4430-9353-f5c0233f5035",
-    "createdAt": "2026-06-30T03:13:25.648Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789205644",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789205644",
-      "productId": "3",
-      "productCodeSnapshot": "SKU-20260401-6602",
-      "productNameSnapshot": "Kuncir Cepol",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:13:25.644Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "16f0f7f2-44c3-401c-90d5-29c0d6d5d8aa",
-    "createdAt": "2026-06-30T03:12:53.196Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789173189",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789173189",
-      "productId": "4",
-      "productCodeSnapshot": "SKU-20260401-6983",
-      "productNameSnapshot": "Giwang Box Mata",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:12:53.189Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "47a4838b-1576-42e3-a513-926eadbf1b6a",
-    "createdAt": "2026-06-30T03:12:52.986Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789172977",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789172977",
-      "productId": "4",
-      "productCodeSnapshot": "SKU-20260401-6983",
-      "productNameSnapshot": "Giwang Box Mata",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:12:52.977Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "108e274e-ead8-449f-8ee9-789f694b9c64",
-    "createdAt": "2026-06-30T03:12:37.518Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "node",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789157508",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789157508",
-      "productId": "2",
-      "productCodeSnapshot": "SKU-20260401-1654",
-      "productNameSnapshot": "Kuncir Lilit",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:12:37.508Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "4143ca06-23a1-4cc8-9c62-1cd237c5eee2",
-    "createdAt": "2026-06-30T03:11:53.051Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789112996",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789112996",
-      "productId": "4",
-      "productCodeSnapshot": "SKU-20260401-6983",
-      "productNameSnapshot": "Giwang Box Mata",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:11:52.996Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "9f2b07db-fc1f-4e2f-bbcd-9e61c3be3aef",
-    "createdAt": "2026-06-30T03:11:52.990Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789112845",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789112845",
-      "productId": "5",
-      "productCodeSnapshot": "SKU-20260401-3162",
-      "productNameSnapshot": "Gelang Kristal",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:11:52.845Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "3a1bc23b-d5bd-4cb4-9306-d57cad30cf6d",
-    "createdAt": "2026-06-30T03:11:32.040Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "node",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789091955",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789091955",
-      "productId": "4",
-      "productCodeSnapshot": "SKU-20260401-6983",
-      "productNameSnapshot": "Giwang Box Mata",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:11:31.955Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "002f9963-423f-4f13-8210-522c4cce9fac",
-    "createdAt": "2026-06-30T03:10:53.557Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789053439",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789053439",
-      "productId": "4",
-      "productCodeSnapshot": "SKU-20260401-6983",
-      "productNameSnapshot": "Giwang Box Mata",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:10:53.439Z"
-    },
-    "reason": "Stock sudah mencapai minimum"
-  },
-  {
-    "id": "1b0baf67-d329-4fa4-a67d-701e1a9f84cd",
-    "createdAt": "2026-06-30T03:10:53.448Z",
-    "userId": "anika:1",
-    "userNameSnapshot": "Ridho Al Amzah",
-    "userRoleSnapshot": "OWNER",
-    "ipAddress": "::1",
-    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "entityType": "stock_alert",
-    "entityId": "SAL-1782789053112",
-    "action": "send_whatsapp",
-    "afterValue": {
-      "id": "SAL-1782789053112",
-      "productId": "2",
-      "productCodeSnapshot": "SKU-20260401-1654",
-      "productNameSnapshot": "Kuncir Lilit",
-      "currentStock": 1,
-      "minimumStock": 1,
-      "warehouseSnapshot": "Gudang Utama Jakarta",
-      "status": "failed",
-      "createdAt": "2026-06-30T03:10:53.112Z"
+      "createdAt": "2026-07-13T18:18:13.251Z"
     },
     "reason": "Stock sudah mencapai minimum"
   }

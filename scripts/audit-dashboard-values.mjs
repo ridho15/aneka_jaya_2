@@ -97,28 +97,33 @@ function typeCode(row) {
 }
 
 function isOperationalSale(row) {
-  return typeCode(row) !== "AJ" && row.syncTarget !== "erp";
+  return typeCode(row) !== "AJ";
 }
 
 function isOperationalExpense(row) {
   return typeCode(row) !== "AJ";
 }
 
-export function auditSalesSyncSafety(sales) {
-  const nonAjErp = sales
-    .filter((sale) => typeCode(sale) !== "AJ" && sale.syncTarget === "erp")
+function salesErpTypeCodes(value = process.env.SALES_ERP_TYPE_CODES || "AJ") {
+  return new Set(String(value).split(",").map((code) => code.trim().toUpperCase()).filter(Boolean));
+}
+
+export function auditSalesSyncSafety(sales, options = {}) {
+  const allowedErpTypes = salesErpTypeCodes(options.salesErpTypeCodes);
+  const unexpectedErp = sales
+    .filter((sale) => sale.syncTarget === "erp" && !allowedErpTypes.has(typeCode(sale)))
     .map((sale) => ({ id: sale.id, tipe: typeCode(sale) || "UNKNOWN", syncTarget: sale.syncTarget }));
   const dummyNonLocal = sales
     .filter((sale) => String(sale.id || "").startsWith("DUMMY-DASH-") && sale.syncTarget !== "local")
     .map((sale) => ({ id: sale.id, tipe: typeCode(sale) || "UNKNOWN", syncTarget: sale.syncTarget || "missing" }));
   const violations = [
-    ...nonAjErp.map((sale) => ({ rule: "NON_AJ_MUST_NOT_TARGET_ERP", ...sale })),
+    ...unexpectedErp.map((sale) => ({ rule: "ERP_TYPE_NOT_ALLOWED", ...sale })),
     ...dummyNonLocal.map((sale) => ({ rule: "DUMMY_MUST_BE_LOCAL", ...sale }))
   ];
   return {
     status: violations.length === 0 ? "PASS" : "FAIL",
     checkedSales: sales.length,
-    nonAjErp,
+    unexpectedErp,
     dummyNonLocal,
     violations
   };
@@ -298,7 +303,7 @@ export function buildDashboardAuditReport(input) {
   const operationalProfit = buildOperationalProfitSummary(input.sales || [], input.expenses || [], todayKey, monthKeyValue, input.grossProfitPercent || 0);
   const paymentBreakdown = buildPaymentBreakdown(filteredSales, input.rekeningLabels || {});
   const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), filters);
-  const syncSafety = auditSalesSyncSafety(input.sales || []);
+  const syncSafety = auditSalesSyncSafety(input.sales || [], { salesErpTypeCodes: input.salesErpTypeCodes });
   return {
     status: syncSafety.status,
     generatedAt: new Date().toISOString(),

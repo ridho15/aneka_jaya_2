@@ -17,6 +17,55 @@ function serializeJson(value: unknown) {
 }
 
 type SalesRecordWithItems = Prisma.SalesRecordGetPayload<{ include: typeof salesInclude }>;
+type LegacySalesRow = {
+  id: string;
+  saleDate: Date;
+  tipeId: string;
+  tipeCodeSnapshot: string;
+  tipeNameSnapshot: string;
+  customerName: string;
+  customerLocation: string | null;
+  shippingMethod: string | null;
+  paymentMethod: string;
+  dueDate: Date | null;
+  rekeningId: string | null;
+  transferAccount: string | null;
+  notes: string | null;
+  total: unknown;
+  approvalStatus: string;
+  syncTarget: string;
+  syncStatus: string;
+  syncError: string | null;
+  syncAttemptedAt: Date | null;
+  syncedAt: Date | null;
+  erpReference: string | null;
+  stockReleaseStatus: string;
+  stockReleaseError: string | null;
+  stockReleaseReference: string | null;
+  stockReleasedAt: Date | null;
+  testReference: string | null;
+  isTestTransaction: boolean;
+  createdByUserId: string;
+  createdByNameSnapshot: string;
+  createdByRoleSnapshot: Role;
+  createdAt: Date;
+};
+type LegacySalesItemRow = {
+  salesRecordId: string;
+  productRef: string;
+  productId: string | null;
+  manualProduct: unknown;
+  warehouseId: string | null;
+  warehouseNameSnapshot: string | null;
+  rackId: string | null;
+  rackNameSnapshot: string | null;
+  unitSnapshot: string | null;
+  uomIdSnapshot: number | null;
+  quantity: unknown;
+  unitPrice: unknown;
+  discount: unknown;
+  sortOrder: number;
+};
 export type SalesRecordFilters = {
   from?: string;
   to?: string;
@@ -46,6 +95,10 @@ function dateStart(value: string) {
 
 function dateEnd(value: string) {
   return new Date(`${value}T23:59:59.999`);
+}
+
+function isMissingColumnError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "P2022");
 }
 
 function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereInput {
@@ -114,6 +167,15 @@ function toSale(row: SalesRecordWithItems): Sale {
     syncAttemptedAt: row.syncAttemptedAt?.toISOString(),
     syncedAt: row.syncedAt?.toISOString(),
     erpReference: row.erpReference || undefined,
+    stockReleaseStatus: row.stockReleaseStatus as Sale["stockReleaseStatus"],
+    stockReleaseError: row.stockReleaseError || undefined,
+    stockReleaseReference: row.stockReleaseReference || undefined,
+    stockReleasedAt: row.stockReleasedAt?.toISOString(),
+    erpPaymentStatus: row.erpPaymentStatus as Sale["erpPaymentStatus"],
+    erpPaymentError: row.erpPaymentError || undefined,
+    erpPaymentReference: row.erpPaymentReference || undefined,
+    erpPaymentSyncedAt: row.erpPaymentSyncedAt?.toISOString(),
+    erpPaymentAttemptedAt: row.erpPaymentAttemptedAt?.toISOString(),
     testReference: row.testReference || undefined,
     isTestTransaction: row.isTestTransaction,
     createdByUserId: row.createdByUserId,
@@ -125,6 +187,10 @@ function toSale(row: SalesRecordWithItems): Sale {
       productId: item.productId || undefined,
       productInputMode: item.manualProduct ? "manual" : "erp",
       manualProduct: item.manualProduct && typeof item.manualProduct === "object" ? item.manualProduct as Sale["items"][number]["manualProduct"] : undefined,
+      warehouseId: item.warehouseId || undefined,
+      warehouseNameSnapshot: item.warehouseNameSnapshot || undefined,
+      rackId: item.rackId || undefined,
+      rackNameSnapshot: item.rackNameSnapshot || undefined,
       unitSnapshot: item.unitSnapshot || undefined,
       uomIdSnapshot: item.uomIdSnapshot ?? undefined,
       quantity: Number(item.quantity),
@@ -134,11 +200,72 @@ function toSale(row: SalesRecordWithItems): Sale {
   };
 }
 
+function legacyToSale(row: LegacySalesRow, items: LegacySalesItemRow[]): Sale {
+  return {
+    id: row.id,
+    saleDate: row.saleDate.toISOString().slice(0, 10),
+    tipeId: row.tipeId,
+    tipeCodeSnapshot: row.tipeCodeSnapshot,
+    tipeNameSnapshot: row.tipeNameSnapshot,
+    customerName: row.customerName,
+    customerLocation: row.customerLocation || undefined,
+    shippingMethod: row.shippingMethod || undefined,
+    paymentMethod: row.paymentMethod as Sale["paymentMethod"],
+    dueDate: row.dueDate?.toISOString().slice(0, 10),
+    rekeningId: row.rekeningId || undefined,
+    transferAccount: row.transferAccount || undefined,
+    notes: row.notes || undefined,
+    total: Number(row.total),
+    approvalStatus: row.approvalStatus as Sale["approvalStatus"],
+    syncTarget: row.syncTarget as Sale["syncTarget"],
+    syncStatus: row.syncStatus as Sale["syncStatus"],
+    syncError: row.syncError || undefined,
+    syncAttemptedAt: row.syncAttemptedAt?.toISOString(),
+    syncedAt: row.syncedAt?.toISOString(),
+    erpReference: row.erpReference || undefined,
+    stockReleaseStatus: row.stockReleaseStatus as Sale["stockReleaseStatus"],
+    stockReleaseError: row.stockReleaseError || undefined,
+    stockReleaseReference: row.stockReleaseReference || undefined,
+    stockReleasedAt: row.stockReleasedAt?.toISOString(),
+    erpPaymentStatus: "not_required",
+    testReference: row.testReference || undefined,
+    isTestTransaction: row.isTestTransaction,
+    createdByUserId: row.createdByUserId,
+    createdByNameSnapshot: row.createdByNameSnapshot,
+    createdByRoleSnapshot: row.createdByRoleSnapshot,
+    createdAt: row.createdAt.toISOString(),
+    items: items.sort((a, b) => a.sortOrder - b.sortOrder).map((item) => ({
+      productRef: item.productRef,
+      productId: item.productId || undefined,
+      productInputMode: item.manualProduct ? "manual" : "erp",
+      manualProduct: item.manualProduct && typeof item.manualProduct === "object" ? item.manualProduct as Sale["items"][number]["manualProduct"] : undefined,
+      warehouseId: item.warehouseId || undefined,
+      warehouseNameSnapshot: item.warehouseNameSnapshot || undefined,
+      rackId: item.rackId || undefined,
+      rackNameSnapshot: item.rackNameSnapshot || undefined,
+      unitSnapshot: item.unitSnapshot || undefined,
+      uomIdSnapshot: item.uomIdSnapshot ?? undefined,
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      discount: Number(item.discount)
+    }))
+  };
+}
+
+async function listLegacySalesRecords(): Promise<Sale[]> {
+  const rows = await prisma.$queryRaw<LegacySalesRow[]>`SELECT "id", "saleDate", "tipeId", "tipeCodeSnapshot", "tipeNameSnapshot", "customerName", "customerLocation", "shippingMethod", "paymentMethod", "dueDate", "rekeningId", "transferAccount", "notes", "total", "approvalStatus", "syncTarget", "syncStatus", "syncError", "syncAttemptedAt", "syncedAt", "erpReference", "stockReleaseStatus", "stockReleaseError", "stockReleaseReference", "stockReleasedAt", "testReference", "isTestTransaction", "createdByUserId", "createdByNameSnapshot", "createdByRoleSnapshot", "createdAt" FROM "SalesRecord" ORDER BY "createdAt" DESC`;
+  const itemRows = await prisma.$queryRaw<LegacySalesItemRow[]>`SELECT "salesRecordId", "productRef", "productId", "manualProduct", "warehouseId", "warehouseNameSnapshot", "rackId", "rackNameSnapshot", "unitSnapshot", "uomIdSnapshot", "quantity", "unitPrice", "discount", "sortOrder" FROM "SalesRecordItem"`;
+  const itemsBySale = new Map<string, LegacySalesItemRow[]>();
+  for (const item of itemRows) itemsBySale.set(item.salesRecordId, [...(itemsBySale.get(item.salesRecordId) || []), item]);
+  return rows.map((row) => legacyToSale(row, itemsBySale.get(row.id) || []));
+}
+
 async function listPrismaSalesRecordsSafe(): Promise<Sale[]> {
   try {
     const rows = await prisma.salesRecord.findMany({ include: salesInclude, orderBy: { createdAt: "desc" } });
     return rows.map(toSale);
-  } catch {
+  } catch (error) {
+    if (isMissingColumnError(error)) return listLegacySalesRecords().catch(() => []);
     return [];
   }
 }
@@ -160,7 +287,11 @@ function mergeSalesRecords(primary: Sale[], secondary: Sale[]) {
 
 export async function listSalesRecords(): Promise<Sale[]> {
   if (isProductionMode()) {
-    const rows = await prisma.salesRecord.findMany({ include: salesInclude, orderBy: { createdAt: "desc" } });
+    const rows = await prisma.salesRecord.findMany({ include: salesInclude, orderBy: { createdAt: "desc" } }).catch((error) => {
+      if (isMissingColumnError(error)) return undefined;
+      throw error;
+    });
+    if (!rows) return listLegacySalesRecords();
     return rows.map(toSale);
   }
   const rows = await readJsonArray<Sale>(fileName);
@@ -234,6 +365,15 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
         syncAttemptedAt: sale.syncAttemptedAt ? new Date(sale.syncAttemptedAt) : undefined,
         syncedAt: sale.syncedAt ? new Date(sale.syncedAt) : undefined,
         erpReference: sale.erpReference,
+        stockReleaseStatus: sale.stockReleaseStatus || "not_required",
+        stockReleaseError: sale.stockReleaseError,
+        stockReleaseReference: sale.stockReleaseReference,
+        stockReleasedAt: sale.stockReleasedAt ? new Date(sale.stockReleasedAt) : undefined,
+        erpPaymentStatus: sale.erpPaymentStatus || "not_required",
+        erpPaymentError: sale.erpPaymentError,
+        erpPaymentReference: sale.erpPaymentReference,
+        erpPaymentSyncedAt: sale.erpPaymentSyncedAt ? new Date(sale.erpPaymentSyncedAt) : undefined,
+        erpPaymentAttemptedAt: sale.erpPaymentAttemptedAt ? new Date(sale.erpPaymentAttemptedAt) : undefined,
         testReference: sale.testReference,
         isTestTransaction: sale.isTestTransaction || false,
         createdByUserId: sale.createdByUserId || "system",
@@ -246,6 +386,10 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
             productRef: item.productRef,
             productId: item.productId,
             manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
+            warehouseId: item.warehouseId,
+            warehouseNameSnapshot: item.warehouseNameSnapshot,
+            rackId: item.rackId,
+            rackNameSnapshot: item.rackNameSnapshot,
             unitSnapshot: item.unitSnapshot,
             uomIdSnapshot: item.uomIdSnapshot,
             quantity: item.quantity,
@@ -317,12 +461,25 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
           syncStatus: nextSyncStatus,
           syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : null,
           syncedAt: before.syncTarget === "erp" ? null : before.syncedAt ? new Date(before.syncedAt) : null,
+          stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required",
+          stockReleaseError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu release stok ulang." : before.stockReleaseError || null,
+          stockReleaseReference: before.syncTarget === "erp" ? null : before.stockReleaseReference || null,
+          stockReleasedAt: before.syncTarget === "erp" ? null : before.stockReleasedAt ? new Date(before.stockReleasedAt) : null,
+          erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required",
+          erpPaymentError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu payment ERP ulang." : before.erpPaymentError || null,
+          erpPaymentReference: before.syncTarget === "erp" ? null : before.erpPaymentReference || null,
+          erpPaymentSyncedAt: before.syncTarget === "erp" ? null : before.erpPaymentSyncedAt ? new Date(before.erpPaymentSyncedAt) : null,
+          erpPaymentAttemptedAt: before.syncTarget === "erp" ? null : before.erpPaymentAttemptedAt ? new Date(before.erpPaymentAttemptedAt) : null,
           items: {
             create: input.items.map((item, index) => ({
               id: `${id}-item-${Date.now()}-${index}`,
               productRef: item.productRef,
               productId: item.productId,
               manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
+              warehouseId: item.warehouseId,
+              warehouseNameSnapshot: item.warehouseNameSnapshot,
+              rackId: item.rackId,
+              rackNameSnapshot: item.rackNameSnapshot,
               unitSnapshot: item.unitSnapshot,
               uomIdSnapshot: item.uomIdSnapshot,
               quantity: item.quantity,
@@ -342,7 +499,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) throw new Error("Transaksi penjualan tidak ditemukan.");
-  const after: Sale = { ...before, ...input, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined };
+  const after: Sale = { ...before, ...input, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined, stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required", stockReleaseError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu release stok ulang." : before.stockReleaseError, stockReleaseReference: before.syncTarget === "erp" ? undefined : before.stockReleaseReference, stockReleasedAt: before.syncTarget === "erp" ? undefined : before.stockReleasedAt, erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required", erpPaymentError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu payment ERP ulang." : before.erpPaymentError, erpPaymentReference: before.syncTarget === "erp" ? undefined : before.erpPaymentReference, erpPaymentSyncedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentSyncedAt, erpPaymentAttemptedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentAttemptedAt };
   rows[index] = after;
   await writeJsonArray(fileName, rows);
   await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });

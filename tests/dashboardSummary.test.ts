@@ -120,7 +120,7 @@ describe("dashboard summaries", () => {
     expect(result[2]).toMatchObject({ sales: 0, expenses: 50_000 });
   });
 
-  it("calculates operational profit summary from approved non-AJ local transaction dates and custom percent", () => {
+  it("calculates operational profit summary from approved non-AJ transaction dates and custom percent", () => {
     const walkInSale: Sale = { ...sale, id: "w-month", tipeId: "W", tipeCodeSnapshot: "W", saleDate: "2026-07-02", total: 1_000_000 };
     const slmToday: Sale = { ...sale, id: "slm-today", tipeId: "SLM", tipeCodeSnapshot: "SLM", saleDate: "2026-07-08", total: 500_000 };
     const onlineSale: Sale = { ...sale, id: "online", tipeId: "ONLINE", tipeCodeSnapshot: "ONLINE", saleDate: "2026-07-08", total: 250_000 };
@@ -144,14 +144,14 @@ describe("dashboard summaries", () => {
 
     expect(result).toMatchObject({
       grossProfitPercent: 20,
-      monthlyRevenue: 1_750_000,
+      monthlyRevenue: 2_550_000,
       monthlyExpenses: 275_000,
-      todayRevenue: 750_000,
+      todayRevenue: 1_550_000,
       todayExpenses: 75_000,
-      grossProfit: 350_000,
-      nettProfit: 75_000,
-      monthlySalesCount: 3,
-      todaySalesCount: 2
+      grossProfit: 510_000,
+      nettProfit: 235_000,
+      monthlySalesCount: 4,
+      todaySalesCount: 3
     });
   });
 

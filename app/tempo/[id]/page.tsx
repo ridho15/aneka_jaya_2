@@ -54,6 +54,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
                   <span className="text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(payment.paymentDate))}</span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">{payment.paymentMethod} • {payment.rekeningNameSnapshot}{payment.notes ? ` • ${payment.notes}` : ""}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-600">Payment ERP: {payment.erpPaymentStatus || "not_required"}{payment.erpPaymentError ? ` • ${payment.erpPaymentError}` : ""}</p>
               </div>
             ))}
             {payments.length === 0 && <p className="py-3 text-sm text-slate-500">Belum ada pembayaran.</p>}

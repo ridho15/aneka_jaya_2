@@ -2,26 +2,26 @@ import { describe, expect, it } from "vitest";
 import { auditSalesSyncSafety, buildDashboardAuditReport } from "@/scripts/audit-dashboard-values.mjs";
 
 describe("dashboard audit report", () => {
-  it("fails sync safety for non-AJ ERP targets and dummy records that are not local", () => {
+  it("fails sync safety for ERP targets outside configured sales types and dummy records that are not local", () => {
     const safety = auditSalesSyncSafety([
       { id: "LOCAL-W", tipeCodeSnapshot: "W", syncTarget: "local" },
       { id: "ERP-AJ", tipeCodeSnapshot: "AJ", syncTarget: "erp" },
       { id: "BAD-SLM", tipeCodeSnapshot: "SLM", syncTarget: "erp" },
       { id: "DUMMY-DASH-BAD", tipeCodeSnapshot: "W" }
-    ]);
+    ], { salesErpTypeCodes: "AJ" });
 
     expect(safety.status).toBe("FAIL");
-    expect(safety.nonAjErp.map((item) => item.id)).toEqual(["BAD-SLM"]);
+    expect(safety.unexpectedErp.map((item) => item.id)).toEqual(["BAD-SLM"]);
     expect(safety.dummyNonLocal.map((item) => item.id)).toEqual(["DUMMY-DASH-BAD"]);
     expect(safety.violations).toHaveLength(2);
   });
 
-  it("passes sync safety for local dummy/non-AJ records and AJ ERP records", () => {
+  it("passes sync safety for local dummy records and configured ERP sales types", () => {
     expect(auditSalesSyncSafety([
       { id: "DUMMY-DASH-OK", tipeCodeSnapshot: "SLM", syncTarget: "local" },
-      { id: "ONLINE-OK", tipeCodeSnapshot: "ONLINE", syncTarget: "local" },
+      { id: "ONLINE-OK", tipeCodeSnapshot: "ONLINE", syncTarget: "erp" },
       { id: "AJ-ERP", tipeCodeSnapshot: "AJ", syncTarget: "erp" }
-    ])).toMatchObject({ status: "PASS", violations: [] });
+    ], { salesErpTypeCodes: "AJ,W,SLM,ONLINE" })).toMatchObject({ status: "PASS", violations: [] });
   });
 
   it("recomputes operational gross and nett profit with custom percentage", () => {
@@ -29,6 +29,7 @@ describe("dashboard audit report", () => {
       todayKey: "2026-07-08",
       monthKey: "2026-07",
       grossProfitPercent: 10,
+      salesErpTypeCodes: "AJ,W,SLM,ONLINE",
       rekeningLabels: { bca: "BCA Operasional - BCA" },
       sales: [
         { id: "w-month", saleDate: "2026-07-02", tipeId: "W", tipeCodeSnapshot: "W", paymentMethod: "Cash", total: 1_000_000, approvalStatus: "approved" },
@@ -49,15 +50,15 @@ describe("dashboard audit report", () => {
       ]
     });
 
-    expect(report.operationalProfit.monthlyRevenue).toBe(2_750_000);
-    expect(report.operationalProfit.todayRevenue).toBe(750_000);
+    expect(report.operationalProfit.monthlyRevenue).toBe(10_750_000);
+    expect(report.operationalProfit.todayRevenue).toBe(8_750_000);
     expect(report.operationalProfit.monthlyExpenses).toBe(225_000);
     expect(report.operationalProfit.todayExpenses).toBe(25_000);
-    expect(report.operationalProfit.grossProfit).toBe(275_000);
-    expect(report.operationalProfit.nettProfit).toBe(50_000);
+    expect(report.operationalProfit.grossProfit).toBe(1_075_000);
+    expect(report.operationalProfit.nettProfit).toBe(850_000);
     expect(report.operationalProfit.formulas.grossProfit).toBe("omset operasional bulan ini x 10% / 100");
-    expect(report.status).toBe("FAIL");
-    expect(report.syncSafety.nonAjErp.map((item) => item.id)).toEqual(["erp"]);
+    expect(report.status).toBe("PASS");
+    expect(report.syncSafety.unexpectedErp).toEqual([]);
   });
 
   it("builds dashboard KPI and payment expected values with compact money formatting", () => {

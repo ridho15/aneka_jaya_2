@@ -129,12 +129,18 @@ model TempoPayment {
   rekeningNameSnapshot  String
   attachmentUrl         String?
   notes                 String?
+  erpPaymentStatus      String          @default("not_required")
+  erpPaymentError       String?
+  erpPaymentReference   String?
+  erpPaymentSyncedAt    DateTime?
+  erpPaymentAttemptedAt DateTime?
   createdByUserId       String
   createdByNameSnapshot String
   createdAt             DateTime
 
   @@index([tempoReceivableId])
   @@index([paymentDate])
+  @@index([erpPaymentStatus])
 }
 
 model SalesRecord {
@@ -159,6 +165,15 @@ model SalesRecord {
   syncAttemptedAt       DateTime?
   syncedAt              DateTime?
   erpReference          String?
+  stockReleaseStatus    String    @default("not_required")
+  stockReleaseError     String?
+  stockReleaseReference String?
+  stockReleasedAt       DateTime?
+  erpPaymentStatus      String    @default("not_required")
+  erpPaymentError       String?
+  erpPaymentReference   String?
+  erpPaymentSyncedAt    DateTime?
+  erpPaymentAttemptedAt DateTime?
   testReference         String?
   isTestTransaction     Boolean   @default(false)
   createdByUserId       String
@@ -171,6 +186,9 @@ model SalesRecord {
   @@index([approvalStatus])
   @@index([customerName])
   @@index([syncTarget, syncStatus])
+  @@index([stockReleaseStatus])
+  @@index([stockReleaseReference])
+  @@index([erpPaymentStatus])
   @@index([syncAttemptedAt])
   @@index([testReference])
 }
@@ -192,6 +210,8 @@ model RekeningAccount {
   name          String
   accountNumber String?
   bankName      String?
+  erpCoaId      String?
+  erpCoaNameSnapshot String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -205,6 +225,10 @@ model SalesRecordItem {
   productRef    String
   productId      String?
   manualProduct  Json?
+  warehouseId    String?
+  warehouseNameSnapshot String?
+  rackId         String?
+  rackNameSnapshot String?
   unitSnapshot   String?
   uomIdSnapshot  Int?
   quantity      Decimal     @db.Decimal(18, 2)

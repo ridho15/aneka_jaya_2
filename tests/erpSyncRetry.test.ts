@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
       findMany: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn()
-    }
+    },
+    rekeningAccount: { findMany: vi.fn() },
+    tempoReceivable: { findUnique: vi.fn() },
+    tempoPayment: { update: vi.fn() }
   },
   anikaRequest: vi.fn(),
   listProducts: vi.fn(),
@@ -48,10 +51,19 @@ const row = {
   syncAttemptedAt: new Date("2026-06-29T10:00:00.000Z"),
   syncedAt: null,
   erpReference: null,
+  stockReleaseStatus: "not_required",
+  stockReleaseError: null,
+  stockReleaseReference: null,
+  stockReleasedAt: null,
+  erpPaymentStatus: "not_required",
+  erpPaymentError: null,
+  erpPaymentReference: null,
+  erpPaymentSyncedAt: null,
+  erpPaymentAttemptedAt: null,
   testReference: null,
   isTestTransaction: false,
   createdAt: new Date("2026-06-29T09:00:00.000Z"),
-  items: [{ productRef: "P-1", quantity: 1, unitPrice: 10000, discount: 0, sortOrder: 0 }]
+  items: [{ productRef: "P-1", productId: "88", warehouseId: "1", warehouseNameSnapshot: "Gudang Utama", rackId: "5", rackNameSnapshot: "Rak A", quantity: 1, unitPrice: 10000, discount: 0, sortOrder: 0 }]
 };
 
 describe("ERP sync retry service", () => {
@@ -63,6 +75,9 @@ describe("ERP sync retry service", () => {
     mocks.findProductIdBySku.mockResolvedValue({ success: true, data: undefined });
     mocks.createOfficialProduct.mockResolvedValue({ success: true, data: 99 });
     mocks.anikaRequest.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });
+    mocks.prisma.rekeningAccount.findMany.mockResolvedValue([{ id: "cash-aj", name: "Kas AJ", accountNumber: "-", bankName: "Cash", erpCoaId: "3", erpCoaNameSnapshot: "Kas AJ", isActive: true, tipeLinks: [{ bookkeepingTypeId: "AJ" }] }]);
+    mocks.prisma.tempoReceivable.findUnique.mockResolvedValue(null);
+    mocks.prisma.tempoPayment.update.mockResolvedValue({});
   });
 
   it("lists ERP pending/failed rows with summary counts", async () => {
@@ -92,14 +107,26 @@ describe("ERP sync retry service", () => {
 
   it("marks a failed sales sync as synced when retry succeeds", async () => {
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
-    mocks.anikaRequest.mockResolvedValue({ success: true, data: { invoice_id: "INV-1" } });
-    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "synced", syncError: null, erpReference: "INV-1", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
+    mocks.anikaRequest
+      .mockResolvedValueOnce({ success: true, data: { invoice_id: "INV-1" } })
+      .mockResolvedValueOnce({ success: true, data: { status: "released" } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 25, customer_id: 77, remaining: 100, settlement_status: "unpaid" } } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 12, status: "Paid" } } });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "synced", syncError: null, erpReference: "INV-1", stockReleaseStatus: "released", stockReleaseReference: "SLM-STOCK-INV-1", erpPaymentStatus: "paid", erpPaymentReference: "12", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
 
-    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, message: "Retry ERP berhasil.", item: { syncStatus: "synced", erpReference: "INV-1" } });
+    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, message: "Retry ERP, release stok, dan payment berhasil.", item: { syncStatus: "synced", erpReference: "INV-1", stockReleaseStatus: "released", erpPaymentStatus: "paid" } });
 
     expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
       method: "POST",
       body: expect.stringContaining("\"customer_id\":77")
+    }));
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/stock-releases", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"warehouse_id\":1")
+    }));
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales-payments", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"coa_id\":3")
     }));
     expect(mocks.prisma.salesRecord.update).toHaveBeenLastCalledWith(expect.objectContaining({
       data: expect.objectContaining({ syncStatus: "synced", syncError: null, erpReference: "INV-1" })
@@ -140,8 +167,12 @@ describe("ERP sync retry service", () => {
   it("retries batch pending/failed sales rows", async () => {
     mocks.prisma.salesRecord.findMany.mockResolvedValue([{ id: "S-ERP-1" }]);
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(row);
-    mocks.anikaRequest.mockResolvedValue({ success: true, data: { id: "ERP-1" } });
-    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "synced", erpReference: "ERP-1", syncError: null, syncedAt: new Date() });
+    mocks.anikaRequest
+      .mockResolvedValueOnce({ success: true, data: { id: "ERP-1" } })
+      .mockResolvedValueOnce({ success: true, data: { status: "released" } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 25, customer_id: 77, remaining: 100 } } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 12, status: "Paid" } } });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "synced", stockReleaseStatus: "released", erpReference: "ERP-1", syncError: null, erpPaymentStatus: "paid", syncedAt: new Date() });
 
     await expect(retryPendingSalesErpSync()).resolves.toMatchObject({ attempted: 1, succeeded: 1, failed: 0 });
   });
@@ -167,8 +198,11 @@ describe("ERP sync retry service", () => {
       .mockResolvedValueOnce({ success: true, data: [] });
     mocks.anikaRequest
       .mockResolvedValueOnce({ success: true, data: { data: { id: 123, code: "SLM-CUSTOMER" } } })
-      .mockResolvedValueOnce({ success: true, data: { invoice_id: "INV-1" } });
-    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, customerName: "Customer Manual", syncStatus: "synced", syncError: null, erpReference: "INV-1", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
+      .mockResolvedValueOnce({ success: true, data: { invoice_id: "INV-1" } })
+      .mockResolvedValueOnce({ success: true, data: { status: "released" } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 25, customer_id: 123, remaining: 100 } } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 12, status: "Paid" } } });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, customerName: "Customer Manual", syncStatus: "synced", syncError: null, erpReference: "INV-1", stockReleaseStatus: "released", erpPaymentStatus: "paid", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
 
     await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, item: { syncStatus: "synced" } });
     expect(mocks.anikaRequest).toHaveBeenNthCalledWith(1, "/customers", expect.objectContaining({

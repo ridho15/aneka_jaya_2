@@ -22,7 +22,7 @@ function Badge({ value, tone = "slate" }: { value: string; tone?: "slate" | "gre
 }
 
 function statusTone(value?: string) {
-  if (value === "approved" || value === "synced") return "green";
+  if (value === "approved" || value === "synced" || value === "released" || value === "paid" || value === "partial") return "green";
   if (value === "pending_approval" || value === "pending") return "amber";
   if (value === "rejected" || value === "failed" || value === "cancelled") return "red";
   return "slate";
@@ -62,12 +62,18 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           <Info label="Pengiriman" value={sale.shippingMethod || "—"} />
           <Info label="Pembuat" value={sale.createdByNameSnapshot || "—"} />
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Approval</p><div className="mt-1"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /></div></div>
-          <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">ERP Sync</p><div className="mt-1"><Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} /></div></div>
+          <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Invoice ERP</p><div className="mt-1"><Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} /></div></div>
+          <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Release Stok</p><div className="mt-1">{sale.syncTarget === "erp" ? <Badge value={sale.stockReleaseStatus || "not_required"} tone={statusTone(sale.stockReleaseStatus || "not_required")} /> : <span className="text-sm text-slate-500">—</span>}</div></div>
+          <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Payment ERP</p><div className="mt-1">{sale.syncTarget === "erp" ? <Badge value={sale.erpPaymentStatus || "not_required"} tone={statusTone(sale.erpPaymentStatus || "not_required")} /> : <span className="text-sm text-slate-500">—</span>}</div></div>
           <Info label="ERP Reference" value={sale.erpReference || "—"} />
+          <Info label="Release Reference" value={sale.stockReleaseReference || "—"} />
+          <Info label="Payment Reference" value={sale.erpPaymentReference || "—"} />
           <Info label="Test Reference" value={sale.testReference || "—"} />
           <Info label="Total" value={rupiah(sale.total)} strong />
         </div>
         {sale.syncError && <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{sale.syncError}</p>}
+        {sale.stockReleaseError && <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{sale.stockReleaseError}</p>}
+        {sale.erpPaymentError && <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{sale.erpPaymentError}</p>}
         {canManage && (
           <div className="mt-5">
             <TransactionCancelButton
@@ -83,8 +89,8 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
       <section className="aj-surface overflow-x-auto">
         <div className="border-b border-slate-200 px-5 py-4 font-bold text-slate-900">Item Barang</div>
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Produk</th><th className="px-5 py-3 text-right">Qty</th><th className="px-5 py-3">Satuan</th><th className="px-5 py-3 text-right">Harga</th><th className="px-5 py-3 text-right">Diskon</th><th className="px-5 py-3 text-right">Subtotal</th></tr></thead>
-          <tbody>{sale.items.map((item, index) => <tr key={`${item.productRef}-${index}`} className="border-b border-slate-100"><td className="px-5 py-4 font-semibold">{item.productRef}</td><td className="px-5 py-4 text-right">{item.quantity}</td><td className="px-5 py-4">{item.unitSnapshot || "—"}</td><td className="px-5 py-4 text-right">{rupiah(item.unitPrice)}</td><td className="px-5 py-4 text-right">{rupiah(item.discount || 0)}</td><td className="px-5 py-4 text-right font-semibold">{rupiah(item.quantity * item.unitPrice - (item.discount || 0))}</td></tr>)}</tbody>
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Produk</th><th className="px-5 py-3">Lokasi Stok</th><th className="px-5 py-3 text-right">Qty</th><th className="px-5 py-3">Satuan</th><th className="px-5 py-3 text-right">Harga</th><th className="px-5 py-3 text-right">Diskon</th><th className="px-5 py-3 text-right">Subtotal</th></tr></thead>
+          <tbody>{sale.items.map((item, index) => <tr key={`${item.productRef}-${index}`} className="border-b border-slate-100"><td className="px-5 py-4 font-semibold">{item.productRef}</td><td className="px-5 py-4 text-slate-600">{[item.warehouseNameSnapshot, item.rackNameSnapshot].filter(Boolean).join(" / ") || "—"}</td><td className="px-5 py-4 text-right">{item.quantity}</td><td className="px-5 py-4">{item.unitSnapshot || "—"}</td><td className="px-5 py-4 text-right">{rupiah(item.unitPrice)}</td><td className="px-5 py-4 text-right">{rupiah(item.discount || 0)}</td><td className="px-5 py-4 text-right font-semibold">{rupiah(item.quantity * item.unitPrice - (item.discount || 0))}</td></tr>)}</tbody>
         </table>
       </section>
     </AppShell>

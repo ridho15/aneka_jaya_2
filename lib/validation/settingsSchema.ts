@@ -22,11 +22,15 @@ export const rekeningCreateSchema = z.object({
   bank: cleanString(80),
   name: cleanString(100),
   accountNumber: z.string().trim().max(80).optional(),
+  erpCoaId: z.string().trim().max(80).optional(),
+  erpCoaNameSnapshot: z.string().trim().max(120).optional(),
   tipeIds: z.array(z.string().trim().min(1).max(80)).optional()
 }).transform((value) => ({
   bank: value.bank,
   name: value.name,
   accountNumber: value.accountNumber || "-",
+  erpCoaId: value.erpCoaId || undefined,
+  erpCoaNameSnapshot: value.erpCoaNameSnapshot || undefined,
   tipeIds: value.tipeIds || []
 }));
 
@@ -35,6 +39,8 @@ export const rekeningUpdateSchema = z.object({
   bank: cleanString(80).optional(),
   name: cleanString(100).optional(),
   accountNumber: z.string().trim().max(80).optional(),
+  erpCoaId: z.string().trim().max(80).optional(),
+  erpCoaNameSnapshot: z.string().trim().max(120).optional(),
   isActive: z.boolean().optional(),
   tipeIds: z.array(z.string().trim().min(1).max(80)).optional()
 });

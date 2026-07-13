@@ -6,6 +6,7 @@ import { readJsonArray, writeJsonArray } from "@/lib/data/jsonStore";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { rekeningForTipe } from "@/lib/business/masterData";
+import { syncErpSalesPayment } from "@/lib/api/salesPayments";
 
 export type TempoStatus = "open" | "paid" | "partial_paid" | "overdue" | "cancelled" | "written_off";
 
@@ -38,6 +39,11 @@ export type TempoPayment = {
   rekeningNameSnapshot: string;
   attachmentUrl?: string;
   notes?: string;
+  erpPaymentStatus?: "not_required" | "pending" | "paid" | "partial" | "failed";
+  erpPaymentError?: string;
+  erpPaymentReference?: string;
+  erpPaymentSyncedAt?: string;
+  erpPaymentAttemptedAt?: string;
   createdByUserId: string;
   createdByNameSnapshot: string;
   createdAt: string;
@@ -177,10 +183,63 @@ function toTempoPayment(row: Awaited<ReturnType<typeof prisma.tempoPayment.findM
     rekeningNameSnapshot: row.rekeningNameSnapshot,
     attachmentUrl: row.attachmentUrl || undefined,
     notes: row.notes || undefined,
+    erpPaymentStatus: row.erpPaymentStatus as TempoPayment["erpPaymentStatus"],
+    erpPaymentError: row.erpPaymentError || undefined,
+    erpPaymentReference: row.erpPaymentReference || undefined,
+    erpPaymentSyncedAt: row.erpPaymentSyncedAt?.toISOString(),
+    erpPaymentAttemptedAt: row.erpPaymentAttemptedAt?.toISOString(),
     createdByUserId: row.createdByUserId,
     createdByNameSnapshot: row.createdByNameSnapshot,
     createdAt: row.createdAt.toISOString()
   };
+}
+
+function isSyncablePaymentMethod(method: string) {
+  return method === "Cash" || method === "TF";
+}
+
+function paymentSyncError(response: { success: false; message?: string }) {
+  return response.message || "Payment ERP gagal dibuat.";
+}
+
+async function syncTempoPaymentToErp(receivable: TempoReceivable, payment: TempoPayment): Promise<TempoPayment> {
+  if (!isProductionMode() || !isSyncablePaymentMethod(payment.paymentMethod)) return payment;
+  const salesDelegate = (prisma as typeof prisma & { salesRecord?: typeof prisma.salesRecord }).salesRecord;
+  if (!salesDelegate) return payment;
+  const sale = await salesDelegate.findUnique({ where: { id: receivable.salesId } });
+  if (!sale || sale.syncTarget !== "erp" || sale.syncStatus !== "synced") return payment;
+  const attemptedAt = new Date();
+  if (sale.stockReleaseStatus !== "released") {
+    const error = "Payment ERP menunggu release stok berhasil.";
+    const updated = await prisma.tempoPayment.update({ where: { id: payment.id }, data: { erpPaymentStatus: "pending", erpPaymentError: error, erpPaymentAttemptedAt: attemptedAt } });
+    await prisma.salesRecord.update({ where: { id: sale.id }, data: { erpPaymentStatus: "pending", erpPaymentError: error, erpPaymentAttemptedAt: attemptedAt } });
+    return toTempoPayment(updated);
+  }
+  const rekening = (await rekeningForTipe(receivable.tipeId)).find((item) => item.id === payment.rekeningId);
+  const response = await syncErpSalesPayment({
+    invoiceNumber: sale.erpReference || undefined,
+    invoiceId: 0,
+    customerId: 0,
+    paymentDate: payment.paymentDate,
+    coaId: rekening?.erpCoaId || "",
+    paymentMethod: payment.paymentMethod,
+    amount: payment.amountPaid,
+    notes: `Pembayaran Tempo SLM ${sale.erpReference || sale.id}`
+  });
+  if (response.success) {
+    const updated = await prisma.tempoPayment.update({
+      where: { id: payment.id },
+      data: { erpPaymentStatus: response.data.status, erpPaymentError: null, erpPaymentReference: response.data.paymentReference, erpPaymentSyncedAt: attemptedAt, erpPaymentAttemptedAt: attemptedAt }
+    });
+    await prisma.salesRecord.update({ where: { id: sale.id }, data: { erpPaymentStatus: response.data.status, erpPaymentError: null, erpPaymentReference: response.data.paymentReference, erpPaymentSyncedAt: attemptedAt, erpPaymentAttemptedAt: attemptedAt } });
+    await recordAudit({ entityType: "erp_sync", entityId: payment.id, action: "retry_sync", afterValue: { status: response.data.status, paymentReference: response.data.paymentReference }, reason: "Payment Tempo tersinkron ke ERP" });
+    return toTempoPayment(updated);
+  }
+  const error = paymentSyncError(response);
+  const updated = await prisma.tempoPayment.update({ where: { id: payment.id }, data: { erpPaymentStatus: "failed", erpPaymentError: error, erpPaymentAttemptedAt: attemptedAt } });
+  await prisma.salesRecord.update({ where: { id: sale.id }, data: { erpPaymentStatus: "failed", erpPaymentError: error, erpPaymentAttemptedAt: attemptedAt } });
+  await recordAudit({ entityType: "erp_sync", entityId: payment.id, action: "retry_sync", afterValue: { status: "failed", error }, reason: `Payment Tempo ERP gagal • ${error}` });
+  return toTempoPayment(updated);
 }
 
 export async function createTempoReceivable(input: Omit<TempoReceivable, "id" | "paidAmount" | "remainingAmount" | "status" | "createdByUserId" | "createdByNameSnapshot" | "createdAt" | "updatedAt">): Promise<TempoReceivable> {
@@ -304,7 +363,7 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
   if (!Number.isFinite(input.amountPaid) || input.amountPaid <= 0) throw new Error("Nominal dibayar harus lebih dari 0.");
   if (Number.isNaN(Date.parse(input.paymentDate))) throw new Error("Tanggal pembayaran tidak valid.");
   if (isProductionMode()) {
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const row = await tx.tempoReceivable.findUnique({ where: { id } });
       if (!row) throw new Error("Tempo tidak ditemukan.");
       const before = toTempoReceivable(row);
@@ -334,6 +393,7 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
           rekeningNameSnapshot: rekening.name,
           attachmentUrl: input.attachmentUrl,
           notes: input.notes,
+          erpPaymentStatus: "not_required",
           createdByUserId: user.id,
           createdByNameSnapshot: user.name,
           createdAt: now
@@ -363,6 +423,8 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
       });
       return { receivable: after, payment: paymentResult };
     });
+    const syncedPayment = await syncTempoPaymentToErp(result.receivable, result.payment);
+    return { receivable: result.receivable, payment: syncedPayment };
   }
   const rows = await readJsonArray<TempoReceivable>(receivableFile);
   const index = rows.findIndex((row) => row.id === id);
@@ -379,7 +441,7 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
   const after: TempoReceivable = { ...before, paidAmount, remainingAmount, status: remainingAmount <= 0 ? "paid" : "partial_paid", updatedAt: now };
   rows[index] = after;
   await writeJsonArray(receivableFile, rows);
-  const payment: TempoPayment = { id: `TPY-${Date.now()}`, tempoReceivableId: id, createdByUserId: user.id, createdByNameSnapshot: user.name, createdAt: now, ...input, rekeningId: rekening.id, rekeningNameSnapshot: rekening.name };
+  const payment: TempoPayment = { id: `TPY-${Date.now()}`, tempoReceivableId: id, createdByUserId: user.id, createdByNameSnapshot: user.name, createdAt: now, erpPaymentStatus: "not_required", ...input, rekeningId: rekening.id, rekeningNameSnapshot: rekening.name };
   const payments = await readJsonArray<TempoPayment>(paymentFile);
   payments.unshift(payment);
   await writeJsonArray(paymentFile, payments);

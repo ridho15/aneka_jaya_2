@@ -8,7 +8,7 @@ import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData
 import { INDONESIAN_BANKS } from "@/lib/paymentAccounts";
 
 type Props = { types: BookkeepingType[]; rekenings: RekeningAccount[] };
-type RekeningDraft = { bank: string; name: string; accountNumber: string; tipeIds: string[] };
+type RekeningDraft = { bank: string; name: string; accountNumber: string; erpCoaId: string; erpCoaNameSnapshot: string; tipeIds: string[] };
 
 export function RekeningManager({ types, rekenings: initial }: Props) {
   const [rekenings, setRekenings] = useState(initial);
@@ -16,9 +16,11 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
   const [bank, setBank] = useState("BCA");
   const [name, setName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [erpCoaId, setErpCoaId] = useState("");
+  const [erpCoaNameSnapshot, setErpCoaNameSnapshot] = useState("");
   const [selectedTipeIds, setSelectedTipeIds] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<RekeningDraft>({ bank: "BCA", name: "", accountNumber: "", tipeIds: [] });
+  const [draft, setDraft] = useState<RekeningDraft>({ bank: "BCA", name: "", accountNumber: "", erpCoaId: "", erpCoaNameSnapshot: "", tipeIds: [] });
   const [saving, setSaving] = useState(false);
 
   const toggleTipe = (id: string) => setSelectedTipeIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
@@ -26,15 +28,15 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
 
   const beginEdit = (rek: RekeningAccount) => {
     setEditingId(rek.id);
-    setDraft({ bank: rek.bank, name: rek.name, accountNumber: rek.accountNumber === "-" ? "" : rek.accountNumber, tipeIds: rek.tipeIds });
+    setDraft({ bank: rek.bank, name: rek.name, accountNumber: rek.accountNumber === "-" ? "" : rek.accountNumber, erpCoaId: rek.erpCoaId || "", erpCoaNameSnapshot: rek.erpCoaNameSnapshot || "", tipeIds: rek.tipeIds });
   };
 
   const addRekening = async () => {
     if (!name.trim()) { setNotice({ type: "error", message: "Nama rekening wajib diisi." }); return; }
     setSaving(true);
-    const res = await fetch("/api/rekening", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bank, name: name.trim(), accountNumber: accountNumber.trim() || "-", tipeIds: selectedTipeIds }) });
+    const res = await fetch("/api/rekening", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bank, name: name.trim(), accountNumber: accountNumber.trim() || "-", erpCoaId: erpCoaId.trim(), erpCoaNameSnapshot: erpCoaNameSnapshot.trim(), tipeIds: selectedTipeIds }) });
     const result = await res.json();
-    if (result.success) { setRekenings((prev) => [...prev, result.data]); setName(""); setAccountNumber(""); setSelectedTipeIds([]); setNotice({ type: "success", message: "Rekening berhasil ditambahkan." }); }
+    if (result.success) { setRekenings((prev) => [...prev, result.data]); setName(""); setAccountNumber(""); setErpCoaId(""); setErpCoaNameSnapshot(""); setSelectedTipeIds([]); setNotice({ type: "success", message: "Rekening berhasil ditambahkan." }); }
     else setNotice({ type: "error", message: result.message || "Gagal menambah rekening." });
     setSaving(false);
   };
@@ -54,7 +56,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
   );
 
   const updateRekening = async (rek: RekeningAccount, patch?: Partial<RekeningAccount>) => {
-    const payload = patch || { bank: draft.bank, name: draft.name.trim(), accountNumber: draft.accountNumber.trim() || "-", tipeIds: draft.tipeIds };
+    const payload = patch || { bank: draft.bank, name: draft.name.trim(), accountNumber: draft.accountNumber.trim() || "-", erpCoaId: draft.erpCoaId.trim(), erpCoaNameSnapshot: draft.erpCoaNameSnapshot.trim(), tipeIds: draft.tipeIds };
     if (!payload.name && !patch) { setNotice({ type: "error", message: "Nama rekening wajib diisi." }); return; }
     setSaving(true);
     const res = await fetch("/api/rekening", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: rek.id, ...payload }) });
@@ -85,6 +87,8 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                   <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Nama rekening</span><Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} /></label>
                   <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Bank</span><Select value={draft.bank} onChange={(e) => setDraft((prev) => ({ ...prev, bank: e.target.value }))}>{INDONESIAN_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}</Select></label>
                   <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Nomor rekening</span><Input value={draft.accountNumber} onChange={(e) => setDraft((prev) => ({ ...prev, accountNumber: e.target.value }))} placeholder="-" /></label>
+                  <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">COA ERP ID</span><Input value={draft.erpCoaId} onChange={(e) => setDraft((prev) => ({ ...prev, erpCoaId: e.target.value }))} placeholder="Contoh: 10" /></label>
+                  <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Nama COA ERP</span><Input value={draft.erpCoaNameSnapshot} onChange={(e) => setDraft((prev) => ({ ...prev, erpCoaNameSnapshot: e.target.value }))} placeholder="Contoh: Bank BCA" /></label>
                   <div>
                     <p className="mb-2 text-sm font-medium text-slate-700">Tipe yang diassign</p>
                     {draftTipePicker}
@@ -105,6 +109,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                   </div>
                   <dl className="space-y-3 text-sm">
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Nomor rekening</dt><dd className="mt-1 font-mono text-slate-700">{rek.accountNumber}</dd></div>
+                    <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">COA ERP</dt><dd className="mt-1 text-slate-700">{rek.erpCoaId ? `${rek.erpCoaId}${rek.erpCoaNameSnapshot ? ` - ${rek.erpCoaNameSnapshot}` : ""}` : "Belum diatur"}</dd></div>
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tipe yang diassign</dt><dd className="mt-1 flex flex-wrap gap-1">{assignedTipes(rek.tipeIds)}</dd></div>
                   </dl>
                   <div className="grid grid-cols-2 gap-2">
@@ -120,7 +125,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-[920px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-              <tr><th className="px-5 py-3">Nama</th><th className="px-5 py-3">Bank</th><th className="px-5 py-3">Nomor rekening</th><th className="px-5 py-3">Tipe yang diassign</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Aksi</th></tr>
+              <tr><th className="px-5 py-3">Nama</th><th className="px-5 py-3">Bank</th><th className="px-5 py-3">Nomor rekening</th><th className="px-5 py-3">COA ERP</th><th className="px-5 py-3">Tipe yang diassign</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Aksi</th></tr>
             </thead>
             <tbody>
             {rekenings.map((rek) => (
@@ -130,6 +135,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                     <td className="px-5 py-4"><Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} /></td>
                     <td className="px-5 py-4"><Select value={draft.bank} onChange={(e) => setDraft((prev) => ({ ...prev, bank: e.target.value }))}>{INDONESIAN_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}</Select></td>
                     <td className="px-5 py-4"><Input value={draft.accountNumber} onChange={(e) => setDraft((prev) => ({ ...prev, accountNumber: e.target.value }))} placeholder="-" /></td>
+                    <td className="px-5 py-4"><div className="space-y-2"><Input value={draft.erpCoaId} onChange={(e) => setDraft((prev) => ({ ...prev, erpCoaId: e.target.value }))} placeholder="COA ID" /><Input value={draft.erpCoaNameSnapshot} onChange={(e) => setDraft((prev) => ({ ...prev, erpCoaNameSnapshot: e.target.value }))} placeholder="Nama COA" /></div></td>
                     <td className="px-5 py-4">
                       <div className="flex max-w-xs flex-wrap gap-2">
                         {draftTipePicker}
@@ -148,6 +154,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                     <td className="px-5 py-4 font-semibold">{rek.name}</td>
                     <td className="px-5 py-4">{rek.bank}</td>
                     <td className="px-5 py-4 font-mono text-slate-600">{rek.accountNumber}</td>
+                    <td className="px-5 py-4">{rek.erpCoaId ? <span>{rek.erpCoaId}{rek.erpCoaNameSnapshot ? ` - ${rek.erpCoaNameSnapshot}` : ""}</span> : <span className="text-slate-400">Belum diatur</span>}</td>
                     <td className="px-5 py-4"><div className="flex flex-wrap gap-1">{assignedTipes(rek.tipeIds)}</div></td>
                     <td className="px-5 py-4">{statusBadge(rek.isActive !== false)}</td>
                     <td className="px-5 py-4">
@@ -170,6 +177,8 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
           <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Bank <span className="text-red-500">*</span></span><Select value={bank} onChange={(e) => setBank(e.target.value)}>{INDONESIAN_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}</Select></label>
           <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Nama rekening <span className="text-red-500">*</span></span><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Masukkan nama rekening resmi" /></label>
           <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Nomor rekening</span><Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="Masukkan nomor rekening resmi" /></label>
+          <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">COA ERP ID</span><Input value={erpCoaId} onChange={(e) => setErpCoaId(e.target.value)} placeholder="ID akun kas/bank di ERP" /></label>
+          <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">Nama COA ERP</span><Input value={erpCoaNameSnapshot} onChange={(e) => setErpCoaNameSnapshot(e.target.value)} placeholder="Contoh: Bank BCA" /></label>
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">Assign ke tipe</p>
             <div className="flex flex-wrap gap-2">

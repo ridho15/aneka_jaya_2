@@ -14,6 +14,8 @@ export type RekeningAccount = {
   bank: string;
   name: string;
   accountNumber: string;
+  erpCoaId?: string;
+  erpCoaNameSnapshot?: string;
   isCash?: boolean;
   isActive?: boolean;
   tipeIds: string[];
@@ -21,6 +23,41 @@ export type RekeningAccount = {
 
 export const CASH_WALK_IN_REKENING_ID = "cash-w";
 export const CASH_WALK_IN_REKENING_NAME = "Kas Walk In";
+
+function isMissingColumnError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "P2022");
+}
+
+type RekeningLegacyRow = {
+  id: string;
+  name: string;
+  accountNumber: string | null;
+  bankName: string | null;
+  isActive: boolean;
+};
+
+type RekeningLinkLegacyRow = {
+  rekeningAccountId: string;
+  bookkeepingTypeId: string;
+};
+
+async function listRekeningAccountsLegacy(activeOnly: boolean): Promise<RekeningAccount[]> {
+  const rows = activeOnly
+    ? await prisma.$queryRaw<RekeningLegacyRow[]>`SELECT "id", "name", "accountNumber", "bankName", "isActive" FROM "RekeningAccount" WHERE "isActive" = true ORDER BY "name" ASC`
+    : await prisma.$queryRaw<RekeningLegacyRow[]>`SELECT "id", "name", "accountNumber", "bankName", "isActive" FROM "RekeningAccount" ORDER BY "isActive" DESC, "name" ASC`;
+  const links = await prisma.$queryRaw<RekeningLinkLegacyRow[]>`SELECT "rekeningAccountId", "bookkeepingTypeId" FROM "RekeningAccountBookkeepingType"`;
+  const tipeByRekening = new Map<string, string[]>();
+  for (const link of links) tipeByRekening.set(link.rekeningAccountId, [...(tipeByRekening.get(link.rekeningAccountId) || []), link.bookkeepingTypeId]);
+  return rows.map((row) => ({
+    id: row.id,
+    bank: row.bankName || row.name,
+    name: row.name,
+    accountNumber: row.accountNumber || "-",
+    isCash: row.bankName === "Cash",
+    isActive: row.isActive,
+    tipeIds: tipeByRekening.get(row.id) || []
+  }));
+}
 
 export async function listBookkeepingTypes(): Promise<BookkeepingType[]> {
   const rows = await prisma.bookkeepingType.findMany({ orderBy: [{ sortOrder: "asc" }, { code: "asc" }] });
@@ -57,12 +94,18 @@ export async function listRekeningAccounts(): Promise<RekeningAccount[]> {
     where: { isActive: true },
     include: { tipeLinks: { select: { bookkeepingTypeId: true } } },
     orderBy: { name: "asc" }
+  }).catch((error) => {
+    if (isMissingColumnError(error)) return undefined;
+    throw error;
   });
+  if (!rows) return listRekeningAccountsLegacy(true);
   return rows.map((row) => ({
     id: row.id,
     bank: row.bankName || row.name,
     name: row.name,
     accountNumber: row.accountNumber || "-",
+    erpCoaId: row.erpCoaId || undefined,
+    erpCoaNameSnapshot: row.erpCoaNameSnapshot || undefined,
     isCash: row.bankName === "Cash",
     tipeIds: row.tipeLinks.map((link) => link.bookkeepingTypeId)
   }));
@@ -72,12 +115,18 @@ export async function listAllRekeningAccounts(): Promise<RekeningAccount[]> {
   const rows = await prisma.rekeningAccount.findMany({
     include: { tipeLinks: { select: { bookkeepingTypeId: true } } },
     orderBy: [{ isActive: "desc" }, { name: "asc" }]
+  }).catch((error) => {
+    if (isMissingColumnError(error)) return undefined;
+    throw error;
   });
+  if (!rows) return listRekeningAccountsLegacy(false);
   return rows.map((row) => ({
     id: row.id,
     bank: row.bankName || row.name,
     name: row.name,
     accountNumber: row.accountNumber || "-",
+    erpCoaId: row.erpCoaId || undefined,
+    erpCoaNameSnapshot: row.erpCoaNameSnapshot || undefined,
     isCash: row.bankName === "Cash",
     isActive: row.isActive,
     tipeIds: row.tipeLinks.map((link) => link.bookkeepingTypeId)
@@ -94,12 +143,16 @@ export async function saveRekeningAccounts(rows: RekeningAccount[]): Promise<voi
           name: row.name,
           accountNumber: row.accountNumber,
           bankName: row.bank,
+          erpCoaId: row.erpCoaId,
+          erpCoaNameSnapshot: row.erpCoaNameSnapshot,
           isActive: row.isActive ?? true
         },
         update: {
           name: row.name,
           accountNumber: row.accountNumber,
           bankName: row.bank,
+          erpCoaId: row.erpCoaId,
+          erpCoaNameSnapshot: row.erpCoaNameSnapshot,
           isActive: row.isActive ?? true
         }
       });

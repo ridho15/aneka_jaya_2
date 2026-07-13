@@ -41,7 +41,7 @@ const generateManualSku = (tipeCode?: string | null) => {
 };
 
 type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; allowTestTransaction?: boolean; erpTypeCodes?: string[]; sale?: Sale };
-type CreatedSale = { id: string; approvalStatus?: string; target?: "erp" | "local"; syncStatus?: string; retryable?: boolean; testReference?: string; erpReference?: string };
+type CreatedSale = { id: string; approvalStatus?: string; target?: "erp" | "local"; syncStatus?: string; stockReleaseStatus?: string; stockReleaseError?: string; erpPaymentStatus?: string; erpPaymentError?: string; retryable?: boolean; testReference?: string; erpReference?: string };
 type ProductState =
   | { status: "loading" }
   | { status: "ready" }
@@ -116,7 +116,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       dueDate: sale?.dueDate,
       transferAccount: sale?.transferAccount,
       notes: sale?.notes,
-      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, productInputMode: item.productInputMode || (item.manualProduct ? "manual" : "erp"), manualProduct: item.manualProduct, unitSnapshot: item.unitSnapshot, uomIdSnapshot: item.uomIdSnapshot, quantity: item.quantity, unitPrice: item.unitPrice, discount: discountPercentFromAmount(item.discount, item.quantity, item.unitPrice) })) : [{ productRef: "", productId: undefined, productInputMode: "erp", unitSnapshot: undefined, uomIdSnapshot: undefined, quantity: 1, unitPrice: 0, discount: 0 }]
+      items: sale?.items?.length ? sale.items.map((item) => ({ productRef: item.productRef, productId: item.productId, productInputMode: item.productInputMode || (item.manualProduct ? "manual" : "erp"), manualProduct: item.manualProduct, warehouseId: item.warehouseId, warehouseNameSnapshot: item.warehouseNameSnapshot, rackId: item.rackId, rackNameSnapshot: item.rackNameSnapshot, unitSnapshot: item.unitSnapshot, uomIdSnapshot: item.uomIdSnapshot, quantity: item.quantity, unitPrice: item.unitPrice, discount: discountPercentFromAmount(item.discount, item.quantity, item.unitPrice) })) : [{ productRef: "", productId: undefined, productInputMode: "erp", unitSnapshot: undefined, uomIdSnapshot: undefined, quantity: 1, unitPrice: 0, discount: 0 }]
     }
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -147,7 +147,14 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
   const effectiveProducts = useMemo(() => mergeProductsWithSaleItems(products, sale), [products, sale]);
   const productOptions = useMemo(() => buildProductOptions(effectiveProducts, stocks), [effectiveProducts, stocks]);
   const allItemsManual = values.length > 0 && values.every((item) => item.productInputMode === "manual");
-  const selectedProductsReady = values.length > 0 && values.every(isSalesItemReady);
+  const releaseSelectionsReady = !targetsErp || values.every((item) => item.productInputMode === "manual" || Boolean(item.warehouseId));
+  const releaseQuantitiesReady = !targetsErp || values.every((item) => {
+    if (item.productInputMode === "manual" || !item.warehouseId) return true;
+    const option = productOptions.find((row) => normalizeCode(row.product.code) === normalizeCode(item.productRef));
+    const stock = option?.stockRows.find((row) => row.warehouseId === item.warehouseId && (row.rackId || "") === (item.rackId || ""));
+    return typeof stock?.quantity !== "number" || Number(item.quantity || 0) <= stock.quantity;
+  });
+  const selectedProductsReady = values.length > 0 && values.every(isSalesItemReady) && releaseSelectionsReady && releaseQuantitiesReady;
   const hasManualItems = values.some((item) => item.productInputMode === "manual");
   const dependenciesReady = (productState.status === "ready" || allItemsManual) && masterDataReady;
 
@@ -173,12 +180,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       const rows = extractProductRows(productResult);
       setProducts((current) => mergeErpProductResults(current, rows));
       setProductState(rows.length > 0 ? { status: "ready" } : { status: "empty", message: "ERP belum memiliki produk aktif untuk dipilih." });
-      if (rows.every((product) => product.stockSummary)) {
-        setStocks([]);
-        setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
-      } else {
-        await refreshStocksForProducts();
-      }
+      await refreshStocksForProducts();
     } catch {
       setProducts([]);
       setStocks([]);
@@ -202,12 +204,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       const rows = extractProductRows(result);
       setProducts((current) => mergeErpProductResults(current, rows));
       setProductState({ status: "ready" });
-      if (rows.every((product) => product.stockSummary)) {
-        setStocks([]);
-        setStockState({ status: "success", updatedAt: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) });
-      } else {
-        await refreshStocksForProducts();
-      }
+      await refreshStocksForProducts();
     } catch (error) {
       if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return;
       setProductState({ status: "error", message: "Pencarian produk ERP bermasalah." });
@@ -331,20 +328,28 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
       approvalStatus: result.data.approvalStatus,
       target: result.data.target,
       syncStatus: result.data.syncStatus,
+      stockReleaseStatus: result.data.stockReleaseStatus,
+      stockReleaseError: result.data.stockReleaseError,
+      erpPaymentStatus: result.data.erpPaymentStatus,
+      erpPaymentError: result.data.erpPaymentError,
       retryable: result.data.retryable === true,
       testReference: result.data.testReference,
       erpReference: result.data.erpReference
     });
     const defaultRek = cashWalkInRekening ?? (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
     reset({ saleDate: today, tipeId: defaultTipe?.id || "", tipeCodeSnapshot: defaultTipe?.code || "", tipeNameSnapshot: defaultTipe?.name || "", rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", customerName: "Walk In", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash", items: [{ productRef: "", productId: undefined, productInputMode: "erp", quantity: 1, unitPrice: 0, discount: 0 }] });
-    const isRetryableErp = result.data?.target === "erp" && (result.data?.retryable === true || result.data?.syncStatus === "failed");
+    const isRetryableErp = result.data?.target === "erp" && (result.data?.retryable === true || result.data?.syncStatus === "failed" || result.data?.stockReleaseStatus === "failed" || result.data?.erpPaymentStatus === "failed" || result.data?.erpPaymentStatus === "pending");
     const isSyncedErp = result.data?.target === "erp" && result.data?.syncStatus === "synced" && result.data?.erpReference;
     setNotice({
       type: isRetryableErp ? "error" : "success",
       message: isRetryableErp
-        ? `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
+          ? result.data?.syncStatus === "synced" && result.data?.stockReleaseStatus === "failed"
+            ? `Invoice terkirim ke ${EXTERNAL_ERP_NAME}, tetapi release stok gagal. Silakan cek ERP Sync.`
+            : result.data?.syncStatus === "synced" && result.data?.stockReleaseStatus === "released" && (result.data?.erpPaymentStatus === "failed" || result.data?.erpPaymentStatus === "pending")
+              ? `Invoice terkirim dan stok released, tetapi payment ERP perlu dicek di ERP Sync.`
+          : `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
         : isSyncedErp
-          ? `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.`
+          ? result.data?.stockReleaseStatus === "released" ? (result.data?.erpPaymentStatus === "paid" || result.data?.erpPaymentStatus === "partial" ? `Invoice terkirim, stok released, dan payment tercatat di ${EXTERNAL_ERP_NAME}.` : `Invoice terkirim dan stok berhasil direlease di ${EXTERNAL_ERP_NAME}.`) : `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.`
           : result.data?.approvalStatus === "pending_approval"
             ? "Data berhasil disimpan dan menunggu approval."
             : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.`
@@ -358,7 +363,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
         <div className={`rounded-lg border px-4 py-3 text-sm ${createdSale.retryable || createdSale.syncStatus === "failed" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900"}`}>
           {createdSale.testReference && <p className="mb-2 font-semibold">Referensi pengujian: <code>{createdSale.testReference}</code></p>}
           {createdSale.erpReference && <p className="mb-2">Referensi ERP: <code>{createdSale.erpReference}</code></p>}
-          {(createdSale.retryable || createdSale.syncStatus === "failed") && <p className="mb-2 font-semibold">Transaksi tersimpan untuk retry ERP. Status belum synced.</p>}
+          {(createdSale.retryable || createdSale.syncStatus === "failed") && <p className="mb-2 font-semibold">{createdSale.syncStatus === "synced" && createdSale.stockReleaseStatus === "failed" ? "Invoice sudah terkirim, tetapi release stok perlu retry ERP." : createdSale.syncStatus === "synced" && createdSale.stockReleaseStatus === "released" && (createdSale.erpPaymentStatus === "failed" || createdSale.erpPaymentStatus === "pending") ? "Invoice dan stok sudah aman, tetapi payment ERP perlu retry." : "Transaksi tersimpan untuk retry ERP. Status belum synced."}</p>}
+          {createdSale.erpPaymentError && <p className="mb-2">{createdSale.erpPaymentError}</p>}
           {createdSale.approvalStatus === "approved" ? (
             <div className="flex flex-wrap gap-3">
               <Link href={`/penjualan/${createdSale.id}`} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">
@@ -384,7 +390,7 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
         </div>
       )}
       <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-        Tujuan transaksi: {targetsErp ? <><b>{EXTERNAL_ERP_NAME}</b> sebagai Invoice Penjualan untuk tipe AJ.</> : <><b>Sistem {APP_BRAND_NAME}</b>. Tipe non-AJ disimpan lokal.</>}
+        Tujuan transaksi: {targetsErp ? <><b>{EXTERNAL_ERP_NAME}</b> sebagai Invoice Penjualan dan release stok untuk tipe {selectedTipe?.code || "ERP"}.</> : <><b>Sistem {APP_BRAND_NAME}</b>. Tipe ini disimpan lokal.</>}
         {selectedLooksAj && !targetsErp && <span className="mt-1 block text-xs font-semibold text-amber-700">Tipe terpilih AJ tetapi belum masuk daftar ERP. Cek SALES_ERP_TYPE_CODES di server.</span>}
       </p>
       {activeTipes.length === 0 && (
@@ -454,7 +460,8 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                   ? "Pilih barang dari hasil pencarian ERP."
                   : undefined;
                 const quantity = Number(values[index]?.quantity || 0);
-                const stockExceeded = selected?.quantity !== null && selected?.quantity !== undefined && quantity > selected.quantity;
+                const selectedStock = selected?.stockRows.find((row) => row.warehouseId === values[index]?.warehouseId && (row.rackId || "") === (values[index]?.rackId || ""));
+                const stockExceeded = selectedStock?.quantity !== null && selectedStock?.quantity !== undefined ? quantity > selectedStock.quantity : selected?.quantity !== null && selected?.quantity !== undefined && quantity > selected.quantity;
                 return (
                 <div id={`sale-item-${index}`} key={field.id} className="scroll-mt-24 p-5 sm:p-6">
                   <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold">
@@ -465,6 +472,10 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                       onClick={() => {
                         setValue(`items.${index}.productInputMode`, "erp", { shouldDirty: true, shouldValidate: true });
                         setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
                         setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
                         setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
                       }}
@@ -478,6 +489,10 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                         const currentRef = values[index]?.productRef || "";
                         setValue(`items.${index}.productInputMode`, "manual", { shouldDirty: true, shouldValidate: true });
                         setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
+                        setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
                         setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
                         setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
                         setValue(`items.${index}.manualProduct.sku`, currentRef, { shouldDirty: true, shouldValidate: true });
@@ -491,6 +506,10 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                   <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
                     <Field label="Barang" error={errors.items?.[index]?.productRef?.message || erpSelectionError}>
                       <input type="hidden" {...register(`items.${index}.productId`)} />
+                      <input type="hidden" {...register(`items.${index}.warehouseId`)} />
+                      <input type="hidden" {...register(`items.${index}.warehouseNameSnapshot`)} />
+                      <input type="hidden" {...register(`items.${index}.rackId`)} />
+                      <input type="hidden" {...register(`items.${index}.rackNameSnapshot`)} />
                       <input type="hidden" {...register(`items.${index}.unitSnapshot`)} />
                       {mode === "manual" ? (
                         <div className="flex gap-2">
@@ -525,6 +544,10 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                             setValue(`items.${index}.manualProduct`, undefined, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productRef`, option.product.code, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productId`, option.product.productId || option.product.id, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.unitSnapshot`, option.unit || option.stockRows.find((stock) => Boolean(stock.unit))?.unit || undefined, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.uomIdSnapshot`, option.product.uomId, { shouldDirty: true, shouldValidate: true });
                             if (typeof option.product.sellingPrice === "number" && Number.isFinite(option.product.sellingPrice)) {
@@ -534,6 +557,10 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                           onInvalidInput={(value) => {
                             setValue(`items.${index}.productRef`, value, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.productId`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.warehouseId`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.warehouseNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.rackId`, undefined, { shouldDirty: true, shouldValidate: true });
+                            setValue(`items.${index}.rackNameSnapshot`, undefined, { shouldDirty: true, shouldValidate: true });
                             setValue(`items.${index}.unitSnapshot`, undefined, { shouldDirty: true });
                             setValue(`items.${index}.uomIdSnapshot`, undefined, { shouldDirty: true });
                           }}
@@ -565,7 +592,12 @@ export function PenjualanForm({ tipes, rekenings, allowTestTransaction = false, 
                     </Field>
                     <div><p className="mb-1 text-sm font-medium text-slate-700">Subtotal</p><p className="border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm font-semibold">{rupiah(itemNetTotal(values[index] || {}))}</p></div>
                   </div>
-                  {mode === "manual" ? <ManualProductFields index={index} register={register} setValue={setValue} values={values} referenceState={referenceState} /> : <ProductSelectionInfo option={selected} stockExceeded={stockExceeded} stockState={stockState} />}
+                  {mode === "manual" ? <ManualProductFields index={index} register={register} setValue={setValue} values={values} referenceState={referenceState} /> : <ProductSelectionInfo option={selected} selectedWarehouseId={values[index]?.warehouseId} selectedRackId={values[index]?.rackId} stockExceeded={stockExceeded} stockState={stockState} targetsErp={targetsErp} onStockSelect={(stock) => {
+                    setValue(`items.${index}.warehouseId`, stock.warehouseId, { shouldDirty: true, shouldValidate: true });
+                    setValue(`items.${index}.warehouseNameSnapshot`, stock.warehouse || undefined, { shouldDirty: true, shouldValidate: true });
+                    setValue(`items.${index}.rackId`, stock.rackId, { shouldDirty: true, shouldValidate: true });
+                    setValue(`items.${index}.rackNameSnapshot`, stock.rack || undefined, { shouldDirty: true, shouldValidate: true });
+                  }} />}
                   {fields.length > 1 && <button type="button" onClick={() => remove(index)} className="mt-3 text-xs font-semibold text-red-600">Hapus barang</button>}
                 </div>
               );})}
@@ -773,16 +805,41 @@ function ProductSearchSelect({ name, value, options, disabled, onSelect, onInval
   );
 }
 
-function ProductSelectionInfo({ option, stockExceeded, stockState }: { option?: ProductOption; stockExceeded: boolean; stockState: StockState }) {
+function ProductSelectionInfo({ option, selectedWarehouseId, selectedRackId, stockExceeded, stockState, targetsErp, onStockSelect }: { option?: ProductOption; selectedWarehouseId?: string; selectedRackId?: string; stockExceeded: boolean; stockState: StockState; targetsErp: boolean; onStockSelect: (stock: StockItem) => void }) {
   if (!option) return <p className="mt-2 text-xs text-amber-700">Pilih barang dari dropdown ERP. Input bebas tidak dapat disimpan.</p>;
+  const stockOptions = option.stockRows.filter((stock) => stock.warehouseId);
+  const selectedKey = selectedWarehouseId ? `${selectedWarehouseId}::${selectedRackId || ""}` : "";
   return (
-    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
-      <span className="rounded-full bg-slate-100 px-2.5 py-1">Stok ERP: <b>{formatNumber(option.quantity)}</b>{option.unit ? ` ${option.unit}` : ""}</span>
-      <span className="rounded-full bg-slate-100 px-2.5 py-1">Gudang: <b>{option.warehouses.length ? option.warehouses.join(", ") : "—"}</b></span>
-      <span className="rounded-full bg-slate-100 px-2.5 py-1">Minimum: <b>{formatNumber(option.minimumStock)}</b></span>
-      {stockExceeded && <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">Qty melebihi stok ERP</span>}
-      {stockState.status === "failed" && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Stok tidak terverifikasi</span>}
-      {option.warnings.length > 0 && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Data ERP tidak lengkap</span>}
+    <div className="mt-2 space-y-2 text-xs text-slate-600">
+      <div className="flex flex-wrap gap-2">
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">Stok ERP: <b>{formatNumber(option.quantity)}</b>{option.unit ? ` ${option.unit}` : ""}</span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">Gudang: <b>{option.warehouses.length ? option.warehouses.join(", ") : "—"}</b></span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1">Minimum: <b>{formatNumber(option.minimumStock)}</b></span>
+        {stockExceeded && <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">Qty melebihi stok lokasi</span>}
+        {stockState.status === "failed" && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Stok tidak terverifikasi</span>}
+        {option.warnings.length > 0 && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">Data ERP tidak lengkap</span>}
+      </div>
+      {targetsErp && (
+        <label className="block max-w-xl text-xs font-semibold text-slate-700">
+          Lokasi release stok
+          <select
+            className="mt-1 block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+            value={selectedKey}
+            onChange={(event) => {
+              const stock = stockOptions.find((row) => `${row.warehouseId || ""}::${row.rackId || ""}` === event.target.value);
+              if (stock) onStockSelect(stock);
+            }}
+          >
+            <option value="">Pilih gudang/rak untuk release stok</option>
+            {stockOptions.map((stock) => (
+              <option key={`${stock.warehouseId || ""}::${stock.rackId || ""}`} value={`${stock.warehouseId || ""}::${stock.rackId || ""}`}>
+                {stock.warehouse || "Gudang"}{stock.rack ? ` / ${stock.rack}` : ""} · stok {formatNumber(stock.quantity)} {stock.unit || ""}
+              </option>
+            ))}
+          </select>
+          {stockOptions.length === 0 && <span className="mt-1 block font-normal text-amber-700">ERP belum mengirim warehouse_id untuk produk ini.</span>}
+        </label>
+      )}
     </div>
   );
 }

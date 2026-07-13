@@ -13,6 +13,10 @@ export type SalesItem = {
   productId?: string;
   productInputMode?: "erp" | "manual";
   manualProduct?: ManualSalesProduct;
+  warehouseId?: string;
+  warehouseNameSnapshot?: string;
+  rackId?: string;
+  rackNameSnapshot?: string;
   unitSnapshot?: string;
   uomIdSnapshot?: number;
   quantity: number;
@@ -36,6 +40,15 @@ export type Sale = {
   syncAttemptedAt?: string;
   syncedAt?: string;
   erpReference?: string;
+  stockReleaseStatus?: "not_required" | "pending" | "released" | "failed";
+  stockReleaseError?: string;
+  stockReleaseReference?: string;
+  stockReleasedAt?: string;
+  erpPaymentStatus?: "not_required" | "pending" | "paid" | "partial" | "failed";
+  erpPaymentError?: string;
+  erpPaymentReference?: string;
+  erpPaymentSyncedAt?: string;
+  erpPaymentAttemptedAt?: string;
   testReference?: string;
   isTestTransaction?: boolean;
 };

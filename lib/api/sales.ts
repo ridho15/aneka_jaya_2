@@ -11,22 +11,24 @@ import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
 import { saveSalesRecord } from "@/lib/sales/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
-import { erpTransactionTypeCodes, transactionTargetForType } from "@/lib/api/transactionRouting";
+import { erpSalesTypeCodes as configuredErpSalesTypeCodes, salesTargetForTypeCode } from "@/lib/api/transactionRouting";
 import type { Role } from "@/lib/auth/roles";
 import { createOfficialProduct, findProductIdBySku, listProducts } from "@/lib/api/products";
 import { listErpPaginated } from "@/lib/api/pagination";
 import type { ManualSalesProduct } from "@/lib/types/sales";
+import { releaseSaleStock, stockReleaseErrorFrom } from "@/lib/api/stockReleases";
+import { syncErpSalesPayment } from "@/lib/api/salesPayments";
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
 }
 
 export function erpSalesTypeCodes(env: NodeJS.ProcessEnv = process.env) {
-  return erpTransactionTypeCodes(env);
+  return configuredErpSalesTypeCodes(env);
 }
 
 export function salesTargetForType(code: string, env: NodeJS.ProcessEnv = process.env): "erp" | "local" {
-  return transactionTargetForType(code, env);
+  return salesTargetForTypeCode(code, env);
 }
 
 export function erpReferenceFrom(value: unknown): string | undefined {
@@ -62,7 +64,7 @@ export function safeErpSyncError(response: ApiResponse<unknown>) {
 }
 
 type ErpCustomer = { id?: unknown; code?: unknown; name?: unknown; perusahaan?: unknown };
-type ErpSaleSyncItem = { productRef: string; productId?: string; productInputMode?: "erp" | "manual"; manualProduct?: ManualSalesProduct; unitSnapshot?: string; uomIdSnapshot?: number; quantity: number; unitPrice: number; discount?: number };
+type ErpSaleSyncItem = { productRef: string; productId?: string; productInputMode?: "erp" | "manual"; manualProduct?: ManualSalesProduct; warehouseId?: string; warehouseNameSnapshot?: string; rackId?: string; rackNameSnapshot?: string; unitSnapshot?: string; uomIdSnapshot?: number; quantity: number; unitPrice: number; discount?: number };
 type ErpSaleSyncInput = {
   saleDate: string;
   customerName: string;
@@ -124,6 +126,19 @@ function defaultProductCostPrice(env: NodeJS.ProcessEnv = process.env) {
 function positiveNumber(value: unknown) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : undefined;
+}
+
+function isImmediateErpPayment(method: string) {
+  return method === "Cash" || method === "TF";
+}
+
+function safeErpPaymentError(response: ApiResponse<unknown>) {
+  if (response.success) return undefined;
+  if (response.code === "ERP_PAYMENT_COA_MISSING") return response.message;
+  if (response.code === "ERP_PAYMENT_INVOICE_MISSING") return response.message;
+  if (response.code === "ERP_PAYMENT_CUSTOMER_MISSING") return response.message;
+  if (response.code === "ERP_PAYMENT_AMOUNT_INVALID") return response.message;
+  return response.message || "Payment ERP gagal dibuat.";
 }
 
 function normalizeManualSaleItems(items: ErpSaleSyncItem[]): ErpSaleSyncItem[] {
@@ -467,6 +482,15 @@ async function persistErpSale(input: {
         syncAttemptedAt: sale.syncAttemptedAt ? new Date(sale.syncAttemptedAt) : undefined,
         syncedAt: sale.syncedAt ? new Date(sale.syncedAt) : undefined,
         erpReference: sale.erpReference,
+        stockReleaseStatus: sale.stockReleaseStatus || "not_required",
+        stockReleaseError: sale.stockReleaseError,
+        stockReleaseReference: sale.stockReleaseReference,
+        stockReleasedAt: sale.stockReleasedAt ? new Date(sale.stockReleasedAt) : undefined,
+        erpPaymentStatus: sale.erpPaymentStatus || "not_required",
+        erpPaymentError: sale.erpPaymentError,
+        erpPaymentReference: sale.erpPaymentReference,
+        erpPaymentSyncedAt: sale.erpPaymentSyncedAt ? new Date(sale.erpPaymentSyncedAt) : undefined,
+        erpPaymentAttemptedAt: sale.erpPaymentAttemptedAt ? new Date(sale.erpPaymentAttemptedAt) : undefined,
         testReference: sale.testReference,
         isTestTransaction: sale.isTestTransaction || false,
         createdByUserId: user.id,
@@ -479,6 +503,10 @@ async function persistErpSale(input: {
             productRef: item.productRef,
             productId: item.productId,
             manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
+            warehouseId: item.warehouseId,
+            warehouseNameSnapshot: item.warehouseNameSnapshot,
+            rackId: item.rackId,
+            rackNameSnapshot: item.rackNameSnapshot,
             unitSnapshot: item.unitSnapshot,
             uomIdSnapshot: item.uomIdSnapshot,
             quantity: item.quantity,
@@ -577,13 +605,13 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     if (target === "local") return preparedManualItems;
     const attemptedAt = new Date().toISOString();
     const syncError = safeErpSyncError(preparedManualItems);
-    const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+    const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt, stockReleaseStatus: "not_required", erpPaymentStatus: "not_required", testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await persistErpSale({ sale, total, approvalStatus, paymentMethod: input.paymentMethod, dueDate: input.dueDate, tipe, user: { id: user.id, name: user.name, role: user.role }, auditReason: `Invoice Penjualan ${tipe.code} • Produk manual ERP gagal, tersimpan untuk retry • ${syncError}` });
     return { success: true, data: { ...sale, target: "erp", retryable: true } };
   }
 
   if (target === "local") {
-    const sale: Sale = { id: `S-${Date.now()}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "local", syncStatus: "local", createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+    const sale: Sale = { id: `S-${Date.now()}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "local", syncStatus: "local", stockReleaseStatus: "not_required", erpPaymentStatus: "not_required", createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await saveSalesRecord(sale);
     if (approvalStatus === "approved" && input.paymentMethod === "Tempo") await createTempoReceivable({ salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, customerName: input.customerName, originalAmount: total, transactionDate: input.saleDate, dueDate: input.dueDate || input.saleDate });
     await recordAudit({ entityType: "sales", entityId: sale.id, action: "create", afterValue: sale, reason: `Invoice Penjualan lokal • ${approvalStatus} • ${input.paymentMethod}` });
@@ -593,12 +621,45 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const attemptedAt = new Date().toISOString();
   if (response.success) {
     const erpReference = erpReferenceFrom(response.data);
-    const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "synced", syncAttemptedAt: attemptedAt, syncedAt: attemptedAt, erpReference, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
-    await persistErpSale({ sale, total, approvalStatus, paymentMethod: input.paymentMethod, dueDate: input.dueDate, tipe, user: { id: user.id, name: user.name, role: user.role }, auditReason: `Invoice Penjualan ${tipe.code} • Terkirim ke ERP • ${input.paymentMethod}${testReference ? ` • ${testReference}` : ""}` });
-    return { success: true, data: { ...sale, target: "erp", erpReference, testReference } };
+    const saleId = `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    const stockResponse = await releaseSaleStock({ saleId, saleDate: input.saleDate, erpReference, sourceNumber: erpReference, items: effectiveInput.items });
+    const stockReleasedAt = new Date().toISOString();
+    const stockReleaseStatus: Sale["stockReleaseStatus"] = stockResponse.success ? "released" : "failed";
+    const stockReleaseReference = stockResponse.success ? stockResponse.data.releaseReference : `SLM-STOCK-${erpReference || saleId}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
+    const stockReleaseError = stockResponse.success ? undefined : stockReleaseErrorFrom(stockResponse);
+    let erpPaymentStatus: Sale["erpPaymentStatus"] = isImmediateErpPayment(input.paymentMethod) ? "pending" : "not_required";
+    let erpPaymentError: string | undefined = stockResponse.success ? undefined : "Payment ERP menunggu release stok berhasil.";
+    let erpPaymentReference: string | undefined;
+    let erpPaymentSyncedAt: string | undefined;
+    let erpPaymentAttemptedAt: string | undefined;
+    if (stockResponse.success && isImmediateErpPayment(input.paymentMethod)) {
+      erpPaymentAttemptedAt = new Date().toISOString();
+      const paymentResponse = await syncErpSalesPayment({
+        invoiceNumber: erpReference,
+        invoiceId: 0,
+        customerId: 0,
+        paymentDate: input.saleDate,
+        coaId: rekening?.erpCoaId || "",
+        paymentMethod: input.paymentMethod,
+        amount: total,
+        notes: `Pembayaran ${input.paymentMethod} dari SLM ${erpReference || saleId}`
+      });
+      if (paymentResponse.success) {
+        erpPaymentStatus = paymentResponse.data.status;
+        erpPaymentReference = paymentResponse.data.paymentReference;
+        erpPaymentSyncedAt = erpPaymentAttemptedAt;
+        erpPaymentError = undefined;
+      } else {
+        erpPaymentStatus = "failed";
+        erpPaymentError = safeErpPaymentError(paymentResponse);
+      }
+    }
+    const sale: Sale = { id: saleId, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "synced", syncAttemptedAt: attemptedAt, syncedAt: attemptedAt, erpReference, stockReleaseStatus, stockReleaseReference, stockReleaseError, stockReleasedAt: stockResponse.success ? stockReleasedAt : undefined, erpPaymentStatus, erpPaymentError, erpPaymentReference, erpPaymentSyncedAt, erpPaymentAttemptedAt, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+    await persistErpSale({ sale, total, approvalStatus, paymentMethod: input.paymentMethod, dueDate: input.dueDate, tipe, user: { id: user.id, name: user.name, role: user.role }, auditReason: `Invoice Penjualan ${tipe.code} • Terkirim ke ERP • Release stok ${stockReleaseStatus} • Payment ${erpPaymentStatus}${stockReleaseError ? ` • ${stockReleaseError}` : ""}${erpPaymentError ? ` • ${erpPaymentError}` : ""}${testReference ? ` • ${testReference}` : ""}` });
+    return { success: true, data: { ...sale, target: "erp", erpReference, testReference, retryable: stockReleaseStatus === "failed" || erpPaymentStatus === "failed" || erpPaymentStatus === "pending" } };
   }
   const syncError = safeErpSyncError(response);
-  const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+  const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt, stockReleaseStatus: "not_required", erpPaymentStatus: "not_required", testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
   await persistErpSale({ sale, total, approvalStatus, paymentMethod: input.paymentMethod, dueDate: input.dueDate, tipe, user: { id: user.id, name: user.name, role: user.role }, auditReason: `Invoice Penjualan ${tipe.code} • ERP gagal, tersimpan untuk retry • ${syncError}` });
   return { success: true, data: { ...sale, target: "erp", retryable: true } };
 }

@@ -114,6 +114,11 @@ function toReportTempoPayment(row: Awaited<ReturnType<typeof prisma.tempoPayment
     rekeningNameSnapshot: row.rekeningNameSnapshot,
     attachmentUrl: row.attachmentUrl || undefined,
     notes: row.notes || undefined,
+    erpPaymentStatus: row.erpPaymentStatus as TempoPayment["erpPaymentStatus"],
+    erpPaymentError: row.erpPaymentError || undefined,
+    erpPaymentReference: row.erpPaymentReference || undefined,
+    erpPaymentSyncedAt: row.erpPaymentSyncedAt?.toISOString(),
+    erpPaymentAttemptedAt: row.erpPaymentAttemptedAt?.toISOString(),
     createdByUserId: row.createdByUserId,
     createdByNameSnapshot: row.createdByNameSnapshot,
     createdAt: row.createdAt.toISOString()

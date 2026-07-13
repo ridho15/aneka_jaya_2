@@ -59,7 +59,7 @@ function Badge({ value, tone = "slate" }: { value: string; tone?: "slate" | "gre
 }
 
 function statusTone(value?: string) {
-  if (value === "approved" || value === "synced") return "green";
+  if (value === "approved" || value === "synced" || value === "released" || value === "paid" || value === "partial") return "green";
   if (value === "pending_approval" || value === "pending") return "amber";
   if (value === "rejected" || value === "failed" || value === "cancelled") return "red";
   return "slate";
@@ -136,7 +136,9 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} />
-                <Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} />
+                <Badge value={`Invoice ${sale.syncStatus || "local"}`} tone={statusTone(sale.syncStatus || "local")} />
+                {sale.syncTarget === "erp" && <Badge value={`Stok ${sale.stockReleaseStatus || "not_required"}`} tone={statusTone(sale.stockReleaseStatus || "not_required")} />}
+                {sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}
               </div>
               <dl className="mt-3 grid gap-2 text-sm text-slate-600">
                 {canViewTransactionNumber && <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">No Transaksi</dt><dd className="mt-0.5 font-mono text-xs">{sale.id}</dd></div>}
@@ -156,7 +158,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-              <tr><th className="px-5 py-3">Tanggal</th>{canViewTransactionNumber && <th className="px-5 py-3">No Transaksi</th>}<th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Pembayaran</th><th className="px-5 py-3 text-right">Total</th><th className="px-5 py-3">Approval</th><th className="px-5 py-3">ERP Sync</th><th className="px-5 py-3">Pembuat</th><th className="px-5 py-3">Aksi</th></tr>
+              <tr><th className="px-5 py-3">Tanggal</th>{canViewTransactionNumber && <th className="px-5 py-3">No Transaksi</th>}<th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Pembayaran</th><th className="px-5 py-3 text-right">Total</th><th className="px-5 py-3">Approval</th><th className="px-5 py-3">Invoice ERP</th><th className="px-5 py-3">Release Stok</th><th className="px-5 py-3">Payment ERP</th><th className="px-5 py-3">Pembuat</th><th className="px-5 py-3">Aksi</th></tr>
             </thead>
             <tbody>
               {paged.map((sale) => (
@@ -169,6 +171,8 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                 <td className="px-5 py-4 text-right font-semibold">{rupiah(sale.total)}</td>
                 <td className="px-5 py-4"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /></td>
                 <td className="px-5 py-4"><Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} /></td>
+                <td className="px-5 py-4">{sale.syncTarget === "erp" ? <Badge value={sale.stockReleaseStatus || "not_required"} tone={statusTone(sale.stockReleaseStatus || "not_required")} /> : "—"}</td>
+                <td className="px-5 py-4">{sale.syncTarget === "erp" ? <Badge value={sale.erpPaymentStatus || "not_required"} tone={statusTone(sale.erpPaymentStatus || "not_required")} /> : "—"}</td>
                 <td className="px-5 py-4 text-slate-600">{sale.createdByNameSnapshot || "—"}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-col gap-2">
@@ -189,7 +193,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                 </td>
               </tr>
               ))}
-              {paged.length === 0 && <tr><td colSpan={canViewTransactionNumber ? 10 : 9} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan sesuai filter.</td></tr>}
+              {paged.length === 0 && <tr><td colSpan={canViewTransactionNumber ? 11 : 10} className="px-5 py-10 text-center text-slate-500">Tidak ada penjualan sesuai filter.</td></tr>}
             </tbody>
           </table>
         </div>

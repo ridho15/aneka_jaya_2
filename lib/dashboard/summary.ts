@@ -124,7 +124,7 @@ function typeCode(row: { tipeId?: string; tipeCodeSnapshot?: string }) {
 }
 
 function isOperationalSale(row: Pick<Sale, "tipeId" | "tipeCodeSnapshot" | "syncTarget">) {
-  return typeCode(row) !== "AJ" && row.syncTarget !== "erp";
+  return typeCode(row) !== "AJ";
 }
 
 function isOperationalExpense(row: Pick<Expense, "tipeId" | "tipeCodeSnapshot">) {
