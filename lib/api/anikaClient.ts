@@ -35,6 +35,9 @@ function truncateSafe(value: string | undefined) {
 function sanitizeOperationalMessage(value: string | undefined) {
   if (!value) return undefined;
   if (/isSpecial/i.test(value)) return "isSpecial wajib diisi";
+  if (/Unknown column 'erp_reference'.*customer_receipts/i.test(value)) {
+    return "Database Aneka Jaya ERP belum dimigrasi untuk payment idempotency. Kolom customer_receipts.erp_reference belum tersedia.";
+  }
   if (/SQLSTATE|Integrity constraint|insert into|Column '.+' cannot be null/i.test(value)) return "ERP menolak data karena constraint database.";
   return value;
 }

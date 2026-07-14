@@ -87,6 +87,62 @@ describe("ERP sales payments", () => {
     }));
   });
 
+  it("parses paginated invoice status responses before posting payment", async () => {
+    mocks.anikaRequest
+      .mockResolvedValueOnce({
+        success: true,
+        data: {
+          data: {
+            data: [{
+              invoice_id: 44,
+              invoice_number: "SLM-INV-1",
+              party: { id: 32 },
+              totals: { remaining: 30000, total: 30000 },
+              payment_status: "unpaid"
+            }]
+          }
+        }
+      })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 12, status: "Paid" } } });
+
+    await expect(syncErpSalesPayment({
+      erpReference: "SLM-PAY-PAGINATED",
+      invoiceNumber: "SLM-INV-1",
+      invoiceId: 0,
+      customerId: 0,
+      paymentDate: "2026-07-14",
+      paymentAccountCode: "CASH",
+      paymentMethod: "Cash",
+      amount: 30000
+    })).resolves.toMatchObject({ success: true, data: { status: "paid" } });
+
+    expect(mocks.anikaRequest).toHaveBeenLastCalledWith("/sales-payments", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"selected_invoices\":[44]")
+    }));
+  });
+
+  it("can post payment when invoice was recovered without an invoice number pre-check", async () => {
+    mocks.anikaRequest
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 12, status: "Paid" } } });
+
+    await expect(syncErpSalesPayment({
+      erpReference: "SLM-PAY-RECOVERED",
+      invoiceNumber: undefined,
+      invoiceId: 44,
+      customerId: 32,
+      paymentDate: "2026-07-14",
+      paymentAccountCode: "CASH",
+      paymentMethod: "Cash",
+      amount: 30000
+    })).resolves.toMatchObject({ success: true, data: { status: "paid" } });
+
+    expect(mocks.anikaRequest).toHaveBeenLastCalledWith("/sales-payments", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining("\"customer_id\":32")
+    }));
+  });
+
   it("returns a safe failure when COA is missing", async () => {
     await expect(syncErpSalesPayment({
       erpReference: "SLM-PAY-3",

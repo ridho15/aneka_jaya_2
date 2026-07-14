@@ -6,8 +6,11 @@ type ErpInvoiceLookup = {
   id?: unknown;
   invoice_id?: unknown;
   invoice_number?: unknown;
+  invoice_date?: unknown;
   customer_id?: unknown;
   customer?: { id?: unknown };
+  party?: { id?: unknown };
+  totals?: { total?: unknown; remaining?: unknown };
   data?: unknown;
 };
 
@@ -16,6 +19,8 @@ export type ErpInvoicePaymentStatus = {
   invoiceNumber?: string;
   customerId?: number;
   remaining?: number;
+  total?: number;
+  invoiceDate?: string;
   settlementStatus?: string;
   raw?: unknown;
 };
@@ -43,6 +48,8 @@ function dataRows(value: unknown): unknown[] {
   const row = asRecord(value);
   const data = row?.data;
   if (Array.isArray(data)) return data;
+  const nestedData = asRecord(data)?.data;
+  if (Array.isArray(nestedData)) return nestedData;
   if (data && typeof data === "object") return [data];
   if (Array.isArray(value)) return value;
   return value ? [value] : [];
@@ -76,17 +83,23 @@ function invoiceFrom(value: unknown): ErpInvoicePaymentStatus | undefined {
   const row = asRecord(value) as ErpInvoiceLookup | undefined;
   if (!row) return undefined;
   const customer = asRecord(row.customer);
+  const party = asRecord(row.party);
+  const totals = asRecord(row.totals);
   return {
     invoiceId: numberId(row.id) ?? numberId(row.invoice_id),
     invoiceNumber: firstString(row.invoice_number),
-    customerId: numberId(row.customer_id) ?? numberId(customer?.id),
+    customerId: numberId(row.customer_id) ?? numberId(customer?.id) ?? numberId(party?.id),
+    remaining: moneyNumber(totals?.remaining),
+    total: moneyNumber(totals?.total),
+    invoiceDate: firstString(row.invoice_date),
     raw: value,
   };
 }
 
 function statusFrom(value: unknown): ErpInvoicePaymentStatus {
+  const firstRow = dataRows(value)[0];
   const row = asRecord(value);
-  const nested = asRecord(row?.data) || row;
+  const nested = asRecord(firstRow) || asRecord(row?.data) || row;
   const invoice = invoiceFrom(nested) || invoiceFrom(value) || {};
   return {
     ...invoice,
@@ -94,7 +107,8 @@ function statusFrom(value: unknown): ErpInvoicePaymentStatus {
       moneyNumber(nested?.remaining) ??
       moneyNumber(nested?.remaining_receivable) ??
       moneyNumber(nested?.sisa_piutang) ??
-      moneyNumber(nested?.outstanding),
+      moneyNumber(nested?.outstanding) ??
+      invoice.remaining,
     settlementStatus: firstString(
       nested?.settlement_status,
       nested?.payment_status,
@@ -162,6 +176,39 @@ export async function findErpInvoiceByNumber(
   const match = dataRows(response.data)
     .map(invoiceFrom)
     .find((item) => item?.invoiceId);
+  if (!match?.invoiceId)
+    return failure(
+      "Invoice ERP tidak ditemukan untuk payment.",
+      "ERP_PAYMENT_INVOICE_MISSING",
+      response.data,
+    );
+  return { success: true, data: match };
+}
+
+export async function findErpInvoiceForCustomerPayment(input: {
+  customerId: number;
+  paymentDate?: string;
+  amount?: number;
+}): Promise<ApiResponse<ErpInvoicePaymentStatus>> {
+  if (!input.customerId)
+    return failure(
+      "Customer ERP invoice belum ditemukan untuk payment.",
+      "ERP_PAYMENT_CUSTOMER_MISSING",
+    );
+  const response = await anikaRequest<unknown>(
+    `/invoices?customer_id=${encodeURIComponent(String(input.customerId))}&per_page=20&page=1`,
+  );
+  if (!response.success) return response;
+  const invoices = dataRows(response.data)
+    .map(invoiceFrom)
+    .filter((item): item is ErpInvoicePaymentStatus => Boolean(item?.invoiceId));
+  const sameDate = input.paymentDate
+    ? invoices.filter((item) => item.invoiceDate === input.paymentDate)
+    : invoices;
+  const sameAmount = input.amount
+    ? sameDate.filter((item) => item.remaining === input.amount || item.total === input.amount)
+    : sameDate;
+  const match = sameAmount[0] || sameDate[0] || invoices[0];
   if (!match?.invoiceId)
     return failure(
       "Invoice ERP tidak ditemukan untuk payment.",
@@ -299,6 +346,8 @@ export async function syncErpSalesPayment(
   const invoice =
     before.success && before.data.invoiceId
       ? before
+      : input.invoiceId && input.customerId
+        ? { success: true as const, data: { invoiceId: input.invoiceId, customerId: input.customerId, invoiceNumber: input.invoiceNumber } }
       : await findErpInvoiceByNumber(input.invoiceNumber);
   if (!invoice.success) return invoice;
   const invoiceId = invoice.data.invoiceId || input.invoiceId;

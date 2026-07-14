@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { recordAudit } from "@/lib/audit/store";
 import {
   erpReferenceFrom,
+  resolveErpCustomerId,
   safeErpSyncError,
   sendOfficialSalesToErp,
 } from "@/lib/api/sales";
@@ -12,7 +13,7 @@ import {
   releaseSaleStock,
   stockReleaseErrorFrom,
 } from "@/lib/api/stockReleases";
-import { syncErpSalesPayment } from "@/lib/api/salesPayments";
+import { findErpInvoiceForCustomerPayment, syncErpSalesPayment } from "@/lib/api/salesPayments";
 import {
   listRekeningAccounts,
   rekeningForTipe,
@@ -162,6 +163,20 @@ function paymentError(response: { success: false; message?: string }) {
   return response.message || "Payment ERP gagal dibuat.";
 }
 
+function isStockReleaseReference(value?: string | null) {
+  return String(value || "").startsWith("SLM-STOCK-");
+}
+
+function shouldRecoverInvoiceReference(value?: string | null) {
+  const reference = String(value || "").trim();
+  return (
+    !reference ||
+    /^\d+$/.test(reference) ||
+    reference.startsWith("SLM-SO-") ||
+    isStockReleaseReference(reference)
+  );
+}
+
 async function retryImmediateSalesPayment(
   row: SalesRow,
 ): Promise<{ success: boolean; item?: ErpSyncSaleItem; message: string }> {
@@ -178,11 +193,29 @@ async function retryImmediateSalesPayment(
     },
   });
   const paymentReference = row.erpPaymentReference || `SLM-PAY-${row.id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
+  let invoiceNumber = row.erpReference || undefined;
+  let invoiceId = 0;
+  let customerId = 0;
+  if (shouldRecoverInvoiceReference(invoiceNumber)) {
+    const customer = await resolveErpCustomerId(row.customerName, row.customerLocation || undefined);
+    if (customer.success) {
+      const invoice = await findErpInvoiceForCustomerPayment({
+        customerId: customer.data,
+        paymentDate: row.saleDate.toISOString().slice(0, 10),
+        amount: Number(row.total),
+      });
+      if (invoice.success) {
+        invoiceNumber = invoice.data.invoiceNumber || invoiceNumber;
+        invoiceId = invoice.data.invoiceId || 0;
+        customerId = invoice.data.customerId || customer.data;
+      }
+    }
+  }
   const response = await syncErpSalesPayment({
     erpReference: paymentReference,
-    invoiceNumber: row.erpReference || undefined,
-    invoiceId: 0,
-    customerId: 0,
+    invoiceNumber,
+    invoiceId,
+    customerId,
     paymentDate: row.saleDate.toISOString().slice(0, 10),
     coaCode: rekening?.erpCoaId || "",
     paymentMethod: row.paymentMethod,
@@ -198,6 +231,7 @@ async function retryImmediateSalesPayment(
         erpPaymentReference: response.data.paymentReference,
         erpPaymentSyncedAt: attemptedAt,
         erpPaymentAttemptedAt: attemptedAt,
+        ...(invoiceNumber && invoiceNumber !== row.erpReference ? { erpReference: invoiceNumber } : {}),
       },
       include: salesInclude,
     });

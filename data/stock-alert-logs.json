@@ -1,5 +1,68 @@
 [
   {
+    "id": "SAL-1784002210608",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "failed",
+    "createdAt": "2026-07-14T04:10:10.608Z"
+  },
+  {
+    "id": "SAL-1784002179087",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "failed",
+    "createdAt": "2026-07-14T04:09:39.087Z"
+  },
+  {
+    "id": "SAL-1783999274026",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "resolved",
+    "createdAt": "2026-07-14T03:21:14.026Z",
+    "resolvedAt": "2026-07-14T03:21:14.107Z"
+  },
+  {
+    "id": "SAL-1783998679068",
+    "productId": "10",
+    "productCodeSnapshot": "FG-SEED-001",
+    "productNameSnapshot": "Panel Kontrol Industri",
+    "currentStock": 0,
+    "minimumStock": 8,
+    "warehouseSnapshot": "Gudang Utama",
+    "rackSnapshot": "Rak A1",
+    "status": "resolved",
+    "createdAt": "2026-07-14T03:11:19.068Z",
+    "resolvedAt": "2026-07-14T04:10:10.665Z"
+  },
+  {
+    "id": "SAL-1783998565373",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-14T03:09:25.373Z",
+    "resolvedAt": "2026-07-14T04:09:39.145Z"
+  },
+  {
     "id": "SAL-1783970425332",
     "productId": "10",
     "productCodeSnapshot": "FG-SEED-001",
@@ -8,8 +71,9 @@
     "minimumStock": 8,
     "warehouseSnapshot": "Gudang Utama",
     "rackSnapshot": "Rak A1",
-    "status": "failed",
-    "createdAt": "2026-07-13T19:20:25.332Z"
+    "status": "resolved",
+    "createdAt": "2026-07-13T19:20:25.332Z",
+    "resolvedAt": "2026-07-14T03:09:25.432Z"
   },
   {
     "id": "SAL-1783970304946",
@@ -20,8 +84,9 @@
     "minimumStock": 19,
     "warehouseSnapshot": "Gudang non",
     "rackSnapshot": "aut dolores",
-    "status": "failed",
-    "createdAt": "2026-07-13T19:18:24.946Z"
+    "status": "resolved",
+    "createdAt": "2026-07-13T19:18:24.946Z",
+    "resolvedAt": "2026-07-14T03:11:37.146Z"
   },
   {
     "id": "SAL-1783969579708",
@@ -45,8 +110,9 @@
     "minimumStock": 18,
     "warehouseSnapshot": "Gudang eum",
     "rackSnapshot": "delectus suscipit",
-    "status": "failed",
-    "createdAt": "2026-07-13T18:54:31.006Z"
+    "status": "resolved",
+    "createdAt": "2026-07-13T18:54:31.006Z",
+    "resolvedAt": "2026-07-14T02:48:20.589Z"
   },
   {
     "id": "SAL-1783968777380",

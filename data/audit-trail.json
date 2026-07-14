@@ -1,5 +1,340 @@
 [
   {
+    "id": "bd894447-ccfe-45d7-8ea5-af0d880f00c5",
+    "createdAt": "2026-07-14T04:10:10.613Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784002210608",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784002210608",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-14T04:10:10.608Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "4a30f2ba-c71e-4d88-8c2c-9a8e961d8488",
+    "createdAt": "2026-07-14T04:09:19.084Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783997321681-d4863809",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "synced",
+      "erpReference": "SLM-INV-MRK4TN84-6E5A56",
+      "stockReleaseStatus": "released",
+      "stockReleaseReference": "SLM-STOCK-SLM-INV-MRK4TN84-6E5A56",
+      "stockReleaseError": "",
+      "erpPaymentStatus": "paid",
+      "erpPaymentReference": "SLM-PAY-S-1783997321681-d4863809",
+      "erpPaymentError": ""
+    },
+    "reason": "Retry ERP sales dan release stok berhasil • Payment paid"
+  },
+  {
+    "id": "d903977a-1651-4119-9a5b-7f17f94400e1",
+    "createdAt": "2026-07-14T04:07:43.084Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.55 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "paid",
+      "erpPaymentReference": "SLM-PAY-S-1783998708274-a2a9529f"
+    },
+    "reason": "Retry payment sales berhasil"
+  },
+  {
+    "id": "b64851a1-6d3c-45b7-9662-24c743e3d906",
+    "createdAt": "2026-07-14T03:59:53.836Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "ERP service error: Database Aneka Jaya ERP belum dimigrasi untuk payment idempotency. Kolom customer_receipts.erp_reference belum tersedia."
+    },
+    "reason": "Retry payment sales gagal • ERP service error: Database Aneka Jaya ERP belum dimigrasi untuk payment idempotency. Kolom customer_receipts.erp_reference belum tersedia."
+  },
+  {
+    "id": "f0c8373b-b230-40ae-ba52-2fcfbde21836",
+    "createdAt": "2026-07-14T03:58:13.685Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "ERP service error: ERP menolak data karena constraint database."
+    },
+    "reason": "Retry payment sales gagal • ERP service error: ERP menolak data karena constraint database."
+  },
+  {
+    "id": "aefac28f-8069-4cac-960c-2a522e22e62d",
+    "createdAt": "2026-07-14T03:57:15.462Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "Invoice ERP tidak ditemukan untuk payment."
+    },
+    "reason": "Retry payment sales gagal • Invoice ERP tidak ditemukan untuk payment."
+  },
+  {
+    "id": "5de4be42-7372-4998-8b30-a48e51f148b1",
+    "createdAt": "2026-07-14T03:51:36.183Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "Invoice ERP tidak ditemukan untuk payment."
+    },
+    "reason": "Retry payment sales gagal • Invoice ERP tidak ditemukan untuk payment."
+  },
+  {
+    "id": "44bdeb1b-8538-4645-ac0d-4edcebe158d9",
+    "createdAt": "2026-07-14T03:48:58.379Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "Invoice ERP tidak ditemukan untuk payment."
+    },
+    "reason": "Retry payment sales gagal • Invoice ERP tidak ditemukan untuk payment."
+  },
+  {
+    "id": "0d047bea-c15a-4883-a9d7-9a8faed43456",
+    "createdAt": "2026-07-14T03:47:11.629Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "Invoice ERP tidak ditemukan untuk payment."
+    },
+    "reason": "Retry payment sales gagal • Invoice ERP tidak ditemukan untuk payment."
+  },
+  {
+    "id": "6e5bf60e-d0e8-462c-bdac-1fec664c70f1",
+    "createdAt": "2026-07-14T03:41:05.356Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "Invoice ERP tidak ditemukan untuk payment."
+    },
+    "reason": "Retry payment sales gagal • Invoice ERP tidak ditemukan untuk payment."
+  },
+  {
+    "id": "5a9f387b-8d05-4754-b880-822f812de999",
+    "createdAt": "2026-07-14T03:39:35.048Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "rekening",
+    "entityId": "cash-w",
+    "action": "update",
+    "beforeValue": {
+      "id": "cash-w",
+      "bank": "Cash",
+      "name": "Kas Walk In",
+      "accountNumber": "***",
+      "isCash": true,
+      "isActive": true,
+      "tipeIds": [
+        "W"
+      ]
+    },
+    "afterValue": {
+      "id": "cash-w",
+      "bank": "Cash",
+      "name": "Kas Walk In",
+      "accountNumber": "***",
+      "erpCoaId": "CASH",
+      "erpCoaNameSnapshot": "Kas",
+      "isCash": true,
+      "isActive": true,
+      "tipeIds": [
+        "W"
+      ]
+    }
+  },
+  {
+    "id": "f67dc1eb-1b04-4cf3-b5d7-746ec445f8c4",
+    "createdAt": "2026-07-14T03:34:42.774Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "erpPaymentStatus": "failed",
+      "error": "COA code / payment account code ERP rekening penerima belum diatur."
+    },
+    "reason": "Retry payment sales gagal • COA code / payment account code ERP rekening penerima belum diatur."
+  },
+  {
+    "id": "9decc80a-f4fd-4357-8266-7170916f306a",
+    "createdAt": "2026-07-14T03:21:17.230Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1783998708274-a2a9529f",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "synced",
+      "erpReference": "35",
+      "stockReleaseStatus": "released",
+      "stockReleaseReference": "SLM-STOCK-35",
+      "stockReleaseError": "",
+      "erpPaymentStatus": "failed",
+      "erpPaymentReference": null,
+      "erpPaymentError": "COA code / payment account code ERP rekening penerima belum diatur."
+    },
+    "reason": "Retry ERP sales dan release stok berhasil • Payment failed"
+  },
+  {
+    "id": "df359a52-415f-41c6-aad2-8bc94edd3fc2",
+    "createdAt": "2026-07-14T03:21:14.031Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783999274026",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1783999274026",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
+      "status": "failed",
+      "createdAt": "2026-07-14T03:21:14.026Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "f8b8397c-4d9f-4b91-99c0-391b317e8746",
+    "createdAt": "2026-07-14T03:11:19.077Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783998679068",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1783998679068",
+      "productId": "10",
+      "productCodeSnapshot": "FG-SEED-001",
+      "productNameSnapshot": "Panel Kontrol Industri",
+      "currentStock": 0,
+      "minimumStock": 8,
+      "warehouseSnapshot": "Gudang Utama",
+      "rackSnapshot": "Rak A1",
+      "status": "failed",
+      "createdAt": "2026-07-14T03:11:19.068Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "d5bef3c1-530c-43f0-b4b6-d1e934581486",
+    "createdAt": "2026-07-14T03:09:25.378Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1783998565373",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1783998565373",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-14T03:09:25.373Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
     "id": "d4f17df5-ea58-41d3-9562-b58d09b2a7df",
     "createdAt": "2026-07-14T01:54:47.049Z",
     "userId": "unauthenticated",

@@ -35,7 +35,25 @@ export function erpReferenceFrom(value: unknown): string | undefined {
   if (!value || typeof value !== "object") return undefined;
   const row = value as Record<string, unknown>;
   const nested = row.data && typeof row.data === "object" ? row.data as Record<string, unknown> : undefined;
-  const reference = row.reference ?? row.id ?? row.invoice_id ?? nested?.reference ?? nested?.id ?? nested?.invoice_id;
+  const invoice = row.invoice && typeof row.invoice === "object" ? row.invoice as Record<string, unknown> : undefined;
+  const nestedInvoice = nested?.invoice && typeof nested.invoice === "object" ? nested.invoice as Record<string, unknown> : undefined;
+  const invoiceIdReference = [row.invoice_id, nested?.invoice_id].find((item) =>
+    typeof item === "string" && item.trim() && !/^\d+$/.test(item.trim())
+  );
+  const reference =
+    row.invoice_number ??
+    invoice?.invoice_number ??
+    nested?.invoice_number ??
+    nestedInvoice?.invoice_number ??
+    invoiceIdReference ??
+    row.slm_invoice_number ??
+    nested?.slm_invoice_number ??
+    row.reference ??
+    nested?.reference ??
+    row.invoice_id ??
+    nested?.invoice_id ??
+    row.id ??
+    nested?.id;
   return reference === undefined || reference === null ? undefined : String(reference);
 }
 
@@ -284,7 +302,7 @@ async function findCustomerByCode(code: string): Promise<ApiResponse<number | un
   return { success: true, data: numberId(match?.id) };
 }
 
-async function resolveWalkInCustomerId(): Promise<ApiResponse<number>> {
+export async function resolveWalkInCustomerId(): Promise<ApiResponse<number>> {
   const configuredId = walkInCustomerId();
   if (configuredId) return { success: true, data: configuredId };
   const code = walkInCustomerCode();
@@ -339,7 +357,7 @@ async function createErpCustomer(input: { name: string; location?: string }): Pr
   return { success: true, data: id };
 }
 
-async function resolveErpCustomerId(customerNameInput: string, customerLocation?: string): Promise<ApiResponse<number>> {
+export async function resolveErpCustomerId(customerNameInput: string, customerLocation?: string): Promise<ApiResponse<number>> {
   const lookupName = cleanCustomerLookupName(customerNameInput);
   if (!lookupName) return failure("Customer ERP belum terhubung: nama customer kosong.", "ERP_CUSTOMER_NOT_LINKED");
   if (normalizeLookup(lookupName) === "walk in") return resolveWalkInCustomerId();
@@ -393,6 +411,7 @@ export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<A
   const saleDate = input.saleDate;
   const dueDate = input.paymentMethod === "Tempo" && input.dueDate ? input.dueDate : saleDate;
   const cabangId = defaultErpCabangId();
+  const invoiceNumber = generatedErpDocumentNumber("INV");
   const payload = {
     customer_id: customer.data,
     so_number: generatedErpDocumentNumber("SO"),
@@ -405,7 +424,7 @@ export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<A
     cabang_id: cabangId,
     auto_create_invoice: true,
     invoice: {
-      invoice_number: generatedErpDocumentNumber("INV"),
+      invoice_number: invoiceNumber,
       invoice_date: saleDate,
       due_date: dueDate,
       status: "sent",
@@ -420,10 +439,15 @@ export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<A
     }))
   };
 
-  return anikaRequest("/sales", {
+  const response = await anikaRequest<unknown>("/sales", {
     method: "POST",
     body: JSON.stringify(payload)
   });
+  if (!response.success) return response;
+  const data = response.data && typeof response.data === "object"
+    ? { ...(response.data as Record<string, unknown>), slm_invoice_number: invoiceNumber }
+    : { raw: response.data, slm_invoice_number: invoiceNumber };
+  return { success: true, data };
 }
 
 export function buildSalesNeoCommand(input: {

@@ -2,7 +2,7 @@ export const PAYMENT_ACCOUNTS_STORAGE_KEY = "aneka-jaya-transfer-accounts";
 export type PaymentAccount = { id: string; bank: string; name: string; number: string };
 
 export const INDONESIAN_BANKS = [
-  "BCA", "Bank Mandiri", "BRI", "BNI", "BTN", "Bank Syariah Indonesia (BSI)", "CIMB Niaga", "CIMB Niaga Syariah",
+  "Cash", "BCA", "Bank Mandiri", "BRI", "BNI", "BTN", "Bank Syariah Indonesia (BSI)", "CIMB Niaga", "CIMB Niaga Syariah",
   "Permata Bank", "Danamon", "OCBC", "Maybank Indonesia", "Panin Bank", "UOB Indonesia", "DBS Indonesia",
   "Bank Mega", "Bank Jago", "Bank Neo Commerce", "Seabank Indonesia", "Allo Bank", "Bank Raya Indonesia",
   "BTPN", "BTPN Syariah", "Bank Muamalat", "Bank Aladin Syariah", "Bank Victoria", "Bank Sinarmas",
