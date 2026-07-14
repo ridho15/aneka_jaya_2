@@ -637,14 +637,14 @@ export function PenjualanForm({
       });
       return;
     }
-    if (!selectedProductsReady) {
-      setNotice({
-        type: "error",
-        message:
-          "Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP.",
-      });
-      return;
-    }
+    // if (!selectedProductsReady) {
+    //   setNotice({
+    //     type: "error",
+    //     message:
+    //       "Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP.",
+    //   });
+    //   return;
+    // }
     const payload: PenjualanInput = {
       ...data,
       items: data.items.map((item) => ({
@@ -1501,9 +1501,9 @@ export function PenjualanForm({
               <Button
                 type="submit"
                 className="w-full"
-                disabled={
-                  isSubmitting || !dependenciesReady || !selectedProductsReady
-                }
+                // disabled={
+                //   isSubmitting || !dependenciesReady || !selectedProductsReady
+                // }
               >
                 {isSubmitting
                   ? "Menyimpan..."

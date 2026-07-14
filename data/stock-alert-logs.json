@@ -1,6 +1,6 @@
 [
   {
-    "id": "SAL-1784002210608",
+    "id": "SAL-1784019950170",
     "productId": "15",
     "productCodeSnapshot": "SKU-026",
     "productNameSnapshot": "Produk dignissimos 26",
@@ -9,7 +9,122 @@
     "warehouseSnapshot": "Gudang eum",
     "rackSnapshot": "delectus suscipit",
     "status": "failed",
-    "createdAt": "2026-07-14T04:10:10.608Z"
+    "createdAt": "2026-07-14T09:05:50.170Z"
+  },
+  {
+    "id": "SAL-1784019900786",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "failed",
+    "createdAt": "2026-07-14T09:05:00.786Z"
+  },
+  {
+    "id": "SAL-1784019608616",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-14T09:00:08.616Z",
+    "resolvedAt": "2026-07-14T09:05:50.116Z"
+  },
+  {
+    "id": "SAL-1784019490404",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-14T08:58:10.404Z",
+    "resolvedAt": "2026-07-14T09:00:08.563Z"
+  },
+  {
+    "id": "SAL-1784013969736",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "resolved",
+    "createdAt": "2026-07-14T07:26:09.736Z",
+    "resolvedAt": "2026-07-14T09:00:11.040Z"
+  },
+  {
+    "id": "SAL-1784013196280",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-14T07:13:16.280Z",
+    "resolvedAt": "2026-07-14T08:58:10.303Z"
+  },
+  {
+    "id": "SAL-1784013091314",
+    "productId": "10",
+    "productCodeSnapshot": "FG-SEED-001",
+    "productNameSnapshot": "Panel Kontrol Industri",
+    "currentStock": 0,
+    "minimumStock": 8,
+    "warehouseSnapshot": "Gudang Utama",
+    "rackSnapshot": "Rak A1",
+    "status": "failed",
+    "createdAt": "2026-07-14T07:11:31.314Z"
+  },
+  {
+    "id": "SAL-1784004733270",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-14T04:52:13.270Z",
+    "resolvedAt": "2026-07-14T07:12:23.114Z"
+  },
+  {
+    "id": "SAL-1784004529550",
+    "productId": "10",
+    "productCodeSnapshot": "FG-SEED-001",
+    "productNameSnapshot": "Panel Kontrol Industri",
+    "currentStock": 0,
+    "minimumStock": 8,
+    "warehouseSnapshot": "Gudang Utama",
+    "rackSnapshot": "Rak A1",
+    "status": "resolved",
+    "createdAt": "2026-07-14T04:48:49.550Z",
+    "resolvedAt": "2026-07-14T05:14:16.562Z"
+  },
+  {
+    "id": "SAL-1784002210608",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-14T04:10:10.608Z",
+    "resolvedAt": "2026-07-14T04:48:49.610Z"
   },
   {
     "id": "SAL-1784002179087",
@@ -20,8 +135,9 @@
     "minimumStock": 19,
     "warehouseSnapshot": "Gudang non",
     "rackSnapshot": "aut dolores",
-    "status": "failed",
-    "createdAt": "2026-07-14T04:09:39.087Z"
+    "status": "resolved",
+    "createdAt": "2026-07-14T04:09:39.087Z",
+    "resolvedAt": "2026-07-14T07:14:35.540Z"
   },
   {
     "id": "SAL-1783999274026",
