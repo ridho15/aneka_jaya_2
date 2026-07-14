@@ -1,5 +1,30 @@
 [
   {
+    "id": "b1a9f5f7-f57c-4478-b2a1-9762fbe68743",
+    "createdAt": "2026-07-14T17:41:35.040Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784050895034",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784050895034",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-14T17:41:35.034Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
     "id": "5f6dd55f-2ee5-4786-b977-feaa90ecc89d",
     "createdAt": "2026-07-14T17:39:33.478Z",
     "userId": "anika:1",
