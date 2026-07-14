@@ -79,8 +79,8 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
             <TransactionCancelButton
               id={sale.id}
               kind="sales"
-              disabled={sale.approvalStatus === "cancelled" || (sale.syncTarget === "erp" && sale.syncStatus === "synced")}
-              disabledReason={sale.syncTarget === "erp" && sale.syncStatus === "synced" ? "Transaksi AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Transaksi sudah dibatalkan."}
+              disabled={sale.approvalStatus === "cancelled"}
+              disabledReason="Transaksi sudah dibatalkan."
             />
           </div>
         )}

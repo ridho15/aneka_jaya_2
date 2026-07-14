@@ -7,6 +7,8 @@ import type { Prisma } from "@prisma/client";
 import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
 import { recordAudit } from "@/lib/audit/store";
 import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
+import { getCurrentUser } from "@/lib/auth/session";
+import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCancellations";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -427,6 +429,10 @@ function assertSaleManageable(sale: Sale) {
   }
 }
 
+function cancelReferenceForSale(id: string) {
+  return `SLM-CANCEL-${id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
+}
+
 function saleTotal(input: Pick<Sale, "items">) {
   return input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
 }
@@ -511,27 +517,95 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
   if (!cleanReason) throw new Error("Alasan cancel wajib diisi.");
   const before = await getSalesRecord(id);
   if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
-  assertSaleManageable(before);
+  if (before.approvalStatus === "cancelled") throw new Error("Transaksi sudah dibatalkan.");
+  const requiresErpCancellation = before.syncTarget === "erp" && before.syncStatus === "synced";
+  const actor = await getCurrentUser();
+  let erpCancellation: SalesCancellationResult | undefined;
+  if (requiresErpCancellation) {
+    const response = await cancelErpSales({
+      erpReference: cancelReferenceForSale(id),
+      sourceNumber: before.erpReference,
+      saleReference: id,
+      stockReleaseReference: before.stockReleaseReference,
+      paymentReference: before.erpPaymentReference,
+      cancelDate: new Date().toISOString().slice(0, 10),
+      reason: cleanReason,
+      requestedBy: {
+        id: actor.id,
+        name: actor.name,
+        role: actor.role,
+      },
+    });
+    if (!response.success) throw new Error(response.message || "Cancel transaksi ERP gagal.");
+    erpCancellation = response.data;
+  }
   if (isProductionMode()) {
     const row = await prisma.salesRecord.update({
       where: { id },
       data: {
         approvalStatus: "cancelled",
-        syncStatus: before.syncTarget === "erp" ? "failed" : before.syncStatus || "local",
-        syncError: before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError
+        syncStatus: requiresErpCancellation
+          ? "synced"
+          : before.syncTarget === "erp"
+            ? "failed"
+            : before.syncStatus || "local",
+        syncError: requiresErpCancellation
+          ? "Transaksi dibatalkan dan sudah dibatalkan di ERP."
+          : before.syncTarget === "erp"
+            ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP."
+            : before.syncError
       },
       include: salesInclude
     });
     const after = toSale(row);
-    await recordAudit({ entityType: "sales", entityId: id, action: "cancel", beforeValue: before, afterValue: after, reason: cleanReason });
+    await recordAudit({
+      entityType: "sales",
+      entityId: id,
+      action: "cancel",
+      beforeValue: before,
+      afterValue: erpCancellation ? { ...after, erpCancellation } : after,
+      reason: cleanReason
+    });
     return after;
   }
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
-  if (index < 0) throw new Error("Transaksi penjualan tidak ditemukan.");
-  const after: Sale = { ...before, approvalStatus: "cancelled", syncStatus: before.syncTarget === "erp" ? "failed" : before.syncStatus, syncError: before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError };
+  if (index < 0) {
+    const row = await prisma.salesRecord.update({
+      where: { id },
+      data: {
+        approvalStatus: "cancelled",
+        syncStatus: requiresErpCancellation ? "synced" : before.syncTarget === "erp" ? "failed" : before.syncStatus || "local",
+        syncError: requiresErpCancellation ? "Transaksi dibatalkan dan sudah dibatalkan di ERP." : before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError
+      },
+      include: salesInclude
+    });
+    const after = toSale(row);
+    await recordAudit({
+      entityType: "sales",
+      entityId: id,
+      action: "cancel",
+      beforeValue: before,
+      afterValue: erpCancellation ? { ...after, erpCancellation } : after,
+      reason: cleanReason
+    });
+    return after;
+  }
+  const after: Sale = {
+    ...before,
+    approvalStatus: "cancelled",
+    syncStatus: requiresErpCancellation ? "synced" : before.syncTarget === "erp" ? "failed" : before.syncStatus,
+    syncError: requiresErpCancellation ? "Transaksi dibatalkan dan sudah dibatalkan di ERP." : before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError
+  };
   rows[index] = after;
   await writeJsonArray(fileName, rows);
-  await recordAudit({ entityType: "sales", entityId: id, action: "cancel", beforeValue: before, afterValue: after, reason: cleanReason });
+  await recordAudit({
+    entityType: "sales",
+    entityId: id,
+    action: "cancel",
+    beforeValue: before,
+    afterValue: erpCancellation ? { ...after, erpCancellation } : after,
+    reason: cleanReason
+  });
   return after;
 }

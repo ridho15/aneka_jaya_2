@@ -61,7 +61,7 @@ describe("pending ERP contract guards", () => {
     expect(await response.json()).toMatchObject({
       success: false,
       code: "ERP_CONTRACT_PENDING",
-      message: expect.stringContaining("Koreksi/cancel transaksi AJ")
+      message: expect.stringContaining("Koreksi transaksi AJ")
     });
   });
 

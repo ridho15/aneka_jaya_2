@@ -149,7 +149,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                 <Link className="rounded-sm bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700" href={`/penjualan/${sale.id}`}>Detail</Link>
                 <Link className="rounded-sm border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/print/sales/${sale.id}`}>Cetak</Link>
                 {canManage && sale.approvalStatus !== "cancelled" && <Link className="rounded-sm border border-blue-200 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50" href={`/penjualan/${sale.id}/edit`}>Edit</Link>}
-                {canManage && <TransactionCancelButton id={sale.id} kind="sales" disabled={sale.approvalStatus === "cancelled" || (sale.syncTarget === "erp" && sale.syncStatus === "synced")} disabledReason={sale.syncTarget === "erp" && sale.syncStatus === "synced" ? "Transaksi AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Transaksi sudah dibatalkan."} />}
+                {canManage && <TransactionCancelButton id={sale.id} kind="sales" disabled={sale.approvalStatus === "cancelled"} disabledReason="Transaksi sudah dibatalkan." />}
               </div>
             </article>
           ))}
@@ -184,8 +184,8 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                         <TransactionCancelButton
                           id={sale.id}
                           kind="sales"
-                          disabled={sale.approvalStatus === "cancelled" || (sale.syncTarget === "erp" && sale.syncStatus === "synced")}
-                          disabledReason={sale.syncTarget === "erp" && sale.syncStatus === "synced" ? "Transaksi AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Transaksi sudah dibatalkan."}
+                          disabled={sale.approvalStatus === "cancelled"}
+                          disabledReason="Transaksi sudah dibatalkan."
                         />
                       </>
                     )}

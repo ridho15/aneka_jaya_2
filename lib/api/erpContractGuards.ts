@@ -11,8 +11,8 @@ export const PENDING_ERP_CONTRACTS: Record<PendingErpContractFeature, {
 }> = {
   sales_correction: {
     permission: "penjualan.manage",
-    message: "Koreksi/cancel transaksi AJ yang sudah synced belum diaktifkan karena OpenAPI ERP live belum menyediakan endpoint cancel/update invoice.",
-    requiredContract: "Endpoint/command resmi ERP untuk cancel atau koreksi invoice penjualan yang sudah dibuat."
+    message: "Koreksi transaksi AJ yang sudah synced belum diaktifkan karena OpenAPI ERP live belum menyediakan endpoint update invoice.",
+    requiredContract: "Endpoint/command resmi ERP untuk koreksi invoice penjualan yang sudah dibuat."
   },
   expense_correction: {
     permission: "pengeluaran.manage",

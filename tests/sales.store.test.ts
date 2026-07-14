@@ -10,12 +10,18 @@ const mocks = vi.hoisted(() => ({
       create: vi.fn(),
       update: vi.fn()
     }
-  }
+  },
+  user: { id: "owner-1", name: "Owner", role: "OWNER" },
+  cancelErpSales: vi.fn(),
+  recordAudit: vi.fn()
 }));
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
+vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn(async () => mocks.user) }));
+vi.mock("@/lib/api/salesCancellations", () => ({ cancelErpSales: mocks.cancelErpSales }));
+vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 
-import { getSalesRecord, listSalesRecords, saveSalesRecord } from "@/lib/sales/store";
+import { cancelSalesRecord, getSalesRecord, listSalesRecords, saveSalesRecord } from "@/lib/sales/store";
 
 const dbSale = {
   id: "S-1",
@@ -49,6 +55,9 @@ describe("sales store normalized persistence", () => {
     mocks.prisma.salesRecord.findUnique.mockReset();
     mocks.prisma.salesRecord.create.mockReset();
     mocks.prisma.salesRecord.update.mockReset();
+    mocks.cancelErpSales.mockReset();
+    mocks.recordAudit.mockReset();
+    mocks.user = { id: "owner-1", name: "Owner", role: "OWNER" };
   });
 
   it("maps normalized sales item rows back to the public Sale.items array", async () => {
@@ -100,5 +109,69 @@ describe("sales store normalized persistence", () => {
         items: { create: [expect.objectContaining({ productRef: "P-2", sortOrder: 0 })] }
       })
     }));
+  });
+
+  it("cancels synced ERP sales through Aneka Jaya before updating local status", async () => {
+    const syncedSale = {
+      ...dbSale,
+      syncTarget: "erp",
+      syncStatus: "synced",
+      syncError: null,
+      erpReference: "SLM-INV-1",
+      stockReleaseReference: "SLM-STOCK-1",
+      erpPaymentReference: "SLM-PAY-1",
+      stockReleaseStatus: "released",
+      erpPaymentStatus: "paid"
+    };
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(syncedSale);
+    mocks.cancelErpSales.mockResolvedValue({
+      success: true,
+      data: {
+        status: "cancelled",
+        reversalReference: "ERP-CANCEL-1",
+        raw: {}
+      }
+    });
+    mocks.prisma.salesRecord.update.mockResolvedValue({
+      ...syncedSale,
+      approvalStatus: "cancelled",
+      syncError: "Transaksi dibatalkan dan sudah dibatalkan di ERP."
+    });
+
+    await expect(cancelSalesRecord("S-1", "Customer batal")).resolves.toMatchObject({
+      approvalStatus: "cancelled",
+      syncStatus: "synced"
+    });
+
+    expect(mocks.cancelErpSales).toHaveBeenCalledWith(expect.objectContaining({
+      erpReference: "SLM-CANCEL-S-1",
+      sourceNumber: "SLM-INV-1",
+      saleReference: "S-1",
+      stockReleaseReference: "SLM-STOCK-1",
+      paymentReference: "SLM-PAY-1",
+      reason: "Customer batal",
+      requestedBy: { id: "owner-1", name: "Owner", role: "OWNER" }
+    }));
+    expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        approvalStatus: "cancelled",
+        syncStatus: "synced",
+        syncError: "Transaksi dibatalkan dan sudah dibatalkan di ERP."
+      })
+    }));
+  });
+
+  it("does not cancel locally when ERP cancellation fails", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue({
+      ...dbSale,
+      syncTarget: "erp",
+      syncStatus: "synced",
+      erpReference: "SLM-INV-1"
+    });
+    mocks.cancelErpSales.mockResolvedValue({ success: false, message: "Invoice ERP tidak bisa dibatalkan." });
+
+    await expect(cancelSalesRecord("S-1", "Customer batal")).rejects.toThrow("Invoice ERP tidak bisa dibatalkan.");
+
+    expect(mocks.prisma.salesRecord.update).not.toHaveBeenCalled();
   });
 });
