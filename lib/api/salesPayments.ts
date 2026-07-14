@@ -21,10 +21,13 @@ export type ErpInvoicePaymentStatus = {
 };
 
 export type SalesPaymentPayloadInput = {
+  erpReference: string;
   invoiceId: number;
   customerId: number;
   paymentDate: string;
-  coaId: string;
+  coaId?: string;
+  coaCode?: string;
+  paymentAccountCode?: string;
   paymentMethod: string;
   amount: number;
   notes?: string;
@@ -102,10 +105,15 @@ function statusFrom(value: unknown): ErpInvoicePaymentStatus {
 }
 
 export function buildSalesPaymentPayload(input: SalesPaymentPayloadInput) {
-  const coaId = numberId(input.coaId);
-  if (!coaId)
+  const accountCode = String(input.paymentAccountCode || input.coaCode || input.coaId || "").trim();
+  if (!input.erpReference.trim())
     return failure(
-      "COA ERP rekening penerima belum valid.",
+      "Referensi payment ERP dari SLM belum tersedia.",
+      "ERP_PAYMENT_REFERENCE_MISSING",
+    );
+  if (!accountCode)
+    return failure(
+      "COA code / payment account code ERP rekening penerima belum diatur.",
       "ERP_PAYMENT_COA_MISSING",
     );
   if (!input.invoiceId)
@@ -126,9 +134,10 @@ export function buildSalesPaymentPayload(input: SalesPaymentPayloadInput) {
   return {
     success: true as const,
     data: {
+      erp_reference: input.erpReference,
       customer_id: input.customerId,
       payment_date: input.paymentDate,
-      coa_id: coaId,
+      ...(input.coaId && numberId(input.coaId) ? { coa_id: numberId(input.coaId) } : /^[0-9.]+$/.test(accountCode) ? { coa_code: accountCode } : { payment_account_code: accountCode }),
       payment_method:
         input.paymentMethod === "TF" ? "Transfer" : input.paymentMethod,
       total_payment: input.amount,
@@ -186,23 +195,30 @@ export function isInvoiceAlreadyPaid(status: ErpInvoicePaymentStatus) {
   );
 }
 
+function safeSalesPaymentError(response: ApiResponse<unknown>) {
+  if (response.success) return undefined;
+  const message = response.message || "Payment ERP gagal dibuat.";
+  const details = asRecord(response.details);
+  const upstreamCode = String(details?.upstreamCode || response.code || "").toLowerCase();
+  const lowerMessage = message.toLowerCase();
+  if (upstreamCode.includes("coa") || lowerMessage.includes("coa")) {
+    return "COA code / payment account code rekening penerima tidak valid di Aneka Jaya. Periksa Pengaturan → Rekening.";
+  }
+  if (lowerMessage.includes("selected invoices") || lowerMessage.includes("invoice")) {
+    return "Invoice ERP tidak valid atau belum memiliki piutang untuk payment.";
+  }
+  if (lowerMessage.includes("amount") || lowerMessage.includes("melebihi")) {
+    return "Nominal payment ERP tidak valid atau melebihi sisa piutang invoice.";
+  }
+  return message;
+}
+
 function paymentReferenceFrom(value: unknown) {
   const row = asRecord(value);
   const data = asRecord(row?.data);
-  const reference = firstString(
-    row?.id,
-    data?.id,
-    row?.payment_id,
-    data?.payment_id,
-  );
-  return (
-    reference ??
-    (
-      numberId(row?.id) ??
-      numberId(data?.id) ??
-      numberId(row?.payment_id) ??
-      numberId(data?.payment_id)
-    )?.toString()
+  return firstString(
+    row?.erp_reference,
+    data?.erp_reference,
   );
 }
 
@@ -216,7 +232,6 @@ export async function createErpSalesPayment(
   }>
 > {
   const payload = buildSalesPaymentPayload(input);
-  console.log('Payload', payload);
   if (!payload.success) return payload;
   const response = await anikaRequest<unknown>("/sales-payments", {
     method: "POST",
@@ -224,22 +239,27 @@ export async function createErpSalesPayment(
   });
   if (!response.success)
     return failure(
-      response.message || "Payment ERP gagal dibuat.",
+      safeSalesPaymentError(response) || "Payment ERP gagal dibuat.",
       response.code || "ERP_PAYMENT_FAILED",
       response.details,
     );
   const row = asRecord(response.data);
   const data = asRecord(row?.data);
+  const normalizedStatus = String(data?.payment_status || data?.status || row?.payment_status || row?.status || "")
+    .trim()
+    .toLowerCase();
   const status =
-    String(data?.status || row?.status || "")
-      .trim()
-      .toLowerCase() === "partial"
+    normalizedStatus === "partial" || normalizedStatus === "partially_paid"
       ? "partial"
       : "paid";
+  const topStatus = String(row?.status || "").trim().toLowerCase();
+  if (topStatus === "already_processed") {
+    return { success: true, data: { paymentReference: paymentReferenceFrom(response.data) || input.erpReference, status, raw: response.data } };
+  }
   return {
     success: true,
     data: {
-      paymentReference: paymentReferenceFrom(response.data),
+      paymentReference: paymentReferenceFrom(response.data) || input.erpReference,
       status,
       raw: response.data,
     },
@@ -256,9 +276,15 @@ export async function syncErpSalesPayment(
     raw?: unknown;
   }>
 > {
-  if (!numberId(input.coaId))
+  const accountCode = String(input.paymentAccountCode || input.coaCode || input.coaId || "").trim();
+  if (!input.erpReference.trim())
     return failure(
-      "COA ERP rekening penerima belum valid.",
+      "Referensi payment ERP dari SLM belum tersedia.",
+      "ERP_PAYMENT_REFERENCE_MISSING",
+    );
+  if (!accountCode)
+    return failure(
+      "COA code / payment account code ERP rekening penerima belum diatur.",
       "ERP_PAYMENT_COA_MISSING",
     );
   if (!Number.isFinite(input.amount) || input.amount <= 0)
@@ -268,10 +294,7 @@ export async function syncErpSalesPayment(
     );
   const before = await getErpInvoicePaymentStatus(input.invoiceNumber);
   if (before.success && isInvoiceAlreadyPaid(before.data)) {
-    return {
-      success: true,
-      data: { status: "paid", skipped: true, raw: before.data.raw },
-    };
+    return { success: true, data: { status: "paid", paymentReference: input.erpReference, skipped: true, raw: before.data.raw } };
   }
   const invoice =
     before.success && before.data.invoiceId

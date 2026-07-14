@@ -114,6 +114,15 @@ function defaultErpCabangId(env: NodeJS.ProcessEnv = process.env) {
   return Number.isInteger(value) && value > 0 ? value : 1;
 }
 
+function walkInCustomerId(env: NodeJS.ProcessEnv = process.env) {
+  const value = Number(String(env.ANIKA_ERP_WALK_IN_CUSTOMER_ID ?? "").trim());
+  return Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function walkInCustomerCode(env: NodeJS.ProcessEnv = process.env) {
+  return String(env.ANIKA_ERP_WALK_IN_CUSTOMER_CODE ?? "WALK-IN").trim();
+}
+
 function defaultErpBrandCode(env: NodeJS.ProcessEnv = process.env) {
   return String(env.ANIKA_ERP_DEFAULT_KODE_MERK ?? "UMUM").trim() || "UMUM";
 }
@@ -275,6 +284,17 @@ async function findCustomerByCode(code: string): Promise<ApiResponse<number | un
   return { success: true, data: numberId(match?.id) };
 }
 
+async function resolveWalkInCustomerId(): Promise<ApiResponse<number>> {
+  const configuredId = walkInCustomerId();
+  if (configuredId) return { success: true, data: configuredId };
+  const code = walkInCustomerCode();
+  if (!code) return failure("Customer Walk In ERP belum dikonfigurasi. Isi ANIKA_ERP_WALK_IN_CUSTOMER_ID atau ANIKA_ERP_WALK_IN_CUSTOMER_CODE.", "ERP_WALK_IN_CUSTOMER_NOT_CONFIGURED");
+  const response = await findCustomerByCode(code);
+  if (!response.success) return response;
+  if (response.data) return { success: true, data: response.data };
+  return failure(`Customer Walk In ERP dengan kode ${code} tidak ditemukan. Buat customer tersebut di ERP atau isi ANIKA_ERP_WALK_IN_CUSTOMER_ID.`, "ERP_WALK_IN_CUSTOMER_NOT_FOUND");
+}
+
 async function createErpCustomer(input: { name: string; location?: string }): Promise<ApiResponse<number>> {
   const name = cleanCustomerLookupName(input.name);
   if (!name || normalizeLookup(name) === "walk in") {
@@ -322,6 +342,7 @@ async function createErpCustomer(input: { name: string; location?: string }): Pr
 async function resolveErpCustomerId(customerNameInput: string, customerLocation?: string): Promise<ApiResponse<number>> {
   const lookupName = cleanCustomerLookupName(customerNameInput);
   if (!lookupName) return failure("Customer ERP belum terhubung: nama customer kosong.", "ERP_CUSTOMER_NOT_LINKED");
+  if (normalizeLookup(lookupName) === "walk in") return resolveWalkInCustomerId();
   const direct = await findCustomerByNameOrCode(lookupName);
   if (!direct.success) return direct;
   if (direct.data) return { success: true, data: direct.data };
@@ -634,12 +655,14 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     let erpPaymentAttemptedAt: string | undefined;
     if (stockResponse.success && isImmediateErpPayment(input.paymentMethod)) {
       erpPaymentAttemptedAt = new Date().toISOString();
+      const paymentReference = `SLM-PAY-${saleId}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
       const paymentResponse = await syncErpSalesPayment({
+        erpReference: paymentReference,
         invoiceNumber: erpReference,
         invoiceId: 0,
         customerId: 0,
         paymentDate: input.saleDate,
-        coaId: rekening?.erpCoaId || "",
+        coaCode: rekening?.erpCoaId || "",
         paymentMethod: input.paymentMethod,
         amount: total,
         notes: `Pembayaran ${input.paymentMethod} dari SLM ${erpReference || saleId}`

@@ -216,12 +216,14 @@ async function syncTempoPaymentToErp(receivable: TempoReceivable, payment: Tempo
     return toTempoPayment(updated);
   }
   const rekening = (await rekeningForTipe(receivable.tipeId)).find((item) => item.id === payment.rekeningId);
+  const paymentReference = payment.erpPaymentReference || `SLM-PAY-${payment.id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
   const response = await syncErpSalesPayment({
+    erpReference: paymentReference,
     invoiceNumber: sale.erpReference || undefined,
     invoiceId: 0,
     customerId: 0,
     paymentDate: payment.paymentDate,
-    coaId: rekening?.erpCoaId || "",
+    coaCode: rekening?.erpCoaId || "",
     paymentMethod: payment.paymentMethod,
     amount: payment.amountPaid,
     notes: `Pembayaran Tempo SLM ${sale.erpReference || sale.id}`

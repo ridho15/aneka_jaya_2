@@ -177,12 +177,14 @@ async function retryImmediateSalesPayment(
       erpPaymentAttemptedAt: attemptedAt,
     },
   });
+  const paymentReference = row.erpPaymentReference || `SLM-PAY-${row.id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
   const response = await syncErpSalesPayment({
+    erpReference: paymentReference,
     invoiceNumber: row.erpReference || undefined,
     invoiceId: 0,
     customerId: 0,
     paymentDate: row.saleDate.toISOString().slice(0, 10),
-    coaId: rekening?.erpCoaId || "",
+    coaCode: rekening?.erpCoaId || "",
     paymentMethod: row.paymentMethod,
     amount: Number(row.total),
     notes: `Retry payment SLM ${row.erpReference || row.id}`,
@@ -284,12 +286,14 @@ async function retryTempoSalesPayment(
       erpPaymentAttemptedAt: attemptedAt,
     },
   });
+  const paymentReference = payment.erpPaymentReference || `SLM-PAY-${payment.id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
   const response = await syncErpSalesPayment({
+    erpReference: paymentReference,
     invoiceNumber: row.erpReference || undefined,
     invoiceId: 0,
     customerId: 0,
     paymentDate: payment.paymentDate.toISOString().slice(0, 10),
-    coaId: rekening?.erpCoaId || "",
+    coaCode: rekening?.erpCoaId || "",
     paymentMethod: payment.paymentMethod,
     amount: Number(payment.amountPaid),
     notes: `Retry payment Tempo SLM ${row.erpReference || row.id}`,
@@ -571,11 +575,12 @@ export async function retrySalesErpSync(
       );
       erpPaymentAttemptedAt = new Date();
       const paymentResponse = await syncErpSalesPayment({
+        erpReference: row.erpPaymentReference || `SLM-PAY-${row.id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100),
         invoiceNumber: erpReference,
         invoiceId: 0,
         customerId: 0,
         paymentDate: row.saleDate.toISOString().slice(0, 10),
-        coaId: rekening?.erpCoaId || "",
+        coaCode: rekening?.erpCoaId || "",
         paymentMethod: row.paymentMethod,
         amount: Number(row.total),
         notes: `Retry payment SLM ${erpReference || row.id}`,

@@ -307,6 +307,31 @@ describe("production Prisma transactions", () => {
     expect(mocks.anikaRequest).not.toHaveBeenCalled();
   });
 
+  it("uses a configured Walk In ERP customer instead of auto-creating a generic Walk In customer", async () => {
+    vi.stubEnv("ANIKA_ERP_WALK_IN_CUSTOMER_CODE", "WALK-IN");
+    mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
+    vi.stubEnv("SALES_ERP_TYPE_CODES", "AJ,W");
+    mocks.listErpPaginated.mockResolvedValueOnce({ success: true, data: [{ id: 88, code: "WALK-IN", name: "Walk In" }] });
+    mocks.anikaRequest
+      .mockResolvedValueOnce({ success: true, data: { invoice_id: "INV-WALK-IN" } })
+      .mockResolvedValueOnce({ success: true, data: { status: "released" } });
+
+    await expect(createSale({
+      ...saleInput,
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Walk In",
+      paymentMethod: "Tempo"
+    })).resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "synced", erpReference: "INV-WALK-IN" } });
+
+    expect(mocks.listErpPaginated).toHaveBeenCalledWith("/customers", expect.objectContaining({ query: { code: "WALK-IN" } }));
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
+      body: expect.stringContaining("\"customer_id\":88")
+    }));
+    expect(mocks.anikaRequest).not.toHaveBeenCalledWith("/customers", expect.anything());
+  });
+
   it("auto-creates an ERP customer for AJ manual customers before creating the sale", async () => {
     vi.stubEnv("ANIKA_ERP_AUTO_CREATE_CUSTOMER", "true");
     mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
