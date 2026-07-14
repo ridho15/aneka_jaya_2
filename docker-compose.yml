@@ -9,6 +9,7 @@ services:
       - .env.local
     environment:
       AUTH_GATEWAY_APP_ORIGIN: http://slm-app:3000
+      AUTH_GATEWAY_HOST: "0.0.0.0"
       AUTH_GATEWAY_PORT: "3001"
     depends_on:
       slm-app:
