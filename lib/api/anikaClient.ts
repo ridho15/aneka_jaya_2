@@ -107,12 +107,21 @@ export async function anikaRequest<T>(path: string, init: RequestInit = {}): Pro
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
+    const url = `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+
+    console.log("================================");
+    console.log("ERP REQUEST");
+    console.log("URL:", url);
+    console.log("METHOD:", init.method || "GET");
+    console.log("BODY:", init.body);
+    console.log("================================");
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`, {
       ...init,
       headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init.headers },
       cache: "no-store",
       signal: controller.signal
     });
+    console.log("ERP RESPONSE STATUS:", response.status);
     const body = await response.json().catch(() => null);
     if (!response.ok) {
       const error = mapErpError(response.status, body);
@@ -121,8 +130,33 @@ export async function anikaRequest<T>(path: string, init: RequestInit = {}): Pro
     }
     return { success: true, data: body as T };
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") return failure("Koneksi ERP melebihi batas waktu.", "ERP_TIMEOUT");
-    return failure("Koneksi ERP bermasalah. Silakan coba lagi.", "ERP_NETWORK");
+    console.error("========== ERP FETCH ERROR ==========");
+
+    console.error(error);
+
+    if (error instanceof Error) {
+      console.error("Name:", error.name);
+      console.error("Message:", error.message);
+
+      // Undici (fetch bawaan Node.js) sering menyimpan penyebab sebenarnya di cause
+      console.error("Cause:", (error as any).cause);
+
+      if ((error as any).cause) {
+        console.error("Cause code:", (error as any).cause.code);
+        console.error("Cause errno:", (error as any).cause.errno);
+        console.error("Cause syscall:", (error as any).cause.syscall);
+        console.error("Cause address:", (error as any).cause.address);
+        console.error("Cause port:", (error as any).cause.port);
+      }
+
+      console.error(error.stack);
+    }
+
+    if (error instanceof Error && error.name === "AbortError") {
+      return failure("Koneksi ERP melebihi batas waktu.", "ERP_TIMEOUT");
+    }
+
+    return failure("Koneksi ERP bermasalah.", "ERP_NETWORK");
   } finally {
     clearTimeout(timeout);
   }

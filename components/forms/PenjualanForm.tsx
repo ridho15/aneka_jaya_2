@@ -123,10 +123,10 @@ type ProductReferenceOption = { id: number; name: string; code?: string };
 type ProductReferenceState =
   | { status: "idle" | "loading" }
   | {
-      status: "ready";
-      categories: ProductReferenceOption[];
-      uoms: ProductReferenceOption[];
-    }
+    status: "ready";
+    categories: ProductReferenceOption[];
+    uoms: ProductReferenceOption[];
+  }
   | { status: "error"; message: string };
 
 const normalizeCode = (value?: string | null) =>
@@ -160,9 +160,9 @@ export function PenjualanForm({
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
   const defaultTipe = sale
     ? activeTipes.find(
-        (tipe) =>
-          tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot,
-      ) || activeTipes[0]
+      (tipe) =>
+        tipe.id === sale.tipeId || tipe.code === sale.tipeCodeSnapshot,
+    ) || activeTipes[0]
     : activeTipes[0];
   const rekeningForTipe = useCallback(
     (selectedTipeId: string) =>
@@ -243,37 +243,37 @@ export function PenjualanForm({
       notes: sale?.notes,
       items: sale?.items?.length
         ? sale.items.map((item) => ({
-            productRef: item.productRef,
-            productId: item.productId,
-            productInputMode:
-              item.productInputMode || (item.manualProduct ? "manual" : "erp"),
-            manualProduct: item.manualProduct,
-            warehouseId: item.warehouseId,
-            warehouseNameSnapshot: item.warehouseNameSnapshot,
-            rackId: item.rackId,
-            rackNameSnapshot: item.rackNameSnapshot,
-            unitSnapshot: item.unitSnapshot,
-            uomIdSnapshot: item.uomIdSnapshot,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            discount: discountPercentFromAmount(
-              item.discount,
-              item.quantity,
-              item.unitPrice,
-            ),
-          }))
+          productRef: item.productRef,
+          productId: item.productId,
+          productInputMode:
+            item.productInputMode || (item.manualProduct ? "manual" : "erp"),
+          manualProduct: item.manualProduct,
+          warehouseId: item.warehouseId,
+          warehouseNameSnapshot: item.warehouseNameSnapshot,
+          rackId: item.rackId,
+          rackNameSnapshot: item.rackNameSnapshot,
+          unitSnapshot: item.unitSnapshot,
+          uomIdSnapshot: item.uomIdSnapshot,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: discountPercentFromAmount(
+            item.discount,
+            item.quantity,
+            item.unitPrice,
+          ),
+        }))
         : [
-            {
-              productRef: "",
-              productId: undefined,
-              productInputMode: "erp",
-              unitSnapshot: undefined,
-              uomIdSnapshot: undefined,
-              quantity: 1,
-              unitPrice: 0,
-              discount: 0,
-            },
-          ],
+          {
+            productRef: "",
+            productId: undefined,
+            productInputMode: "erp",
+            unitSnapshot: undefined,
+            uomIdSnapshot: undefined,
+            quantity: 1,
+            unitPrice: 0,
+            discount: 0,
+          },
+        ],
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -436,9 +436,9 @@ export function PenjualanForm({
         rows.length > 0
           ? { status: "ready" }
           : {
-              status: "empty",
-              message: "ERP belum memiliki produk aktif untuk dipilih.",
-            },
+            status: "empty",
+            message: "ERP belum memiliki produk aktif untuk dipilih.",
+          },
       );
       await refreshStocksForProducts();
     } catch {
@@ -741,9 +741,9 @@ export function PenjualanForm({
           result.data?.stockReleaseStatus === "failed"
           ? `Invoice terkirim ke ${EXTERNAL_ERP_NAME}, tetapi release stok gagal. Silakan cek ERP Sync.`
           : result.data?.syncStatus === "synced" &&
-              result.data?.stockReleaseStatus === "released" &&
-              (result.data?.erpPaymentStatus === "failed" ||
-                result.data?.erpPaymentStatus === "pending")
+            result.data?.stockReleaseStatus === "released" &&
+            (result.data?.erpPaymentStatus === "failed" ||
+              result.data?.erpPaymentStatus === "pending")
             ? `Invoice terkirim dan stok released, tetapi payment ERP perlu dicek di ERP Sync.`
             : `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
         : isSyncedErp
@@ -779,12 +779,12 @@ export function PenjualanForm({
           {(createdSale.retryable || createdSale.syncStatus === "failed") && (
             <p className="mb-2 font-semibold">
               {createdSale.syncStatus === "synced" &&
-              createdSale.stockReleaseStatus === "failed"
+                createdSale.stockReleaseStatus === "failed"
                 ? "Invoice sudah terkirim, tetapi release stok perlu retry ERP."
                 : createdSale.syncStatus === "synced" &&
-                    createdSale.stockReleaseStatus === "released" &&
-                    (createdSale.erpPaymentStatus === "failed" ||
-                      createdSale.erpPaymentStatus === "pending")
+                  createdSale.stockReleaseStatus === "released" &&
+                  (createdSale.erpPaymentStatus === "failed" ||
+                    createdSale.erpPaymentStatus === "pending")
                   ? "Invoice dan stok sudah aman, tetapi payment ERP perlu retry."
                   : "Transaksi tersimpan untuk retry ERP. Status belum synced."}
             </p>
@@ -1042,8 +1042,8 @@ export function PenjualanForm({
                 const mode = values[index]?.productInputMode || "erp";
                 const erpSelectionError =
                   mode === "erp" &&
-                  values[index]?.productRef?.trim() &&
-                  !values[index]?.productId?.trim()
+                    values[index]?.productRef?.trim() &&
+                    !values[index]?.productId?.trim()
                     ? "Pilih barang dari hasil pencarian ERP."
                     : undefined;
                 const quantity = Number(values[index]?.quantity || 0);
@@ -1054,11 +1054,11 @@ export function PenjualanForm({
                 );
                 const stockExceeded =
                   selectedStock?.quantity !== null &&
-                  selectedStock?.quantity !== undefined
+                    selectedStock?.quantity !== undefined
                     ? quantity > selectedStock.quantity
                     : selected?.quantity !== null &&
-                      selected?.quantity !== undefined &&
-                      quantity > selected.quantity;
+                    selected?.quantity !== undefined &&
+                    quantity > selected.quantity;
                 return (
                   <div
                     id={`sale-item-${index}`}
@@ -1288,10 +1288,10 @@ export function PenjualanForm({
                               setValue(
                                 `items.${index}.unitSnapshot`,
                                 option.unit ||
-                                  option.stockRows.find((stock) =>
-                                    Boolean(stock.unit),
-                                  )?.unit ||
-                                  undefined,
+                                option.stockRows.find((stock) =>
+                                  Boolean(stock.unit),
+                                )?.unit ||
+                                undefined,
                                 { shouldDirty: true, shouldValidate: true },
                               );
                               setValue(
@@ -1301,7 +1301,7 @@ export function PenjualanForm({
                               );
                               if (
                                 typeof option.product.sellingPrice ===
-                                  "number" &&
+                                "number" &&
                                 Number.isFinite(option.product.sellingPrice)
                               ) {
                                 setValue(
@@ -1757,10 +1757,10 @@ function ProductSearchSelect({
     const normalized = query.trim().toLowerCase();
     const rows = normalized
       ? options.filter((option) =>
-          `${option.product.code} ${option.product.name}`
-            .toLowerCase()
-            .includes(normalized),
-        )
+        `${option.product.code} ${option.product.name}`
+          .toLowerCase()
+          .includes(normalized),
+      )
       : options;
     return rows.slice(0, 12);
   }, [options, query]);
