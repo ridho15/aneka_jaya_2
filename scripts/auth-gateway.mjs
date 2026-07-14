@@ -236,8 +236,11 @@ export function createAuthGatewayServer(env = process.env) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.env.AUTH_GATEWAY_PORT || 3001);
+  const host = process.env.AUTH_GATEWAY_HOST || "0.0.0.0";
+
   const server = createAuthGatewayServer();
-  server.listen(port, () => {
-    console.log(`Auth gateway listening on http://127.0.0.1:${port}`);
+
+  server.listen(port, host, () => {
+    console.log(`Auth gateway listening on http://${host}:${port}`);
   });
 }
