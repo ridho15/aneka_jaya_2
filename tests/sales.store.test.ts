@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({
   prisma: {
     salesRecord: {
+      count: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
@@ -21,7 +22,7 @@ vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn(async () => mocks.u
 vi.mock("@/lib/api/salesCancellations", () => ({ cancelErpSales: mocks.cancelErpSales }));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 
-import { cancelSalesRecord, getSalesRecord, listSalesRecords, saveSalesRecord } from "@/lib/sales/store";
+import { cancelSalesRecord, getSalesRecord, listSalesRecords, listSalesRecordsPage, saveSalesRecord } from "@/lib/sales/store";
 
 const dbSale = {
   id: "S-1",
@@ -52,6 +53,7 @@ describe("sales store normalized persistence", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_APP_MODE", "production");
     mocks.prisma.salesRecord.findMany.mockReset();
+    mocks.prisma.salesRecord.count.mockReset();
     mocks.prisma.salesRecord.findUnique.mockReset();
     mocks.prisma.salesRecord.create.mockReset();
     mocks.prisma.salesRecord.update.mockReset();
@@ -109,6 +111,25 @@ describe("sales store normalized persistence", () => {
         items: { create: [expect.objectContaining({ productRef: "P-2", sortOrder: 0 })] }
       })
     }));
+  });
+
+  it("filters paginated sales by rekening together with payment and approval status", async () => {
+    mocks.prisma.salesRecord.count.mockResolvedValue(1);
+    mocks.prisma.salesRecord.findMany.mockResolvedValue([{ ...dbSale, paymentMethod: "TF", rekeningId: "bca" }]);
+
+    await expect(listSalesRecordsPage({
+      page: 1,
+      pageSize: 10,
+      filters: { rekening: "bca", paymentMethod: "TF", approvalStatus: "approved" }
+    })).resolves.toMatchObject({ meta: { total: 1 }, data: [expect.objectContaining({ rekeningId: "bca" })] });
+
+    const expectedWhere = expect.objectContaining({
+      paymentMethod: "TF",
+      approvalStatus: "approved",
+      AND: [expect.objectContaining({ OR: [{ rekeningId: "bca" }, { transferAccount: "bca" }] })]
+    });
+    expect(mocks.prisma.salesRecord.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expectedWhere }));
   });
 
   it("cancels synced ERP sales through Aneka Jaya before updating local status", async () => {

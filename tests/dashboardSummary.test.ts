@@ -95,10 +95,10 @@ describe("dashboard summaries", () => {
     });
 
     expect(result.total).toBe(1_000_000);
-    expect(result.cash).toMatchObject({ label: "Cash", value: 100_000, percentage: 10 });
+    expect(result.cash).toMatchObject({ label: "Cash", value: 100_000, percentage: 10, paymentMethod: "Cash" });
     expect(result.transfers).toEqual([
-      { label: "Mandiri Utama - Bank Mandiri", value: 600_000, percentage: 60 },
-      { label: "BCA Operasional - BCA", value: 300_000, percentage: 30 }
+      { label: "Mandiri Utama - Bank Mandiri", value: 600_000, percentage: 60, rekeningId: "mandiri", paymentMethod: "TF" },
+      { label: "BCA Operasional - BCA", value: 300_000, percentage: 30, rekeningId: "bca", paymentMethod: "TF" }
     ]);
   });
 

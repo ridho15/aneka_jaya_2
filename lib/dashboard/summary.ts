@@ -56,6 +56,8 @@ export type PaymentBreakdownEntry = {
   label: string;
   value: number;
   percentage: number;
+  rekeningId?: string;
+  paymentMethod: "Cash" | "TF";
 };
 
 export type PaymentBreakdown = {
@@ -181,20 +183,26 @@ function paymentPercentage(value: number, total: number) {
 export function buildPaymentBreakdown(sales: Sale[], rekeningLabels: Record<string, string> = {}): PaymentBreakdown {
   const paidSales = sales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF"));
   const cashValue = paidSales.filter((sale) => sale.paymentMethod === "Cash").reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
-  const transferTotals = new Map<string, number>();
+  const transferTotals = new Map<string, { label: string; rekeningId?: string; value: number }>();
 
   for (const sale of paidSales) {
     if (sale.paymentMethod !== "TF") continue;
     const label = (sale.rekeningId && rekeningLabels[sale.rekeningId]) || sale.rekeningNameSnapshot || sale.transferAccount || "TF tanpa rekening";
-    transferTotals.set(label, (transferTotals.get(label) || 0) + (Number(sale.total) || 0));
+    const key = sale.rekeningId || sale.rekeningNameSnapshot || sale.transferAccount || label;
+    const existing = transferTotals.get(key);
+    transferTotals.set(key, {
+      label,
+      rekeningId: sale.rekeningId || sale.rekeningNameSnapshot || sale.transferAccount,
+      value: (existing?.value || 0) + (Number(sale.total) || 0)
+    });
   }
 
-  const total = cashValue + Array.from(transferTotals.values()).reduce((sum, value) => sum + value, 0);
+  const total = cashValue + Array.from(transferTotals.values()).reduce((sum, row) => sum + row.value, 0);
   return {
     total,
-    cash: { label: "Cash", value: cashValue, percentage: paymentPercentage(cashValue, total) },
-    transfers: Array.from(transferTotals.entries())
-      .map(([label, value]) => ({ label, value, percentage: paymentPercentage(value, total) }))
+    cash: { label: "Cash", value: cashValue, percentage: paymentPercentage(cashValue, total), rekeningId: "cash", paymentMethod: "Cash" },
+    transfers: Array.from(transferTotals.values())
+      .map((row) => ({ label: row.label, value: row.value, percentage: paymentPercentage(row.value, total), rekeningId: row.rekeningId, paymentMethod: "TF" as const }))
       .sort((a, b) => b.value - a.value)
   };
 }

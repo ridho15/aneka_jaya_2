@@ -74,6 +74,7 @@ export type SalesRecordFilters = {
   keyword?: string;
   tipe?: string;
   paymentMethod?: string;
+  rekening?: string;
   approvalStatus?: string;
   syncStatus?: string;
 };
@@ -103,6 +104,10 @@ function isMissingColumnError(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "P2022");
 }
 
+function appendSalesWhereAnd(where: Prisma.SalesRecordWhereInput, condition: Prisma.SalesRecordWhereInput) {
+  where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), condition];
+}
+
 function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereInput {
   const where: Prisma.SalesRecordWhereInput = {};
   if (filters.from || filters.to) {
@@ -112,6 +117,14 @@ function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereIn
   }
   if (filters.tipe) where.OR = [{ tipeCodeSnapshot: filters.tipe }, { tipeId: filters.tipe }];
   if (filters.paymentMethod) where.paymentMethod = filters.paymentMethod;
+  if (filters.rekening) {
+    appendSalesWhereAnd(where, {
+      OR: [
+        { rekeningId: filters.rekening },
+        { transferAccount: filters.rekening }
+      ]
+    });
+  }
   if (filters.approvalStatus) where.approvalStatus = filters.approvalStatus;
   if (filters.syncStatus) where.syncStatus = filters.syncStatus;
   const keyword = filters.keyword?.trim();
@@ -124,7 +137,7 @@ function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereIn
       { erpReference: { contains: keyword, mode: "insensitive" } },
       { createdByNameSnapshot: { contains: keyword, mode: "insensitive" } }
     ];
-    where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), { OR: keywordOr }];
+    appendSalesWhereAnd(where, { OR: keywordOr });
   }
   return where;
 }
@@ -136,6 +149,10 @@ function filterSalesInMemory(sales: Sale[], filters: SalesRecordFilters) {
     if (filters.to && sale.saleDate > filters.to) return false;
     if (filters.tipe && (sale.tipeCodeSnapshot || sale.tipeId || "") !== filters.tipe) return false;
     if (filters.paymentMethod && sale.paymentMethod !== filters.paymentMethod) return false;
+    if (filters.rekening) {
+      const rekeningValues = [sale.rekeningId, sale.rekeningNameSnapshot, sale.transferAccount].filter(Boolean);
+      if (!rekeningValues.includes(filters.rekening)) return false;
+    }
     if (filters.approvalStatus && (sale.approvalStatus || "approved") !== filters.approvalStatus) return false;
     if (filters.syncStatus && (sale.syncStatus || "local") !== filters.syncStatus) return false;
     if (keyword) {

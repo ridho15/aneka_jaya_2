@@ -153,7 +153,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,.9fr)]">
         <PerformanceChart data={performance} />
-        <PaymentBreakdownChart data={paymentBreakdown} />
+        <PaymentBreakdownChart data={paymentBreakdown} filters={{ from: filters.from, to: filters.to }} />
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.85fr)]">
         <section className="aj-surface overflow-hidden">
