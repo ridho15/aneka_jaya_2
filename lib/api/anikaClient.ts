@@ -6,6 +6,7 @@ import { resolveAuthProvider } from "@/lib/auth/request";
 
 const TIMEOUT_MS = 12_000;
 const MAX_SAFE_MESSAGE_LENGTH = 300;
+const MAX_SAFE_BODY_LENGTH = 4_000;
 
 type SafeErpError = {
   code: string;
@@ -131,6 +132,17 @@ function safeDebugEnabled() {
   );
 }
 
+function safeResponseBody(body: unknown) {
+  if (body === undefined || body === null) return body;
+  try {
+    const serialized = JSON.stringify(body);
+    if (serialized.length <= MAX_SAFE_BODY_LENGTH) return body;
+    return { truncated: true, preview: serialized.slice(0, MAX_SAFE_BODY_LENGTH) };
+  } catch {
+    return { unavailable: true };
+  }
+}
+
 function correlationIdFromInit(init: RequestInit) {
   try {
     const body =
@@ -172,7 +184,6 @@ export async function anikaRequest<T>(
   const baseUrl = process.env.ANIKA_ERP_API_BASE_URL;
   const token =
     process.env.ANIKA_ERP_API_TOKEN || (await currentAnikaErpToken());
-    console.log('token',token);
   if (!baseUrl)
     return failure("Konfigurasi ERP belum lengkap.", "ERP_NOT_CONFIGURED");
   if (!token) {
@@ -186,23 +197,16 @@ export async function anikaRequest<T>(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  console.log(`${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`)
   try {
-    const url = `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
-
-    console.log("================================");
-    console.log("ERP REQUEST");
-    console.log("URL:", url);
-    console.log("METHOD:", init.method || "GET");
-    console.log("BODY:", init.body);
-    console.log("================================");
+    if (safeDebugEnabled()) {
+      console.warn("[ERP request]", JSON.stringify({ endpoint: path, method: init.method || "GET" }));
+    }
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`, {
       ...init,
       headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...init.headers },
       cache: "no-store",
       signal: controller.signal
     });
-    console.log("ERP RESPONSE STATUS:", response.status);
     const body = await response.json().catch(() => null);
     if (!response.ok) {
       const error = mapErpError(response.status, body);
@@ -218,28 +222,10 @@ export async function anikaRequest<T>(
         correlationId: correlationIdFromInit(init),
       });
     }
-    return { success: true, data: body as T };
+    return { success: true, data: body as T, details: { status: response.status, body: safeResponseBody(body) } };
   } catch (error) {
-    console.error("========== ERP FETCH ERROR ==========");
-
-    console.error(error);
-
-    if (error instanceof Error) {
-      console.error("Name:", error.name);
-      console.error("Message:", error.message);
-
-      // Undici (fetch bawaan Node.js) sering menyimpan penyebab sebenarnya di cause
-      console.error("Cause:", (error as any).cause);
-
-      if ((error as any).cause) {
-        console.error("Cause code:", (error as any).cause.code);
-        console.error("Cause errno:", (error as any).cause.errno);
-        console.error("Cause syscall:", (error as any).cause.syscall);
-        console.error("Cause address:", (error as any).cause.address);
-        console.error("Cause port:", (error as any).cause.port);
-      }
-
-      console.error(error.stack);
+    if (safeDebugEnabled() && error instanceof Error) {
+      console.warn("[ERP fetch error]", JSON.stringify({ endpoint: path, name: error.name, message: error.message }));
     }
 
     if (error instanceof Error && error.name === "AbortError") {

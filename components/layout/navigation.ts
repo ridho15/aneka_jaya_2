@@ -15,6 +15,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/tempo", label: "Tempo", icon: "◷", permission: "tempo.view" },
   { href: "/erp-sync", label: "ERP Sync", icon: "↻", permission: "erp_sync.retry" },
   { href: "/audit-trail", label: "Audit Trail", icon: "◎", permission: "audit.view" },
+  { href: "/panduan", label: "Panduan", icon: "?", permission: "guide.view" },
   { href: "/settings", label: "Pengaturan", icon: "⚙", permission: "settings.view" }
 ];
 

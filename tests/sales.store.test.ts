@@ -4,6 +4,8 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({
   prisma: {
+    $transaction: vi.fn(),
+    salesRecordItem: { deleteMany: vi.fn() },
     salesRecord: {
       count: vi.fn(),
       findMany: vi.fn(),
@@ -14,15 +16,18 @@ const mocks = vi.hoisted(() => ({
   },
   user: { id: "owner-1", name: "Owner", role: "OWNER" },
   cancelErpSales: vi.fn(),
-  recordAudit: vi.fn()
+  recordAudit: vi.fn(),
+  findTipe: vi.fn(),
+  resolveSalesRekening: vi.fn()
 }));
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn(async () => mocks.user) }));
 vi.mock("@/lib/api/salesCancellations", () => ({ cancelErpSales: mocks.cancelErpSales }));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
+vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe, resolveSalesRekening: mocks.resolveSalesRekening }));
 
-import { cancelSalesRecord, getSalesRecord, listSalesRecords, listSalesRecordsPage, saveSalesRecord } from "@/lib/sales/store";
+import { cancelSalesRecord, getSalesRecord, listSalesRecords, listSalesRecordsPage, saveSalesRecord, updateSalesRecord } from "@/lib/sales/store";
 
 const dbSale = {
   id: "S-1",
@@ -57,8 +62,15 @@ describe("sales store normalized persistence", () => {
     mocks.prisma.salesRecord.findUnique.mockReset();
     mocks.prisma.salesRecord.create.mockReset();
     mocks.prisma.salesRecord.update.mockReset();
+    mocks.prisma.salesRecordItem.deleteMany.mockReset();
+    mocks.prisma.$transaction.mockReset();
+    mocks.prisma.$transaction.mockImplementation(async (callback: (tx: typeof mocks.prisma) => unknown) => callback(mocks.prisma));
     mocks.cancelErpSales.mockReset();
     mocks.recordAudit.mockReset();
+    mocks.findTipe.mockReset();
+    mocks.resolveSalesRekening.mockReset();
+    mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
+    mocks.resolveSalesRekening.mockResolvedValue({ id: "cash-w", name: "Kas Walk In" });
     mocks.user = { id: "owner-1", name: "Owner", role: "OWNER" };
   });
 
@@ -130,6 +142,48 @@ describe("sales store normalized persistence", () => {
     });
     expect(mocks.prisma.salesRecord.count).toHaveBeenCalledWith({ where: expectedWhere });
     expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expectedWhere }));
+  });
+
+  it("allows editing synced ERP sales while preserving ERP reference for PUT retry", async () => {
+    const syncedSale = {
+      ...dbSale,
+      syncTarget: "erp",
+      syncStatus: "synced",
+      erpReference: "SLM-SALE-1",
+      stockReleaseStatus: "released",
+      erpPaymentStatus: "paid"
+    };
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(syncedSale);
+    mocks.prisma.salesRecord.update.mockResolvedValue({
+      ...syncedSale,
+      total: 30000,
+      syncStatus: "pending",
+      syncError: "Transaksi diubah dan menunggu sinkronisasi ulang.",
+      syncedAt: null,
+      erpReference: "SLM-SALE-1",
+      stockReleaseStatus: "pending",
+      erpPaymentStatus: "pending"
+    });
+
+    await expect(updateSalesRecord("S-1", {
+      saleDate: "2026-06-27",
+      tipeId: "W",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Cash",
+      rekeningId: "cash-w",
+      items: [{ productRef: "P-1", quantity: 3, unitPrice: 10000, discount: 0 }]
+    })).resolves.toMatchObject({ syncStatus: "pending", erpReference: "SLM-SALE-1" });
+
+    expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        syncStatus: "pending",
+        erpReference: "SLM-SALE-1",
+        stockReleaseStatus: "pending",
+        erpPaymentStatus: "pending"
+      })
+    }));
   });
 
   it("cancels synced ERP sales through Aneka Jaya before updating local status", async () => {

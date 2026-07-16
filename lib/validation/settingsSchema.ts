@@ -64,6 +64,10 @@ export const operationalProfitSettingSchema = z.object({
   grossProfitPercent: z.coerce.number().min(0, "Persentase tidak boleh kurang dari 0.").max(100, "Persentase tidak boleh lebih dari 100.")
 });
 
+export const erpSyncSettingSchema = z.object({
+  autoSyncAfterSalesEdit: z.boolean()
+});
+
 export const slmProfitSettingSchema = operationalProfitSettingSchema;
 
 export function validationMessage(error: unknown, fallback: string) {

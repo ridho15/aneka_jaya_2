@@ -165,10 +165,14 @@ model SalesRecord {
   syncAttemptedAt       DateTime?
   syncedAt              DateTime?
   erpReference          String?
+  erpSyncHttpStatus     Int?
+  erpSyncResponse       Json?
   stockReleaseStatus    String    @default("not_required")
   stockReleaseError     String?
   stockReleaseReference String?
   stockReleasedAt       DateTime?
+  stockReleaseHttpStatus Int?
+  stockReleaseResponse  Json?
   erpPaymentStatus      String    @default("not_required")
   erpPaymentError       String?
   erpPaymentReference   String?

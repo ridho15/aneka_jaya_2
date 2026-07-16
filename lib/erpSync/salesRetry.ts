@@ -3,10 +3,13 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { recordAudit } from "@/lib/audit/store";
 import {
+  erpAuditResponse,
+  erpHttpStatus,
   erpReferenceFrom,
   resolveErpCustomerId,
   safeErpSyncError,
   sendOfficialSalesToErp,
+  updateOfficialSalesInErp,
 } from "@/lib/api/sales";
 import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
 import {
@@ -22,6 +25,10 @@ import {
 const salesInclude = { items: { orderBy: { sortOrder: "asc" as const } } };
 
 type SalesRow = Prisma.SalesRecordGetPayload<{ include: typeof salesInclude }>;
+
+function jsonValue(value: unknown): Prisma.InputJsonValue | undefined {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
 
 export type ErpSyncSaleItem = {
   id: string;
@@ -515,6 +522,8 @@ export async function retrySalesErpSync(
           stockReleaseError: null,
           stockReleaseReference: response.data.releaseReference,
           stockReleasedAt: attemptedAt,
+          stockReleaseHttpStatus: erpHttpStatus(response),
+          stockReleaseResponse: jsonValue(erpAuditResponse(response)),
         },
         include: salesInclude,
       });
@@ -537,7 +546,7 @@ export async function retrySalesErpSync(
     const stockReleaseError = stockReleaseErrorFrom(response);
     const updated = await delegate.update({
       where: { id },
-      data: { stockReleaseStatus: "failed", stockReleaseError },
+      data: { stockReleaseStatus: "failed", stockReleaseError, stockReleaseHttpStatus: erpHttpStatus(response), stockReleaseResponse: jsonValue(erpAuditResponse(response)) },
       include: salesInclude,
     });
     await recordAudit({
@@ -573,11 +582,14 @@ export async function retrySalesErpSync(
     where: { id },
     data: { syncStatus: "pending", syncAttemptedAt: attemptedAt },
   });
-  const response = await sendOfficialSalesToErp(buildRetryInput(row));
+  const retryInput = buildRetryInput(row);
+  const response = row.erpReference
+    ? await updateOfficialSalesInErp(retryInput, row.erpReference)
+    : await sendOfficialSalesToErp(retryInput);
 
   if (response.success) {
     const syncedAt = new Date();
-    const erpReference = erpReferenceFrom(response.data);
+    const erpReference = row.erpReference || erpReferenceFrom(response.data);
     const stockResponse = await releaseSaleStock({
       saleId: row.id,
       saleDate: row.saleDate.toISOString().slice(0, 10),
@@ -637,10 +649,14 @@ export async function retrySalesErpSync(
         syncAttemptedAt: attemptedAt,
         syncedAt,
         erpReference,
+        erpSyncHttpStatus: erpHttpStatus(response),
+        erpSyncResponse: jsonValue(erpAuditResponse(response)),
         stockReleaseStatus,
         stockReleaseError,
         stockReleaseReference,
         stockReleasedAt: stockResponse.success ? syncedAt : null,
+        stockReleaseHttpStatus: erpHttpStatus(stockResponse),
+        stockReleaseResponse: jsonValue(erpAuditResponse(stockResponse)),
         erpPaymentStatus,
         erpPaymentError,
         erpPaymentReference,
@@ -683,7 +699,7 @@ export async function retrySalesErpSync(
   const syncError = safeErpSyncError(response);
   const updated = await delegate.update({
     where: { id },
-    data: { syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt },
+    data: { syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt, erpSyncHttpStatus: erpHttpStatus(response), erpSyncResponse: jsonValue(erpAuditResponse(response)) },
     include: salesInclude,
   });
   await recordAudit({

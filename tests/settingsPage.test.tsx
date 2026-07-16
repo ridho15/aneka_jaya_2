@@ -27,5 +27,7 @@ describe("SettingsPage", () => {
 
     expect(html).toContain("Profit Operasional");
     expect(html).toContain("/settings/profit-slm");
+    expect(html).toContain("ERP Sync");
+    expect(html).toContain("/settings/erp-sync");
   });
 });

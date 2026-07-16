@@ -136,6 +136,13 @@ components:
           type: number
           minimum: 0
           maximum: 100
+    ErpSyncSetting:
+      type: object
+      required: [autoSyncAfterSalesEdit]
+      properties:
+        autoSyncAfterSalesEdit:
+          type: boolean
+          description: Jika true, edit transaksi penjualan ERP langsung menjalankan retry sinkronisasi setelah data lokal tersimpan.
     CancelInput:
       type: object
       required: [reason]
@@ -988,6 +995,40 @@ paths:
       responses:
         "200":
           description: Setting Profit Operasional diupdate.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/settings/erp-sync:
+    get:
+      summary: Membaca setting ERP Sync.
+      description: Permission settings.erp_sync.manage.
+      responses:
+        "200":
+          description: Setting ERP Sync.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/ErpSyncSetting"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      summary: Update setting ERP Sync.
+      description: Permission settings.erp_sync.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpSyncSetting"
+      responses:
+        "200":
+          description: Setting ERP Sync diupdate.
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":

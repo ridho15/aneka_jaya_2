@@ -35,6 +35,7 @@ describe("ERP stock releases", () => {
         releaseReference: "SLM-STOCK-INV-1",
         payload: {
           erp_reference: "SLM-STOCK-INV-1",
+          sale_erp_reference: "INV-1",
           source: "SLM",
           source_type: "invoice",
           source_number: "INV-1",

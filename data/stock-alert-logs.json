@@ -8,8 +8,9 @@
     "minimumStock": 18,
     "warehouseSnapshot": "Gudang eum",
     "rackSnapshot": "delectus suscipit",
-    "status": "failed",
-    "createdAt": "2026-07-14T17:41:35.034Z"
+    "status": "resolved",
+    "createdAt": "2026-07-14T17:41:35.034Z",
+    "resolvedAt": "2026-07-16T15:49:30.577Z"
   },
   {
     "id": "SAL-1784050773473",

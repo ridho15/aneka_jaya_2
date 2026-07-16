@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { PenjualanForm } from "@/components/forms/PenjualanForm";
-import { ErrorState } from "@/components/ui/ErrorState";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getSalesRecord } from "@/lib/sales/store";
@@ -15,15 +14,19 @@ export default async function EditPenjualanPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [sale, tipes, rekenings, user] = await Promise.all([getSalesRecord(id), listBookkeepingTypes(), listRekeningAccounts(), getCurrentUser()]);
   if (!sale) notFound();
-  const blocked = sale.syncTarget === "erp" && sale.syncStatus === "synced";
+  const isSyncedErpSale = sale.syncTarget === "erp" && sale.syncStatus === "synced";
   return (
     <AppShell>
       <div className="mb-7">
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-neutral-500">Transaksi</p>
         <h2 className="aj-page-title text-3xl font-bold">Edit Penjualan</h2>
-        <p className="mt-2 text-sm text-slate-600">Edit hanya dibuka untuk transaksi yang belum final/synced ke ERP.</p>
+        <p className="mt-2 text-sm text-slate-600">
+          {isSyncedErpSale
+            ? "Transaksi sudah tersinkron ERP. Perubahan akan masuk antrean update ERP dan dikirim memakai PUT dengan ERP reference yang sama."
+            : "Edit transaksi penjualan yang tersimpan."}
+        </p>
       </div>
-      {blocked ? <ErrorState message="Transaksi AJ sudah tersinkron ke Aneka Jaya ERP. Edit langsung diblokir sampai tersedia mekanisme koreksi resmi." /> : <PenjualanForm sale={sale} tipes={tipes} rekenings={rekenings} allowTestTransaction={user.role === "OWNER"} erpTypeCodes={Array.from(erpSalesTypeCodes())} />}
+      <PenjualanForm sale={sale} tipes={tipes} rekenings={rekenings} allowTestTransaction={user.role === "OWNER"} erpTypeCodes={Array.from(erpSalesTypeCodes())} />
     </AppShell>
   );
 }

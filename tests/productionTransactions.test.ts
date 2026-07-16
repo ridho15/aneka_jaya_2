@@ -323,7 +323,7 @@ describe("production Prisma transactions", () => {
       tipeNameSnapshot: "Walk In",
       customerName: "Walk In",
       paymentMethod: "Tempo"
-    })).resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "synced", erpReference: "INV-WALK-IN" } });
+    })).resolves.toMatchObject({ success: true, data: { target: "erp", syncStatus: "synced", erpReference: expect.stringMatching(/^SLM-SALE-/) } });
 
     expect(mocks.listErpPaginated).toHaveBeenCalledWith("/customers", expect.objectContaining({ query: { code: "WALK-IN" } }));
     expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({

@@ -114,7 +114,7 @@ describe("ERP sync retry service", () => {
       .mockResolvedValueOnce({ success: true, data: { data: { id: 12, status: "Paid" } } });
     mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...row, syncStatus: "pending" }).mockResolvedValueOnce({ ...row, syncStatus: "synced", syncError: null, erpReference: "INV-1", stockReleaseStatus: "released", stockReleaseReference: "SLM-STOCK-INV-1", erpPaymentStatus: "paid", erpPaymentReference: "12", syncedAt: new Date("2026-06-29T11:00:00.000Z") });
 
-    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, message: "Retry ERP, release stok, dan payment berhasil.", item: { syncStatus: "synced", erpReference: "INV-1", stockReleaseStatus: "released", erpPaymentStatus: "paid" } });
+    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({ success: true, message: "Retry ERP, release stok, dan payment berhasil.", item: { syncStatus: "synced", stockReleaseStatus: "released", erpPaymentStatus: "paid" } });
 
     expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales", expect.objectContaining({
       method: "POST",
@@ -133,7 +133,7 @@ describe("ERP sync retry service", () => {
       body: expect.stringContaining("\"payment_account_code\":\"CASH\"")
     }));
     expect(mocks.prisma.salesRecord.update).toHaveBeenLastCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ syncStatus: "synced", syncError: null, erpReference: "INV-1" })
+      data: expect.objectContaining({ syncStatus: "synced", syncError: null, erpReference: expect.stringMatching(/^SLM-SALE-/) })
     }));
     expect(mocks.recordAudit).toHaveBeenCalledWith(expect.objectContaining({ entityType: "erp_sync", action: "retry_sync" }));
   });
@@ -149,6 +149,68 @@ describe("ERP sync retry service", () => {
       item: { syncStatus: "failed" }
     });
     expect(JSON.stringify(mocks.prisma.salesRecord.update.mock.calls)).not.toContain("raw upstream detail");
+  });
+
+  it("uses PUT when retrying an edited ERP sale that already has an ERP reference", async () => {
+    const editedRow = {
+      ...row,
+      syncStatus: "pending",
+      syncError: "Transaksi diubah dan menunggu sinkronisasi ulang.",
+      erpReference: "SLM-SALE-1",
+      stockReleaseStatus: "pending",
+      stockReleaseError: "Menunggu update invoice ERP berhasil sebelum release stok ulang.",
+      erpPaymentStatus: "pending"
+    };
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(editedRow);
+    mocks.anikaRequest
+      .mockResolvedValueOnce({ success: true, data: { status: "updated", erp_reference: "SLM-SALE-1" }, details: { status: 200, body: { status: "updated" } } })
+      .mockResolvedValueOnce({ success: true, data: { status: "released" }, details: { status: 200, body: { status: "released" } } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 25, customer_id: 77, remaining: 100, settlement_status: "unpaid" } } })
+      .mockResolvedValueOnce({ success: true, data: { data: { id: 12, status: "Paid" } } });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...editedRow, syncStatus: "pending" }).mockResolvedValueOnce({ ...editedRow, syncStatus: "synced", syncError: null, stockReleaseStatus: "released", erpPaymentStatus: "paid" });
+
+    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({
+      success: true,
+      item: { syncStatus: "synced", erpReference: "SLM-SALE-1" }
+    });
+
+    expect(mocks.anikaRequest).toHaveBeenNthCalledWith(1, "/sales/SLM-SALE-1", expect.objectContaining({
+      method: "PUT",
+      body: expect.stringContaining("\"erp_reference\":\"SLM-SALE-1\"")
+    }));
+    expect(mocks.anikaRequest).not.toHaveBeenCalledWith("/sales", expect.objectContaining({ method: "POST" }));
+    expect(mocks.prisma.salesRecord.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        erpReference: "SLM-SALE-1",
+        erpSyncHttpStatus: 200,
+        stockReleaseHttpStatus: 200
+      })
+    }));
+  });
+
+  it("maps rejected ERP sales update to a correction workflow message", async () => {
+    const editedRow = { ...row, syncStatus: "pending", erpReference: "SLM-SALE-1", stockReleaseStatus: "pending", erpPaymentStatus: "pending" };
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(editedRow);
+    mocks.anikaRequest.mockResolvedValueOnce({
+      success: false,
+      code: "ERP_VALIDATION",
+      message: "ERP menolak payload: pembayaran sudah diterima",
+      details: { status: 422, upstreamCode: "validation_failed" }
+    });
+    mocks.prisma.salesRecord.update.mockResolvedValueOnce({ ...editedRow, syncStatus: "pending" }).mockResolvedValueOnce({
+      ...editedRow,
+      syncStatus: "failed",
+      syncError: "ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru."
+    });
+
+    await expect(retrySalesErpSync("S-ERP-1")).resolves.toMatchObject({
+      success: false,
+      message: "ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru."
+    });
+    expect(mocks.anikaRequest).toHaveBeenCalledWith("/sales/SLM-SALE-1", expect.objectContaining({ method: "PUT" }));
+    expect(mocks.prisma.salesRecord.update).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ syncStatus: "failed", erpSyncHttpStatus: 422 })
+    }));
   });
 
   it("stores an operational validation error and safe correlation id when ERP rejects payload", async () => {

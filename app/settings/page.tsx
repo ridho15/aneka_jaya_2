@@ -43,6 +43,14 @@ export default async function SettingsPage() {
           tone: "emerald",
         }
       : null,
+    can(role, "settings.erp_sync.manage")
+      ? {
+          href: "/settings/erp-sync",
+          title: "ERP Sync",
+          description: "Atur mode sinkronisasi otomatis setelah edit transaksi ERP",
+          tone: "emerald",
+        }
+      : null,
     can(role, "users.manage")
       ? {
           href: "/settings/users",

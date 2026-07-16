@@ -44,4 +44,12 @@ describe("Super Admin permission contract", () => {
     expect(can("MANAGER", "settings.profit.manage")).toBe(false);
     expect(can("VIEWER", "settings.profit.manage")).toBe(false);
   });
+
+  it("keeps ERP Sync settings Super Admin only", () => {
+    expect(can("OWNER", "settings.erp_sync.manage")).toBe(true);
+    expect(can("ADMIN", "settings.erp_sync.manage")).toBe(false);
+    expect(can("FINANCE", "settings.erp_sync.manage")).toBe(false);
+    expect(can("MANAGER", "settings.erp_sync.manage")).toBe(false);
+    expect(can("VIEWER", "settings.erp_sync.manage")).toBe(false);
+  });
 });

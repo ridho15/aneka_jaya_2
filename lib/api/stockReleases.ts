@@ -70,6 +70,7 @@ export function buildStockReleasePayload(input: {
       releaseReference,
       payload: {
         erp_reference: releaseReference,
+        sale_erp_reference: input.erpReference || undefined,
         source: "SLM",
         source_type: "invoice",
         source_number: input.sourceNumber || input.erpReference || input.saleId,
@@ -98,7 +99,7 @@ export async function releaseSaleStock(input: {
   if (!response.success) return failure(safeReleaseError(response) || "Release stok ERP gagal.", response.code, response.details);
   const status = String((response.data as { status?: unknown })?.status || "").trim();
   if (status === "released" || status === "already_released") {
-    return { success: true, data: { ...response.data, status, releaseReference: built.data.releaseReference } };
+    return { success: true, data: { ...response.data, status, releaseReference: built.data.releaseReference }, details: response.details };
   }
   return failure(response.data?.message || "Release stok ERP belum terkonfirmasi.", "ERP_STOCK_RELEASE_UNCONFIRMED", response.data);
 }

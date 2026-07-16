@@ -41,6 +41,8 @@ export function erpReferenceFrom(value: unknown): string | undefined {
     typeof item === "string" && item.trim() && !/^\d+$/.test(item.trim())
   );
   const reference =
+    row.erp_reference ??
+    nested?.erp_reference ??
     row.invoice_number ??
     invoice?.invoice_number ??
     nested?.invoice_number ??
@@ -93,6 +95,31 @@ type ErpSaleSyncInput = {
   shippingMethod?: string;
   notes?: string;
   items: ErpSaleSyncItem[];
+};
+
+type ErpSalesPayload = {
+  erp_reference: string;
+  source: "SLM";
+  customer_id: number;
+  so_number: string;
+  order_date: string;
+  delivery_date: string;
+  status: string;
+  shipped_to?: string;
+  tipe_pengiriman: string;
+  tempo_pembayaran: number;
+  cabang_id: number;
+  auto_create_invoice: boolean;
+  invoice: {
+    invoice_number: string;
+    invoice_date: string;
+    due_date: string;
+    status: string;
+    tax: number;
+    ppn_rate: number;
+    other_fee: Array<{ label: string; amount: number }>;
+  };
+  items: Array<{ product_id: number; quantity: number; unit_price: number; discount?: number; tax: number; tipe_pajak: string }>;
 };
 
 function normalizeLookup(value?: string | null) {
@@ -166,6 +193,19 @@ function safeErpPaymentError(response: ApiResponse<unknown>) {
   if (response.code === "ERP_PAYMENT_CUSTOMER_MISSING") return response.message;
   if (response.code === "ERP_PAYMENT_AMOUNT_INVALID") return response.message;
   return response.message || "Payment ERP gagal dibuat.";
+}
+
+export function erpHttpStatus(response: ApiResponse<unknown>) {
+  const details = response.details && typeof response.details === "object" ? response.details as Record<string, unknown> : {};
+  const status = details.status;
+  return typeof status === "number" ? status : undefined;
+}
+
+export function erpAuditResponse(response: ApiResponse<unknown>) {
+  const details = response.details && typeof response.details === "object" ? response.details as Record<string, unknown> : {};
+  if ("body" in details) return details.body;
+  if (response.success) return response.data;
+  return { code: response.code, upstreamCode: details.upstreamCode, correlationId: details.correlationId, status: details.status };
 }
 
 function normalizeManualSaleItems(items: ErpSaleSyncItem[]): ErpSaleSyncItem[] {
@@ -245,6 +285,10 @@ async function resolveManualProductsForSaleItems(items: ErpSaleSyncItem[]): Prom
 
 function generatedErpDocumentNumber(prefix: string) {
   return `SLM-${prefix}-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`.slice(0, 60);
+}
+
+function generatedSalesErpReference() {
+  return generatedErpDocumentNumber("SALE");
 }
 
 function erpShippingType(value?: string) {
@@ -399,7 +443,7 @@ async function resolveErpSaleItems(items: ErpSaleSyncItem[]): Promise<ApiRespons
   return { success: true, data: resolved };
 }
 
-export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<ApiResponse<unknown>> {
+async function buildOfficialSalesPayload(input: ErpSaleSyncInput, erpReference = generatedSalesErpReference()): Promise<ApiResponse<{ payload: ErpSalesPayload; invoiceNumber: string }>> {
   const customer = await resolveErpCustomerId(input.customerName, input.customerLocation);
   if (!customer.success) return customer;
   const items = await resolveErpSaleItems(normalizeManualSaleItems(input.items));
@@ -412,7 +456,9 @@ export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<A
   const dueDate = input.paymentMethod === "Tempo" && input.dueDate ? input.dueDate : saleDate;
   const cabangId = defaultErpCabangId();
   const invoiceNumber = generatedErpDocumentNumber("INV");
-  const payload = {
+  const payload: ErpSalesPayload = {
+    erp_reference: erpReference,
+    source: "SLM",
     customer_id: customer.data,
     so_number: generatedErpDocumentNumber("SO"),
     order_date: saleDate,
@@ -438,16 +484,45 @@ export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<A
       tipe_pajak: "Non Pajak"
     }))
   };
+  return { success: true, data: { payload, invoiceNumber } };
+}
+
+function decorateSalesResponse(response: ApiResponse<unknown>, fallbackReference: string, invoiceNumber: string): ApiResponse<unknown> {
+  if (!response.success) return response;
+  const data = response.data && typeof response.data === "object"
+    ? { ...(response.data as Record<string, unknown>), slm_invoice_number: invoiceNumber, erp_reference: fallbackReference }
+    : { raw: response.data, slm_invoice_number: invoiceNumber, erp_reference: fallbackReference };
+  return { success: true, data, details: response.details };
+}
+
+export async function sendOfficialSalesToErp(input: ErpSaleSyncInput): Promise<ApiResponse<unknown>> {
+  const built = await buildOfficialSalesPayload(input);
+  if (!built.success) return built;
 
   const response = await anikaRequest<unknown>("/sales", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(built.data.payload)
   });
-  if (!response.success) return response;
-  const data = response.data && typeof response.data === "object"
-    ? { ...(response.data as Record<string, unknown>), slm_invoice_number: invoiceNumber }
-    : { raw: response.data, slm_invoice_number: invoiceNumber };
-  return { success: true, data };
+  return decorateSalesResponse(response, built.data.payload.erp_reference, built.data.invoiceNumber);
+}
+
+export async function updateOfficialSalesInErp(input: ErpSaleSyncInput, erpReference: string): Promise<ApiResponse<unknown>> {
+  const cleanReference = erpReference.trim();
+  if (!cleanReference) return failure("ERP reference transaksi tidak tersedia untuk update.", "ERP_REFERENCE_MISSING");
+  const built = await buildOfficialSalesPayload(input, cleanReference);
+  if (!built.success) return built;
+  const response = await anikaRequest<unknown>(`/sales/${encodeURIComponent(cleanReference)}`, {
+    method: "PUT",
+    body: JSON.stringify(built.data.payload)
+  });
+  if (!response.success && response.code === "ERP_VALIDATION" && (response.details as { status?: number } | undefined)?.status === 422) {
+    return failure(
+      "ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru.",
+      "ERP_SALES_UPDATE_REJECTED",
+      response.details
+    );
+  }
+  return decorateSalesResponse(response, cleanReference, built.data.invoiceNumber);
 }
 
 export function buildSalesNeoCommand(input: {
@@ -527,10 +602,14 @@ async function persistErpSale(input: {
         syncAttemptedAt: sale.syncAttemptedAt ? new Date(sale.syncAttemptedAt) : undefined,
         syncedAt: sale.syncedAt ? new Date(sale.syncedAt) : undefined,
         erpReference: sale.erpReference,
+        erpSyncHttpStatus: sale.erpSyncHttpStatus,
+        erpSyncResponse: sale.erpSyncResponse === undefined ? undefined : serializeJson(sale.erpSyncResponse),
         stockReleaseStatus: sale.stockReleaseStatus || "not_required",
         stockReleaseError: sale.stockReleaseError,
         stockReleaseReference: sale.stockReleaseReference,
         stockReleasedAt: sale.stockReleasedAt ? new Date(sale.stockReleasedAt) : undefined,
+        stockReleaseHttpStatus: sale.stockReleaseHttpStatus,
+        stockReleaseResponse: sale.stockReleaseResponse === undefined ? undefined : serializeJson(sale.stockReleaseResponse),
         erpPaymentStatus: sale.erpPaymentStatus || "not_required",
         erpPaymentError: sale.erpPaymentError,
         erpPaymentReference: sale.erpPaymentReference,
@@ -701,12 +780,12 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
         erpPaymentError = safeErpPaymentError(paymentResponse);
       }
     }
-    const sale: Sale = { id: saleId, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "synced", syncAttemptedAt: attemptedAt, syncedAt: attemptedAt, erpReference, stockReleaseStatus, stockReleaseReference, stockReleaseError, stockReleasedAt: stockResponse.success ? stockReleasedAt : undefined, erpPaymentStatus, erpPaymentError, erpPaymentReference, erpPaymentSyncedAt, erpPaymentAttemptedAt, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+    const sale: Sale = { id: saleId, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "synced", syncAttemptedAt: attemptedAt, syncedAt: attemptedAt, erpReference, erpSyncHttpStatus: erpHttpStatus(response), erpSyncResponse: erpAuditResponse(response), stockReleaseStatus, stockReleaseReference, stockReleaseError, stockReleasedAt: stockResponse.success ? stockReleasedAt : undefined, stockReleaseHttpStatus: erpHttpStatus(stockResponse), stockReleaseResponse: erpAuditResponse(stockResponse), erpPaymentStatus, erpPaymentError, erpPaymentReference, erpPaymentSyncedAt, erpPaymentAttemptedAt, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await persistErpSale({ sale, total, approvalStatus, paymentMethod: input.paymentMethod, dueDate: input.dueDate, tipe, user: { id: user.id, name: user.name, role: user.role }, auditReason: `Invoice Penjualan ${tipe.code} • Terkirim ke ERP • Release stok ${stockReleaseStatus} • Payment ${erpPaymentStatus}${stockReleaseError ? ` • ${stockReleaseError}` : ""}${erpPaymentError ? ` • ${erpPaymentError}` : ""}${testReference ? ` • ${testReference}` : ""}` });
     return { success: true, data: { ...sale, target: "erp", erpReference, testReference, retryable: stockReleaseStatus === "failed" || erpPaymentStatus === "failed" || erpPaymentStatus === "pending" } };
   }
   const syncError = safeErpSyncError(response);
-  const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt, stockReleaseStatus: "not_required", erpPaymentStatus: "not_required", testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+  const sale: Sale = { id: `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "failed", syncError, syncAttemptedAt: attemptedAt, erpSyncHttpStatus: erpHttpStatus(response), erpSyncResponse: erpAuditResponse(response), stockReleaseStatus: "not_required", erpPaymentStatus: "not_required", testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
   await persistErpSale({ sale, total, approvalStatus, paymentMethod: input.paymentMethod, dueDate: input.dueDate, tipe, user: { id: user.id, name: user.name, role: user.role }, auditReason: `Invoice Penjualan ${tipe.code} • ERP gagal, tersimpan untuk retry • ${syncError}` });
   return { success: true, data: { ...sale, target: "erp", retryable: true } };
 }

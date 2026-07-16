@@ -40,10 +40,14 @@ export type Sale = {
   syncAttemptedAt?: string;
   syncedAt?: string;
   erpReference?: string;
+  erpSyncHttpStatus?: number;
+  erpSyncResponse?: unknown;
   stockReleaseStatus?: "not_required" | "pending" | "released" | "failed";
   stockReleaseError?: string;
   stockReleaseReference?: string;
   stockReleasedAt?: string;
+  stockReleaseHttpStatus?: number;
+  stockReleaseResponse?: unknown;
   erpPaymentStatus?: "not_required" | "pending" | "paid" | "partial" | "failed";
   erpPaymentError?: string;
   erpPaymentReference?: string;

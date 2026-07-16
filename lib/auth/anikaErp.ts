@@ -30,7 +30,6 @@ function roleFromAnika(value: unknown): Role {
 
 function loginUrl() {
   const baseUrl = process.env.ANIKA_ERP_API_BASE_URL?.trim();
-  console.log(baseUrl);
   if (!baseUrl) throw new Error("Konfigurasi ERP belum lengkap.");
   return `${baseUrl.replace(/\/$/, "")}/auth/login`;
 }
