@@ -1,5 +1,55 @@
 [
   {
+    "id": "a9cc2920-0f3b-4c16-a0c8-fac8158320bb",
+    "createdAt": "2026-07-16T16:06:51.367Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784218011358",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784218011358",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-16T16:06:51.358Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "ee18fffb-8658-4158-b910-c7aa38b70bbc",
+    "createdAt": "2026-07-16T16:05:16.748Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784217916740",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784217916740",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-16T16:05:16.740Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
     "id": "b1a9f5f7-f57c-4478-b2a1-9762fbe68743",
     "createdAt": "2026-07-14T17:41:35.040Z",
     "userId": "anika:1",

@@ -108,6 +108,9 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
   const totalPages = meta.totalPages;
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
   const activeFilters = activeFilterLabels(params, activeRekeningOptions);
+  const needsCancelAndRecreate = (sale: Sale) =>
+    sale.syncTarget === "erp" &&
+    (sale.stockReleaseStatus === "released" || sale.erpPaymentStatus === "paid" || sale.erpPaymentStatus === "partial");
 
   return (
     <AppShell>
@@ -165,7 +168,8 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <Link className="rounded-sm bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700" href={`/penjualan/${sale.id}`}>Detail</Link>
                 <Link className="rounded-sm border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/print/sales/${sale.id}`}>Cetak</Link>
-                {canManage && sale.approvalStatus !== "cancelled" && <Link className="rounded-sm border border-blue-200 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50" href={`/penjualan/${sale.id}/edit`}>Edit</Link>}
+                {canManage && sale.approvalStatus !== "cancelled" && !needsCancelAndRecreate(sale) && <Link className="rounded-sm border border-blue-200 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50" href={`/penjualan/${sale.id}/edit`}>Edit</Link>}
+                {canManage && needsCancelAndRecreate(sale) && <span className="rounded-sm border border-amber-200 px-3 py-2 text-center text-xs font-semibold text-amber-800">Gunakan cancel/koreksi</span>}
                 {canManage && <TransactionCancelButton id={sale.id} kind="sales" disabled={sale.approvalStatus === "cancelled"} disabledReason="Transaksi sudah dibatalkan." />}
               </div>
             </article>

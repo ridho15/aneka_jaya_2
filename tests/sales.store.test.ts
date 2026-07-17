@@ -144,14 +144,14 @@ describe("sales store normalized persistence", () => {
     expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expectedWhere }));
   });
 
-  it("allows editing synced ERP sales while preserving ERP reference for PUT retry", async () => {
+  it("allows editing synced ERP sales before release while preserving ERP reference for PUT retry", async () => {
     const syncedSale = {
       ...dbSale,
       syncTarget: "erp",
       syncStatus: "synced",
       erpReference: "SLM-SALE-1",
-      stockReleaseStatus: "released",
-      erpPaymentStatus: "paid"
+      stockReleaseStatus: "pending",
+      erpPaymentStatus: "pending"
     };
     mocks.prisma.salesRecord.findUnique.mockResolvedValue(syncedSale);
     mocks.prisma.salesRecord.update.mockResolvedValue({
@@ -184,6 +184,32 @@ describe("sales store normalized persistence", () => {
         erpPaymentStatus: "pending"
       })
     }));
+  });
+
+  it("blocks editing synced ERP sales after stock release or payment settlement", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue({
+      ...dbSale,
+      syncTarget: "erp",
+      syncStatus: "synced",
+      erpReference: "SLM-INV-1",
+      stockReleaseReference: "SLM-STOCK-1",
+      erpPaymentReference: "SLM-PAY-1",
+      stockReleaseStatus: "released",
+      erpPaymentStatus: "paid"
+    });
+
+    await expect(updateSalesRecord("S-1", {
+      saleDate: "2026-06-27",
+      tipeId: "W",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Cash",
+      rekeningId: "cash-w",
+      items: [{ productRef: "P-1", quantity: 3, unitPrice: 10000, discount: 0 }]
+    })).rejects.toThrow("ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru.");
+
+    expect(mocks.prisma.salesRecord.update).not.toHaveBeenCalled();
   });
 
   it("cancels synced ERP sales through Aneka Jaya before updating local status", async () => {

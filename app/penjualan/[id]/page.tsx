@@ -36,6 +36,9 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
   if (!sale) redirect("/penjualan");
   const canManage = can(role, "penjualan.manage");
   const canViewTransactionNumber = role === "OWNER";
+  const needsCancelAndRecreate =
+    sale.syncTarget === "erp" &&
+    (sale.stockReleaseStatus === "released" || sale.erpPaymentStatus === "paid" || sale.erpPaymentStatus === "partial");
 
   return (
     <AppShell>
@@ -48,7 +51,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         <div className="flex flex-wrap gap-2">
           <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
           <Link href={`/print/sales/${sale.id}`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Cetak</Link>
-          {canManage && sale.approvalStatus !== "cancelled" && !(sale.syncTarget === "erp" && sale.syncStatus === "synced") && <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
+          {canManage && sale.approvalStatus !== "cancelled" && !needsCancelAndRecreate && <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
         </div>
       </div>
 
@@ -74,6 +77,11 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         {sale.syncError && <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{sale.syncError}</p>}
         {sale.stockReleaseError && <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{sale.stockReleaseError}</p>}
         {sale.erpPaymentError && <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{sale.erpPaymentError}</p>}
+        {needsCancelAndRecreate && (
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+            Transaksi sudah masuk proses lanjutan di ERP. Jika ada salah input, gunakan cancel/void lalu buat transaksi koreksi baru dengan ERP reference baru.
+          </p>
+        )}
         {canManage && (
           <div className="mt-5">
             <TransactionCancelButton

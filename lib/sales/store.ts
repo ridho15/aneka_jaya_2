@@ -459,6 +459,21 @@ function assertSaleManageable(sale: Sale) {
   if (sale.approvalStatus === "cancelled") throw new Error("Transaksi sudah dibatalkan.");
 }
 
+function requiresCancelAndRecreate(sale: Sale) {
+  return (
+    sale.syncTarget === "erp" &&
+    (sale.stockReleaseStatus === "released" || sale.erpPaymentStatus === "paid" || sale.erpPaymentStatus === "partial")
+  );
+}
+
+function assertSalesEditable(sale: Sale) {
+  if (requiresCancelAndRecreate(sale)) {
+    throw new Error(
+      "ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru."
+    );
+  }
+}
+
 function cancelReferenceForSale(id: string) {
   return `SLM-CANCEL-${id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
 }
@@ -540,6 +555,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const before = await getSalesRecord(id);
   if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
   assertSaleManageable(before);
+  assertSalesEditable(before);
   const total = saleTotal(input);
   const tipe = await findTipe(input.tipeId || before.tipeId);
   const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
