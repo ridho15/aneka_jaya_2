@@ -16,8 +16,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
 import type { Expense } from "@/lib/types/expenses";
 import { useRouter } from "next/navigation";
+import { jakartaDateKey } from "@/lib/date/jakarta";
 
-const today = new Date().toISOString().slice(0, 10);
+const todayJakarta = () => jakartaDateKey();
 
 type Props = { tipes: BookkeepingType[]; rekenings: RekeningAccount[]; expense?: Expense };
 type CreatedExpense = { id: string; approvalStatus?: string; erpSyncTarget?: "local" | "erp"; erpSyncStatus?: string; erpReference?: string; retryable?: boolean };
@@ -45,7 +46,7 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
   const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<PengeluaranInput>({
     resolver: zodResolver(pengeluaranSchema),
     defaultValues: {
-      expenseDate: expense?.expenseDate || today, tipeId: expense?.tipeId || defaultTipe.id, tipeCodeSnapshot: expense?.tipeCodeSnapshot || defaultTipe.code, tipeNameSnapshot: expense?.tipeNameSnapshot || defaultTipe.name,
+      expenseDate: expense?.expenseDate || todayJakarta(), tipeId: expense?.tipeId || defaultTipe.id, tipeCodeSnapshot: expense?.tipeCodeSnapshot || defaultTipe.code, tipeNameSnapshot: expense?.tipeNameSnapshot || defaultTipe.name,
       rekeningId: expense?.rekeningId || defaultRekening?.id || "", rekeningNameSnapshot: expense?.rekeningNameSnapshot || defaultRekening?.name || "",
       coaId: expense?.coaId || "Kas", coaNameSnapshot: expense?.coaNameSnapshot || "Kas", category: expense?.category || "", vendorName: expense?.vendorName || "", description: expense?.description || "", amount: expense?.amount || 0, paymentMethod: expense?.paymentMethod || "", attachmentUrl: expense?.attachmentUrl || "", notes: expense?.notes || ""
     }
@@ -91,7 +92,7 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
       return;
     }
     const defaultRek = rekeningForTipe(defaultTipe.id)[0];
-    reset({ expenseDate: today, tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name, rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", coaId: "Kas", coaNameSnapshot: "Kas", amount: 0, attachmentUrl: "" });
+    reset({ expenseDate: todayJakarta(), tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name, rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", coaId: "Kas", coaNameSnapshot: "Kas", amount: 0, attachmentUrl: "" });
     setFile(undefined);
     if (result.data?.id) setCreatedExpense({
       id: String(result.data.id),

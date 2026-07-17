@@ -309,6 +309,7 @@ export default async function ErpSyncPage({
                     {new Intl.DateTimeFormat("id-ID", {
                       dateStyle: "medium",
                       timeStyle: "short",
+                      timeZone: "Asia/Jakarta",
                     }).format(new Date(item.syncAttemptedAt))}
                   </span>
                 )}
@@ -418,6 +419,7 @@ export default async function ErpSyncPage({
                       ? new Intl.DateTimeFormat("id-ID", {
                           dateStyle: "medium",
                           timeStyle: "short",
+                          timeZone: "Asia/Jakarta",
                         }).format(new Date(item.syncAttemptedAt))
                       : "—"}
                   </td>
@@ -495,6 +497,7 @@ export default async function ErpSyncPage({
                     {new Intl.DateTimeFormat("id-ID", {
                       dateStyle: "medium",
                       timeStyle: "short",
+                      timeZone: "Asia/Jakarta",
                     }).format(new Date(item.erpSyncAttemptedAt))}
                   </span>
                 )}
@@ -572,6 +575,7 @@ export default async function ErpSyncPage({
                       ? new Intl.DateTimeFormat("id-ID", {
                           dateStyle: "medium",
                           timeStyle: "short",
+                          timeZone: "Asia/Jakarta",
                         }).format(new Date(item.erpSyncAttemptedAt))
                       : "—"}
                   </td>

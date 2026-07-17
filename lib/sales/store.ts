@@ -9,10 +9,33 @@ import { recordAudit } from "@/lib/audit/store";
 import { findTipe, resolveSalesRekening, type BookkeepingType, type RekeningAccount } from "@/lib/business/masterData";
 import { getCurrentUser } from "@/lib/auth/session";
 import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCancellations";
+import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
 const salesInclude = { items: { orderBy: { sortOrder: "asc" as const } } };
+
+export async function allocateTransactionIdentity(tx: Prisma.TransactionClient, transactionAt: string) {
+  const dateKey = transactionDateKey(transactionAt);
+  const counter = await tx.dailyTransactionCounter.upsert({
+    where: { dateKey },
+    create: { dateKey, lastValue: 1 },
+    update: { lastValue: { increment: 1 } }
+  });
+  return {
+    transactionAt,
+    transactionDateKey: dateKey,
+    transactionSequence: counter.lastValue,
+    transactionNumber: transactionNumberFor(dateKey, counter.lastValue)
+  };
+}
+
+function nextJsonTransactionIdentity(rows: Sale[], transactionAt: string) {
+  const dateKey = transactionDateKey(transactionAt);
+  const lastValue = rows.reduce((max, row) => row.transactionDateKey === dateKey ? Math.max(max, row.transactionSequence || 0) : max, 0);
+  const transactionSequence = lastValue + 1;
+  return { transactionAt, transactionDateKey: dateKey, transactionSequence, transactionNumber: transactionNumberFor(dateKey, transactionSequence) };
+}
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
@@ -135,6 +158,7 @@ function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereIn
   if (keyword) {
     const keywordOr: Prisma.SalesRecordWhereInput[] = [
       { id: { contains: keyword, mode: "insensitive" } },
+      { transactionNumber: { contains: keyword, mode: "insensitive" } },
       { customerName: { contains: keyword, mode: "insensitive" } },
       { customerLocation: { contains: keyword, mode: "insensitive" } },
       { testReference: { contains: keyword, mode: "insensitive" } },
@@ -160,7 +184,7 @@ function filterSalesInMemory(sales: Sale[], filters: SalesRecordFilters) {
     if (filters.approvalStatus && (sale.approvalStatus || "approved") !== filters.approvalStatus) return false;
     if (filters.syncStatus && (sale.syncStatus || "local") !== filters.syncStatus) return false;
     if (keyword) {
-      const haystack = [sale.id, sale.customerName, sale.customerLocation, sale.testReference, sale.erpReference, sale.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
+      const haystack = [sale.id, sale.transactionNumber, sale.customerName, sale.customerLocation, sale.testReference, sale.erpReference, sale.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
       if (!haystack.includes(keyword)) return false;
     }
     return true;
@@ -170,7 +194,12 @@ function filterSalesInMemory(sales: Sale[], filters: SalesRecordFilters) {
 function toSale(row: SalesRecordWithItems): Sale {
   return {
     id: row.id,
-    saleDate: row.saleDate.toISOString().slice(0, 10),
+    saleDate: jakartaDateKey(row.saleDate),
+    transactionNumber: row.transactionNumber || undefined,
+    transactionAt: row.transactionAt?.toISOString(),
+    transactionSequence: row.transactionSequence ?? undefined,
+    transactionDateKey: row.transactionDateKey || undefined,
+    deliveryAt: row.deliveryAt?.toISOString(),
     tipeId: row.tipeId,
     tipeCodeSnapshot: row.tipeCodeSnapshot,
     tipeNameSnapshot: row.tipeNameSnapshot,
@@ -178,7 +207,7 @@ function toSale(row: SalesRecordWithItems): Sale {
     customerLocation: row.customerLocation || undefined,
     shippingMethod: row.shippingMethod || undefined,
     paymentMethod: row.paymentMethod as Sale["paymentMethod"],
-    dueDate: row.dueDate?.toISOString().slice(0, 10),
+    dueDate: row.dueDate ? jakartaDateKey(row.dueDate) : undefined,
     rekeningId: row.rekeningId || undefined,
     transferAccount: row.transferAccount || undefined,
     notes: row.notes || undefined,
@@ -230,7 +259,7 @@ function toSale(row: SalesRecordWithItems): Sale {
 function legacyToSale(row: LegacySalesRow, items: LegacySalesItemRow[]): Sale {
   return {
     id: row.id,
-    saleDate: row.saleDate.toISOString().slice(0, 10),
+    saleDate: jakartaDateKey(row.saleDate),
     tipeId: row.tipeId,
     tipeCodeSnapshot: row.tipeCodeSnapshot,
     tipeNameSnapshot: row.tipeNameSnapshot,
@@ -238,7 +267,7 @@ function legacyToSale(row: LegacySalesRow, items: LegacySalesItemRow[]): Sale {
     customerLocation: row.customerLocation || undefined,
     shippingMethod: row.shippingMethod || undefined,
     paymentMethod: row.paymentMethod as Sale["paymentMethod"],
-    dueDate: row.dueDate?.toISOString().slice(0, 10),
+    dueDate: row.dueDate ? jakartaDateKey(row.dueDate) : undefined,
     rekeningId: row.rekeningId || undefined,
     transferAccount: row.transferAccount || undefined,
     notes: row.notes || undefined,
@@ -373,10 +402,18 @@ export async function getSalesRecord(id: string): Promise<Sale | undefined> {
 
 export async function saveSalesRecord(sale: Sale): Promise<void> {
   if (isProductionMode()) {
-    await prisma.salesRecord.create({
+    await prisma.$transaction(async (tx) => {
+      const identity = sale.transactionNumber || !sale.transactionAt ? sale : { ...sale, ...await allocateTransactionIdentity(tx, sale.transactionAt) };
+      Object.assign(sale, identity);
+      await tx.salesRecord.create({
       data: {
-        id: sale.id,
-        saleDate: new Date(sale.saleDate),
+        id: identity.id,
+        saleDate: new Date(identity.saleDate),
+        transactionNumber: identity.transactionNumber,
+        transactionAt: identity.transactionAt ? new Date(identity.transactionAt) : undefined,
+        transactionSequence: identity.transactionSequence,
+        transactionDateKey: identity.transactionDateKey,
+        deliveryAt: identity.deliveryAt ? new Date(identity.deliveryAt) : undefined,
         tipeId: sale.tipeId || "W",
         tipeCodeSnapshot: sale.tipeCodeSnapshot || "W",
         tipeNameSnapshot: sale.tipeNameSnapshot || "W",
@@ -434,11 +471,14 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
           }))
         }
       }
+      });
     });
     return;
   }
   const rows = await readJsonArray<Sale>(fileName);
-  rows.unshift(sale);
+  const identity = sale.transactionNumber || !sale.transactionAt ? sale : { ...sale, ...nextJsonTransactionIdentity(rows, sale.transactionAt) };
+  Object.assign(sale, identity);
+  rows.unshift(identity);
   await writeJsonArray(fileName, rows);
 }
 
@@ -497,6 +537,8 @@ async function updatePrismaSalesRecord(
       where: { id },
       data: {
         saleDate: new Date(input.saleDate),
+        transactionAt: input.transactionAt ? new Date(input.transactionAt) : before.transactionAt ? new Date(before.transactionAt) : null,
+        deliveryAt: input.deliveryAt ? new Date(input.deliveryAt) : null,
         tipeId: tipe.id,
         tipeCodeSnapshot: tipe.code,
         tipeNameSnapshot: tipe.name,
@@ -553,27 +595,30 @@ async function updatePrismaSalesRecord(
 
 export async function updateSalesRecord(id: string, input: PenjualanInput): Promise<Sale> {
   const before = await getSalesRecord(id);
-  if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
+  if (!before) throw Object.assign(new Error("Transaksi penjualan tidak ditemukan."), { code: "SALES_NOT_FOUND" });
   assertSaleManageable(before);
   assertSalesEditable(before);
-  const total = saleTotal(input);
-  const tipe = await findTipe(input.tipeId || before.tipeId);
-  const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
+  const transactionAt = input.transactionAt ? jakartaTimestampFromLocal(input.transactionAt) : before.transactionAt;
+  const deliveryAt = input.deliveryAt === undefined ? before.deliveryAt : input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
+  if (deliveryAt && transactionAt && deliveryAt < transactionAt) throw new Error("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi.");
+  const normalizedInput: PenjualanInput = { ...input, transactionAt, deliveryAt, saleDate: transactionAt ? transactionDateKey(transactionAt) : input.saleDate };
+  const total = saleTotal(normalizedInput);
+  const tipe = await findTipe(normalizedInput.tipeId || before.tipeId);
+  const rekening = await resolveSalesRekening(normalizedInput.paymentMethod, tipe.id, normalizedInput.rekeningId);
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
   if (isProductionMode()) {
-    const after = await updatePrismaSalesRecord(id, input, before, total, tipe, rekening, nextSyncStatus);
+    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus);
     await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
     return after;
   }
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) {
-    const after = await updatePrismaSalesRecord(id, input, before, total, tipe, rekening, nextSyncStatus).catch(() => undefined);
-    if (!after) throw new Error("Transaksi penjualan tidak ditemukan.");
+    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus);
     await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
     return after;
   }
-  const after: Sale = { ...before, ...input, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined, syncedAt: before.syncTarget === "erp" ? undefined : before.syncedAt, erpReference: before.erpReference, erpSyncHttpStatus: before.syncTarget === "erp" ? undefined : before.erpSyncHttpStatus, erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse, stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required", stockReleaseError: before.syncTarget === "erp" ? "Menunggu update invoice ERP berhasil sebelum release stok ulang." : before.stockReleaseError, stockReleaseReference: before.syncTarget === "erp" ? undefined : before.stockReleaseReference, stockReleasedAt: before.syncTarget === "erp" ? undefined : before.stockReleasedAt, stockReleaseHttpStatus: before.syncTarget === "erp" ? undefined : before.stockReleaseHttpStatus, stockReleaseResponse: before.syncTarget === "erp" ? undefined : before.stockReleaseResponse, erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required", erpPaymentError: before.syncTarget === "erp" ? "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP." : before.erpPaymentError, erpPaymentReference: before.syncTarget === "erp" ? undefined : before.erpPaymentReference, erpPaymentSyncedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentSyncedAt, erpPaymentAttemptedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentAttemptedAt };
+  const after: Sale = { ...before, ...normalizedInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined, syncedAt: before.syncTarget === "erp" ? undefined : before.syncedAt, erpReference: before.erpReference, erpSyncHttpStatus: before.syncTarget === "erp" ? undefined : before.erpSyncHttpStatus, erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse, stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required", stockReleaseError: before.syncTarget === "erp" ? "Menunggu update invoice ERP berhasil sebelum release stok ulang." : before.stockReleaseError, stockReleaseReference: before.syncTarget === "erp" ? undefined : before.stockReleaseReference, stockReleasedAt: before.syncTarget === "erp" ? undefined : before.stockReleasedAt, stockReleaseHttpStatus: before.syncTarget === "erp" ? undefined : before.stockReleaseHttpStatus, stockReleaseResponse: before.syncTarget === "erp" ? undefined : before.stockReleaseResponse, erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required", erpPaymentError: before.syncTarget === "erp" ? "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP." : before.erpPaymentError, erpPaymentReference: before.syncTarget === "erp" ? undefined : before.erpPaymentReference, erpPaymentSyncedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentSyncedAt, erpPaymentAttemptedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentAttemptedAt };
   rows[index] = after;
   await writeJsonArray(fileName, rows);
   await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
@@ -596,7 +641,7 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
       saleReference: id,
       stockReleaseReference: before.stockReleaseReference,
       paymentReference: before.erpPaymentReference,
-      cancelDate: new Date().toISOString().slice(0, 10),
+      cancelDate: transactionDateKey(new Date().toISOString()),
       reason: cleanReason,
       requestedBy: {
         id: actor.id,

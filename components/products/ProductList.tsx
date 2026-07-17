@@ -22,7 +22,7 @@ type StockSyncState = {
 };
 
 function timeLabel(date = new Date()) {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "short", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(date);
 }
 
 function qualityWarning(warnings: string[]) {

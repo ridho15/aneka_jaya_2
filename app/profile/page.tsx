@@ -24,7 +24,7 @@ export default async function ProfilePage() {
           <ProfileRow label="Email" value={profile.email || "-"} />
           <ProfileRow label="Role aplikasi" value={roleLabel(profile.role)} />
           <ProfileRow label="ID eksternal" value={profile.id} />
-          <ProfileRow label="Login terakhir" value={profile.lastLoginAt ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(profile.lastLoginAt) : "-"} />
+          <ProfileRow label="Login terakhir" value={profile.lastLoginAt ? new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(profile.lastLoginAt) : "-"} />
         </dl>
       </section>
     </AppShell>

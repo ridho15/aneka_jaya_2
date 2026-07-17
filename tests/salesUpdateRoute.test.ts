@@ -71,4 +71,25 @@ describe("sales update route ERP auto sync", () => {
     expect(mocks.retrySalesErpSync).not.toHaveBeenCalled();
     expect(await response.json()).toMatchObject({ success: true, data: { id: "S-1", syncStatus: "pending" } });
   });
+
+  it("returns 404 only when the sales record is genuinely missing", async () => {
+    mocks.updateSalesRecord.mockRejectedValue(Object.assign(new Error("Transaksi penjualan tidak ditemukan."), { code: "SALES_NOT_FOUND" }));
+    const response = await PUT(new Request("http://local/api/sales/MISSING", { method: "PUT", body: JSON.stringify(payload) }), { params: Promise.resolve({ id: "MISSING" }) });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ code: "SALES_NOT_FOUND" });
+  });
+
+  it("reports a missing database migration instead of claiming the sale is missing", async () => {
+    mocks.updateSalesRecord.mockRejectedValue(Object.assign(new Error("column deliveryAt does not exist"), { code: "P2022" }));
+    const response = await PUT(new Request("http://local/api/sales/S-1", { method: "PUT", body: JSON.stringify(payload) }), { params: Promise.resolve({ id: "S-1" }) });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "DATABASE_MIGRATION_REQUIRED", message: expect.stringContaining("migration") });
+  });
+
+  it("does not expose unexpected Prisma errors as business validation", async () => {
+    mocks.updateSalesRecord.mockRejectedValue(Object.assign(new Error("connection details"), { code: "P1001", name: "PrismaClientKnownRequestError" }));
+    const response = await PUT(new Request("http://local/api/sales/S-1", { method: "PUT", body: JSON.stringify(payload) }), { params: Promise.resolve({ id: "S-1" }) });
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ success: false, code: "DATABASE_ERROR", message: "Database gagal memperbarui transaksi penjualan." });
+  });
 });

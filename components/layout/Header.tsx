@@ -10,7 +10,7 @@ function initials(name: string) {
 }
 
 export function Header({ user, showDemoLogout = false, showLogout = false }: { user: UserProfile; showDemoLogout?: boolean; showLogout?: boolean }) {
-  const date = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
+  const date = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date());
   return (
     <header className="mb-8 flex flex-col gap-4 border-b border-neutral-300 pb-5 sm:flex-row sm:items-center sm:justify-between">
       <div>

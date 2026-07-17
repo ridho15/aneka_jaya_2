@@ -45,7 +45,15 @@ vi.mock("@/lib/business/masterData", () => ({
   resolveSalesRekening: mocks.resolveSalesRekening,
   MasterDataError: class MasterDataError extends Error {}
 }));
-vi.mock("@/lib/sales/store", () => ({ saveSalesRecord: mocks.saveSalesRecord }));
+vi.mock("@/lib/sales/store", () => ({
+  saveSalesRecord: mocks.saveSalesRecord,
+  allocateTransactionIdentity: vi.fn(async (_tx: unknown, transactionAt: string) => ({
+    transactionAt,
+    transactionDateKey: "2026-06-27",
+    transactionSequence: 1,
+    transactionNumber: "270626-01"
+  }))
+}));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: vi.fn() }));
 
 import { createSale } from "@/lib/api/sales";
@@ -126,6 +134,40 @@ describe("production Prisma transactions", () => {
     expect(mocks.sendNeoCommand).not.toHaveBeenCalled();
     expect(mocks.anikaRequest).not.toHaveBeenCalled();
     expect(mocks.saveSalesRecord).toHaveBeenCalledOnce();
+  });
+
+  it("treats a legacy saleDate without transactionAt as midnight in Jakarta", async () => {
+    await expect(createSale({ ...saleInput, paymentMethod: "Other", dueDate: undefined }))
+      .resolves.toMatchObject({ success: true, data: { saleDate: "2026-06-27", transactionAt: "2026-06-26T17:00:00.000Z" } });
+
+    expect(mocks.saveSalesRecord).toHaveBeenCalledWith(expect.objectContaining({
+      saleDate: "2026-06-27",
+      transactionAt: "2026-06-26T17:00:00.000Z"
+    }));
+  });
+
+  it("uses the Jakarta date derived from transactionAt for ERP sales and stock payloads", async () => {
+    mocks.findTipe.mockResolvedValue({ id: "AJ", code: "AJ", name: "AJ" });
+    await expect(createSale({
+      ...saleInput,
+      tipeId: "AJ",
+      tipeCodeSnapshot: "AJ",
+      tipeNameSnapshot: "AJ",
+      paymentMethod: "Other",
+      dueDate: undefined,
+      saleDate: "2026-06-27",
+      transactionAt: "2026-06-28T00:05",
+      deliveryAt: "2026-06-29T00:15"
+    })).resolves.toMatchObject({ success: true, data: { saleDate: "2026-06-28", transactionAt: "2026-06-27T17:05:00.000Z", deliveryAt: "2026-06-28T17:15:00.000Z" } });
+
+    const postedBodies = mocks.anikaRequest.mock.calls
+      .map(([, options]) => options?.body)
+      .filter((body): body is string => typeof body === "string");
+    expect(postedBodies.length).toBeGreaterThan(0);
+    expect(postedBodies.every((body) => !body.includes('"date":"2026-06-27"') && !body.includes('"sale_date":"2026-06-27"'))).toBe(true);
+    expect(postedBodies.some((body) => body.includes("2026-06-28"))).toBe(true);
+    const salesRequest = mocks.anikaRequest.mock.calls.find(([path, options]) => path === "/sales" && options?.method === "POST");
+    expect(JSON.parse(String(salesRequest?.[1]?.body))).toMatchObject({ order_date: "2026-06-28", delivery_date: "2026-06-29" });
   });
 
   it("creates or resolves manual products in ERP before saving a non-AJ sale locally", async () => {

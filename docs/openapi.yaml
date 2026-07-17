@@ -68,6 +68,19 @@ components:
         saleDate:
           type: string
           format: date
+        transactionAt:
+          type: string
+          format: date-time
+          description: Waktu transaksi. Nilai tanpa offset ditafsirkan sebagai Asia/Jakarta.
+        deliveryAt:
+          type: string
+          format: date-time
+          description: Waktu kirim opsional. Tidak boleh sebelum transactionAt dan nilai tanpa offset ditafsirkan sebagai Asia/Jakarta.
+        deliveryDate:
+          type: string
+          format: date
+          deprecated: true
+          description: Kompatibilitas integrasi lama; gunakan deliveryAt untuk transaksi baru.
         tipeId:
           type: string
         customerName:

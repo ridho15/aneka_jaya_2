@@ -24,8 +24,8 @@ export type SalesItem = {
   discount?: number;
 };
 export type Sale = {
-  id: string; saleDate: string; tipeId?: string; tipeCodeSnapshot?: string; tipeNameSnapshot?: string; rekeningId?: string; rekeningNameSnapshot?: string; customerName: string; customerLocation?: string;
-  deliveryDate?: string; shippingMethod?: string; notes?: string; items: SalesItem[]; total: number;
+  id: string; saleDate: string; transactionNumber?: string; transactionAt?: string; transactionSequence?: number; transactionDateKey?: string; tipeId?: string; tipeCodeSnapshot?: string; tipeNameSnapshot?: string; rekeningId?: string; rekeningNameSnapshot?: string; customerName: string; customerLocation?: string;
+  deliveryAt?: string; deliveryDate?: string; shippingMethod?: string; notes?: string; items: SalesItem[]; total: number;
   paymentMethod: "Cash" | "TF" | "Tempo" | "Other";
   dueDate?: string;
   transferAccount?: string;

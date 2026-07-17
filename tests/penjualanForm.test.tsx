@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { PenjualanForm } from "@/components/forms/PenjualanForm";
+import { initialSaleDateTimes, PenjualanForm, synchronizedDeliveryAt } from "@/components/forms/PenjualanForm";
 import type { BookkeepingType, RekeningAccount } from "@/lib/business/masterData";
 import type { Sale } from "@/lib/types/sales";
 
@@ -39,6 +39,29 @@ const sale: Sale = {
 };
 
 describe("PenjualanForm Cash rekening defaults", () => {
+  it("renders transaction and delivery inputs with the same Jakarta default for a new sale", () => {
+    const html = renderToStaticMarkup(<PenjualanForm tipes={tipes} rekenings={rekenings} />);
+    const defaults = initialSaleDateTimes(undefined, "2026-07-17T17:05:00.000Z");
+
+    expect(html).toContain("Tanggal &amp; jam kirim");
+    expect(html).toMatch(/type="datetime-local" name="transactionAt"/);
+    expect(html).toMatch(/type="datetime-local" name="deliveryAt"/);
+    expect(defaults).toEqual({ transactionAt: "2026-07-18T00:05", deliveryAt: "2026-07-18T00:05" });
+  });
+
+  it("does not invent a delivery time when editing a legacy sale", () => {
+    const html = renderToStaticMarkup(<PenjualanForm tipes={tipes} rekenings={rekenings} sale={sale} />);
+    expect(html).toMatch(/type="datetime-local" name="deliveryAt"/);
+    expect(html).not.toMatch(/name="deliveryAt"[^>]*value=/);
+    expect(initialSaleDateTimes(sale, "2026-07-17T17:05:00.000Z").deliveryAt).toBeUndefined();
+  });
+
+  it("follows transaction time only until delivery time is touched", () => {
+    expect(synchronizedDeliveryAt("2026-07-18T10:30", "2026-07-18T10:00", false)).toBe("2026-07-18T10:30");
+    expect(synchronizedDeliveryAt("2026-07-18T10:30", "2026-07-18T11:00", true)).toBe("2026-07-18T11:00");
+    expect(synchronizedDeliveryAt("2026-07-18T10:30", "", true)).toBe("");
+  });
+
   it("renders Kas Walk In as the Cash rekening option for new sales", () => {
     const html = renderToStaticMarkup(<PenjualanForm tipes={tipes} rekenings={rekenings} />);
 

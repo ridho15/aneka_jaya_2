@@ -1,5 +1,94 @@
 [
   {
+    "id": "SAL-1784321442999",
+    "productId": "10",
+    "productCodeSnapshot": "FG-SEED-001",
+    "productNameSnapshot": "Panel Kontrol Industri",
+    "currentStock": 0,
+    "minimumStock": 8,
+    "warehouseSnapshot": "Gudang Utama",
+    "rackSnapshot": "Rak A1",
+    "status": "failed",
+    "createdAt": "2026-07-17T20:50:42.999Z"
+  },
+  {
+    "id": "SAL-1784320845952",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "failed",
+    "createdAt": "2026-07-17T20:40:45.952Z"
+  },
+  {
+    "id": "SAL-1784320675251",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-17T20:37:55.251Z",
+    "resolvedAt": "2026-07-17T20:51:15.294Z"
+  },
+  {
+    "id": "SAL-1784320425939",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-17T20:33:45.939Z",
+    "resolvedAt": "2026-07-17T20:37:35.325Z"
+  },
+  {
+    "id": "SAL-1784320401560",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-07-17T20:33:21.560Z",
+    "resolvedAt": "2026-07-17T20:33:40.734Z"
+  },
+  {
+    "id": "SAL-1784320077241",
+    "productId": "10",
+    "productCodeSnapshot": "FG-SEED-001",
+    "productNameSnapshot": "Panel Kontrol Industri",
+    "currentStock": 0,
+    "minimumStock": 8,
+    "warehouseSnapshot": "Gudang Utama",
+    "rackSnapshot": "Rak A1",
+    "status": "resolved",
+    "createdAt": "2026-07-17T20:27:57.241Z",
+    "resolvedAt": "2026-07-17T20:40:46.009Z"
+  },
+  {
+    "id": "SAL-1784320034362",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "resolved",
+    "createdAt": "2026-07-17T20:27:14.362Z",
+    "resolvedAt": "2026-07-17T20:40:13.265Z"
+  },
+  {
     "id": "SAL-1784218011358",
     "productId": "15",
     "productCodeSnapshot": "SKU-026",
@@ -8,8 +97,9 @@
     "minimumStock": 18,
     "warehouseSnapshot": "Gudang eum",
     "rackSnapshot": "delectus suscipit",
-    "status": "failed",
-    "createdAt": "2026-07-16T16:06:51.358Z"
+    "status": "resolved",
+    "createdAt": "2026-07-16T16:06:51.358Z",
+    "resolvedAt": "2026-07-17T20:33:21.496Z"
   },
   {
     "id": "SAL-1784217916740",
@@ -46,8 +136,9 @@
     "minimumStock": 19,
     "warehouseSnapshot": "Gudang non",
     "rackSnapshot": "aut dolores",
-    "status": "failed",
-    "createdAt": "2026-07-14T17:39:33.473Z"
+    "status": "resolved",
+    "createdAt": "2026-07-14T17:39:33.473Z",
+    "resolvedAt": "2026-07-17T20:27:14.310Z"
   },
   {
     "id": "SAL-1784050714370",
@@ -149,8 +240,9 @@
     "minimumStock": 8,
     "warehouseSnapshot": "Gudang Utama",
     "rackSnapshot": "Rak A1",
-    "status": "failed",
-    "createdAt": "2026-07-14T07:11:31.314Z"
+    "status": "resolved",
+    "createdAt": "2026-07-14T07:11:31.314Z",
+    "resolvedAt": "2026-07-17T20:27:57.162Z"
   },
   {
     "id": "SAL-1784004733270",

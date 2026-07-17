@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toast } from "@/components/ui/Toast";
 import type { RekeningAccount } from "@/lib/business/masterData";
+import { jakartaDateKey } from "@/lib/date/jakarta";
 
 type Props = { tempoId: string; remainingAmount: number; tipeId?: string; rekenings: RekeningAccount[] };
 
@@ -36,7 +37,7 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
       <h3 className="text-lg font-bold">Pembayaran Tempo</h3>
       <label className="block text-sm font-medium text-slate-700">
         <span className="mb-1 block">Tanggal dibayar</span>
-        <Input name="paymentDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
+        <Input name="paymentDate" type="date" defaultValue={jakartaDateKey()} required />
       </label>
       <label className="block text-sm font-medium text-slate-700">
         <span className="mb-1 block">Nominal dibayar</span>

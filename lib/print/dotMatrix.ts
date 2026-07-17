@@ -1,6 +1,7 @@
 import type { Sale } from "@/lib/types/sales";
 import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
+import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
 
 export const DOT_MATRIX_WIDTH = 44;
 const LEFT_HEADER_WIDTH = 21;
@@ -124,14 +125,15 @@ function headerForTipe(tipeCode?: string) {
 
 export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber?: boolean } = {}) {
   const brand = headerForTipe(sale.tipeCodeSnapshot);
-  const transactionNumber = options.showTransactionNumber === false ? "-" : sale.id;
+  const transactionNumber = options.showTransactionNumber === false ? "-" : sale.transactionNumber || sale.id;
   const rows: string[] = [
-    ...infoHeader(brand, "INVOICE PENJUALAN", `Tgl ${sale.saleDate}`, `No ${transactionNumber}`, [
+    ...infoHeader(brand, "INVOICE PENJUALAN", `Tgl ${sale.transactionAt ? formatJakartaDateTimeCompact(sale.transactionAt) : sale.saleDate}`, `No ${transactionNumber}`, [
       sale.customerName,
       sale.customerLocation || "-",
       `Bayar ${sale.paymentMethod}`,
       sale.paymentMethod === "Tempo" ? `Tempo ${sale.dueDate || "-"}` : `Kirim ${sale.shippingMethod || "-"}`
     ]),
+    pair("Waktu Kirim", sale.deliveryAt ? `${formatJakartaDateTimeCompact(sale.deliveryAt)} WIB` : undefined),
     line("="),
     `${column("NO", 3)}${column("KODE", 8)}${column("NAMA PRODUK", 15)}${column("QTY", 6, "right")}`,
     `${column("", 3)}${column("", 8)}${column("", 5)}${column("HARGA", 10, "right")}${column("TOTAL", 18, "right")}`,

@@ -6,6 +6,7 @@ import type { Expense } from "@/lib/types/expenses";
 import type { PengeluaranInput } from "@/lib/validation/pengeluaranSchema";
 import { recordAudit } from "@/lib/audit/store";
 import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
+import { jakartaDateKey } from "@/lib/date/jakarta";
 
 type ExpenseRecordRow = Prisma.ExpenseRecordGetPayload<object>;
 export type ExpenseRecordFilters = {
@@ -71,7 +72,7 @@ function buildExpenseWhere(filters: ExpenseRecordFilters): Prisma.ExpenseRecordW
 export function toExpense(row: ExpenseRecordRow): Expense {
   return {
     id: row.id,
-    expenseDate: row.expenseDate.toISOString().slice(0, 10),
+    expenseDate: jakartaDateKey(row.expenseDate),
     tipeId: row.tipeId,
     tipeCodeSnapshot: row.tipeCodeSnapshot,
     tipeNameSnapshot: row.tipeNameSnapshot,

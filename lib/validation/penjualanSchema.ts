@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { jakartaTimestampFromLocal } from "@/lib/date/jakarta";
 
 const date = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Tanggal tidak valid");
 const manualProductSchema = z.object({
@@ -13,6 +14,8 @@ const manualProductSchema = z.object({
 });
 export const penjualanSchema = z.object({
   saleDate: date,
+  transactionAt: z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Tanggal dan jam transaksi tidak valid").optional(),
+  deliveryAt: z.string().optional(),
   tipeId: z.string().trim().min(1, "Tipe wajib dipilih").default("W"),
   tipeCodeSnapshot: z.string().trim().default("W"),
   tipeNameSnapshot: z.string().trim().default("W"),
@@ -45,6 +48,15 @@ export const penjualanSchema = z.object({
 }).superRefine((data, ctx) => {
   if (data.deliveryDate && Number.isNaN(Date.parse(data.deliveryDate))) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal kirim tidak valid", path: ["deliveryDate"] });
+  }
+  if (data.deliveryAt) {
+    try {
+      const transactionAt = jakartaTimestampFromLocal(data.transactionAt || `${data.saleDate}T00:00`);
+      const deliveryAt = jakartaTimestampFromLocal(data.deliveryAt);
+      if (deliveryAt < transactionAt) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal dan jam kirim tidak boleh sebelum waktu transaksi", path: ["deliveryAt"] });
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal dan jam kirim tidak valid", path: ["deliveryAt"] });
+    }
   }
   if (data.paymentMethod === "TF" && !data.rekeningId && !data.transferAccount) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih rekening penerima untuk TF", path: ["rekeningId"] });

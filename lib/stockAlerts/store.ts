@@ -56,7 +56,7 @@ export async function checkStockMinimumAlert(input: Product | StockItem) {
     createdAt: new Date().toISOString()
   };
   const message = [
-    `Laporan Stock Akan Habis - ${new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date())}`,
+    `Laporan Stock Akan Habis - ${new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).format(new Date())}`,
     "",
     `1. ${alert.productCodeSnapshot} - ${alert.productNameSnapshot}`,
     `Stock sekarang: ${alert.currentStock}`,

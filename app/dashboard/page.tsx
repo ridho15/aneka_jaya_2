@@ -7,7 +7,7 @@ import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
-import { PaymentBreakdownChart } from "@/components/dashboard/PaymentBreakdownChart";
+import { PaymentBreakdownChart, type PaymentPeriod } from "@/components/dashboard/PaymentBreakdownChart";
 import { listProducts } from "@/lib/api/products";
 import { getOpenCloudStatus } from "@/lib/opencloud/auth";
 import { can } from "@/lib/auth/roles";
@@ -40,6 +40,40 @@ function dashboardFilters(params: SearchParams): DashboardSalesFilters {
     paymentMethod: valueOf(params, "paymentMethod") || undefined,
     rekening: valueOf(params, "rekening") || undefined
   };
+}
+
+const dayPattern = /^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/;
+function validDayKey(value?: string) {
+  if (!value || !dayPattern.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+function monthEnd(month: string) {
+  const [year, value] = month.split("-").map(Number);
+  return `${year}-${String(value).padStart(2, "0")}-${new Date(Date.UTC(year, value, 0)).getUTCDate().toString().padStart(2, "0")}`;
+}
+function paymentPeriodFromParams(params: SearchParams, currentMonth: string): PaymentPeriod {
+  const requestedMode = valueOf(params, "paymentPeriod");
+  const mode: PaymentPeriod["mode"] = requestedMode === "day" ? "day" : "day-range";
+  const defaultFrom = `${currentMonth}-01`;
+  const defaultTo = monthEnd(currentMonth);
+  const day = validDayKey(valueOf(params, "paymentDate")) ? valueOf(params, "paymentDate") as string : defaultFrom;
+  const dayFrom = validDayKey(valueOf(params, "paymentFrom")) ? valueOf(params, "paymentFrom") as string : defaultFrom;
+  const dayTo = validDayKey(valueOf(params, "paymentTo")) ? valueOf(params, "paymentTo") as string : defaultTo;
+  const from = mode === "day" ? day : dayFrom;
+  const to = mode === "day" ? day : dayTo;
+  const error = from > to ? "Periode awal tidak boleh melewati periode akhir." : undefined;
+  const label = error ? "Periode tidak valid" : mode === "day" ? `Tanggal ${day}` : `${from} sampai ${to}`;
+  return { mode, day, from, to, label, transactionCount: 0, error };
+}
+
+function preservedDashboardParams(params: SearchParams) {
+  const paymentKeys = new Set(["paymentPeriod", "paymentDate", "paymentFrom", "paymentTo"]);
+  return Object.fromEntries(Object.entries(params).flatMap(([key, raw]) => {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return !value || paymentKeys.has(key) ? [] : [[key, value]];
+  }));
 }
 
 function rekeningLabel(rekening: Pick<RekeningAccount, "bank" | "name">) {
@@ -84,6 +118,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
 
   const todayStr = jakartaDateKey();
   const monthStr = jakartaMonthKey();
+  const paymentPeriod = paymentPeriodFromParams(params, monthStr);
   const allSales = await listSalesRecords();
   const [allExpenses, allRekenings] = await Promise.all([
     listExpenseRecords(),
@@ -101,7 +136,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     ? buildOperationalProfitSummary(allSales, allExpenses, todayStr, monthStr, (await getOperationalProfitSetting()).grossProfitPercent)
     : null;
   const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), { from: filters.from, to: filters.to });
-  const paymentBreakdown = buildPaymentBreakdown(filteredSales, rekeningLabels);
+  const paymentSales = paymentPeriod.error ? [] : filterDashboardSales(allSales, { from: paymentPeriod.from, to: paymentPeriod.to });
+  const paymentBreakdown = buildPaymentBreakdown(paymentSales, rekeningLabels);
+  paymentPeriod.transactionCount = paymentSales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF")).length;
   const rekenings = rekeningOptions(allSales, allRekenings);
   const whatsappStatus = getWhatsappProviderStatus();
   const dataSourceNotice = dashboardDataSourceNotice();
@@ -153,7 +190,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,.9fr)]">
         <PerformanceChart data={performance} />
-        <PaymentBreakdownChart data={paymentBreakdown} filters={{ from: filters.from, to: filters.to }} />
+        <PaymentBreakdownChart key={`${paymentPeriod.mode}:${paymentPeriod.from}:${paymentPeriod.to}`} data={paymentBreakdown} filters={{ from: paymentPeriod.from, to: paymentPeriod.to }} period={paymentPeriod} preservedParams={preservedDashboardParams(params)} />
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.85fr)]">
         <section className="aj-surface overflow-hidden">
@@ -166,7 +203,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
               <div key={activity.id} className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
                 <div className="flex items-center gap-3">
                   <span className={`grid h-9 w-9 place-items-center rounded-xl text-sm ${activity.entityType === "sales" ? "bg-blue-100 text-blue-700" : activity.entityType === "expense" ? "bg-orange-100 text-orange-700" : "bg-violet-100 text-violet-700"}`}>{activity.entityType === "sales" ? "↗" : activity.entityType === "expense" ? "−" : "◇"}</span>
-                  <div><p className="font-semibold text-slate-800">{activityText(activity)}</p><time className="text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.createdAt))}</time></div>
+                  <div><p className="font-semibold text-slate-800">{activityText(activity)}</p><time className="text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(activity.createdAt))}</time></div>
                 </div>
                 <span className="text-xs font-semibold text-emerald-600">{activityStatusText(activity)}</span>
               </div>

@@ -8,7 +8,7 @@ import { recordAudit } from "@/lib/audit/store";
 import { createTempoReceivable } from "@/lib/tempo/store";
 import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
-import { saveSalesRecord } from "@/lib/sales/store";
+import { allocateTransactionIdentity, saveSalesRecord } from "@/lib/sales/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { erpSalesTypeCodes as configuredErpSalesTypeCodes, salesTargetForTypeCode } from "@/lib/api/transactionRouting";
@@ -18,6 +18,7 @@ import { listErpPaginated } from "@/lib/api/pagination";
 import type { ManualSalesProduct } from "@/lib/types/sales";
 import { releaseSaleStock, stockReleaseErrorFrom } from "@/lib/api/stockReleases";
 import { syncErpSalesPayment } from "@/lib/api/salesPayments";
+import { jakartaTimestampFromLocal, transactionDateKey } from "@/lib/date/jakarta";
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
@@ -91,11 +92,17 @@ type ErpSaleSyncInput = {
   customerLocation?: string;
   paymentMethod: PenjualanInput["paymentMethod"];
   dueDate?: string;
+  deliveryAt?: string;
   deliveryDate?: string;
   shippingMethod?: string;
   notes?: string;
   items: ErpSaleSyncItem[];
 };
+
+function erpDeliveryDate(input: Pick<ErpSaleSyncInput, "saleDate" | "deliveryAt" | "deliveryDate">) {
+  if (input.deliveryAt) return transactionDateKey(jakartaTimestampFromLocal(input.deliveryAt));
+  return input.deliveryDate || input.saleDate;
+}
 
 type ErpSalesPayload = {
   erp_reference: string;
@@ -462,7 +469,7 @@ async function buildOfficialSalesPayload(input: ErpSaleSyncInput, erpReference =
     customer_id: customer.data,
     so_number: generatedErpDocumentNumber("SO"),
     order_date: saleDate,
-    delivery_date: input.deliveryDate || saleDate,
+    delivery_date: erpDeliveryDate(input),
     status: "confirmed",
     shipped_to: shippedTo,
     tipe_pengiriman: erpShippingType(input.shippingMethod),
@@ -535,6 +542,7 @@ export function buildSalesNeoCommand(input: {
   paymentMethod: string;
   dueDate?: string;
   rekeningId?: string;
+  deliveryAt?: string;
   deliveryDate?: string;
   shippingMethod?: string;
   transferAccount?: string;
@@ -556,7 +564,7 @@ export function buildSalesNeoCommand(input: {
       payment_status: input.paymentMethod,
       due_date: input.dueDate || undefined,
       rekening_id: input.rekeningId || undefined,
-      delivery_date: input.deliveryDate || undefined,
+      delivery_date: erpDeliveryDate(input),
       delivery_method: input.shippingMethod || undefined,
       auto_create_invoice: true,
       items: input.items.map((item) => ({ product_id: numberId(item.productId), product_ref: item.productRef, quantity: item.quantity, unit_price: item.unitPrice, discount: item.discount || 0 })),
@@ -579,10 +587,17 @@ async function persistErpSale(input: {
 }) {
   const { sale, total, approvalStatus, paymentMethod, dueDate, tipe, user, auditReason } = input;
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const identity = sale.transactionNumber || !sale.transactionAt ? {} : await allocateTransactionIdentity(tx, sale.transactionAt);
+    Object.assign(sale, identity);
     await tx.salesRecord.create({
       data: {
         id: sale.id,
         saleDate: new Date(sale.saleDate),
+        transactionNumber: sale.transactionNumber,
+        transactionAt: sale.transactionAt ? new Date(sale.transactionAt) : undefined,
+        transactionSequence: sale.transactionSequence,
+        transactionDateKey: sale.transactionDateKey,
+        deliveryAt: sale.deliveryAt ? new Date(sale.deliveryAt) : undefined,
         tipeId: tipe.id,
         tipeCodeSnapshot: tipe.code,
         tipeNameSnapshot: tipe.name,
@@ -723,7 +738,11 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const normalizedItems = normalizeManualSaleItems(input.items);
   const preparedManualItems = await resolveManualProductsForSaleItems(normalizedItems);
   const effectiveItems = preparedManualItems.success ? preparedManualItems.data : normalizedItems;
-  const effectiveInput = { ...input, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name };
+  const transactionAt = jakartaTimestampFromLocal(input.transactionAt || `${input.saleDate}T00:00`);
+  const saleDate = transactionDateKey(transactionAt);
+  const deliveryAt = input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
+  if (deliveryAt && deliveryAt < transactionAt) return failure("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi", "VALIDATION_ERROR");
+  const effectiveInput = { ...input, saleDate, transactionAt, deliveryAt, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name };
 
   if (!preparedManualItems.success) {
     if (target === "local") return preparedManualItems;
@@ -737,7 +756,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   if (target === "local") {
     const sale: Sale = { id: `S-${Date.now()}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "local", syncStatus: "local", stockReleaseStatus: "not_required", erpPaymentStatus: "not_required", createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await saveSalesRecord(sale);
-    if (approvalStatus === "approved" && input.paymentMethod === "Tempo") await createTempoReceivable({ salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, customerName: input.customerName, originalAmount: total, transactionDate: input.saleDate, dueDate: input.dueDate || input.saleDate });
+    if (approvalStatus === "approved" && input.paymentMethod === "Tempo") await createTempoReceivable({ salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, customerName: input.customerName, originalAmount: total, transactionDate: saleDate, dueDate: input.dueDate || saleDate });
     await recordAudit({ entityType: "sales", entityId: sale.id, action: "create", afterValue: sale, reason: `Invoice Penjualan lokal • ${approvalStatus} • ${input.paymentMethod}` });
     return { success: true, data: { ...sale, target: "local" } };
   }
@@ -746,7 +765,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   if (response.success) {
     const erpReference = erpReferenceFrom(response.data);
     const saleId = `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-    const stockResponse = await releaseSaleStock({ saleId, saleDate: input.saleDate, erpReference, sourceNumber: erpReference, items: effectiveInput.items });
+    const stockResponse = await releaseSaleStock({ saleId, saleDate, erpReference, sourceNumber: erpReference, items: effectiveInput.items });
     const stockReleasedAt = new Date().toISOString();
     const stockReleaseStatus: Sale["stockReleaseStatus"] = stockResponse.success ? "released" : "failed";
     const stockReleaseReference = stockResponse.success ? stockResponse.data.releaseReference : `SLM-STOCK-${erpReference || saleId}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
@@ -764,7 +783,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
         invoiceNumber: erpReference,
         invoiceId: 0,
         customerId: 0,
-        paymentDate: input.saleDate,
+        paymentDate: saleDate,
         coaCode: rekening?.erpCoaId || "",
         paymentMethod: input.paymentMethod,
         amount: total,

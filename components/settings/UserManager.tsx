@@ -30,7 +30,7 @@ export function UserManager({ users: initial }: { users: UserRow[] }) {
   const [resetPasswords, setResetPasswords] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const formatLastLogin = (value?: string | null) => value ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "-";
+  const formatLastLogin = (value?: string | null) => value ? new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(value)) : "-";
 
   const addUser = async () => {
     if (!externalId.trim() || !name.trim() || !password.trim()) { setNotice({ type: "error", message: "External ID, nama, dan password awal wajib diisi." }); return; }

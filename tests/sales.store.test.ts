@@ -186,6 +186,53 @@ describe("sales store normalized persistence", () => {
     }));
   });
 
+  it("updates the Jakarta transaction date without changing its issued transaction number", async () => {
+    const numberedSale = {
+      ...dbSale,
+      transactionNumber: "270626-01",
+      transactionAt: new Date("2026-06-26T17:05:00.000Z"),
+      transactionSequence: 1,
+      transactionDateKey: "2026-06-27",
+      syncTarget: "local",
+      syncStatus: "local",
+      stockReleaseStatus: "not_required",
+      erpPaymentStatus: "not_required"
+    };
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(numberedSale);
+    mocks.prisma.salesRecord.update.mockResolvedValue({
+      ...numberedSale,
+      saleDate: new Date("2026-06-28"),
+      transactionAt: new Date("2026-06-27T17:10:00.000Z")
+    });
+
+    await expect(updateSalesRecord("S-1", {
+      saleDate: "2026-06-27",
+      transactionAt: "2026-06-28T00:10",
+      deliveryAt: "2026-06-28T01:00",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Cash",
+      rekeningId: "cash-w",
+      items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }]
+    })).resolves.toMatchObject({
+      saleDate: "2026-06-28",
+      transactionNumber: "270626-01",
+      transactionDateKey: "2026-06-27"
+    });
+
+    const updateData = mocks.prisma.salesRecord.update.mock.calls[0][0].data;
+    expect(updateData.saleDate).toEqual(new Date("2026-06-28"));
+    expect(updateData.transactionAt).toEqual(new Date("2026-06-27T17:10:00.000Z"));
+    expect(updateData.deliveryAt).toEqual(new Date("2026-06-27T18:00:00.000Z"));
+    expect(updateData).not.toHaveProperty("transactionNumber");
+    expect(updateData).not.toHaveProperty("transactionSequence");
+    expect(updateData).not.toHaveProperty("transactionDateKey");
+  });
+
   it("blocks editing synced ERP sales after stock release or payment settlement", async () => {
     mocks.prisma.salesRecord.findUnique.mockResolvedValue({
       ...dbSale,
@@ -210,6 +257,30 @@ describe("sales store normalized persistence", () => {
     })).rejects.toThrow("ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru.");
 
     expect(mocks.prisma.salesRecord.update).not.toHaveBeenCalled();
+  });
+
+  it("does not translate a Prisma update failure into a missing transaction", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue({
+      ...dbSale,
+      syncTarget: "local",
+      syncStatus: "local",
+      stockReleaseStatus: "not_required",
+      erpPaymentStatus: "not_required"
+    });
+    mocks.prisma.salesRecord.update.mockRejectedValue(Object.assign(new Error("deliveryAt column missing"), { code: "P2022" }));
+
+    await expect(updateSalesRecord("S-1", {
+      saleDate: "2026-06-27",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Cash",
+      rekeningId: "cash-w",
+      items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }]
+    })).rejects.toMatchObject({ code: "P2022", message: "deliveryAt column missing" });
   });
 
   it("cancels synced ERP sales through Aneka Jaya before updating local status", async () => {

@@ -67,7 +67,7 @@ export default async function ApprovalPage({ searchParams }: { searchParams?: Pr
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold capitalize text-slate-900">{row.module}</p>
-                    <p className="mt-1 text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.createdAt))}</p>
+                    <p className="mt-1 text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(row.createdAt))}</p>
                   </div>
                   <p className="shrink-0 font-bold text-slate-900">{rupiah(row.amount)}</p>
                 </div>
@@ -88,7 +88,7 @@ export default async function ApprovalPage({ searchParams }: { searchParams?: Pr
             <tbody>
               {pending.map((row) => (
                 <tr key={row.id} className="border-b border-amber-50 bg-amber-50/40">
-                  <td className="px-5 py-4">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.createdAt))}</td>
+                  <td className="px-5 py-4">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(row.createdAt))}</td>
                   <td className="px-5 py-4 capitalize">{row.module}</td>
                   <td className="px-5 py-4">{row.tipeCodeSnapshot || "-"}</td>
                   <td className="px-5 py-4">{row.createdByNameSnapshot}<span className="ml-2 text-xs text-slate-500">{row.createdByRoleSnapshot}</span></td>
@@ -113,7 +113,7 @@ export default async function ApprovalPage({ searchParams }: { searchParams?: Pr
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold capitalize text-slate-900">{row.module}</p>
-                    <p className="mt-1 text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.createdAt))}</p>
+                    <p className="mt-1 text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(row.createdAt))}</p>
                   </div>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge(row.status)}`}>{row.status}</span>
                 </div>
@@ -134,7 +134,7 @@ export default async function ApprovalPage({ searchParams }: { searchParams?: Pr
             <tbody>
               {history.map((row) => (
                 <tr key={row.id} className="border-b border-slate-100">
-                  <td className="px-5 py-4">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.createdAt))}</td>
+                  <td className="px-5 py-4">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(row.createdAt))}</td>
                   <td className="px-5 py-4 capitalize">{row.module}</td>
                   <td className="px-5 py-4">{row.tipeCodeSnapshot || "-"}</td>
                   <td className="px-5 py-4">{row.createdByNameSnapshot}<span className="ml-2 text-xs text-slate-500">{row.createdByRoleSnapshot}</span></td>

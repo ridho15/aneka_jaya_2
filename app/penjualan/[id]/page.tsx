@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
+import { formatJakartaDateTime } from "@/lib/date/jakarta";
 import { getSalesRecord } from "@/lib/sales/store";
 
 function rupiah(value: number) {
@@ -46,7 +47,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         <div>
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Detail Penjualan</p>
           <h2 className="aj-page-title text-3xl font-bold">{sale.customerName}</h2>
-          {canViewTransactionNumber && <p className="mt-2 font-mono text-sm text-slate-500">{sale.id}</p>}
+          {canViewTransactionNumber && <p className="mt-2 font-mono text-sm text-slate-500">{sale.transactionNumber || sale.id}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
@@ -57,7 +58,9 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
 
       <section className="aj-surface mb-5 p-5">
         <div className="grid gap-4 md:grid-cols-3">
-          <Info label="Tanggal" value={sale.saleDate} />
+          <Info label="Tanggal Transaksi" value={sale.transactionAt ? formatJakartaDateTime(sale.transactionAt) : sale.saleDate} />
+          <Info label="Tanggal & Jam Kirim" value={sale.deliveryAt ? formatJakartaDateTime(sale.deliveryAt) : "—"} />
+          <Info label="Dibuat Pada" value={sale.createdAt ? formatJakartaDateTime(sale.createdAt) : "—"} />
           <Info label="Tipe" value={sale.tipeCodeSnapshot || sale.tipeId || "—"} />
           <Info label="Pembayaran" value={sale.paymentMethod} />
           <Info label="Customer" value={sale.customerName} />

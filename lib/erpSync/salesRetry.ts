@@ -21,6 +21,7 @@ import {
   listRekeningAccounts,
   rekeningForTipe,
 } from "@/lib/business/masterData";
+import { jakartaDateKey } from "@/lib/date/jakarta";
 
 const salesInclude = { items: { orderBy: { sortOrder: "asc" as const } } };
 
@@ -103,7 +104,7 @@ function salesDelegate() {
 function toSyncItem(row: SalesRow): ErpSyncSaleItem {
   return {
     id: row.id,
-    saleDate: row.saleDate.toISOString().slice(0, 10),
+    saleDate: jakartaDateKey(row.saleDate),
     tipeCode: row.tipeCodeSnapshot,
     customerName: row.customerName,
     paymentMethod: row.paymentMethod as PenjualanInput["paymentMethod"],
@@ -131,11 +132,12 @@ function toSyncItem(row: SalesRow): ErpSyncSaleItem {
 
 function buildRetryInput(row: SalesRow) {
   return {
-    saleDate: row.saleDate.toISOString().slice(0, 10),
+    saleDate: jakartaDateKey(row.saleDate),
     customerName: row.customerName,
     customerLocation: row.customerLocation || undefined,
     paymentMethod: row.paymentMethod as PenjualanInput["paymentMethod"],
-    dueDate: row.dueDate?.toISOString().slice(0, 10),
+    dueDate: row.dueDate ? jakartaDateKey(row.dueDate) : undefined,
+    deliveryAt: row.deliveryAt?.toISOString(),
     deliveryDate: undefined,
     shippingMethod: row.shippingMethod || undefined,
     notes: row.notes || undefined,
@@ -208,7 +210,7 @@ async function retryImmediateSalesPayment(
     if (customer.success) {
       const invoice = await findErpInvoiceForCustomerPayment({
         customerId: customer.data,
-        paymentDate: row.saleDate.toISOString().slice(0, 10),
+        paymentDate: jakartaDateKey(row.saleDate),
         amount: Number(row.total),
       });
       if (invoice.success) {
@@ -223,7 +225,7 @@ async function retryImmediateSalesPayment(
     invoiceNumber,
     invoiceId,
     customerId,
-    paymentDate: row.saleDate.toISOString().slice(0, 10),
+    paymentDate: jakartaDateKey(row.saleDate),
     coaCode: rekening?.erpCoaId || "",
     paymentMethod: row.paymentMethod,
     amount: Number(row.total),
@@ -333,7 +335,7 @@ async function retryTempoSalesPayment(
     invoiceNumber: row.erpReference || undefined,
     invoiceId: 0,
     customerId: 0,
-    paymentDate: payment.paymentDate.toISOString().slice(0, 10),
+    paymentDate: jakartaDateKey(payment.paymentDate),
     coaCode: rekening?.erpCoaId || "",
     paymentMethod: payment.paymentMethod,
     amount: Number(payment.amountPaid),
@@ -509,7 +511,7 @@ export async function retrySalesErpSync(
     });
     const response = await releaseSaleStock({
       saleId: row.id,
-      saleDate: row.saleDate.toISOString().slice(0, 10),
+      saleDate: jakartaDateKey(row.saleDate),
       erpReference: row.erpReference || undefined,
       sourceNumber: row.erpReference || row.id,
       items: buildRetryInput(row).items,
@@ -592,7 +594,7 @@ export async function retrySalesErpSync(
     const erpReference = row.erpReference || erpReferenceFrom(response.data);
     const stockResponse = await releaseSaleStock({
       saleId: row.id,
-      saleDate: row.saleDate.toISOString().slice(0, 10),
+      saleDate: jakartaDateKey(row.saleDate),
       erpReference,
       sourceNumber: erpReference || row.id,
       items: buildRetryInput(row).items,
@@ -625,7 +627,7 @@ export async function retrySalesErpSync(
         invoiceNumber: erpReference,
         invoiceId: 0,
         customerId: 0,
-        paymentDate: row.saleDate.toISOString().slice(0, 10),
+        paymentDate: jakartaDateKey(row.saleDate),
         coaCode: rekening?.erpCoaId || "",
         paymentMethod: row.paymentMethod,
         amount: Number(row.total),

@@ -78,6 +78,24 @@ describe("dot matrix print formatter", () => {
     expect(text).toContain("Rp 63.270 jt");
   });
 
+  it("prints the Jakarta delivery date and time when available", () => {
+    const text = formatSaleDotMatrix({
+      id: "S-DELIVERY",
+      saleDate: "2026-07-18",
+      transactionAt: "2026-07-18T03:00:00.000Z",
+      deliveryAt: "2026-07-18T06:30:00.000Z",
+      customerName: "Toko Kirim",
+      shippingMethod: "Kurir",
+      paymentMethod: "Cash",
+      total: 10000,
+      items: []
+    });
+
+    expectFixedWidth(text);
+    expect(text).toContain("Waktu Kirim:");
+    expect(text).toContain("18/07/2026 13.30 WIB");
+  });
+
   it("uses Aneka Jaya header for AJ sales and SLM for non-AJ sales", () => {
     const aj = formatSaleDotMatrix({
       id: "S-AJ",

@@ -113,7 +113,7 @@ export default async function AuditTrailPage({ searchParams }: Props) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-slate-900">{entry.action}</p>
-                  <p className="mt-1 text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(entry.createdAt))}</p>
+                  <p className="mt-1 text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date(entry.createdAt))}</p>
                 </div>
                 <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{entry.userRoleSnapshot}</span>
               </div>
@@ -132,7 +132,7 @@ export default async function AuditTrailPage({ searchParams }: Props) {
               <tr><th className="px-5 py-3">Waktu</th><th className="px-5 py-3">User</th><th className="px-5 py-3">Entity</th><th className="px-5 py-3">Aksi</th><th className="px-5 py-3">Referensi</th><th className="px-5 py-3">Alasan / Tujuan</th><th className="px-5 py-3">Role</th></tr>
             </thead>
             <tbody>
-              {result.entries.map((entry) => <tr key={entry.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(entry.createdAt))}</td><td className="px-5 py-4"><b>{entry.userNameSnapshot}</b></td><td className="px-5 py-4">{entry.entityType}</td><td className="px-5 py-4">{entry.action}</td><td className="px-5 py-4">{entry.entityId}</td><td className="px-5 py-4">{entry.reason || "-"}</td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{entry.userRoleSnapshot}</span></td></tr>)}
+              {result.entries.map((entry) => <tr key={entry.id} className="border-b border-slate-100"><td className="px-5 py-4 text-slate-600">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date(entry.createdAt))}</td><td className="px-5 py-4"><b>{entry.userNameSnapshot}</b></td><td className="px-5 py-4">{entry.entityType}</td><td className="px-5 py-4">{entry.action}</td><td className="px-5 py-4">{entry.entityId}</td><td className="px-5 py-4">{entry.reason || "-"}</td><td className="px-5 py-4"><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{entry.userRoleSnapshot}</span></td></tr>)}
               {result.entries.length === 0 && <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-500">Belum ada aktivitas sesuai filter.</td></tr>}
             </tbody>
           </table>

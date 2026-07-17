@@ -146,6 +146,11 @@ model TempoPayment {
 model SalesRecord {
   id                    String    @id
   saleDate              DateTime
+  transactionNumber     String?
+  transactionAt         DateTime?
+  transactionSequence   Int?
+  transactionDateKey    String?
+  deliveryAt            DateTime?
   tipeId                String
   tipeCodeSnapshot      String
   tipeNameSnapshot      String
@@ -187,6 +192,8 @@ model SalesRecord {
   items                 SalesRecordItem[]
 
   @@index([saleDate])
+  @@index([transactionNumber])
+  @@unique([transactionDateKey, transactionSequence])
   @@index([approvalStatus])
   @@index([customerName])
   @@index([syncTarget, syncStatus])
@@ -195,6 +202,12 @@ model SalesRecord {
   @@index([erpPaymentStatus])
   @@index([syncAttemptedAt])
   @@index([testReference])
+}
+
+model DailyTransactionCounter {
+  dateKey     String   @id
+  lastValue   Int
+  updatedAt   DateTime @updatedAt
 }
 
 model BookkeepingType {

@@ -26,6 +26,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Transaksi penjualan gagal diperbarui." }, { status: 400 });
+    const code = error && typeof error === "object" && "code" in error ? String((error as { code?: unknown }).code || "") : "";
+    const name = error instanceof Error ? error.name : "";
+    if (code === "SALES_NOT_FOUND" || code === "P2025") {
+      return NextResponse.json({ success: false, code: "SALES_NOT_FOUND", message: "Transaksi penjualan tidak ditemukan." }, { status: 404 });
+    }
+    if (code === "P2022") {
+      return NextResponse.json({ success: false, code: "DATABASE_MIGRATION_REQUIRED", message: "Database belum memakai struktur penjualan terbaru. Jalankan migration lalu coba kembali." }, { status: 503 });
+    }
+    if (code.startsWith("P") || name.startsWith("Prisma")) {
+      return NextResponse.json({ success: false, code: "DATABASE_ERROR", message: "Database gagal memperbarui transaksi penjualan." }, { status: 500 });
+    }
+    return NextResponse.json({ success: false, code: "VALIDATION_ERROR", message: error instanceof Error ? error.message : "Transaksi penjualan gagal diperbarui." }, { status: 400 });
   }
 }

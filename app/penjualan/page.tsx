@@ -10,6 +10,11 @@ import { listSalesRecordsPage, type SalesRecordFilters } from "@/lib/sales/store
 import { listBookkeepingTypes, listRekeningAccounts, type RekeningAccount } from "@/lib/business/masterData";
 import type { Sale } from "@/lib/types/sales";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
+import { formatJakartaDateTime } from "@/lib/date/jakarta";
+
+function saleDateLabel(sale: Sale) {
+  return sale.transactionAt ? formatJakartaDateTime(sale.transactionAt) : sale.saleDate;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -150,7 +155,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-slate-900">{sale.customerName}</p>
-                  <p className="mt-1 text-xs text-slate-500">{sale.saleDate} • {sale.tipeCodeSnapshot || sale.tipeId || "W"} • {sale.paymentMethod}</p>
+                  <p className="mt-1 text-xs text-slate-500">{saleDateLabel(sale)} • {sale.tipeCodeSnapshot || sale.tipeId || "W"} • {sale.paymentMethod}</p>
                 </div>
                 <p className="shrink-0 text-right font-bold text-slate-900">{rupiah(sale.total)}</p>
               </div>
@@ -161,7 +166,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
                 {sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}
               </div>
               <dl className="mt-3 grid gap-2 text-sm text-slate-600">
-                {canViewTransactionNumber && <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">No Transaksi</dt><dd className="mt-0.5 font-mono text-xs">{sale.id}</dd></div>}
+                {canViewTransactionNumber && <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">No Transaksi</dt><dd className="mt-0.5 font-mono text-xs">{sale.transactionNumber || sale.id}</dd></div>}
                 <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Lokasi</dt><dd className="mt-0.5">{sale.customerLocation || "—"}</dd></div>
                 <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pembuat</dt><dd className="mt-0.5">{sale.createdByNameSnapshot || "—"}</dd></div>
               </dl>
@@ -184,8 +189,8 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
             <tbody>
               {paged.map((sale) => (
               <tr key={sale.id} className="border-b border-slate-100">
-                <td className="px-5 py-4 text-slate-600">{sale.saleDate}</td>
-                {canViewTransactionNumber && <td className="px-5 py-4 font-mono text-xs text-slate-700">{sale.id}</td>}
+                <td className="px-5 py-4 text-slate-600">{saleDateLabel(sale)}</td>
+                {canViewTransactionNumber && <td className="px-5 py-4 font-mono text-xs text-slate-700">{sale.transactionNumber || sale.id}</td>}
                 <td className="px-5 py-4"><b>{sale.customerName}</b><p className="mt-0.5 text-xs text-slate-500">{sale.customerLocation || "—"}</p></td>
                 <td className="px-5 py-4 font-semibold">{sale.tipeCodeSnapshot || sale.tipeId || "W"}</td>
                 <td className="px-5 py-4">{sale.paymentMethod}</td>

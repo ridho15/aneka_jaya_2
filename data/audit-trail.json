@@ -1,5 +1,286 @@
 [
   {
+    "id": "d1dae42c-3042-4dc8-a812-ff93583ec8cd",
+    "createdAt": "2026-07-17T20:51:19.214Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "erp_sync",
+    "entityId": "S-1784320404959-49817923",
+    "action": "retry_sync",
+    "afterValue": {
+      "syncStatus": "synced",
+      "erpReference": "SLM-SALE-MRPEARF5-5F6727",
+      "stockReleaseStatus": "failed",
+      "stockReleaseReference": "SLM-STOCK-SLM-SALE-MRPEARF5-5F6727",
+      "stockReleaseError": "Gudang release stok belum dipilih untuk SA-BROWSER-NULL-RAK.",
+      "erpPaymentStatus": "pending",
+      "erpPaymentReference": null,
+      "erpPaymentError": "Payment ERP menunggu release stok berhasil."
+    },
+    "reason": "Retry ERP sales berhasil • release stok gagal • Gudang release stok belum dipilih untuk SA-BROWSER-NULL-RAK."
+  },
+  {
+    "id": "2ce2cac5-1156-4960-a256-50730844d341",
+    "createdAt": "2026-07-17T20:51:18.766Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "sales",
+    "entityId": "S-1784320404959-49817923",
+    "action": "update",
+    "beforeValue": {
+      "id": "S-1784320404959-49817923",
+      "saleDate": "2026-07-18",
+      "transactionNumber": "18***-01",
+      "transactionAt": "2026-07-17T20:27:00.000Z",
+      "transactionSequence": 1,
+      "transactionDateKey": "2026-07-18",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "Walk In",
+      "customerName": "Walk In",
+      "customerLocation": "Toko",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "rekeningId": "cash-w",
+      "total": 60000,
+      "approvalStatus": "approved",
+      "syncTarget": "erp",
+      "syncStatus": "synced",
+      "syncError": "",
+      "syncAttemptedAt": "2026-07-17T20:33:24.959Z",
+      "syncedAt": "2026-07-17T20:33:24.959Z",
+      "erpReference": "SLM-SALE-MRPEARF5-5F6727",
+      "erpSyncHttpStatus": 201,
+      "erpSyncResponse": {
+        "sanitized": true,
+        "keys": [
+          "data",
+          "status",
+          "message"
+        ]
+      },
+      "stockReleaseStatus": "failed",
+      "stockReleaseError": "Gudang release stok belum dipilih untuk SA-BROWSER-NULL-RAK.",
+      "stockReleaseReference": "SLM-STOCK-SLM-SALE-MRPEARF5-5F6727",
+      "stockReleaseResponse": {
+        "sanitized": true,
+        "keys": [
+          "code"
+        ]
+      },
+      "erpPaymentStatus": "pending",
+      "erpPaymentError": "Payment ERP menunggu release stok berhasil.",
+      "isTestTransaction": false,
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-07-17T20:33:24.960Z",
+      "items": [
+        {
+          "productRef": "SA-BROWSER-NULL-RAK",
+          "productId": "62",
+          "productInputMode": "erp",
+          "unitSnapshot": "Piece",
+          "uomIdSnapshot": 1,
+          "quantity": 4,
+          "unitPrice": 15000,
+          "discount": 0
+        }
+      ]
+    },
+    "afterValue": {
+      "id": "S-1784320404959-49817923",
+      "saleDate": "2026-07-18",
+      "transactionNumber": "18***-01",
+      "transactionAt": "2026-07-17T20:27:00.000Z",
+      "transactionSequence": 1,
+      "transactionDateKey": "2026-07-18",
+      "deliveryAt": "2026-07-17T20:51:00.000Z",
+      "tipeId": "W",
+      "tipeCodeSnapshot": "W",
+      "tipeNameSnapshot": "Walk In",
+      "customerName": "Walk In",
+      "customerLocation": "Toko",
+      "shippingMethod": "di Tempat",
+      "paymentMethod": "Cash",
+      "rekeningId": "cash-w",
+      "total": 60000,
+      "approvalStatus": "approved",
+      "syncTarget": "erp",
+      "syncStatus": "pending",
+      "syncError": "Transaksi diubah dan menunggu sinkronisasi ulang.",
+      "syncAttemptedAt": "2026-07-17T20:33:24.959Z",
+      "erpReference": "SLM-SALE-MRPEARF5-5F6727",
+      "erpSyncResponse": {
+        "sanitized": true,
+        "keys": [
+          "data",
+          "status",
+          "message"
+        ]
+      },
+      "stockReleaseStatus": "pending",
+      "stockReleaseError": "Menunggu update invoice ERP berhasil sebelum release stok ulang.",
+      "stockReleaseResponse": {
+        "sanitized": true,
+        "keys": [
+          "code"
+        ]
+      },
+      "erpPaymentStatus": "pending",
+      "erpPaymentError": "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP.",
+      "isTestTransaction": false,
+      "createdByUserId": "anika:1",
+      "createdByNameSnapshot": "Ridho Al Amzah",
+      "createdByRoleSnapshot": "OWNER",
+      "createdAt": "2026-07-17T20:33:24.960Z",
+      "items": [
+        {
+          "productRef": "SA-BROWSER-NULL-RAK",
+          "productId": "62",
+          "productInputMode": "erp",
+          "unitSnapshot": "Piece",
+          "uomIdSnapshot": 1,
+          "quantity": 4,
+          "unitPrice": 15000,
+          "discount": 0
+        }
+      ]
+    },
+    "reason": "Edit transaksi ERP belum synced • masuk antrian sync ulang"
+  },
+  {
+    "id": "5c84d43f-2c9d-4e62-ac4a-14cf94f372fc",
+    "createdAt": "2026-07-17T20:50:43.004Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784321442999",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784321442999",
+      "productId": "10",
+      "productCodeSnapshot": "FG-SEED-001",
+      "productNameSnapshot": "Panel Kontrol Industri",
+      "currentStock": 0,
+      "minimumStock": 8,
+      "warehouseSnapshot": "Gudang Utama",
+      "rackSnapshot": "Rak A1",
+      "status": "failed",
+      "createdAt": "2026-07-17T20:50:42.999Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "ba617c52-e9fd-4e22-9ca6-efd74b0f3aff",
+    "createdAt": "2026-07-17T20:37:55.258Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784320675251",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784320675251",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-17T20:37:55.251Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "74e0a9b2-809c-4f75-bc96-d5603f4e195a",
+    "createdAt": "2026-07-17T20:33:45.948Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784320425939",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784320425939",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-17T20:33:45.939Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "a7947339-58d1-4a61-af99-d3227a603b3d",
+    "createdAt": "2026-07-17T20:33:21.565Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784320401560",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784320401560",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-07-17T20:33:21.560Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "db90b3e0-e653-470a-a02b-4532dcfb8f8d",
+    "createdAt": "2026-07-17T20:27:14.367Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1784320034362",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1784320034362",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
+      "status": "failed",
+      "createdAt": "2026-07-17T20:27:14.362Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
     "id": "a9cc2920-0f3b-4c16-a0c8-fac8158320bb",
     "createdAt": "2026-07-16T16:06:51.367Z",
     "userId": "anika:1",

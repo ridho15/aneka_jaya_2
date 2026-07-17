@@ -105,4 +105,33 @@ describe("DashboardPage data source notice", () => {
       ROLE_PERMISSIONS.ADMIN = ROLE_PERMISSIONS.ADMIN.filter((permission) => permission !== "dashboard.view");
     }
   });
+
+  it("filters Cash & transfer independently for one selected date", async () => {
+    mocks.listSalesRecords.mockResolvedValue([
+      { id: "CASH-18", saleDate: "2026-07-18", tipeId: "W", customerName: "A", paymentMethod: "Cash", total: 100_000, approvalStatus: "approved", items: [] },
+      { id: "TF-19", saleDate: "2026-07-19", tipeId: "W", customerName: "B", paymentMethod: "TF", total: 200_000, approvalStatus: "approved", items: [] },
+      { id: "TEMPO-18", saleDate: "2026-07-18", tipeId: "W", customerName: "C", paymentMethod: "Tempo", total: 300_000, approvalStatus: "approved", items: [] },
+      { id: "PENDING-18", saleDate: "2026-07-18", tipeId: "W", customerName: "D", paymentMethod: "Cash", total: 400_000, approvalStatus: "pending", items: [] }
+    ]);
+
+    const html = renderToStaticMarkup(await DashboardPage({ searchParams: Promise.resolve({ paymentPeriod: "day", paymentDate: "2026-07-18" }) }));
+
+    expect(html).toContain("Tanggal 2026-07-18 • 1 transaksi approved");
+    expect(html).toContain('name="paymentDate"');
+    expect(html).not.toContain('name="paymentFrom"');
+  });
+
+  it("uses an inclusive date range and rejects a reversed payment period", async () => {
+    mocks.listSalesRecords.mockResolvedValue([
+      { id: "CASH-18", saleDate: "2026-07-18", tipeId: "W", customerName: "A", paymentMethod: "Cash", total: 100_000, approvalStatus: "approved", items: [] },
+      { id: "TF-19", saleDate: "2026-07-19", tipeId: "W", customerName: "B", paymentMethod: "TF", total: 200_000, approvalStatus: "approved", items: [] }
+    ]);
+
+    const validHtml = renderToStaticMarkup(await DashboardPage({ searchParams: Promise.resolve({ paymentPeriod: "day-range", paymentFrom: "2026-07-18", paymentTo: "2026-07-19" }) }));
+    expect(validHtml).toContain("2026-07-18 sampai 2026-07-19 • 2 transaksi approved");
+
+    const invalidHtml = renderToStaticMarkup(await DashboardPage({ searchParams: Promise.resolve({ paymentPeriod: "day-range", paymentFrom: "2026-07-20", paymentTo: "2026-07-19" }) }));
+    expect(invalidHtml).toContain("Periode awal tidak boleh melewati periode akhir.");
+    expect(invalidHtml).toContain("Periode tidak valid • 0 transaksi approved");
+  });
 });

@@ -5,6 +5,7 @@ import { buildFinanceReportSummary, buildPaidSalesReport } from "@/lib/reports/s
 import type { Expense } from "@/lib/types/expenses";
 import type { Sale } from "@/lib/types/sales";
 import type { TempoPayment, TempoReceivable, TempoStatus } from "@/lib/tempo/store";
+import { jakartaDateKey } from "@/lib/date/jakarta";
 
 function dateStart(value: string) {
   return new Date(`${value}T00:00:00.000`);
@@ -26,7 +27,7 @@ function nextMonthStart(value: string) {
 }
 
 function dateKey(value: Date) {
-  return value.toISOString().slice(0, 10);
+  return jakartaDateKey(value);
 }
 
 function toReportSale(row: Awaited<ReturnType<typeof prisma.salesRecord.findMany>>[number]): Sale {

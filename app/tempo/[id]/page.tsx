@@ -43,7 +43,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
             <Info label="Sudah dibayar" value={rupiah(tempo.paidAmount)} />
             <Info label="Sisa tagihan" value={rupiah(tempo.remainingAmount)} />
             <Info label="Status" value={tempo.status} />
-            {tempo.dueDate && <Info label="Jatuh tempo" value={new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(tempo.dueDate))} />}
+            {tempo.dueDate && <Info label="Jatuh tempo" value={new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date(tempo.dueDate))} />}
           </dl>
           <h3 className="mt-8 font-bold">Riwayat Pembayaran</h3>
           <div className="mt-3 divide-y divide-slate-100">
@@ -51,7 +51,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
               <div key={payment.id} className="py-3 text-sm">
                 <div className="flex items-center justify-between">
                   <b>{rupiah(payment.amountPaid)}</b>
-                  <span className="text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(payment.paymentDate))}</span>
+                  <span className="text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date(payment.paymentDate))}</span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">{payment.paymentMethod} • {payment.rekeningNameSnapshot}{payment.notes ? ` • ${payment.notes}` : ""}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-600">Payment ERP: {payment.erpPaymentStatus || "not_required"}{payment.erpPaymentError ? ` • ${payment.erpPaymentError}` : ""}</p>

@@ -88,7 +88,7 @@ function monthsBetween(start: Date, end: Date) {
   for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
     months.push({
       key: monthKey(cursor) as string,
-      label: new Intl.DateTimeFormat("id-ID", { month: "short" }).format(cursor),
+      label: new Intl.DateTimeFormat("id-ID", { month: "short", timeZone: "Asia/Jakarta" }).format(cursor),
       sales: 0,
       expenses: 0
     });

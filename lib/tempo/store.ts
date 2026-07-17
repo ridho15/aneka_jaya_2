@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { rekeningForTipe } from "@/lib/business/masterData";
 import { syncErpSalesPayment } from "@/lib/api/salesPayments";
+import { jakartaDateKey } from "@/lib/date/jakarta";
 
 export type TempoStatus = "open" | "paid" | "partial_paid" | "overdue" | "cancelled" | "written_off";
 
@@ -85,7 +86,7 @@ function dateEnd(value: string) {
 }
 
 function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
+  return jakartaDateKey();
 }
 
 function todayStart() {
@@ -162,8 +163,8 @@ function toTempoReceivable(row: Awaited<ReturnType<typeof prisma.tempoReceivable
     originalAmount: Number(row.originalAmount),
     paidAmount: Number(row.paidAmount),
     remainingAmount: Number(row.remainingAmount),
-    transactionDate: row.transactionDate.toISOString().slice(0, 10),
-    dueDate: row.dueDate.toISOString().slice(0, 10),
+    transactionDate: jakartaDateKey(row.transactionDate),
+    dueDate: jakartaDateKey(row.dueDate),
     status: row.status as TempoStatus,
     createdByUserId: row.createdByUserId,
     createdByNameSnapshot: row.createdByNameSnapshot,
@@ -176,7 +177,7 @@ function toTempoPayment(row: Awaited<ReturnType<typeof prisma.tempoPayment.findM
   return {
     id: row.id,
     tempoReceivableId: row.tempoReceivableId,
-    paymentDate: row.paymentDate.toISOString().slice(0, 10),
+    paymentDate: jakartaDateKey(row.paymentDate),
     amountPaid: Number(row.amountPaid),
     paymentMethod: row.paymentMethod as TempoPayment["paymentMethod"],
     rekeningId: row.rekeningId,
@@ -341,7 +342,7 @@ export async function getTempoReceivable(id: string): Promise<TempoReceivable | 
     const row = await prisma.tempoReceivable.findUnique({ where: { id } });
     if (!row) return undefined;
     const receivable = toTempoReceivable(row);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayDateString();
     return receivable.status === "open" && receivable.dueDate < today ? { ...receivable, status: "overdue" as TempoStatus } : receivable;
   }
   return (await listTempoReceivables()).find((row) => row.id === id);

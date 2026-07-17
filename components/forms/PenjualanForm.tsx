@@ -27,6 +27,7 @@ import type {
 } from "@/lib/business/masterData";
 import { APP_BRAND_NAME, EXTERNAL_ERP_NAME } from "@/lib/appBrand";
 import { useRouter } from "next/navigation";
+import { jakartaDateTimeLocalValue } from "@/lib/date/jakarta";
 
 const draftKey = "aneka-jaya-draft-penjualan";
 const rupiah = (value: number) =>
@@ -35,11 +36,22 @@ const rupiah = (value: number) =>
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(value || 0);
-const today = new Date().toISOString().slice(0, 10);
+const nowJakarta = () => jakartaDateTimeLocalValue();
+const today = nowJakarta().slice(0, 10);
 const CASH_WALK_IN_REKENING_ID = "cash-w";
 const CASH_WALK_IN_REKENING_NAME = "Kas Walk In";
 const clampDiscountPercent = (value: number) =>
   Math.min(Math.max(Number.isFinite(value) ? value : 0, 0), 100);
+export function initialSaleDateTimes(sale?: Pick<Sale, "transactionAt" | "deliveryAt">, now: string | Date = new Date()) {
+  const transactionAt = sale ? (sale.transactionAt ? jakartaDateTimeLocalValue(sale.transactionAt) : undefined) : jakartaDateTimeLocalValue(now);
+  return {
+    transactionAt,
+    deliveryAt: sale?.deliveryAt ? jakartaDateTimeLocalValue(sale.deliveryAt) : sale ? undefined : transactionAt,
+  };
+}
+export function synchronizedDeliveryAt(transactionAt: string | undefined, currentDeliveryAt: string | undefined, deliveryTouched: boolean) {
+  return deliveryTouched ? currentDeliveryAt : transactionAt || "";
+}
 const itemGross = (item: { quantity?: number; unitPrice?: number }) =>
   Number(item.quantity || 0) * Number(item.unitPrice || 0);
 const itemDiscountAmount = (item: {
@@ -90,6 +102,7 @@ type Props = {
 };
 type CreatedSale = {
   id: string;
+  transactionNumber?: string;
   approvalStatus?: string;
   target?: "erp" | "local";
   syncStatus?: string;
@@ -195,6 +208,7 @@ export function PenjualanForm({
   ]);
   const initialTipeRef = useRef(sale?.tipeId || defaultTipe?.id || "");
   const previousPaymentMethodRef = useRef(sale?.paymentMethod || "Cash");
+  const deliveryTouchedRef = useRef(Boolean(sale));
 
   const [notice, setNotice] = useState<{
     type: "success" | "error";
@@ -215,6 +229,7 @@ export function PenjualanForm({
   });
   const productSearchControllerRef = useRef<AbortController>();
   const productSearchRequestRef = useRef(0);
+  const defaultDateTimes = initialSaleDateTimes(sale);
   const {
     register,
     control,
@@ -228,6 +243,8 @@ export function PenjualanForm({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
       saleDate: sale?.saleDate || today,
+      transactionAt: defaultDateTimes.transactionAt,
+      deliveryAt: defaultDateTimes.deliveryAt,
       tipeId: sale?.tipeId || defaultTipe?.id || "",
       tipeCodeSnapshot: sale?.tipeCodeSnapshot || defaultTipe?.code || "",
       tipeNameSnapshot: sale?.tipeNameSnapshot || defaultTipe?.name || "",
@@ -280,6 +297,7 @@ export function PenjualanForm({
   const values = watch("items");
   const paymentMethod = watch("paymentMethod");
   const tipeId = watch("tipeId");
+  const transactionAt = watch("transactionAt");
   const selectedTipe = activeTipes.find((tipe) => tipe.id === tipeId);
   const targetsErp = Boolean(
     selectedTipe && erpTypeCodeSet.has(selectedTipe.code.trim().toUpperCase()),
@@ -566,11 +584,19 @@ export function PenjualanForm({
   useEffect(() => () => productSearchControllerRef.current?.abort(), []);
 
   useEffect(() => {
+    const nextDeliveryAt = synchronizedDeliveryAt(transactionAt, getValues("deliveryAt"), deliveryTouchedRef.current);
+    if (deliveryTouchedRef.current) return;
+    setValue("deliveryAt", nextDeliveryAt, { shouldValidate: true });
+  }, [getValues, setValue, transactionAt]);
+
+  useEffect(() => {
     if (isEdit) return;
     const saved = localStorage.getItem(draftKey);
     if (saved) {
       try {
-        reset(JSON.parse(saved));
+        const draft = JSON.parse(saved) as PenjualanInput;
+        deliveryTouchedRef.current = Object.prototype.hasOwnProperty.call(draft, "deliveryAt");
+        reset(draft);
         setNotice({
           type: "error",
           message: "Draf yang belum terkirim telah dipulihkan.",
@@ -647,6 +673,7 @@ export function PenjualanForm({
     // }
     const payload: PenjualanInput = {
       ...data,
+      saleDate: data.transactionAt?.slice(0, 10) || data.saleDate,
       items: data.items.map((item) => ({
         ...item,
         discount: itemDiscountAmount(item),
@@ -687,6 +714,7 @@ export function PenjualanForm({
     if (result.data?.id)
       setCreatedSale({
         id: String(result.data.id),
+        transactionNumber: result.data.transactionNumber,
         approvalStatus: result.data.approvalStatus,
         target: result.data.target,
         syncStatus: result.data.syncStatus,
@@ -701,8 +729,12 @@ export function PenjualanForm({
     const defaultRek =
       cashWalkInRekening ??
       (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
+    const nextTransactionAt = nowJakarta();
+    deliveryTouchedRef.current = false;
     reset({
-      saleDate: today,
+      saleDate: nextTransactionAt.slice(0, 10),
+      transactionAt: nextTransactionAt,
+      deliveryAt: nextTransactionAt,
       tipeId: defaultTipe?.id || "",
       tipeCodeSnapshot: defaultTipe?.code || "",
       tipeNameSnapshot: defaultTipe?.name || "",
@@ -771,6 +803,7 @@ export function PenjualanForm({
               Referensi pengujian: <code>{createdSale.testReference}</code>
             </p>
           )}
+          {createdSale.transactionNumber && <p className="mb-2">Nomor transaksi: <code>{createdSale.transactionNumber}</code></p>}
           {createdSale.erpReference && (
             <p className="mb-2">
               Referensi ERP: <code>{createdSale.erpReference}</code>
@@ -867,8 +900,9 @@ export function PenjualanForm({
               </h2>
             </div>
             <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-              <Field label="Tanggal penjualan" error={errors.saleDate?.message}>
-                <Input type="date" {...register("saleDate")} />
+              <Field label="Tanggal & jam transaksi" error={errors.transactionAt?.message || errors.saleDate?.message}>
+                <Input type="datetime-local" {...register("transactionAt")} />
+                <input type="hidden" {...register("saleDate")} />
               </Field>
               <Field label="Tipe" error={errors.tipeId?.message}>
                 <Select
@@ -973,8 +1007,8 @@ export function PenjualanForm({
                   <Input type="date" {...register("dueDate")} />
                 </Field>
               )}
-              <Field label="Tanggal kirim">
-                <Input type="date" {...register("deliveryDate")} />
+              <Field label="Tanggal & jam kirim" error={errors.deliveryAt?.message}>
+                <Input type="datetime-local" {...register("deliveryAt", { onChange: () => { deliveryTouchedRef.current = true; } })} />
               </Field>
               <div className="sm:col-span-2">
                 <Field label="Catatan">

@@ -5,6 +5,7 @@ import { recordAudit } from "@/lib/audit/store";
 import { sendNeoCommand } from "@/lib/api/neo";
 import { buildExpenseNeoCommand } from "@/lib/api/expenses";
 import { erpReferenceFrom, safeErpSyncError } from "@/lib/api/sales";
+import { jakartaDateKey } from "@/lib/date/jakarta";
 
 type ExpenseRow = Prisma.ExpenseRecordGetPayload<object>;
 
@@ -58,7 +59,7 @@ function expenseDelegate() {
 function toSyncItem(row: ExpenseRow): ErpSyncExpenseItem {
   return {
     id: row.id,
-    expenseDate: row.expenseDate.toISOString().slice(0, 10),
+    expenseDate: jakartaDateKey(row.expenseDate),
     tipeCode: row.tipeCodeSnapshot,
     rekeningName: row.rekeningNameSnapshot,
     coaName: row.coaNameSnapshot,
@@ -76,7 +77,7 @@ function toSyncItem(row: ExpenseRow): ErpSyncExpenseItem {
 
 function buildRetryCommand(row: ExpenseRow) {
   return buildExpenseNeoCommand({
-    expenseDate: row.expenseDate.toISOString().slice(0, 10),
+    expenseDate: jakartaDateKey(row.expenseDate),
     tipeCodeSnapshot: row.tipeCodeSnapshot,
     rekeningNameSnapshot: row.rekeningNameSnapshot,
     coaNameSnapshot: row.coaNameSnapshot,

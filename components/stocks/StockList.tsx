@@ -10,7 +10,7 @@ import { stockDetailHref } from "@/lib/stocks/detail";
 
 const dash = "—";
 const formatNumber = (value: number | null | undefined) => value === null || value === undefined ? dash : new Intl.NumberFormat("id-ID").format(value);
-const timeLabel = () => new Intl.DateTimeFormat("id-ID", { dateStyle: "short", timeStyle: "short" }).format(new Date());
+const timeLabel = () => new Intl.DateTimeFormat("id-ID", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date());
 
 function warningBadge(stock: StockItem) {
   const warnings = stock.dataQualityWarnings ?? [];
