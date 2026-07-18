@@ -6,7 +6,7 @@ import type { Role } from "@/lib/auth/roles";
 import type { Prisma } from "@prisma/client";
 import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
 import { recordAudit } from "@/lib/audit/store";
-import { findTipe, resolveSalesRekening, type BookkeepingType, type RekeningAccount } from "@/lib/business/masterData";
+import { findTipe, listAllRekeningAccounts, resolveSalesRekening, type BookkeepingType, type RekeningAccount } from "@/lib/business/masterData";
 import { getCurrentUser } from "@/lib/auth/session";
 import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCancellations";
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
@@ -39,6 +39,36 @@ function nextJsonTransactionIdentity(rows: Sale[], transactionAt: string) {
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function rekeningSnapshotForUpdate(before: Sale, rekening: RekeningAccount | undefined) {
+  if (!rekening) return undefined;
+  return before.rekeningId === rekening.id && before.rekeningNameSnapshot
+    ? before.rekeningNameSnapshot
+    : rekening.name;
+}
+
+async function resolveRekeningForUpdate(before: Sale, input: PenjualanInput, tipe: BookkeepingType) {
+  const keepsHistoricalRekening =
+    input.paymentMethod === before.paymentMethod
+    && tipe.id === before.tipeId
+    && Boolean(input.rekeningId)
+    && input.rekeningId === before.rekeningId;
+  if (keepsHistoricalRekening) {
+    const rekening = (await listAllRekeningAccounts()).find((item) => item.id === input.rekeningId);
+    if (rekening) return rekening;
+    if (before.rekeningNameSnapshot) {
+      return {
+        id: before.rekeningId!,
+        name: before.rekeningNameSnapshot,
+        bank: before.rekeningNameSnapshot,
+        accountNumber: "-",
+        isActive: false,
+        tipeIds: [tipe.id]
+      } satisfies RekeningAccount;
+    }
+  }
+  return resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
 }
 
 type SalesRecordWithItems = Prisma.SalesRecordGetPayload<{ include: typeof salesInclude }>;
@@ -148,6 +178,7 @@ function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereIn
     appendSalesWhereAnd(where, {
       OR: [
         { rekeningId: filters.rekening },
+        { rekeningNameSnapshot: filters.rekening },
         { transferAccount: filters.rekening }
       ]
     });
@@ -209,6 +240,7 @@ function toSale(row: SalesRecordWithItems): Sale {
     paymentMethod: row.paymentMethod as Sale["paymentMethod"],
     dueDate: row.dueDate ? jakartaDateKey(row.dueDate) : undefined,
     rekeningId: row.rekeningId || undefined,
+    rekeningNameSnapshot: row.rekeningNameSnapshot || undefined,
     transferAccount: row.transferAccount || undefined,
     notes: row.notes || undefined,
     total: Number(row.total),
@@ -423,6 +455,7 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
         paymentMethod: sale.paymentMethod,
         dueDate: sale.dueDate ? new Date(sale.dueDate) : undefined,
         rekeningId: sale.rekeningId,
+        rekeningNameSnapshot: sale.rekeningNameSnapshot,
         transferAccount: sale.transferAccount,
         notes: sale.notes,
         total: sale.total,
@@ -531,6 +564,7 @@ async function updatePrismaSalesRecord(
   rekening: RekeningAccount | undefined,
   nextSyncStatus: Sale["syncStatus"]
 ) {
+  const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const row = await prisma.$transaction(async (tx) => {
     await tx.salesRecordItem.deleteMany({ where: { salesRecordId: id } });
     return tx.salesRecord.update({
@@ -548,6 +582,7 @@ async function updatePrismaSalesRecord(
         paymentMethod: input.paymentMethod,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         rekeningId: rekening?.id,
+        rekeningNameSnapshot,
         transferAccount: input.transferAccount,
         notes: input.notes,
         total,
@@ -604,7 +639,8 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const normalizedInput: PenjualanInput = { ...input, transactionAt, deliveryAt, saleDate: transactionAt ? transactionDateKey(transactionAt) : input.saleDate };
   const total = saleTotal(normalizedInput);
   const tipe = await findTipe(normalizedInput.tipeId || before.tipeId);
-  const rekening = await resolveSalesRekening(normalizedInput.paymentMethod, tipe.id, normalizedInput.rekeningId);
+  const rekening = await resolveRekeningForUpdate(before, normalizedInput, tipe);
+  const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
   if (isProductionMode()) {
     const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus);
@@ -618,7 +654,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
     return after;
   }
-  const after: Sale = { ...before, ...normalizedInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined, syncedAt: before.syncTarget === "erp" ? undefined : before.syncedAt, erpReference: before.erpReference, erpSyncHttpStatus: before.syncTarget === "erp" ? undefined : before.erpSyncHttpStatus, erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse, stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required", stockReleaseError: before.syncTarget === "erp" ? "Menunggu update invoice ERP berhasil sebelum release stok ulang." : before.stockReleaseError, stockReleaseReference: before.syncTarget === "erp" ? undefined : before.stockReleaseReference, stockReleasedAt: before.syncTarget === "erp" ? undefined : before.stockReleasedAt, stockReleaseHttpStatus: before.syncTarget === "erp" ? undefined : before.stockReleaseHttpStatus, stockReleaseResponse: before.syncTarget === "erp" ? undefined : before.stockReleaseResponse, erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required", erpPaymentError: before.syncTarget === "erp" ? "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP." : before.erpPaymentError, erpPaymentReference: before.syncTarget === "erp" ? undefined : before.erpPaymentReference, erpPaymentSyncedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentSyncedAt, erpPaymentAttemptedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentAttemptedAt };
+  const after: Sale = { ...before, ...normalizedInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined, syncedAt: before.syncTarget === "erp" ? undefined : before.syncedAt, erpReference: before.erpReference, erpSyncHttpStatus: before.syncTarget === "erp" ? undefined : before.erpSyncHttpStatus, erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse, stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required", stockReleaseError: before.syncTarget === "erp" ? "Menunggu update invoice ERP berhasil sebelum release stok ulang." : before.stockReleaseError, stockReleaseReference: before.syncTarget === "erp" ? undefined : before.stockReleaseReference, stockReleasedAt: before.syncTarget === "erp" ? undefined : before.stockReleasedAt, stockReleaseHttpStatus: before.syncTarget === "erp" ? undefined : before.stockReleaseHttpStatus, stockReleaseResponse: before.syncTarget === "erp" ? undefined : before.stockReleaseResponse, erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required", erpPaymentError: before.syncTarget === "erp" ? "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP." : before.erpPaymentError, erpPaymentReference: before.syncTarget === "erp" ? undefined : before.erpPaymentReference, erpPaymentSyncedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentSyncedAt, erpPaymentAttemptedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentAttemptedAt };
   rows[index] = after;
   await writeJsonArray(fileName, rows);
   await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });

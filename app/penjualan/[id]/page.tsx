@@ -5,6 +5,8 @@ import { TransactionCancelButton } from "@/components/transactions/TransactionCa
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { formatJakartaDateTime } from "@/lib/date/jakarta";
+import { listAllRekeningAccounts } from "@/lib/business/masterData";
+import { salesRekeningLabel } from "@/lib/sales/rekening";
 import { getSalesRecord } from "@/lib/sales/store";
 
 function rupiah(value: number) {
@@ -35,6 +37,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const sale = await getSalesRecord(id);
   if (!sale) redirect("/penjualan");
+  const rekeningLabel = salesRekeningLabel(sale, await listAllRekeningAccounts());
   const canManage = can(role, "penjualan.manage");
   const canViewTransactionNumber = role === "OWNER";
   const needsCancelAndRecreate =
@@ -63,6 +66,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           <Info label="Dibuat Pada" value={sale.createdAt ? formatJakartaDateTime(sale.createdAt) : "—"} />
           <Info label="Tipe" value={sale.tipeCodeSnapshot || sale.tipeId || "—"} />
           <Info label="Pembayaran" value={sale.paymentMethod} />
+          <Info label="Rekening digunakan" value={rekeningLabel} />
           <Info label="Customer" value={sale.customerName} />
           <Info label="Lokasi" value={sale.customerLocation || "—"} />
           <Info label="Pengiriman" value={sale.shippingMethod || "—"} />

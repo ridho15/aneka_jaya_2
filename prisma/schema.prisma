@@ -160,6 +160,7 @@ model SalesRecord {
   paymentMethod         String
   dueDate               DateTime?
   rekeningId            String?
+  rekeningNameSnapshot  String?
   transferAccount       String?
   notes                 String?
   total                 Decimal   @db.Decimal(18, 2)

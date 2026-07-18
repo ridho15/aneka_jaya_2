@@ -134,6 +134,7 @@ export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber
       sale.paymentMethod === "Tempo" ? `Tempo ${sale.dueDate || "-"}` : `Kirim ${sale.shippingMethod || "-"}`
     ]),
     pair("Waktu Kirim", sale.deliveryAt ? `${formatJakartaDateTimeCompact(sale.deliveryAt)} WIB` : undefined),
+    pair("Rekening", sale.rekeningNameSnapshot || sale.transferAccount || sale.rekeningId),
     line("="),
     `${column("NO", 3)}${column("KODE", 8)}${column("NAMA PRODUK", 15)}${column("QTY", 6, "right")}`,
     `${column("", 3)}${column("", 8)}${column("", 5)}${column("HARGA", 10, "right")}${column("TOTAL", 18, "right")}`,

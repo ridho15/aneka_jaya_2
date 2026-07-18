@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   cancelErpSales: vi.fn(),
   recordAudit: vi.fn(),
   findTipe: vi.fn(),
+  listAllRekeningAccounts: vi.fn(),
   resolveSalesRekening: vi.fn()
 }));
 
@@ -25,7 +26,7 @@ vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn(async () => mocks.user) }));
 vi.mock("@/lib/api/salesCancellations", () => ({ cancelErpSales: mocks.cancelErpSales }));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
-vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe, resolveSalesRekening: mocks.resolveSalesRekening }));
+vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe, listAllRekeningAccounts: mocks.listAllRekeningAccounts, resolveSalesRekening: mocks.resolveSalesRekening }));
 
 import { cancelSalesRecord, getSalesRecord, listSalesRecords, listSalesRecordsPage, saveSalesRecord, updateSalesRecord } from "@/lib/sales/store";
 
@@ -41,6 +42,7 @@ const dbSale = {
   paymentMethod: "Tempo",
   dueDate: new Date("2026-07-27"),
   rekeningId: "cash-w",
+  rekeningNameSnapshot: "Kas Lama",
   transferAccount: null,
   notes: null,
   total: 20000,
@@ -68,8 +70,10 @@ describe("sales store normalized persistence", () => {
     mocks.cancelErpSales.mockReset();
     mocks.recordAudit.mockReset();
     mocks.findTipe.mockReset();
+    mocks.listAllRekeningAccounts.mockReset();
     mocks.resolveSalesRekening.mockReset();
     mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
+    mocks.listAllRekeningAccounts.mockResolvedValue([]);
     mocks.resolveSalesRekening.mockResolvedValue({ id: "cash-w", name: "Kas Walk In" });
     mocks.user = { id: "owner-1", name: "Owner", role: "OWNER" };
   });
@@ -110,6 +114,8 @@ describe("sales store normalized persistence", () => {
       customerLocation: "Toko",
       shippingMethod: "di Tempat",
       paymentMethod: "Cash",
+      rekeningId: "cash-w",
+      rekeningNameSnapshot: "Kas Walk In",
       total: 5000,
       approvalStatus: "approved",
       createdByUserId: "owner-1",
@@ -120,6 +126,8 @@ describe("sales store normalized persistence", () => {
 
     expect(mocks.prisma.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
+        rekeningId: "cash-w",
+        rekeningNameSnapshot: "Kas Walk In",
         items: { create: [expect.objectContaining({ productRef: "P-2", sortOrder: 0 })] }
       })
     }));
@@ -138,7 +146,7 @@ describe("sales store normalized persistence", () => {
     const expectedWhere = expect.objectContaining({
       paymentMethod: "TF",
       approvalStatus: "approved",
-      AND: [expect.objectContaining({ OR: [{ rekeningId: "bca" }, { transferAccount: "bca" }] })]
+      AND: [expect.objectContaining({ OR: [{ rekeningId: "bca" }, { rekeningNameSnapshot: "bca" }, { transferAccount: "bca" }] })]
     });
     expect(mocks.prisma.salesRecord.count).toHaveBeenCalledWith({ where: expectedWhere });
     expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expectedWhere }));
@@ -178,11 +186,79 @@ describe("sales store normalized persistence", () => {
 
     expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
+        rekeningNameSnapshot: "Kas Lama",
         syncStatus: "pending",
         erpReference: "SLM-SALE-1",
         stockReleaseStatus: "pending",
         erpPaymentStatus: "pending"
       })
+    }));
+  });
+
+  it("stores the server-resolved snapshot when the selected rekening changes", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(dbSale);
+    mocks.resolveSalesRekening.mockResolvedValue({ id: "bca-w", name: "BCA Operasional" });
+    mocks.prisma.salesRecord.update.mockResolvedValue({
+      ...dbSale,
+      paymentMethod: "TF",
+      rekeningId: "bca-w",
+      rekeningNameSnapshot: "BCA Operasional"
+    });
+
+    await updateSalesRecord("S-1", {
+      saleDate: "2026-06-27",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "TF",
+      rekeningId: "bca-w",
+      rekeningNameSnapshot: "Nama Palsu Client",
+      items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }]
+    });
+
+    expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        rekeningId: "bca-w",
+        rekeningNameSnapshot: "BCA Operasional"
+      })
+    }));
+  });
+
+  it("allows an unchanged inactive legacy rekening and fills its missing snapshot", async () => {
+    const legacySale = { ...dbSale, rekeningNameSnapshot: null };
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(legacySale);
+    mocks.listAllRekeningAccounts.mockResolvedValue([{
+      id: "cash-w",
+      name: "Kas Walk In Nonaktif",
+      bank: "Cash",
+      accountNumber: "-",
+      isActive: false,
+      tipeIds: ["W"]
+    }]);
+    mocks.prisma.salesRecord.update.mockResolvedValue({
+      ...legacySale,
+      rekeningNameSnapshot: "Kas Walk In Nonaktif"
+    });
+
+    await updateSalesRecord("S-1", {
+      saleDate: "2026-06-27",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      tipeNameSnapshot: "Walk In",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Tempo",
+      rekeningId: "cash-w",
+      items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }]
+    });
+
+    expect(mocks.resolveSalesRekening).not.toHaveBeenCalled();
+    expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ rekeningNameSnapshot: "Kas Walk In Nonaktif" })
     }));
   });
 

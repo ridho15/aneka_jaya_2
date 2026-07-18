@@ -607,6 +607,7 @@ async function persistErpSale(input: {
         paymentMethod: sale.paymentMethod,
         dueDate: sale.dueDate ? new Date(sale.dueDate) : undefined,
         rekeningId: sale.rekeningId,
+        rekeningNameSnapshot: sale.rekeningNameSnapshot,
         transferAccount: sale.transferAccount,
         notes: sale.notes,
         total,

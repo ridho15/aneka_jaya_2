@@ -87,6 +87,7 @@ describe("dot matrix print formatter", () => {
       customerName: "Toko Kirim",
       shippingMethod: "Kurir",
       paymentMethod: "Cash",
+      rekeningNameSnapshot: "Kas Walk In",
       total: 10000,
       items: []
     });
@@ -94,6 +95,8 @@ describe("dot matrix print formatter", () => {
     expectFixedWidth(text);
     expect(text).toContain("Waktu Kirim:");
     expect(text).toContain("18/07/2026 13.30 WIB");
+    expect(text).toContain("Rekening:");
+    expect(text).toContain("Kas Walk In");
   });
 
   it("uses Aneka Jaya header for AJ sales and SLM for non-AJ sales", () => {

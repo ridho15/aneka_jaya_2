@@ -655,7 +655,7 @@ describe("production Prisma transactions", () => {
 
     expect(mocks.resolveSalesRekening).toHaveBeenCalledWith("Cash", "AJ", undefined);
     expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ rekeningId: "cash-w" })
+      data: expect.objectContaining({ rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In" })
     }));
   });
 
@@ -675,7 +675,7 @@ describe("production Prisma transactions", () => {
     })).resolves.toMatchObject({ success: true, data: { target: "erp", rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In" } });
 
     expect(mocks.tx.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ rekeningId: "cash-w" })
+      data: expect.objectContaining({ rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In" })
     }));
   });
 
