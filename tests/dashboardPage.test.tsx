@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   listSalesRecords: vi.fn(),
   listExpenseRecords: vi.fn(),
   listTempoReceivables: vi.fn(),
+  listTempoPayments: vi.fn(),
+  listTempoPaymentReversals: vi.fn(),
   listAudit: vi.fn(),
   listRekeningAccounts: vi.fn(),
   getOperationalProfitSetting: vi.fn(),
@@ -23,7 +25,7 @@ vi.mock("@/lib/auth/session", () => ({ getCurrentRole: mocks.getCurrentRole, get
 vi.mock("@/lib/api/products", () => ({ listProducts: mocks.listProducts }));
 vi.mock("@/lib/sales/store", () => ({ listSalesRecords: mocks.listSalesRecords }));
 vi.mock("@/lib/expenses/store", () => ({ listExpenseRecords: mocks.listExpenseRecords }));
-vi.mock("@/lib/tempo/store", () => ({ listTempoReceivables: mocks.listTempoReceivables }));
+vi.mock("@/lib/tempo/store", () => ({ listTempoReceivables: mocks.listTempoReceivables, listTempoPayments: mocks.listTempoPayments, listTempoPaymentReversals: mocks.listTempoPaymentReversals }));
 vi.mock("@/lib/audit/store", () => ({ listAudit: mocks.listAudit }));
 vi.mock("@/lib/business/masterData", () => ({ listRekeningAccounts: mocks.listRekeningAccounts }));
 vi.mock("@/lib/settings/profit", () => ({ getOperationalProfitSetting: mocks.getOperationalProfitSetting }));
@@ -42,9 +44,11 @@ describe("DashboardPage data source notice", () => {
     mocks.getCurrentRole.mockResolvedValue("OWNER");
     mocks.getCurrentUser.mockResolvedValue({ name: "Owner" });
     mocks.listProducts.mockResolvedValue({ success: true, data: [] });
+    mocks.listTempoPaymentReversals.mockResolvedValue([]);
     mocks.listSalesRecords.mockResolvedValue([]);
     mocks.listExpenseRecords.mockResolvedValue([]);
     mocks.listTempoReceivables.mockResolvedValue([]);
+    mocks.listTempoPayments.mockResolvedValue([]);
     mocks.listAudit.mockResolvedValue([]);
     mocks.listRekeningAccounts.mockResolvedValue([]);
     mocks.getOperationalProfitSetting.mockResolvedValue({ grossProfitPercent: 20 });

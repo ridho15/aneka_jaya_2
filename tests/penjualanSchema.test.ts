@@ -39,4 +39,27 @@ describe("penjualanSchema payment rekening validation", () => {
   it("keeps delivery time optional", () => {
     expect(penjualanSchema.safeParse({ ...baseInput, paymentMethod: "Cash", transactionAt: "2026-07-02T10:00", deliveryAt: "" }).success).toBe(true);
   });
+
+  it("accepts a partial initial payment for Tempo", () => {
+    expect(penjualanSchema.safeParse({ ...baseInput, customerName: "Budi", paymentMethod: "Tempo", dueDate: "2026-08-02", initialPaymentAmount: 2_500, initialPaymentMethod: "TF", initialPaymentRekeningId: "bca" }).success).toBe(true);
+  });
+
+  it("rejects an initial Tempo payment equal to or above the invoice total", () => {
+    const result = penjualanSchema.safeParse({ ...baseInput, customerName: "Budi", paymentMethod: "Tempo", dueDate: "2026-08-02", initialPaymentAmount: 10_000, initialPaymentMethod: "Cash", initialPaymentRekeningId: "cash-w" });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.flatten().fieldErrors.initialPaymentAmount?.[0]).toContain("harus lebih kecil dari total");
+  });
+
+  it("requires method and rekening when Tempo has an initial payment", () => {
+    const result = penjualanSchema.safeParse({ ...baseInput, customerName: "Budi", paymentMethod: "Tempo", dueDate: "2026-08-02", initialPaymentAmount: 2_500 });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors.initialPaymentMethod).toBeTruthy();
+      expect(result.error.flatten().fieldErrors.initialPaymentRekeningId).toBeTruthy();
+    }
+  });
+
+  it("rejects an initial payment for non-Tempo transactions", () => {
+    expect(penjualanSchema.safeParse({ ...baseInput, paymentMethod: "Cash", initialPaymentAmount: 1_000 }).success).toBe(false);
+  });
 });

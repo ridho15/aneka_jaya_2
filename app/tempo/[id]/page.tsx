@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { getTempoReceivable, listTempoPayments } from "@/lib/tempo/store";
+import { getTempoReceivable, listTempoPaymentReversals, listTempoPayments } from "@/lib/tempo/store";
 import { listRekeningAccounts } from "@/lib/business/masterData";
 import { TempoPayForm } from "@/components/tempo/TempoPayForm";
 import { TempoActionForm } from "@/components/tempo/TempoActionForm";
@@ -17,6 +17,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
   const [tempo, rekenings] = await Promise.all([getTempoReceivable(id), listRekeningAccounts()]);
   if (!tempo) redirect("/tempo");
   const payments = await listTempoPayments(tempo.id);
+  const reversals = await listTempoPaymentReversals();
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 
   return (
@@ -55,6 +56,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">{payment.paymentMethod} • {payment.rekeningNameSnapshot}{payment.notes ? ` • ${payment.notes}` : ""}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-600">Payment ERP: {payment.erpPaymentStatus || "not_required"}{payment.erpPaymentError ? ` • ${payment.erpPaymentError}` : ""}</p>
+                {reversals.filter((reversal) => reversal.tempoPaymentId === payment.id).map((reversal) => <p key={reversal.id} className="mt-1 text-xs font-semibold text-rose-600">Reversal {rupiah(reversal.amount)} • {reversal.reversalDate} • {reversal.erpStatus}</p>)}
               </div>
             ))}
             {payments.length === 0 && <p className="py-3 text-sm text-slate-500">Belum ada pembayaran.</p>}

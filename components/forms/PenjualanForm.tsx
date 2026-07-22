@@ -256,6 +256,11 @@ export function PenjualanForm({
       shippingMethod: sale?.shippingMethod || "di Tempat",
       paymentMethod: sale?.paymentMethod || "Cash",
       dueDate: sale?.dueDate,
+      initialPaymentAmount: sale?.initialPaymentAmount || 0,
+      initialPaymentMethod: sale?.initialPaymentMethod,
+      initialPaymentRekeningId: sale?.initialPaymentRekeningId || "",
+      initialPaymentRekeningNameSnapshot: sale?.initialPaymentRekeningNameSnapshot || "",
+      initialPaymentNotes: sale?.initialPaymentNotes,
       transferAccount: sale?.transferAccount,
       notes: sale?.notes,
       items: sale?.items?.length
@@ -296,6 +301,8 @@ export function PenjualanForm({
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const values = watch("items");
   const paymentMethod = watch("paymentMethod");
+  const initialPaymentAmount = watch("initialPaymentAmount") || 0;
+  const initialPaymentMethod = watch("initialPaymentMethod");
   const tipeId = watch("tipeId");
   const transactionAt = watch("transactionAt");
   const selectedTipe = activeTipes.find((tipe) => tipe.id === tipeId);
@@ -352,9 +359,12 @@ export function PenjualanForm({
     paymentMethod,
     sale?.paymentMethod,
   ]);
+  const initialPaymentRekeningOptions = initialPaymentMethod === "Cash"
+    ? (cashWalkInRekening ? [cashWalkInRekening] : [])
+    : filteredRekenings;
   const masterDataReady =
     activeTipes.length > 0 &&
-    (paymentMethod === "Tempo" ||
+    ((paymentMethod === "Tempo" && (initialPaymentAmount <= 0 || initialPaymentRekeningOptions.length > 0)) ||
       paymentMethod === "Other" ||
       (paymentMethod === "Cash"
         ? Boolean(cashWalkInRekening)
@@ -651,6 +661,24 @@ export function PenjualanForm({
     }
     previousPaymentMethodRef.current = paymentMethod;
   }, [cashWalkInRekening, isEdit, paymentMethod, setValue]);
+
+  useEffect(() => {
+    if (isEdit) return;
+    if (paymentMethod !== "Tempo") {
+      setValue("initialPaymentAmount", 0);
+      setValue("initialPaymentMethod", undefined);
+      setValue("initialPaymentRekeningId", "");
+      setValue("initialPaymentRekeningNameSnapshot", "");
+      setValue("initialPaymentNotes", "");
+      return;
+    }
+    if (initialPaymentAmount <= 0) return;
+    const options = initialPaymentMethod === "Cash" ? (cashWalkInRekening ? [cashWalkInRekening] : []) : filteredRekenings;
+    const current = options.find((item) => item.id === getValues("initialPaymentRekeningId"));
+    const selected = current || options[0];
+    setValue("initialPaymentRekeningId", selected?.id || "");
+    setValue("initialPaymentRekeningNameSnapshot", selected?.name || "");
+  }, [cashWalkInRekening, filteredRekenings, getValues, initialPaymentAmount, initialPaymentMethod, isEdit, paymentMethod, setValue]);
 
   const submit = async (data: PenjualanInput) => {
     setNotice(undefined);
@@ -1006,6 +1034,32 @@ export function PenjualanForm({
                 >
                   <Input type="date" {...register("dueDate")} />
                 </Field>
+              )}
+              {paymentMethod === "Tempo" && (
+                <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4 sm:col-span-2 lg:col-span-4">
+                  <div className="mb-4"><p className="text-sm font-bold text-slate-900">Pembayaran awal / DP</p><p className="mt-1 text-xs text-slate-600">Opsional. Sisa pembayaran otomatis dicatat sebagai piutang Tempo.</p></div>
+                  {isEdit ? (
+                    <>
+                      <input type="hidden" {...register("initialPaymentAmount")} />
+                      <input type="hidden" {...register("initialPaymentMethod")} />
+                      <input type="hidden" {...register("initialPaymentRekeningId")} />
+                      <input type="hidden" {...register("initialPaymentRekeningNameSnapshot")} />
+                      <input type="hidden" {...register("initialPaymentNotes")} />
+                      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">DP yang sudah tersimpan tidak dapat diedit. Gunakan cancel/koreksi jika pembayaran awal salah.</p>
+                      <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3"><div><dt className="text-xs text-slate-500">Dibayar awal</dt><dd className="font-bold">{rupiah(sale?.initialPaymentAmount || 0)}</dd></div><div><dt className="text-xs text-slate-500">Metode</dt><dd className="font-semibold">{sale?.initialPaymentMethod || "—"}</dd></div><div><dt className="text-xs text-slate-500">Rekening</dt><dd className="font-semibold">{sale?.initialPaymentRekeningNameSnapshot || "—"}</dd></div></dl>
+                    </>
+                  ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <Field label="Nominal DP" error={errors.initialPaymentAmount?.message}>
+                        <MoneyInput value={initialPaymentAmount} onValueChange={(value) => setValue("initialPaymentAmount", value, { shouldDirty: true, shouldValidate: true })} placeholder="0" />
+                      </Field>
+                      {initialPaymentAmount > 0 && <Field label="Metode DP" error={errors.initialPaymentMethod?.message}><Select {...register("initialPaymentMethod")}><option value="">Pilih metode</option><option value="Cash">Cash</option><option value="TF">TF</option><option value="Other">Other</option></Select></Field>}
+                      {initialPaymentAmount > 0 && <Field label="Rekening penerima" error={errors.initialPaymentRekeningId?.message}><Select {...register("initialPaymentRekeningId")} onChange={(event) => { const selected = initialPaymentRekeningOptions.find((item) => item.id === event.target.value); setValue("initialPaymentRekeningId", event.target.value, { shouldValidate: true }); setValue("initialPaymentRekeningNameSnapshot", selected?.name || ""); }}>{initialPaymentRekeningOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}{initialPaymentRekeningOptions.length === 0 && <option value="">— rekening belum tersedia —</option>}</Select></Field>}
+                      {initialPaymentAmount > 0 && <Field label="Catatan DP"><Input {...register("initialPaymentNotes")} placeholder="Opsional" /></Field>}
+                    </div>
+                  )}
+                  <div className="mt-4 grid grid-cols-3 gap-3 border-t border-blue-100 pt-3 text-sm"><div><p className="text-xs text-slate-500">Total</p><b>{rupiah(total)}</b></div><div><p className="text-xs text-slate-500">Dibayar sekarang</p><b className="text-blue-700">{rupiah(initialPaymentAmount)}</b></div><div><p className="text-xs text-slate-500">Sisa Tempo</p><b className="text-amber-700">{rupiah(Math.max(0, total - initialPaymentAmount))}</b></div></div>
+                </div>
               )}
               <Field label="Tanggal & jam kirim" error={errors.deliveryAt?.message}>
                 <Input type="datetime-local" {...register("deliveryAt", { onChange: () => { deliveryTouchedRef.current = true; } })} />

@@ -5,6 +5,7 @@ import { recordAudit } from "@/lib/audit/store";
 import {
   erpAuditResponse,
   erpHttpStatus,
+  erpInvoiceIdentityFrom,
   erpReferenceFrom,
   resolveErpCustomerId,
   safeErpSyncError,
@@ -592,6 +593,9 @@ export async function retrySalesErpSync(
   if (response.success) {
     const syncedAt = new Date();
     const erpReference = row.erpReference || erpReferenceFrom(response.data);
+    const erpInvoiceIdentity = erpInvoiceIdentityFrom(response.data);
+    const erpInvoiceId = row.erpInvoiceId || erpInvoiceIdentity.invoiceId;
+    const erpInvoiceNumber = row.erpInvoiceNumber || erpInvoiceIdentity.invoiceNumber;
     const stockResponse = await releaseSaleStock({
       saleId: row.id,
       saleDate: jakartaDateKey(row.saleDate),
@@ -624,8 +628,8 @@ export async function retrySalesErpSync(
       erpPaymentAttemptedAt = new Date();
       const paymentResponse = await syncErpSalesPayment({
         erpReference: row.erpPaymentReference || `SLM-PAY-${row.id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100),
-        invoiceNumber: erpReference,
-        invoiceId: 0,
+        invoiceNumber: erpInvoiceNumber || erpReference,
+        invoiceId: erpInvoiceId || 0,
         customerId: 0,
         paymentDate: jakartaDateKey(row.saleDate),
         coaCode: rekening?.erpCoaId || "",
@@ -651,6 +655,8 @@ export async function retrySalesErpSync(
         syncAttemptedAt: attemptedAt,
         syncedAt,
         erpReference,
+        erpInvoiceId,
+        erpInvoiceNumber,
         erpSyncHttpStatus: erpHttpStatus(response),
         erpSyncResponse: jsonValue(erpAuditResponse(response)),
         stockReleaseStatus,

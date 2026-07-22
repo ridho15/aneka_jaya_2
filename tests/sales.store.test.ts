@@ -12,7 +12,10 @@ const mocks = vi.hoisted(() => ({
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn()
-    }
+    },
+    tempoReceivable: { findUnique: vi.fn(), update: vi.fn() },
+    tempoPaymentReversal: { upsert: vi.fn() },
+    auditLog: { create: vi.fn() }
   },
   user: { id: "owner-1", name: "Owner", role: "OWNER" },
   cancelErpSales: vi.fn(),
@@ -64,6 +67,11 @@ describe("sales store normalized persistence", () => {
     mocks.prisma.salesRecord.findUnique.mockReset();
     mocks.prisma.salesRecord.create.mockReset();
     mocks.prisma.salesRecord.update.mockReset();
+    mocks.prisma.salesRecord.update.mockResolvedValue(dbSale);
+    mocks.prisma.tempoReceivable.findUnique.mockReset();
+    mocks.prisma.tempoReceivable.update.mockReset();
+    mocks.prisma.tempoPaymentReversal.upsert.mockReset();
+    mocks.prisma.auditLog.create.mockReset();
     mocks.prisma.salesRecordItem.deleteMany.mockReset();
     mocks.prisma.$transaction.mockReset();
     mocks.prisma.$transaction.mockImplementation(async (callback: (tx: typeof mocks.prisma) => unknown) => callback(mocks.prisma));
@@ -75,6 +83,8 @@ describe("sales store normalized persistence", () => {
     mocks.findTipe.mockResolvedValue({ id: "W", code: "W", name: "Walk In" });
     mocks.listAllRekeningAccounts.mockResolvedValue([]);
     mocks.resolveSalesRekening.mockResolvedValue({ id: "cash-w", name: "Kas Walk In" });
+    mocks.prisma.tempoReceivable.findUnique.mockResolvedValue(null);
+    mocks.prisma.auditLog.create.mockResolvedValue({});
     mocks.user = { id: "owner-1", name: "Owner", role: "OWNER" };
   });
 
@@ -315,6 +325,7 @@ describe("sales store normalized persistence", () => {
       syncTarget: "erp",
       syncStatus: "synced",
       erpReference: "SLM-INV-1",
+      erpInvoiceNumber: "SLM-INV-1",
       stockReleaseReference: "SLM-STOCK-1",
       erpPaymentReference: "SLM-PAY-1",
       stockReleaseStatus: "released",
@@ -366,6 +377,7 @@ describe("sales store normalized persistence", () => {
       syncStatus: "synced",
       syncError: null,
       erpReference: "SLM-INV-1",
+      erpInvoiceNumber: "SLM-INV-1",
       stockReleaseReference: "SLM-STOCK-1",
       erpPaymentReference: "SLM-PAY-1",
       stockReleaseStatus: "released",
@@ -414,12 +426,13 @@ describe("sales store normalized persistence", () => {
       ...dbSale,
       syncTarget: "erp",
       syncStatus: "synced",
-      erpReference: "SLM-INV-1"
+      erpReference: "SLM-INV-1",
+      erpInvoiceNumber: "SLM-INV-1"
     });
     mocks.cancelErpSales.mockResolvedValue({ success: false, message: "Invoice ERP tidak bisa dibatalkan." });
 
     await expect(cancelSalesRecord("S-1", "Customer batal")).rejects.toThrow("Invoice ERP tidak bisa dibatalkan.");
 
-    expect(mocks.prisma.salesRecord.update).not.toHaveBeenCalled();
+    expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ syncError: expect.stringContaining("perlu rekonsiliasi") }) }));
   });
 });

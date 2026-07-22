@@ -2,6 +2,7 @@ import type { AuditLog } from "@/lib/audit/store";
 import type { Expense } from "@/lib/types/expenses";
 import type { Product } from "@/lib/types/product";
 import type { Sale } from "@/lib/types/sales";
+import type { TempoPayment, TempoPaymentReversal } from "@/lib/tempo/store";
 
 export type MonthlyPerformance = {
   key: string;
@@ -180,9 +181,11 @@ function paymentPercentage(value: number, total: number) {
   return total > 0 ? (value / total) * 100 : 0;
 }
 
-export function buildPaymentBreakdown(sales: Sale[], rekeningLabels: Record<string, string> = {}): PaymentBreakdown {
+export function buildPaymentBreakdown(sales: Sale[], rekeningLabels: Record<string, string> = {}, tempoPayments: TempoPayment[] = [], tempoReversals: TempoPaymentReversal[] = []): PaymentBreakdown {
   const paidSales = sales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF"));
-  const cashValue = paidSales.filter((sale) => sale.paymentMethod === "Cash").reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
+  const paymentById = new Map(tempoPayments.map((payment) => [payment.id, payment]));
+  const cashReversal = tempoReversals.filter((reversal) => paymentById.get(reversal.tempoPaymentId)?.paymentMethod === "Cash").reduce((sum, reversal) => sum + reversal.amount, 0);
+  const cashValue = paidSales.filter((sale) => sale.paymentMethod === "Cash").reduce((sum, sale) => sum + (Number(sale.total) || 0), 0) + tempoPayments.filter((payment) => payment.paymentMethod === "Cash").reduce((sum, payment) => sum + payment.amountPaid, 0) - cashReversal;
   const transferTotals = new Map<string, { label: string; rekeningId?: string; value: number }>();
 
   for (const sale of paidSales) {
@@ -195,6 +198,21 @@ export function buildPaymentBreakdown(sales: Sale[], rekeningLabels: Record<stri
       rekeningId: sale.rekeningId || sale.rekeningNameSnapshot || sale.transferAccount,
       value: (existing?.value || 0) + (Number(sale.total) || 0)
     });
+  }
+  for (const payment of tempoPayments) {
+    if (payment.paymentMethod !== "TF") continue;
+    const label = rekeningLabels[payment.rekeningId] || payment.rekeningNameSnapshot || "TF tanpa rekening";
+    const key = payment.rekeningId || label;
+    const existing = transferTotals.get(key);
+    transferTotals.set(key, { label, rekeningId: payment.rekeningId, value: (existing?.value || 0) + payment.amountPaid });
+  }
+  for (const reversal of tempoReversals) {
+    const payment = paymentById.get(reversal.tempoPaymentId);
+    if (!payment || payment.paymentMethod !== "TF") continue;
+    const label = rekeningLabels[payment.rekeningId] || payment.rekeningNameSnapshot || "TF tanpa rekening";
+    const key = payment.rekeningId || label;
+    const existing = transferTotals.get(key);
+    transferTotals.set(key, { label, rekeningId: payment.rekeningId, value: (existing?.value || 0) - reversal.amount });
   }
 
   const total = cashValue + Array.from(transferTotals.values()).reduce((sum, row) => sum + row.value, 0);

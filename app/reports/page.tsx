@@ -29,7 +29,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
     <AppShell>
       <div className="mb-7">
         <h2 className="aj-page-title text-3xl font-bold">Laporan</h2>
-        <p className="mt-2 text-sm text-slate-600">Laporan harian paid sales dari PostgreSQL. Grand Total exclude Tempo dan transaksi QA.</p>
+        <p className="mt-2 text-sm text-slate-600">Laporan penerimaan harian dari penjualan lunas dan pembayaran Tempo. Transaksi QA dikecualikan.</p>
       </div>
 
       <form className="aj-surface mb-5 flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
@@ -44,7 +44,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
         <section className="aj-surface p-5">
           <p className="text-sm text-slate-500">Grand Total paid</p>
           <p className="mt-2 text-2xl font-black">{rupiah(summary.grandTotal)}</p>
-          <p className="mt-1 text-xs text-slate-500">Exclude Tempo & QA</p>
+          <p className="mt-1 text-xs text-slate-500">Termasuk pembayaran Tempo • exclude QA</p>
         </section>
         <section className="aj-surface p-5">
           <p className="text-sm text-slate-500">Cash</p>
@@ -66,6 +66,9 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
           {summary.excludedTestCount} transaksi QA senilai {rupiah(summary.excludedTestTotal)} dikeluarkan dari laporan operasional.
         </section>
       )}
+
+      {summary.tempoPayments.length > 0 && <section className="aj-surface mb-5 p-5"><p className="font-bold">Pembayaran Tempo diterima</p><p className="mt-1 text-sm text-slate-500">{summary.tempoPayments.length} pembayaran • {rupiah(summary.tempoPaymentTotal)}</p><div className="mt-4 divide-y divide-slate-100">{summary.tempoPayments.map((payment) => <div key={payment.id} className="flex items-center justify-between gap-4 py-3 text-sm"><div><p className="font-semibold">{payment.customerName || payment.salesId || payment.tempoReceivableId}</p><p className="mt-0.5 text-xs text-slate-500">{payment.paymentMethod} • {payment.rekeningNameSnapshot}</p></div><b>{rupiah(payment.amountPaid)}</b></div>)}</div></section>}
+      {summary.tempoReversals.length > 0 && <section className="aj-surface mb-5 p-5"><p className="font-bold text-rose-700">Reversal pembayaran Tempo</p><p className="mt-1 text-sm text-slate-500">{summary.tempoReversals.length} reversal • -{rupiah(summary.tempoReversalTotal)}</p></section>}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]">
         <section className="aj-surface">

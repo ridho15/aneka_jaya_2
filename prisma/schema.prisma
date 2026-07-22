@@ -137,10 +137,28 @@ model TempoPayment {
   createdByUserId       String
   createdByNameSnapshot String
   createdAt             DateTime
+  reversals             TempoPaymentReversal[]
 
   @@index([tempoReceivableId])
   @@index([paymentDate])
   @@index([erpPaymentStatus])
+}
+
+model TempoPaymentReversal {
+  id                    String       @id
+  tempoPaymentId        String
+  tempoPayment          TempoPayment @relation(fields: [tempoPaymentId], references: [id], onDelete: Cascade)
+  reversalDate          DateTime
+  amount                Decimal      @db.Decimal(18, 2)
+  reason                String
+  erpStatus             String       @default("not_required")
+  erpReference          String?
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime
+
+  @@index([tempoPaymentId])
+  @@index([reversalDate])
 }
 
 model SalesRecord {
@@ -159,6 +177,11 @@ model SalesRecord {
   shippingMethod        String?
   paymentMethod         String
   dueDate               DateTime?
+  initialPaymentAmount  Decimal   @default(0) @db.Decimal(18, 2)
+  initialPaymentMethod  String?
+  initialPaymentRekeningId String?
+  initialPaymentRekeningNameSnapshot String?
+  initialPaymentNotes   String?
   rekeningId            String?
   rekeningNameSnapshot  String?
   transferAccount       String?
@@ -171,6 +194,8 @@ model SalesRecord {
   syncAttemptedAt       DateTime?
   syncedAt              DateTime?
   erpReference          String?
+  erpInvoiceId          Int?
+  erpInvoiceNumber      String?
   erpSyncHttpStatus     Int?
   erpSyncResponse       Json?
   stockReleaseStatus    String    @default("not_required")
@@ -200,6 +225,7 @@ model SalesRecord {
   @@index([syncTarget, syncStatus])
   @@index([stockReleaseStatus])
   @@index([stockReleaseReference])
+  @@index([erpInvoiceNumber])
   @@index([erpPaymentStatus])
   @@index([syncAttemptedAt])
   @@index([testReference])

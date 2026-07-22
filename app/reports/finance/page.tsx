@@ -41,7 +41,7 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
         <section className="aj-surface p-6">
           <p className="text-sm text-slate-500">Pembayaran Tempo bulan ini</p>
           <p className="mt-2 text-3xl font-black tracking-tight">{rupiah(summary.tempoPaymentTotal)}</p>
-          <p className="mt-4 text-sm text-slate-600">{summary.tempoPayments.length} pembayaran tercatat.</p>
+          <p className="mt-4 text-sm text-slate-600">{summary.tempoPayments.length} pembayaran, dikurangi {summary.tempoReversals.length} reversal sebesar {rupiah(summary.tempoReversalTotal)}.</p>
         </section>
         <section className="aj-surface p-6">
           <p className="text-sm text-slate-500">Pengeluaran approved bulan ini</p>

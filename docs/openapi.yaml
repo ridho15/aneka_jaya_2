@@ -95,6 +95,20 @@ components:
         dueDate:
           type: string
           format: date
+        initialPaymentAmount:
+          type: number
+          minimum: 0
+          description: DP untuk transaksi Tempo; harus lebih kecil dari total invoice.
+        initialPaymentMethod:
+          type: string
+          enum: [Cash, TF, Other]
+        initialPaymentRekeningId:
+          type: string
+        initialPaymentRekeningNameSnapshot:
+          type: string
+          readOnly: true
+        initialPaymentNotes:
+          type: string
         rekeningId:
           type: string
         transferAccount:

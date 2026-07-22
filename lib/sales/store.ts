@@ -10,6 +10,7 @@ import { findTipe, listAllRekeningAccounts, resolveSalesRekening, type Bookkeepi
 import { getCurrentUser } from "@/lib/auth/session";
 import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCancellations";
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
+import { createTempoReceivableInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -239,6 +240,11 @@ function toSale(row: SalesRecordWithItems): Sale {
     shippingMethod: row.shippingMethod || undefined,
     paymentMethod: row.paymentMethod as Sale["paymentMethod"],
     dueDate: row.dueDate ? jakartaDateKey(row.dueDate) : undefined,
+    initialPaymentAmount: Number(row.initialPaymentAmount || 0),
+    initialPaymentMethod: row.initialPaymentMethod as Sale["initialPaymentMethod"] || undefined,
+    initialPaymentRekeningId: row.initialPaymentRekeningId || undefined,
+    initialPaymentRekeningNameSnapshot: row.initialPaymentRekeningNameSnapshot || undefined,
+    initialPaymentNotes: row.initialPaymentNotes || undefined,
     rekeningId: row.rekeningId || undefined,
     rekeningNameSnapshot: row.rekeningNameSnapshot || undefined,
     transferAccount: row.transferAccount || undefined,
@@ -251,6 +257,8 @@ function toSale(row: SalesRecordWithItems): Sale {
     syncAttemptedAt: row.syncAttemptedAt?.toISOString(),
     syncedAt: row.syncedAt?.toISOString(),
     erpReference: row.erpReference || undefined,
+    erpInvoiceId: row.erpInvoiceId || undefined,
+    erpInvoiceNumber: row.erpInvoiceNumber || undefined,
     erpSyncHttpStatus: row.erpSyncHttpStatus ?? undefined,
     erpSyncResponse: row.erpSyncResponse ?? undefined,
     stockReleaseStatus: row.stockReleaseStatus as Sale["stockReleaseStatus"],
@@ -432,7 +440,7 @@ export async function getSalesRecord(id: string): Promise<Sale | undefined> {
   return (await readJsonArray<Sale>(fileName)).find((sale) => sale.id === id) ?? await getPrismaSalesRecordSafe(id);
 }
 
-export async function saveSalesRecord(sale: Sale): Promise<void> {
+export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreationInput }): Promise<void> {
   if (isProductionMode()) {
     await prisma.$transaction(async (tx) => {
       const identity = sale.transactionNumber || !sale.transactionAt ? sale : { ...sale, ...await allocateTransactionIdentity(tx, sale.transactionAt) };
@@ -454,6 +462,11 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
         shippingMethod: sale.shippingMethod,
         paymentMethod: sale.paymentMethod,
         dueDate: sale.dueDate ? new Date(sale.dueDate) : undefined,
+        initialPaymentAmount: sale.initialPaymentAmount || 0,
+        initialPaymentMethod: sale.initialPaymentMethod,
+        initialPaymentRekeningId: sale.initialPaymentRekeningId,
+        initialPaymentRekeningNameSnapshot: sale.initialPaymentRekeningNameSnapshot,
+        initialPaymentNotes: sale.initialPaymentNotes,
         rekeningId: sale.rekeningId,
         rekeningNameSnapshot: sale.rekeningNameSnapshot,
         transferAccount: sale.transferAccount,
@@ -466,6 +479,8 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
         syncAttemptedAt: sale.syncAttemptedAt ? new Date(sale.syncAttemptedAt) : undefined,
         syncedAt: sale.syncedAt ? new Date(sale.syncedAt) : undefined,
         erpReference: sale.erpReference,
+        erpInvoiceId: sale.erpInvoiceId,
+        erpInvoiceNumber: sale.erpInvoiceNumber,
         erpSyncHttpStatus: sale.erpSyncHttpStatus,
         erpSyncResponse: sale.erpSyncResponse === undefined ? undefined : serializeJson(sale.erpSyncResponse),
         stockReleaseStatus: sale.stockReleaseStatus || "not_required",
@@ -504,6 +519,9 @@ export async function saveSalesRecord(sale: Sale): Promise<void> {
           }))
         }
       }
+      });
+      if (options?.tempo) await createTempoReceivableInTransaction(tx, options.tempo, {
+        id: sale.createdByUserId || "system", name: sale.createdByNameSnapshot || "System", role: (sale.createdByRoleSnapshot || "OWNER") as Role
       });
     });
     return;
@@ -549,6 +567,76 @@ function assertSalesEditable(sale: Sale) {
 
 function cancelReferenceForSale(id: string) {
   return `SLM-CANCEL-${id}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
+}
+
+function invoiceIdentityForSale(sale: Sale) {
+  if (sale.erpInvoiceId || sale.erpInvoiceNumber) return { invoiceId: sale.erpInvoiceId, invoiceNumber: sale.erpInvoiceNumber };
+  const row = sale.erpSyncResponse && typeof sale.erpSyncResponse === "object" ? sale.erpSyncResponse as Record<string, unknown> : undefined;
+  const nested = row?.data && typeof row.data === "object" ? row.data as Record<string, unknown> : undefined;
+  const invoice = row?.invoice && typeof row.invoice === "object" ? row.invoice as Record<string, unknown> : undefined;
+  const nestedInvoice = nested?.invoice && typeof nested.invoice === "object" ? nested.invoice as Record<string, unknown> : undefined;
+  const invoiceList = Array.isArray(row?.invoices) ? row.invoices : Array.isArray(nested?.invoices) ? nested.invoices : [];
+  const firstInvoice = invoiceList[0] && typeof invoiceList[0] === "object" ? invoiceList[0] as Record<string, unknown> : undefined;
+  const idValue = row?.invoice_id ?? invoice?.id ?? nested?.invoice_id ?? nestedInvoice?.id ?? firstInvoice?.id;
+  const invoiceId = typeof idValue === "number" ? idValue : typeof idValue === "string" && /^\d+$/.test(idValue.trim()) ? Number(idValue) : undefined;
+  const numberValue = row?.invoice_number ?? invoice?.invoice_number ?? nested?.invoice_number ?? nestedInvoice?.invoice_number ?? firstInvoice?.invoice_number ?? row?.slm_invoice_number ?? nested?.slm_invoice_number;
+  return { invoiceId, invoiceNumber: typeof numberValue === "string" ? numberValue : undefined };
+}
+
+async function markCancelReconciliationError(id: string, message: string) {
+  const updated = await prisma.salesRecord.update({ where: { id }, data: { syncError: `Cancel ERP perlu rekonsiliasi: ${message}` } }).then(() => true).catch(() => false);
+  if (updated) return;
+  const rows = await readJsonArray<Sale>(fileName);
+  const index = rows.findIndex((row) => row.id === id);
+  if (index >= 0) {
+    rows[index] = { ...rows[index], syncError: `Cancel ERP perlu rekonsiliasi: ${message}` };
+    await writeJsonArray(fileName, rows);
+  }
+}
+
+async function cancelPrismaSaleAtomically(id: string, before: Sale, cleanReason: string, actor: Awaited<ReturnType<typeof getCurrentUser>>, requiresErpCancellation: boolean, erpCancellation?: SalesCancellationResult) {
+  return prisma.$transaction(async (tx) => {
+    const row = await tx.salesRecord.update({
+      where: { id },
+      data: {
+        approvalStatus: "cancelled",
+        syncStatus: requiresErpCancellation ? "synced" : before.syncTarget === "erp" ? "failed" : before.syncStatus || "local",
+        syncError: requiresErpCancellation ? "Transaksi dibatalkan dan sudah dibatalkan di ERP." : before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError,
+        stockReleaseStatus: erpCancellation?.stockReversalStatus === "reversed" ? "reversed" : before.stockReleaseStatus,
+        erpPaymentStatus: erpCancellation?.paymentReversalStatus === "reversed" ? "reversed" : erpCancellation?.paymentReversalStatus === "not_found" ? "not_required" : before.erpPaymentStatus,
+        erpPaymentError: erpCancellation?.paymentReversalStatus === "not_found" ? null : before.erpPaymentError
+      },
+      include: salesInclude
+    });
+    const tempo = await tx.tempoReceivable.findUnique({ where: { salesId: id }, include: { payments: true } });
+    if (tempo && !["cancelled", "written_off"].includes(tempo.status)) {
+      await tx.tempoReceivable.update({ where: { id: tempo.id }, data: { status: "cancelled", updatedAt: new Date() } });
+      for (const payment of tempo.payments) {
+        await tx.tempoPaymentReversal.upsert({
+          where: { id: `TPR-CANCEL-${payment.id}` },
+          create: {
+            id: `TPR-CANCEL-${payment.id}`,
+            tempoPaymentId: payment.id,
+            reversalDate: new Date(),
+            amount: payment.amountPaid,
+            reason: cleanReason,
+            erpStatus: erpCancellation?.paymentReversalStatus || (payment.erpPaymentStatus === "not_required" ? "not_required" : "reversed"),
+            erpReference: erpCancellation?.reversalReference,
+            createdByUserId: actor.id,
+            createdByNameSnapshot: actor.name,
+            createdAt: new Date()
+          },
+          update: {}
+        });
+        await tx.auditLog.create({ data: { id: crypto.randomUUID(), entityType: "tempo_payment", entityId: payment.id, action: "reverse", beforeValue: serializeJson(payment), afterValue: serializeJson({ reversalId: `TPR-CANCEL-${payment.id}`, amount: Number(payment.amountPaid), erpStatus: erpCancellation?.paymentReversalStatus || "not_required", erpReference: erpCancellation?.reversalReference }), userId: actor.id, userNameSnapshot: actor.name, userRoleSnapshot: actor.role, reason: cleanReason } });
+      }
+      await tx.auditLog.create({ data: { id: crypto.randomUUID(), entityType: "tempo", entityId: tempo.id, action: "cancel", beforeValue: serializeJson(tempo), afterValue: serializeJson({ status: "cancelled", reversals: tempo.payments.map((payment) => `TPR-CANCEL-${payment.id}`) }), userId: actor.id, userNameSnapshot: actor.name, userRoleSnapshot: actor.role, reason: cleanReason } });
+    }
+    if (erpCancellation?.stockReversalStatus) await tx.auditLog.create({ data: { id: crypto.randomUUID(), entityType: "stock_release", entityId: before.stockReleaseReference || id, action: "reverse", beforeValue: serializeJson({ status: before.stockReleaseStatus, reference: before.stockReleaseReference }), afterValue: serializeJson({ status: erpCancellation.stockReversalStatus, reversalReference: erpCancellation.reversalReference }), userId: actor.id, userNameSnapshot: actor.name, userRoleSnapshot: actor.role, reason: cleanReason } });
+    const after = toSale(row);
+    await tx.auditLog.create({ data: { id: crypto.randomUUID(), entityType: "sales", entityId: id, action: "cancel", beforeValue: serializeJson(before), afterValue: serializeJson(erpCancellation ? { ...after, erpCancellation } : after), userId: actor.id, userNameSnapshot: actor.name, userRoleSnapshot: actor.role, reason: cleanReason } });
+    return after;
+  });
 }
 
 function saleTotal(input: Pick<Sale, "items">) {
@@ -633,6 +721,12 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   if (!before) throw Object.assign(new Error("Transaksi penjualan tidak ditemukan."), { code: "SALES_NOT_FOUND" });
   assertSaleManageable(before);
   assertSalesEditable(before);
+  if (
+    Number(input.initialPaymentAmount || 0) !== Number(before.initialPaymentAmount || 0) ||
+    (input.initialPaymentMethod || undefined) !== (before.initialPaymentMethod || undefined) ||
+    (input.initialPaymentRekeningId || undefined) !== (before.initialPaymentRekeningId || undefined) ||
+    (input.initialPaymentNotes || undefined) !== (before.initialPaymentNotes || undefined)
+  ) throw new Error("Pembayaran awal/DP tidak dapat diedit. Gunakan cancel/koreksi lalu buat transaksi baru.");
   const transactionAt = input.transactionAt ? jakartaTimestampFromLocal(input.transactionAt) : before.transactionAt;
   const deliveryAt = input.deliveryAt === undefined ? before.deliveryAt : input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
   if (deliveryAt && transactionAt && deliveryAt < transactionAt) throw new Error("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi.");
@@ -671,9 +765,11 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
   const actor = await getCurrentUser();
   let erpCancellation: SalesCancellationResult | undefined;
   if (requiresErpCancellation) {
+    const invoiceIdentity = invoiceIdentityForSale(before);
     const response = await cancelErpSales({
       erpReference: cancelReferenceForSale(id),
-      sourceNumber: before.erpReference,
+      sourceNumber: invoiceIdentity.invoiceNumber,
+      invoiceId: invoiceIdentity.invoiceId,
       saleReference: id,
       stockReleaseReference: before.stockReleaseReference,
       paymentReference: before.erpPaymentReference,
@@ -685,60 +781,19 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
         role: actor.role,
       },
     });
-    if (!response.success) throw new Error(response.message || "Cancel transaksi ERP gagal.");
+    if (!response.success) {
+      await markCancelReconciliationError(id, response.message || "Cancel transaksi ERP gagal.");
+      throw new Error(response.message || "Cancel transaksi ERP gagal.");
+    }
     erpCancellation = response.data;
   }
   if (isProductionMode()) {
-    const row = await prisma.salesRecord.update({
-      where: { id },
-      data: {
-        approvalStatus: "cancelled",
-        syncStatus: requiresErpCancellation
-          ? "synced"
-          : before.syncTarget === "erp"
-            ? "failed"
-            : before.syncStatus || "local",
-        syncError: requiresErpCancellation
-          ? "Transaksi dibatalkan dan sudah dibatalkan di ERP."
-          : before.syncTarget === "erp"
-            ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP."
-            : before.syncError
-      },
-      include: salesInclude
-    });
-    const after = toSale(row);
-    await recordAudit({
-      entityType: "sales",
-      entityId: id,
-      action: "cancel",
-      beforeValue: before,
-      afterValue: erpCancellation ? { ...after, erpCancellation } : after,
-      reason: cleanReason
-    });
-    return after;
+    return cancelPrismaSaleAtomically(id, before, cleanReason, actor, requiresErpCancellation, erpCancellation);
   }
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) {
-    const row = await prisma.salesRecord.update({
-      where: { id },
-      data: {
-        approvalStatus: "cancelled",
-        syncStatus: requiresErpCancellation ? "synced" : before.syncTarget === "erp" ? "failed" : before.syncStatus || "local",
-        syncError: requiresErpCancellation ? "Transaksi dibatalkan dan sudah dibatalkan di ERP." : before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError
-      },
-      include: salesInclude
-    });
-    const after = toSale(row);
-    await recordAudit({
-      entityType: "sales",
-      entityId: id,
-      action: "cancel",
-      beforeValue: before,
-      afterValue: erpCancellation ? { ...after, erpCancellation } : after,
-      reason: cleanReason
-    });
-    return after;
+    return cancelPrismaSaleAtomically(id, before, cleanReason, actor, requiresErpCancellation, erpCancellation);
   }
   const after: Sale = {
     ...before,

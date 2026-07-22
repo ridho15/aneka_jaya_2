@@ -102,6 +102,22 @@ describe("dashboard summaries", () => {
     ]);
   });
 
+  it("includes actual Tempo payments without counting the full Tempo invoice", () => {
+    const result = buildPaymentBreakdown([{ ...sale, id: "tempo", paymentMethod: "Tempo", total: 900_000 }], { bca: "BCA Operasional" }, [
+      { id: "TPY-1", tempoReceivableId: "TMP-1", paymentDate: "2026-06-10", amountPaid: 100_000, paymentMethod: "Cash", rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In", createdByUserId: "u1", createdByNameSnapshot: "User", createdAt: "2026-06-10" },
+      { id: "TPY-2", tempoReceivableId: "TMP-1", paymentDate: "2026-06-11", amountPaid: 200_000, paymentMethod: "TF", rekeningId: "bca", rekeningNameSnapshot: "BCA", createdByUserId: "u1", createdByNameSnapshot: "User", createdAt: "2026-06-11" }
+    ]);
+    expect(result.total).toBe(300_000);
+    expect(result.cash.value).toBe(100_000);
+    expect(result.transfers[0]).toMatchObject({ rekeningId: "bca", value: 200_000 });
+  });
+
+  it("nets Tempo reversals from the payment breakdown", () => {
+    const payment = { id: "TPY-1", tempoReceivableId: "TMP-1", paymentDate: "2026-07-02", amountPaid: 50_000, paymentMethod: "Cash" as const, rekeningId: "cash-w", rekeningNameSnapshot: "Kas", createdByUserId: "U-1", createdByNameSnapshot: "Owner", createdAt: "2026-07-02T00:00:00.000Z" };
+    const reversal = { id: "TPR-1", tempoPaymentId: payment.id, reversalDate: "2026-07-02", amount: 50_000, reason: "Cancel", erpStatus: "reversed", createdByUserId: "U-1", createdByNameSnapshot: "Owner", createdAt: "2026-07-02T01:00:00.000Z" };
+    expect(buildPaymentBreakdown([], {}, [payment], [reversal]).total).toBe(0);
+  });
+
   it("aggregates real approved sales and ExpenseRecord expenses by month", () => {
     const result = buildMonthlyPerformance([sale], [expense], new Date("2026-06-29T00:00:00.000Z"));
     expect(result).toHaveLength(6);

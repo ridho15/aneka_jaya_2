@@ -90,6 +90,22 @@ describe("report summaries", () => {
     expect(report.byTipe).toEqual([{ tipe: "AJ", cash: 160_000, tf: 240_000, total: 400_000 }]);
   });
 
+  it("adds Tempo payments received on the report date without adding the Tempo invoice", () => {
+    const tempoPayment = { ...basePayment, paymentDate: "2026-06-29", amountPaid: 125_000, paymentMethod: "TF" as const, tipeCodeSnapshot: "AJ" };
+    const report = buildPaidSalesReport([{ ...baseSale, paymentMethod: "Tempo", total: 900_000 }], "2026-06-29", [tempoPayment]);
+    expect(report.grandTotal).toBe(125_000);
+    expect(report.tempoPaymentTotal).toBe(125_000);
+    expect(report.byTipe).toEqual([{ tipe: "AJ", cash: 0, tf: 125_000, total: 125_000 }]);
+  });
+
+  it("subtracts a Tempo payment reversal on the reversal date", () => {
+    const payment = { ...basePayment, paymentDate: "2026-06-28", amountPaid: 125_000, paymentMethod: "TF" as const, tipeCodeSnapshot: "AJ" };
+    const reversal = { id: "TPR-1", tempoPaymentId: payment.id, reversalDate: "2026-06-29", amount: 125_000, reason: "Cancel", erpStatus: "reversed", createdByUserId: "U-1", createdByNameSnapshot: "Owner", createdAt: "2026-06-29T00:00:00.000Z" };
+    const report = buildPaidSalesReport([], "2026-06-29", [payment], [reversal]);
+    expect(report.grandTotal).toBe(-125_000);
+    expect(report.tempoReversalTotal).toBe(125_000);
+  });
+
   it("summarizes finance from active Tempo, monthly payments, and approved expenses only", () => {
     const report = buildFinanceReportSummary({
       month: "2026-06",
@@ -103,6 +119,7 @@ describe("report summaries", () => {
         basePayment,
         { ...basePayment, id: "TPY-2", paymentDate: "2026-07-01", amountPaid: 200_000 }
       ],
+      reversals: [{ id: "TPR-1", tempoPaymentId: basePayment.id, reversalDate: "2026-06-30", amount: 25_000, reason: "Cancel", erpStatus: "reversed", createdByUserId: "U-1", createdByNameSnapshot: "Owner", createdAt: "2026-06-30T00:00:00.000Z" }],
       expenses: [
         baseExpense,
         { ...baseExpense, id: "E-2", approvalStatus: "pending_approval", amount: 300_000 },
@@ -112,7 +129,7 @@ describe("report summaries", () => {
     });
 
     expect(report.openTempoTotal).toBe(400_000);
-    expect(report.tempoPaymentTotal).toBe(100_000);
+    expect(report.tempoPaymentTotal).toBe(75_000);
     expect(report.approvedExpenseTotal).toBe(75_000);
   });
 });

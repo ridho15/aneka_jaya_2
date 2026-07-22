@@ -21,6 +21,7 @@ import { getWhatsappProviderStatus } from "@/lib/whatsapp/whatsappClient";
 import type { Sale } from "@/lib/types/sales";
 import { listRekeningAccounts, type RekeningAccount } from "@/lib/business/masterData";
 import { getOperationalProfitSetting } from "@/lib/settings/profit";
+import { listTempoPaymentReversals, listTempoPayments } from "@/lib/tempo/store";
 
 export const dynamic = "force-dynamic";
 
@@ -120,9 +121,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   const monthStr = jakartaMonthKey();
   const paymentPeriod = paymentPeriodFromParams(params, monthStr);
   const allSales = await listSalesRecords();
-  const [allExpenses, allRekenings] = await Promise.all([
+  const [allExpenses, allRekenings, allTempoPayments, allTempoReversals] = await Promise.all([
     listExpenseRecords(),
-    listRekeningAccounts()
+    listRekeningAccounts(),
+    listTempoPayments(),
+    listTempoPaymentReversals()
   ]);
   const canViewOperationalProfit = can(role, "settings.profit.manage");
   const rekeningLabels = rekeningLabelMap(allRekenings);
@@ -137,8 +140,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     : null;
   const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), { from: filters.from, to: filters.to });
   const paymentSales = paymentPeriod.error ? [] : filterDashboardSales(allSales, { from: paymentPeriod.from, to: paymentPeriod.to });
-  const paymentBreakdown = buildPaymentBreakdown(paymentSales, rekeningLabels);
-  paymentPeriod.transactionCount = paymentSales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF")).length;
+  const paymentTempo = paymentPeriod.error ? [] : allTempoPayments.filter((payment) => payment.paymentDate >= paymentPeriod.from && payment.paymentDate <= paymentPeriod.to);
+  const paymentReversals = paymentPeriod.error ? [] : allTempoReversals.filter((reversal) => reversal.reversalDate >= paymentPeriod.from && reversal.reversalDate <= paymentPeriod.to);
+  const paymentBreakdown = buildPaymentBreakdown(paymentSales, rekeningLabels, paymentTempo, paymentReversals);
+  paymentPeriod.transactionCount = paymentSales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF")).length + paymentTempo.filter((payment) => payment.paymentMethod === "Cash" || payment.paymentMethod === "TF").length;
   const rekenings = rekeningOptions(allSales, allRekenings);
   const whatsappStatus = getWhatsappProviderStatus();
   const dataSourceNotice = dashboardDataSourceNotice();

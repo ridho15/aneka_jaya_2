@@ -4,11 +4,11 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => {
   const tx = {
-    salesRecord: { create: vi.fn(), update: vi.fn() },
+    salesRecord: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn() },
     expenseRecord: { update: vi.fn() },
     approvalRequest: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     tempoReceivable: { create: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    tempoPayment: { create: vi.fn() },
+    tempoPayment: { create: vi.fn(), findUnique: vi.fn() },
     auditLog: { create: vi.fn() }
   };
   return {
@@ -58,7 +58,7 @@ vi.mock("@/lib/audit/store", () => ({ recordAudit: vi.fn() }));
 
 import { createSale } from "@/lib/api/sales";
 import { updateApprovalStatus } from "@/lib/approval/store";
-import { cancelTempo, payTempo, writeOffTempo } from "@/lib/tempo/store";
+import { cancelTempo, createTempoReceivableInTransaction, payTempo, writeOffTempo } from "@/lib/tempo/store";
 
 const saleInput = {
   saleDate: "2026-06-27",
@@ -123,6 +123,14 @@ describe("production Prisma transactions", () => {
     expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ entityType: "sales", action: "create" })
     }));
+  });
+
+  it("creates an initial Tempo payment and partial receivable atomically", async () => {
+    mocks.tx.salesRecord.findUnique.mockResolvedValue({ syncTarget: "local" });
+    mocks.tx.tempoPayment.create.mockResolvedValue({ id: "TPY-INITIAL-S-1", tempoReceivableId: "TMP-1", paymentDate: new Date("2026-06-27"), amountPaid: 5_000, paymentMethod: "Cash", rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In", erpPaymentStatus: "not_required", createdByUserId: "actor-1", createdByNameSnapshot: "Actor", createdAt: new Date("2026-06-27") });
+    await expect(createTempoReceivableInTransaction(mocks.tx as never, { salesId: "S-1", tipeId: "W", tipeCodeSnapshot: "W", tipeNameSnapshot: "Walk In", customerName: "Budi", originalAmount: 20_000, transactionDate: "2026-06-27", dueDate: "2026-07-27", initialPayment: { amount: 5_000, method: "Cash", rekeningId: "cash-w", rekeningNameSnapshot: "Kas Walk In" } }, mocks.user)).resolves.toMatchObject({ receivable: { paidAmount: 5_000, remainingAmount: 15_000, status: "partial_paid" } });
+    expect(mocks.tx.tempoReceivable.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ originalAmount: 20_000, paidAmount: 5_000, remainingAmount: 15_000, status: "partial_paid" }) }));
+    expect(mocks.tx.tempoPayment.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ id: expect.stringContaining("TPY-INITIAL-"), amountPaid: 5_000, paymentMethod: "Cash", rekeningId: "cash-w" }) }));
   });
 
   it.each(["W", "ONLINE"])("keeps %s sales local without calling ERP", async (code) => {

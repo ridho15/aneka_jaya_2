@@ -5,7 +5,7 @@ import type { ApiResponse } from "@/lib/types/api";
 import { failure } from "@/lib/types/api";
 import type { Sale } from "@/lib/types/sales";
 import { recordAudit } from "@/lib/audit/store";
-import { createTempoReceivable } from "@/lib/tempo/store";
+import { createTempoReceivable, createTempoReceivableInTransaction, syncInitialTempoPaymentForSale } from "@/lib/tempo/store";
 import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
 import { allocateTransactionIdentity, saveSalesRecord } from "@/lib/sales/store";
@@ -58,6 +58,23 @@ export function erpReferenceFrom(value: unknown): string | undefined {
     row.id ??
     nested?.id;
   return reference === undefined || reference === null ? undefined : String(reference);
+}
+
+export function erpInvoiceIdentityFrom(value: unknown): { invoiceId?: number; invoiceNumber?: string } {
+  if (!value || typeof value !== "object") return {};
+  const row = value as Record<string, unknown>;
+  const nested = row.data && typeof row.data === "object" ? row.data as Record<string, unknown> : undefined;
+  const invoice = row.invoice && typeof row.invoice === "object" ? row.invoice as Record<string, unknown> : undefined;
+  const nestedInvoice = nested?.invoice && typeof nested.invoice === "object" ? nested.invoice as Record<string, unknown> : undefined;
+  const invoiceList = Array.isArray(row.invoices) ? row.invoices : Array.isArray(nested?.invoices) ? nested.invoices : [];
+  const firstInvoice = invoiceList[0] && typeof invoiceList[0] === "object" ? invoiceList[0] as Record<string, unknown> : undefined;
+  const idValue = row.invoice_id ?? invoice?.id ?? nested?.invoice_id ?? nestedInvoice?.id ?? firstInvoice?.id;
+  const parsedId = typeof idValue === "number" ? idValue : typeof idValue === "string" && /^\d+$/.test(idValue.trim()) ? Number(idValue) : undefined;
+  const numberValue = row.invoice_number ?? invoice?.invoice_number ?? nested?.invoice_number ?? nestedInvoice?.invoice_number ?? firstInvoice?.invoice_number ?? row.slm_invoice_number ?? nested?.slm_invoice_number;
+  return {
+    invoiceId: parsedId && parsedId > 0 ? parsedId : undefined,
+    invoiceNumber: typeof numberValue === "string" && numberValue.trim() ? numberValue.trim() : undefined
+  };
 }
 
 export function safeErpSyncError(response: ApiResponse<unknown>) {
@@ -606,6 +623,11 @@ async function persistErpSale(input: {
         shippingMethod: sale.shippingMethod,
         paymentMethod: sale.paymentMethod,
         dueDate: sale.dueDate ? new Date(sale.dueDate) : undefined,
+        initialPaymentAmount: sale.initialPaymentAmount || 0,
+        initialPaymentMethod: sale.initialPaymentMethod,
+        initialPaymentRekeningId: sale.initialPaymentRekeningId,
+        initialPaymentRekeningNameSnapshot: sale.initialPaymentRekeningNameSnapshot,
+        initialPaymentNotes: sale.initialPaymentNotes,
         rekeningId: sale.rekeningId,
         rekeningNameSnapshot: sale.rekeningNameSnapshot,
         transferAccount: sale.transferAccount,
@@ -618,6 +640,8 @@ async function persistErpSale(input: {
         syncAttemptedAt: sale.syncAttemptedAt ? new Date(sale.syncAttemptedAt) : undefined,
         syncedAt: sale.syncedAt ? new Date(sale.syncedAt) : undefined,
         erpReference: sale.erpReference,
+        erpInvoiceId: sale.erpInvoiceId,
+        erpInvoiceNumber: sale.erpInvoiceNumber,
         erpSyncHttpStatus: sale.erpSyncHttpStatus,
         erpSyncResponse: sale.erpSyncResponse === undefined ? undefined : serializeJson(sale.erpSyncResponse),
         stockReleaseStatus: sale.stockReleaseStatus || "not_required",
@@ -687,27 +711,12 @@ async function persistErpSale(input: {
       });
     }
     if (approvalStatus === "approved" && paymentMethod === "Tempo") {
-      const now = new Date();
-      await tx.tempoReceivable.create({
-        data: {
-          id: `TMP-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
-          salesId: sale.id,
-          tipeId: tipe.id,
-          tipeCodeSnapshot: tipe.code,
-          tipeNameSnapshot: tipe.name,
-          customerName: sale.customerName,
-          originalAmount: total,
-          paidAmount: 0,
-          remainingAmount: total,
-          transactionDate: new Date(sale.saleDate),
-          dueDate: new Date(dueDate || sale.saleDate),
-          status: "open",
-          createdByUserId: user.id,
-          createdByNameSnapshot: user.name,
-          createdAt: now,
-          updatedAt: now
-        }
-      });
+      await createTempoReceivableInTransaction(tx, {
+        salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name,
+        customerName: sale.customerName, originalAmount: total, transactionDate: sale.saleDate,
+        dueDate: dueDate || sale.saleDate,
+        initialPayment: { amount: sale.initialPaymentAmount || 0, method: sale.initialPaymentMethod, rekeningId: sale.initialPaymentRekeningId, rekeningNameSnapshot: sale.initialPaymentRekeningNameSnapshot, notes: sale.initialPaymentNotes }
+      }, user);
     }
     await tx.auditLog.create({
       data: {
@@ -730,6 +739,9 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const user = await getCurrentUser();
   const tipe = await findTipe(input.tipeId);
   const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
+  const initialRekening = input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0 && input.initialPaymentMethod
+    ? await resolveSalesRekening(input.initialPaymentMethod, tipe.id, input.initialPaymentRekeningId)
+    : undefined;
   const approvalStatus: NonNullable<Sale["approvalStatus"]> = "approved";
   const target = salesTargetForType(tipe.code);
   const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
@@ -743,7 +755,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const saleDate = transactionDateKey(transactionAt);
   const deliveryAt = input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
   if (deliveryAt && deliveryAt < transactionAt) return failure("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi", "VALIDATION_ERROR");
-  const effectiveInput = { ...input, saleDate, transactionAt, deliveryAt, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name };
+  const effectiveInput = { ...input, saleDate, transactionAt, deliveryAt, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, initialPaymentRekeningId: initialRekening?.id, initialPaymentRekeningNameSnapshot: initialRekening?.name };
 
   if (!preparedManualItems.success) {
     if (target === "local") return preparedManualItems;
@@ -756,8 +768,10 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
 
   if (target === "local") {
     const sale: Sale = { id: `S-${Date.now()}`, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "local", syncStatus: "local", stockReleaseStatus: "not_required", erpPaymentStatus: "not_required", createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
-    await saveSalesRecord(sale);
-    if (approvalStatus === "approved" && input.paymentMethod === "Tempo") await createTempoReceivable({ salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, customerName: input.customerName, originalAmount: total, transactionDate: saleDate, dueDate: input.dueDate || saleDate });
+    const tempoInput = approvalStatus === "approved" && input.paymentMethod === "Tempo" ? { salesId: sale.id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, customerName: input.customerName, originalAmount: total, transactionDate: saleDate, dueDate: input.dueDate || saleDate, initialPayment: { amount: input.initialPaymentAmount, method: input.initialPaymentMethod, rekeningId: initialRekening?.id, rekeningNameSnapshot: initialRekening?.name, notes: input.initialPaymentNotes } } : undefined;
+    if (tempoInput) await saveSalesRecord(sale, { tempo: tempoInput });
+    else await saveSalesRecord(sale);
+    if (process.env.NEXT_PUBLIC_APP_MODE !== "production" && tempoInput) await createTempoReceivable(tempoInput);
     await recordAudit({ entityType: "sales", entityId: sale.id, action: "create", afterValue: sale, reason: `Invoice Penjualan lokal • ${approvalStatus} • ${input.paymentMethod}` });
     return { success: true, data: { ...sale, target: "local" } };
   }
@@ -765,13 +779,14 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const attemptedAt = new Date().toISOString();
   if (response.success) {
     const erpReference = erpReferenceFrom(response.data);
+    const erpInvoiceIdentity = erpInvoiceIdentityFrom(response.data);
     const saleId = `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     const stockResponse = await releaseSaleStock({ saleId, saleDate, erpReference, sourceNumber: erpReference, items: effectiveInput.items });
     const stockReleasedAt = new Date().toISOString();
     const stockReleaseStatus: Sale["stockReleaseStatus"] = stockResponse.success ? "released" : "failed";
     const stockReleaseReference = stockResponse.success ? stockResponse.data.releaseReference : `SLM-STOCK-${erpReference || saleId}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
     const stockReleaseError = stockResponse.success ? undefined : stockReleaseErrorFrom(stockResponse);
-    let erpPaymentStatus: Sale["erpPaymentStatus"] = isImmediateErpPayment(input.paymentMethod) ? "pending" : "not_required";
+    let erpPaymentStatus: Sale["erpPaymentStatus"] = isImmediateErpPayment(input.paymentMethod) || (input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0) ? "pending" : "not_required";
     let erpPaymentError: string | undefined = stockResponse.success ? undefined : "Payment ERP menunggu release stok berhasil.";
     let erpPaymentReference: string | undefined;
     let erpPaymentSyncedAt: string | undefined;
@@ -800,8 +815,9 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
         erpPaymentError = safeErpPaymentError(paymentResponse);
       }
     }
-    const sale: Sale = { id: saleId, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "synced", syncAttemptedAt: attemptedAt, syncedAt: attemptedAt, erpReference, erpSyncHttpStatus: erpHttpStatus(response), erpSyncResponse: erpAuditResponse(response), stockReleaseStatus, stockReleaseReference, stockReleaseError, stockReleasedAt: stockResponse.success ? stockReleasedAt : undefined, stockReleaseHttpStatus: erpHttpStatus(stockResponse), stockReleaseResponse: erpAuditResponse(stockResponse), erpPaymentStatus, erpPaymentError, erpPaymentReference, erpPaymentSyncedAt, erpPaymentAttemptedAt, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
+    const sale: Sale = { id: saleId, ...effectiveInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, total, approvalStatus, syncTarget: "erp", syncStatus: "synced", syncAttemptedAt: attemptedAt, syncedAt: attemptedAt, erpReference, erpInvoiceId: erpInvoiceIdentity.invoiceId, erpInvoiceNumber: erpInvoiceIdentity.invoiceNumber, erpSyncHttpStatus: erpHttpStatus(response), erpSyncResponse: erpAuditResponse(response), stockReleaseStatus, stockReleaseReference, stockReleaseError, stockReleasedAt: stockResponse.success ? stockReleasedAt : undefined, stockReleaseHttpStatus: erpHttpStatus(stockResponse), stockReleaseResponse: erpAuditResponse(stockResponse), erpPaymentStatus, erpPaymentError, erpPaymentReference, erpPaymentSyncedAt, erpPaymentAttemptedAt, testReference, isTestTransaction, createdByUserId: user.id, createdByNameSnapshot: user.name, createdByRoleSnapshot: user.role, createdAt: new Date().toISOString() };
     await persistErpSale({ sale, total, approvalStatus, paymentMethod: input.paymentMethod, dueDate: input.dueDate, tipe, user: { id: user.id, name: user.name, role: user.role }, auditReason: `Invoice Penjualan ${tipe.code} • Terkirim ke ERP • Release stok ${stockReleaseStatus} • Payment ${erpPaymentStatus}${stockReleaseError ? ` • ${stockReleaseError}` : ""}${erpPaymentError ? ` • ${erpPaymentError}` : ""}${testReference ? ` • ${testReference}` : ""}` });
+    if (approvalStatus === "approved" && input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0) await syncInitialTempoPaymentForSale(sale.id);
     return { success: true, data: { ...sale, target: "erp", erpReference, testReference, retryable: stockReleaseStatus === "failed" || erpPaymentStatus === "failed" || erpPaymentStatus === "pending" } };
   }
   const syncError = safeErpSyncError(response);

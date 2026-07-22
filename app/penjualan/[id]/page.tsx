@@ -76,10 +76,16 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Release Stok</p><div className="mt-1">{sale.syncTarget === "erp" ? <Badge value={sale.stockReleaseStatus || "not_required"} tone={statusTone(sale.stockReleaseStatus || "not_required")} /> : <span className="text-sm text-slate-500">—</span>}</div></div>
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Payment ERP</p><div className="mt-1">{sale.syncTarget === "erp" ? <Badge value={sale.erpPaymentStatus || "not_required"} tone={statusTone(sale.erpPaymentStatus || "not_required")} /> : <span className="text-sm text-slate-500">—</span>}</div></div>
           <Info label="ERP Reference" value={sale.erpReference || "—"} />
+          <Info label="Nomor Invoice ERP" value={sale.erpInvoiceNumber || "—"} />
+          <Info label="ID Invoice ERP" value={sale.erpInvoiceId ? String(sale.erpInvoiceId) : "—"} />
           <Info label="Release Reference" value={sale.stockReleaseReference || "—"} />
           <Info label="Payment Reference" value={sale.erpPaymentReference || "—"} />
           <Info label="Test Reference" value={sale.testReference || "—"} />
           <Info label="Total" value={rupiah(sale.total)} strong />
+          {sale.paymentMethod === "Tempo" && <Info label="Pembayaran Awal / DP" value={rupiah(sale.initialPaymentAmount || 0)} strong />}
+          {sale.paymentMethod === "Tempo" && <Info label="Sisa Tempo Awal" value={rupiah(Math.max(0, sale.total - (sale.initialPaymentAmount || 0)))} strong />}
+          {sale.paymentMethod === "Tempo" && <Info label="Metode DP" value={sale.initialPaymentMethod || "—"} />}
+          {sale.paymentMethod === "Tempo" && <Info label="Rekening DP" value={sale.initialPaymentRekeningNameSnapshot || "—"} />}
         </div>
         {sale.syncError && <p className="mt-4 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{sale.syncError}</p>}
         {sale.stockReleaseError && <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">{sale.stockReleaseError}</p>}

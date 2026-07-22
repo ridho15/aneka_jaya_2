@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { buildFinanceReportSummary, buildPaidSalesReport } from "@/lib/reports/summary";
 import type { Expense } from "@/lib/types/expenses";
 import type { Sale } from "@/lib/types/sales";
-import type { TempoPayment, TempoReceivable, TempoStatus } from "@/lib/tempo/store";
+import type { TempoPayment, TempoPaymentReversal, TempoReceivable, TempoStatus } from "@/lib/tempo/store";
 import { jakartaDateKey } from "@/lib/date/jakarta";
 
 function dateStart(value: string) {
@@ -40,6 +40,11 @@ function toReportSale(row: Awaited<ReturnType<typeof prisma.salesRecord.findMany
     customerName: row.customerName,
     customerLocation: row.customerLocation || undefined,
     paymentMethod: row.paymentMethod as Sale["paymentMethod"],
+    initialPaymentAmount: Number(row.initialPaymentAmount || 0),
+    initialPaymentMethod: row.initialPaymentMethod as Sale["initialPaymentMethod"] || undefined,
+    initialPaymentRekeningId: row.initialPaymentRekeningId || undefined,
+    initialPaymentRekeningNameSnapshot: row.initialPaymentRekeningNameSnapshot || undefined,
+    initialPaymentNotes: row.initialPaymentNotes || undefined,
     total: Number(row.total),
     approvalStatus: row.approvalStatus as Sale["approvalStatus"],
     syncTarget: row.syncTarget as Sale["syncTarget"],
@@ -126,25 +131,31 @@ function toReportTempoPayment(row: Awaited<ReturnType<typeof prisma.tempoPayment
   };
 }
 
+function toReportTempoReversal(row: Awaited<ReturnType<typeof prisma.tempoPaymentReversal.findMany>>[number]): TempoPaymentReversal {
+  return { id: row.id, tempoPaymentId: row.tempoPaymentId, reversalDate: dateKey(row.reversalDate), amount: Number(row.amount), reason: row.reason, erpStatus: row.erpStatus, erpReference: row.erpReference || undefined, createdByUserId: row.createdByUserId, createdByNameSnapshot: row.createdByNameSnapshot, createdAt: row.createdAt.toISOString() };
+}
+
 export async function getPaidSalesReport(reportDate: string) {
-  const rows = await prisma.salesRecord.findMany({
+  const [rows, tempoPaymentRows, reversalRows] = await Promise.all([prisma.salesRecord.findMany({
     where: {
       saleDate: { gte: dateStart(reportDate), lte: dateEnd(reportDate) },
       approvalStatus: "approved",
       paymentMethod: { in: ["Cash", "TF"] }
     },
     orderBy: { createdAt: "desc" }
-  });
-  return buildPaidSalesReport(rows.map(toReportSale), reportDate);
+  }), prisma.tempoPayment.findMany({ include: { tempoReceivable: true }, orderBy: { createdAt: "desc" } }), prisma.tempoPaymentReversal.findMany({ where: { reversalDate: { gte: dateStart(reportDate), lte: dateEnd(reportDate) } }, orderBy: { createdAt: "desc" } })]);
+  const tempoPayments = tempoPaymentRows.map((row) => ({ ...toReportTempoPayment(row), customerName: row.tempoReceivable.customerName, salesId: row.tempoReceivable.salesId, tipeCodeSnapshot: row.tempoReceivable.tipeCodeSnapshot }));
+  return buildPaidSalesReport(rows.map(toReportSale), reportDate, tempoPayments, reversalRows.map(toReportTempoReversal));
 }
 
 export async function getFinanceReport(month: string) {
-  const [tempo, payments, expenses] = await Promise.all([
+  const [tempo, payments, reversals, expenses] = await Promise.all([
     prisma.tempoReceivable.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.tempoPayment.findMany({
       where: { paymentDate: { gte: monthStart(month), lt: nextMonthStart(month) } },
       orderBy: { createdAt: "desc" }
     }),
+    prisma.tempoPaymentReversal.findMany({ where: { reversalDate: { gte: monthStart(month), lt: nextMonthStart(month) } }, orderBy: { createdAt: "desc" } }),
     prisma.expenseRecord.findMany({
       where: {
         expenseDate: { gte: monthStart(month), lt: nextMonthStart(month) },
@@ -158,6 +169,7 @@ export async function getFinanceReport(month: string) {
     month,
     tempo: tempo.map(toReportTempo),
     payments: payments.map(toReportTempoPayment),
+    reversals: reversals.map(toReportTempoReversal),
     expenses: expenses.map(toReportExpense)
   });
 }

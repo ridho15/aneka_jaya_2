@@ -142,6 +142,7 @@ export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber
     ...sale.items.flatMap((item, index) => itemLines(index, item.productRef, item.quantity, item.unitPrice, item.discount || 0, item.unitSnapshot)),
     line("-"),
     amountLine("TOTAL", sale.total),
+    ...(sale.paymentMethod === "Tempo" ? [amountLine("DP", sale.initialPaymentAmount || 0), amountLine("SISA TEMPO", Math.max(0, sale.total - (sale.initialPaymentAmount || 0)))] : []),
     statusLine("STATUS", sale.approvalStatus || "approved"),
     line("="),
     ...signatureBlock(sale.createdByNameSnapshot)
