@@ -106,9 +106,8 @@ function itemLines(index: number, productRef: string, quantity: number, unitPric
   return [firstLine, secondLine];
 }
 
-function infoHeader(brand: string, title: string, dateLabel: string, idLabel: string, right: string[]) {
+function infoHeader(title: string, dateLabel: string, idLabel: string, right: string[]) {
   return layoutHeader([
-    brand,
     title,
     dateLabel,
     idLabel
@@ -119,22 +118,15 @@ function normalizeLines(lines: string[]) {
   return `${lines.map((entry) => truncate(entry).padEnd(DOT_MATRIX_WIDTH)).join("\n")}\n`;
 }
 
-function headerForTipe(tipeCode?: string) {
-  return tipeCode?.trim().toUpperCase() === "AJ" ? "ANEKA JAYA" : "SLM";
-}
-
 export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber?: boolean } = {}) {
-  const brand = headerForTipe(sale.tipeCodeSnapshot);
   const transactionNumber = options.showTransactionNumber === false ? "-" : sale.transactionNumber || sale.id;
   const rows: string[] = [
-    ...infoHeader(brand, "INVOICE PENJUALAN", `Tgl ${sale.transactionAt ? formatJakartaDateTimeCompact(sale.transactionAt) : sale.saleDate}`, `No ${transactionNumber}`, [
+    ...infoHeader("INVOICE PENJUALAN", `Tgl ${sale.transactionAt ? formatJakartaDateTimeCompact(sale.transactionAt) : sale.saleDate}`, `No ${transactionNumber}`, [
       sale.customerName,
       sale.customerLocation || "-",
       `Bayar ${sale.paymentMethod}`,
       sale.paymentMethod === "Tempo" ? `Tempo ${sale.dueDate || "-"}` : `Kirim ${sale.shippingMethod || "-"}`
     ]),
-    pair("Waktu Kirim", sale.deliveryAt ? `${formatJakartaDateTimeCompact(sale.deliveryAt)} WIB` : undefined),
-    pair("Rekening", sale.rekeningNameSnapshot || sale.transferAccount || sale.rekeningId),
     line("="),
     `${column("NO", 3)}${column("KODE", 8)}${column("NAMA PRODUK", 15)}${column("QTY", 6, "right")}`,
     `${column("", 3)}${column("", 8)}${column("", 5)}${column("HARGA", 10, "right")}${column("TOTAL", 18, "right")}`,
@@ -143,7 +135,6 @@ export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber
     line("-"),
     amountLine("TOTAL", sale.total),
     ...(sale.paymentMethod === "Tempo" ? [amountLine("DP", sale.initialPaymentAmount || 0), amountLine("SISA TEMPO", Math.max(0, sale.total - (sale.initialPaymentAmount || 0)))] : []),
-    statusLine("STATUS", sale.approvalStatus || "approved"),
     line("="),
     ...signatureBlock(sale.createdByNameSnapshot)
   ].filter(Boolean);
@@ -153,13 +144,11 @@ export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber
 
 export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrintInput) {
   const latestPayment = payments[0];
-  const brand = headerForTipe(receivable.tipeCodeSnapshot);
   const rows: string[] = [
-    ...infoHeader(brand, "BAYAR TEMPO", `Tgl ${latestPayment?.paymentDate || receivable.transactionDate}`, `No ${receivable.id}`, [
+    ...infoHeader("BAYAR TEMPO", `Tgl ${latestPayment?.paymentDate || receivable.transactionDate}`, `No ${receivable.id}`, [
       receivable.customerName,
       `Sales ${receivable.salesId}`,
       `Tempo ${receivable.dueDate}`,
-      `Status ${receivable.status}`
     ]),
     line("="),
     amountLine("TOTAL TEMPO", receivable.originalAmount),
@@ -173,7 +162,6 @@ export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrint
       pair("Pembayaran", latestPayment.id),
       pair("Tanggal Bayar", latestPayment.paymentDate),
       pair("Metode", latestPayment.paymentMethod),
-      pair("Rekening", latestPayment.rekeningNameSnapshot || latestPayment.rekeningId),
       amountLine("NOMINAL BAYAR", latestPayment.amountPaid)
     );
   } else {
@@ -185,9 +173,8 @@ export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrint
 }
 
 export function formatExpenseDotMatrix(expense: Expense) {
-  const brand = headerForTipe(expense.tipeCodeSnapshot);
   const rows: string[] = [
-    ...infoHeader(brand, "PENGELUARAN", `Tgl ${expense.expenseDate}`, `No ${expense.id}`, [
+    ...infoHeader("PENGELUARAN", `Tgl ${expense.expenseDate}`, `No ${expense.id}`, [
       expense.vendorName,
       expense.rekeningNameSnapshot || expense.rekeningId || "-",
       expense.category,
@@ -201,7 +188,6 @@ export function formatExpenseDotMatrix(expense: Expense) {
     expense.notes ? truncate(`Catatan  : ${expense.notes}`) : "",
     line("-"),
     amountLine("TOTAL", expense.amount),
-    statusLine("STATUS", expense.approvalStatus || "approved"),
     line("="),
     ...signatureBlock(expense.createdByNameSnapshot)
   ].filter(Boolean);

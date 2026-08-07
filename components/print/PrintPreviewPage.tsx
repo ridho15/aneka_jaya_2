@@ -132,7 +132,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
         </div>
       )}
       {!loading && !error && (
-        <div className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[1.5cm] pt-[1cm] print:max-w-none print:overflow-visible`}>
+        <div className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[2.5cm] pt-[1cm] print:max-w-none print:overflow-visible`}>
           <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
             {text}
           </pre>
