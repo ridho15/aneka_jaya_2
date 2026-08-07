@@ -55,8 +55,15 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize = kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
-  const sheetSize = kind === "sales" ? "h-[12.2cm] w-[14cm]" : "h-[14cm] w-[12.2cm]";
+  const paperSize =
+    kind === "sales"
+      ? "14cm 12.2cm"
+      : "12.2cm 14cm";
+
+  const sheetSize =
+    kind === "sales"
+      ? "h-[12.2cm] w-[14cm]"
+      : "h-[14cm] w-[12.2cm]";
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-5 text-slate-950 sm:px-6 print:bg-white print:p-0">
@@ -132,8 +139,10 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
         </div>
       )}
       {!loading && !error && (
-        <div className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[3.5cm] pt-[1cm] print:max-w-none print:overflow-visible`}>
-          <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
+        <div
+          className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-hidden px-[1cm] pb-[0.4cm] pl-[2cm] pt-[1cm] print:max-w-none print:overflow-visible`}
+        >
+          <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[11px] font-semibold leading-[1.3] text-slate-950">
             {text}
           </pre>
         </div>
