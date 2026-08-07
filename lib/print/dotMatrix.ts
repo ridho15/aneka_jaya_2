@@ -161,7 +161,7 @@ export function formatSaleDotMatrix(
       ? "-"
       : sale.transactionNumber || sale.id;
 
-  const ITEM_PER_PAGE = 10;
+  const ITEM_PER_PAGE = 7;
 
   const pages = chunkItems(sale.items, ITEM_PER_PAGE);
 
