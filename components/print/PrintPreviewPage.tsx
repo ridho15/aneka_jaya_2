@@ -55,9 +55,15 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize = "12.2cm 14cm";
+  const paperSize =
+    kind === "sales"
+      ? "14cm 12.2cm"
+      : "12.2cm 14cm";
 
-const sheetSize = "h-[14cm] w-[12.2cm]";
+  const sheetSize =
+    kind === "sales"
+      ? "h-[12.2cm] w-[14cm]"
+      : "h-[14cm] w-[12.2cm]";
 
   const previewPages = text
     .split("\x0C")
@@ -66,32 +72,33 @@ const sheetSize = "h-[14cm] w-[12.2cm]";
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-5 text-slate-950 sm:px-6 print:bg-white print:p-0">
       <style>{`
-        @media print {
-          body {
-            background: #fff !important;
-          }
+  @media print {
+    body {
+      background: #fff !important;
+    }
 
-          .print-actions {
-            display: none !important;
-          }
+    .print-actions {
+      display: none !important;
+    }
 
-          @page {
-            margin: 0;
-            size: ${paperSize};
-          }
+    @page {
+      margin: 0;
+      size: ${paperSize};
+    }
 
-          .print-sheet {
-            break-after: page;
-            page-break-after: always;
-            overflow: visible !important;
-          }
+    .print-sheet {
+      box-shadow: none !important;
+      overflow: visible !important;
+      break-after: page;
+      page-break-after: always;
+    }
 
-          .print-sheet:last-child {
-            break-after: auto;
-            page-break-after: auto;
-          }
-        }
-      `}</style>
+    .print-sheet:last-child {
+      break-after: auto;
+      page-break-after: auto;
+    }
+  }
+`}</style>
       <div className="print-actions mb-5 flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4">
         <button
           type="button"
@@ -148,11 +155,15 @@ const sheetSize = "h-[14cm] w-[12.2cm]";
           {previewPages.map((page, index) => (
             <div
               key={index}
-              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto pl-[2cm] pr-[0.5cm] pb-[0.4cm] pt-[1cm] print:max-w-none print:overflow-visible`}
+              className={`print-sheet relative bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[1cm] pb-[0.4cm] pl-[2cm] pt-[1cm] print:max-w-none print:overflow-visible`}
             >
               <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[11px] font-semibold leading-[1.3] text-slate-950">
                 {page}
               </pre>
+
+              <div className="page-number absolute bottom-[0.3cm] left-0 right-0 text-center font-['Courier_New',Courier,monospace] text-[11px] font-semibold">
+                {index + 1}/{previewPages.length}
+              </div>
             </div>
           ))}
         </div>

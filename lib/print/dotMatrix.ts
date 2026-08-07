@@ -7,7 +7,7 @@ export const DOT_MATRIX_WIDTH = 44;
 const LEFT_HEADER_WIDTH = 21;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
 const SIGNATURE_WIDTH = 24;
-const PAGE_LINES = 26;
+// const PAGE_LINES = 26;
 
 type TempoPrintInput = {
   receivable: TempoReceivable;
@@ -247,14 +247,6 @@ export function formatSaleDotMatrix(
         )
       );
     }
-
-    while (rows.length < PAGE_LINES - 1) {
-      rows.push("");
-    }
-
-    rows.push(
-      center(`${pageIndex + 1}/${pages.length}`)
-    );
 
     return normalizeLines(rows);
   });
