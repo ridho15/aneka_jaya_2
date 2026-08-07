@@ -7,7 +7,7 @@ export const DOT_MATRIX_WIDTH = 44;
 const LEFT_HEADER_WIDTH = 21;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
 const SIGNATURE_WIDTH = 24;
-// const PAGE_LINES = 26;
+const PAGE_LINES = 44;
 
 type TempoPrintInput = {
   receivable: TempoReceivable;
@@ -161,7 +161,7 @@ export function formatSaleDotMatrix(
       ? "-"
       : sale.transactionNumber || sale.id;
 
-  const ITEM_PER_PAGE = 9;
+  const ITEM_PER_PAGE = 10;
 
   const pages = chunkItems(sale.items, ITEM_PER_PAGE);
 
@@ -246,7 +246,25 @@ export function formatSaleDotMatrix(
           sale.createdByNameSnapshot
         )
       );
+    } else {
+      rows.push(
+        center("LANJUT KE HALAMAN BERIKUTNYA")
+      );
     }
+
+    /* Isi baris kosong sampai bagian bawah halaman */
+    while (rows.length < PAGE_LINES - 1) {
+      rows.push("");
+    }
+
+    /* Nomor halaman saja, tanpa tulisan HALAMAN */
+    rows.push(
+      column(
+        `${pageIndex + 1}/${pages.length}`,
+        DOT_MATRIX_WIDTH,
+        "right"
+      )
+    );
 
     return normalizeLines(rows);
   });
