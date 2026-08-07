@@ -7,15 +7,25 @@ export const DOT_MATRIX_WIDTH = 44;
 const LEFT_HEADER_WIDTH = 21;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
 const SIGNATURE_WIDTH = 24;
+const PAGE_LINES = 44;
 
 type TempoPrintInput = {
   receivable: TempoReceivable;
   payments: TempoPayment[];
 };
 
-export function truncate(text: string | number | undefined | null, width = DOT_MATRIX_WIDTH) {
-  const value = text === undefined || text === null || text === "" ? "-" : String(text);
-  return value.length > width ? value.slice(0, width) : value;
+export function truncate(
+  text: string | number | undefined | null,
+  width = DOT_MATRIX_WIDTH
+) {
+  const value =
+    text === undefined || text === null
+      ? "-"
+      : String(text);
+
+  return value.length > width
+    ? value.slice(0, width)
+    : value;
 }
 
 export function column(text: string | number | undefined | null, width: number, align: "left" | "right" = "left") {
@@ -132,28 +142,134 @@ function normalizeLines(lines: string[]) {
   return `${lines.map((entry) => truncate(entry).padEnd(DOT_MATRIX_WIDTH)).join("\n")}\n`;
 }
 
-export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber?: boolean } = {}) {
-  const transactionNumber = options.showTransactionNumber === false ? "-" : sale.transactionNumber || sale.id;
-  const rows: string[] = [
-    ...infoHeader("INVOICE PENJUALAN", `Tgl ${sale.transactionAt ? formatJakartaDateTimeCompact(sale.transactionAt) : sale.saleDate}`, `No ${transactionNumber}`, [
-      sale.customerName,
-      sale.customerLocation || "-",
-      `Bayar ${sale.paymentMethod}`,
-      sale.paymentMethod === "Tempo" ? `Tempo ${sale.dueDate || "-"}` : `Kirim ${sale.shippingMethod || "-"}`
-    ]),
-    line("="),
-    `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
-    `${column("", 3)}${column("HARGA", 17, "right")}${column("TOTAL", 24, "right")}`,
-    line("-"),
-    ...sale.items.flatMap((item, index) => itemLines(index, item.productRef, item.quantity, item.unitPrice, item.discount || 0, item.unitSnapshot)),
-    line("-"),
-    amountLine("TOTAL", sale.total),
-    ...(sale.paymentMethod === "Tempo" ? [amountLine("DP", sale.initialPaymentAmount || 0), amountLine("SISA TEMPO", Math.max(0, sale.total - (sale.initialPaymentAmount || 0)))] : []),
-    line("="),
-    ...signatureBlock(sale.createdByNameSnapshot)
-  ].filter(Boolean);
+function chunkItems<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
 
-  return normalizeLines(rows);
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+
+  return chunks;
+}
+
+export function formatSaleDotMatrix(
+  sale: Sale,
+  options: { showTransactionNumber?: boolean } = {}
+) {
+  const transactionNumber =
+    options.showTransactionNumber === false
+      ? "-"
+      : sale.transactionNumber || sale.id;
+
+  const ITEM_PER_PAGE = 10;
+
+  const pages = chunkItems(sale.items, ITEM_PER_PAGE);
+
+  const pageContents = pages.map((pageItems, pageIndex) => {
+    const isLastPage = pageIndex === pages.length - 1;
+
+    const rows: string[] = [
+      ...infoHeader(
+        "INVOICE PENJUALAN",
+        `${sale.transactionAt
+          ? formatJakartaDateTimeCompact(sale.transactionAt)
+          : sale.saleDate
+        }`,
+        "",
+        [
+          sale.customerName,
+          sale.customerLocation || "-",
+          `Bayar ${sale.paymentMethod}`,
+          sale.paymentMethod === "Tempo"
+            ? `Tempo ${sale.dueDate || "-"}`
+            : `Kirim ${sale.shippingMethod || "-"}`
+        ]
+      ),
+
+      line("="),
+
+      `${column("NO", 3)}${column("KODE", 15)}${column(
+        "QTY",
+        12,
+        "right"
+      )}`,
+
+      `${column("", 3)}${column(
+        "HARGA",
+        17,
+        "right"
+      )}${column("TOTAL", 24, "right")}`,
+
+      line("-"),
+
+      ...pageItems.flatMap((item, localIndex) => {
+        const actualIndex =
+          pageIndex * ITEM_PER_PAGE + localIndex;
+
+        return itemLines(
+          actualIndex,
+          item.productRef,
+          item.quantity,
+          item.unitPrice,
+          item.discount || 0,
+          item.unitSnapshot
+        );
+      }),
+
+      line("-")
+    ];
+
+    if (isLastPage) {
+      rows.push(
+        amountLine("TOTAL", sale.total),
+
+        ...(sale.paymentMethod === "Tempo"
+          ? [
+            amountLine(
+              "DP",
+              sale.initialPaymentAmount || 0
+            ),
+            amountLine(
+              "SISA TEMPO",
+              Math.max(
+                0,
+                sale.total -
+                (sale.initialPaymentAmount || 0)
+              )
+            )
+          ]
+          : []),
+
+        line("="),
+
+        ...signatureBlock(
+          sale.createdByNameSnapshot
+        )
+      );
+    } else {
+      rows.push(
+        center("LANJUT KE HALAMAN BERIKUTNYA")
+      );
+    }
+
+    /* Isi baris kosong sampai bagian bawah halaman */
+    while (rows.length < PAGE_LINES - 1) {
+      rows.push("");
+    }
+
+    /* Nomor halaman saja, tanpa tulisan HALAMAN */
+    rows.push(
+      column(
+        `${pageIndex + 1}/${pages.length}`,
+        DOT_MATRIX_WIDTH,
+        "right"
+      )
+    );
+
+    return normalizeLines(rows);
+  });
+
+  return pageContents.join("\x0C");
 }
 
 export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrintInput) {
@@ -188,7 +304,7 @@ export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrint
 
 export function formatExpenseDotMatrix(expense: Expense) {
   const rows: string[] = [
-    ...infoHeader("PENGELUARAN", `Tgl ${expense.expenseDate}`, `No ${expense.id}`, [
+    ...infoHeader("PENGELUARAN", `${expense.expenseDate}`, `No ${expense.id}`, [
       expense.vendorName,
       expense.rekeningNameSnapshot || expense.rekeningId || "-",
       expense.category,
