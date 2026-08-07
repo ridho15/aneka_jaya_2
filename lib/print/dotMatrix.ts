@@ -159,7 +159,7 @@ export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber
 export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrintInput) {
   const latestPayment = payments[0];
   const rows: string[] = [
-    ...infoHeader("BAYAR TEMPO", `Tgl ${latestPayment?.paymentDate || receivable.transactionDate}`, `No ${receivable.id}`, [
+    ...infoHeader("BAYAR TEMPO", `${latestPayment?.paymentDate || receivable.transactionDate}`, `No ${receivable.id}`, [
       receivable.customerName,
       `Sales ${receivable.salesId}`,
       `Tempo ${receivable.dueDate}`,
