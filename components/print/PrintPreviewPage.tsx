@@ -55,15 +55,9 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize =
-    kind === "sales"
-      ? "14cm 12.2cm"
-      : "12.2cm 14cm";
+  const paperSize = "12.2cm 14cm";
 
-  const sheetSize =
-    kind === "sales"
-      ? "h-[12.2cm] w-[14cm]"
-      : "h-[14cm] w-[12.2cm]";
+const sheetSize = "h-[14cm] w-[12.2cm]";
 
   const previewPages = text
     .split("\x0C")
@@ -154,7 +148,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           {previewPages.map((page, index) => (
             <div
               key={index}
-              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[1cm] pb-[0.4cm] pl-[2cm] pt-[1cm] print:max-w-none print:overflow-visible`}
+              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto pl-[2cm] pr-[0.5cm] pb-[0.4cm] pt-[1cm] print:max-w-none print:overflow-visible`}
             >
               <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[11px] font-semibold leading-[1.3] text-slate-950">
                 {page}
