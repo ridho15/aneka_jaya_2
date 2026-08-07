@@ -81,28 +81,42 @@ function layoutHeader(left: string[], right: string[]) {
   return rows;
 }
 
-function splitProductRef(productRef: string) {
-  const [first, ...rest] = productRef.split(/\s+/);
-  return { code: first || productRef, name: rest.join(" ") || productRef };
+function getProductCode(productRef: string) {
+  return productRef.split(/\s+/)[0] || productRef;
 }
 
-function itemLines(index: number, productRef: string, quantity: number, unitPrice: number, discount = 0, unit?: string) {
+function itemLines(
+  index: number,
+  productRef: string,
+  quantity: number,
+  unitPrice: number,
+  discount = 0,
+  unit?: string
+) {
   const total = quantity * unitPrice - discount;
-  const { code, name } = splitProductRef(productRef);
-  const quantityWithUnit = [quantity, unit].filter((value) => value !== undefined && value !== null && value !== "").join(" ");
+  const code = getProductCode(productRef);
+
+  const quantityWithUnit = [quantity, unit]
+    .filter(
+      (value) =>
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+    )
+    .join(" ");
+
   const firstLine = [
     column(index + 1, 3),
-    column(code, 8),
-    column(name, 15),
-    column(quantityWithUnit, 6, "right")
+    column(code, 15),
+    column(quantityWithUnit, 12, "right")
   ].join("");
+
   const secondLine = [
     column("", 3),
-    column("HARGA", 8),
-    column("", 5),
-    column(money(unitPrice), 10, "right"),
-    column(money(total), 18, "right")
+    column(money(unitPrice), 17, "right"),
+    column(money(total), 24, "right")
   ].join("");
+
   return [firstLine, secondLine];
 }
 
@@ -128,8 +142,8 @@ export function formatSaleDotMatrix(sale: Sale, options: { showTransactionNumber
       sale.paymentMethod === "Tempo" ? `Tempo ${sale.dueDate || "-"}` : `Kirim ${sale.shippingMethod || "-"}`
     ]),
     line("="),
-    `${column("NO", 3)}${column("KODE", 8)}${column("NAMA PRODUK", 15)}${column("QTY", 6, "right")}`,
-    `${column("", 3)}${column("", 8)}${column("", 5)}${column("HARGA", 10, "right")}${column("TOTAL", 18, "right")}`,
+    `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
+    `${column("", 3)}${column("HARGA", 17, "right")}${column("TOTAL", 24, "right")}`,
     line("-"),
     ...sale.items.flatMap((item, index) => itemLines(index, item.productRef, item.quantity, item.unitPrice, item.discount || 0, item.unitSnapshot)),
     line("-"),
