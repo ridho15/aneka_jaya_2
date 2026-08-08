@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { loadPrintPreviewText, printPreviewEndpoint, printPreviewListPath, type PrintPreviewKind } from "@/lib/print/preview";
+import { loadPrintPreviewText, printPreviewEndpoint, printPreviewListPath, splitPrintPreviewPages, type PrintPreviewKind } from "@/lib/print/preview";
 
 type Props = {
   kind: PrintPreviewKind;
@@ -57,6 +57,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
   };
   const paperSize = kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
   const sheetSize = kind === "sales" ? "h-[12.2cm] w-[14cm]" : "h-[14cm] w-[12.2cm]";
+  const pages = splitPrintPreviewPages(text);
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-5 text-slate-950 sm:px-6 print:bg-white print:p-0">
@@ -77,6 +78,11 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
 
           .print-sheet {
             box-shadow: none !important;
+          }
+
+          .print-page-break {
+            break-after: page;
+            page-break-after: always;
           }
         }
       `}</style>
@@ -132,10 +138,17 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
         </div>
       )}
       {!loading && !error && (
-        <div className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[3.5cm] pt-[1cm] print:max-w-none print:overflow-visible`}>
-          <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
-            {text}
-          </pre>
+        <div>
+          {pages.map((page, index) => (
+            <div
+              key={index}
+              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[3.5cm] pt-[1cm] print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
+            >
+              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
+                {page}
+              </pre>
+            </div>
+          ))}
         </div>
       )}
     </main>

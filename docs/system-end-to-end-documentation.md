@@ -40,7 +40,7 @@ Fungsi utama sistem adalah menjadi pusat operasional harian untuk mencatat trans
 
 Secara bisnis, sistem membantu:
 
-- Admin mencatat penjualan, pengeluaran, dan data barang.
+- Admin mencatat penjualan serta melihat detail dan mencetak riwayat penjualan miliknya sendiri.
 - Finance mencatat pengeluaran, pembayaran Tempo, dan melihat laporan finance.
 - Manager memeriksa approval dan memantau laporan terbatas.
 - Super Admin (nilai internal `OWNER`) memantau dashboard, semua laporan, konfigurasi, audit trail, dan integrasi.
@@ -53,14 +53,14 @@ Hak akses dipusatkan di `lib/auth/roles.ts`.
 | Role | Fungsi utama | Landing page | Akses dashboard |
 | --- | --- | --- | --- |
 | Super Admin (`OWNER`) | Akses penuh, konfigurasi, laporan, audit, approval, ERP sync | `/dashboard` | Ya |
-| Admin | Input penjualan, input pengeluaran, input/lihat barang | `/penjualan/input` | Tidak |
+| Admin | Input penjualan serta melihat dan mencetak riwayat penjualan miliknya sendiri | `/penjualan/input` | Tidak |
 | Finance | Pengeluaran, Tempo, laporan finance | `/tempo` | Tidak |
 | Manager | Approval, Tempo view, laporan finance terbatas, audit approval | `/approval` | Tidak |
 | Viewer | Tidak memiliki akses operasional default | `/no-access` | Tidak |
 
 Permission penting:
 
-- `penjualan.create`: membuat penjualan.
+- `penjualan.create`: membuat penjualan serta melihat detail dan mencetak riwayat milik Admin pembuatnya.
 - `pengeluaran.create`: membuat pengeluaran.
 - `stock.view` dan `stock.create`: melihat dan membuat data barang.
 - `approval.view` dan `approval.approve`: melihat dan memutus approval.

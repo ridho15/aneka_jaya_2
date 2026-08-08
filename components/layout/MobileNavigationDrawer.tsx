@@ -1,19 +1,17 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { roleLabel, type Role } from "@/lib/auth/roles";
 import { APP_BRAND_INITIALS, APP_BRAND_NAME } from "@/lib/appBrand";
 import { isNavLinkActive, visibleNavLinks } from "./navigation";
 
 export function MobileNavigationDrawer({ role, userName }: { role: Role; userName: string }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const [drawerState, setDrawerState] = useState({ open: false, pathname });
+  const open = drawerState.open && drawerState.pathname === pathname;
   const visibleLinks = visibleNavLinks(role);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  const setOpen = (nextOpen: boolean) => setDrawerState({ open: nextOpen, pathname });
 
   return (
     <div className="lg:hidden">

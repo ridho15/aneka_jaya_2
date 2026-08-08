@@ -7,22 +7,22 @@ vi.mock("@/components/layout/AppShell", () => ({ AppShell: ({ children }: { chil
 vi.mock("@/components/transactions/TransactionCancelButton", () => ({ TransactionCancelButton: () => null }));
 
 const mocks = vi.hoisted(() => ({
-  getCurrentRole: vi.fn(),
-  listSalesRecordsPage: vi.fn(),
+  getCurrentUser: vi.fn(),
+  listSalesRecordsPageForUser: vi.fn(),
   listBookkeepingTypes: vi.fn(),
   listRekeningAccounts: vi.fn()
 }));
 
-vi.mock("@/lib/auth/session", () => ({ getCurrentRole: mocks.getCurrentRole }));
-vi.mock("@/lib/sales/store", () => ({ listSalesRecordsPage: mocks.listSalesRecordsPage }));
+vi.mock("@/lib/auth/session", () => ({ getCurrentUser: mocks.getCurrentUser }));
+vi.mock("@/lib/sales/access", () => ({ listSalesRecordsPageForUser: mocks.listSalesRecordsPageForUser }));
 vi.mock("@/lib/business/masterData", () => ({ listBookkeepingTypes: mocks.listBookkeepingTypes, listRekeningAccounts: mocks.listRekeningAccounts }));
 
 const { default: PenjualanHistoryPage } = await import("@/app/penjualan/page");
 
 describe("PenjualanHistoryPage filters", () => {
   beforeEach(() => {
-    mocks.getCurrentRole.mockResolvedValue("OWNER");
-    mocks.listSalesRecordsPage.mockResolvedValue({ data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 1 } });
+    mocks.getCurrentUser.mockResolvedValue({ id: "owner-1", name: "Owner", role: "OWNER" });
+    mocks.listSalesRecordsPageForUser.mockResolvedValue({ data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 1 } });
     mocks.listRekeningAccounts.mockResolvedValue([]);
     mocks.listBookkeepingTypes.mockResolvedValue([
       { id: "W", code: "W", name: "Walk In", isActive: true, sortOrder: 1 },

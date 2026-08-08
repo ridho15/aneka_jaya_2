@@ -18,6 +18,21 @@ const expectFixedWidth = (text: string) => {
 };
 
 describe("dot matrix print formatter", () => {
+  const saleWithItemCount = (itemCount: number) => formatSaleDotMatrix({
+    id: `S-PAGE-${itemCount}`,
+    saleDate: "2026-08-08",
+    customerName: "Toko Pagination",
+    paymentMethod: "Cash",
+    total: itemCount * 10000,
+    createdByNameSnapshot: "Admin Cetak",
+    items: Array.from({ length: itemCount }, (_, index) => ({
+      productRef: `BRG-${String(index + 1).padStart(2, "0")}`,
+      quantity: 1,
+      unitPrice: 10000,
+      discount: 0
+    }))
+  });
+
   it("uses 44 columns for the active small dot matrix standard", () => {
     expect(DOT_MATRIX_WIDTH).toBe(44);
   });
@@ -29,6 +44,44 @@ describe("dot matrix print formatter", () => {
     expect(summaryLine("TOTAL", "Rp 63.270 jt")).toHaveLength(DOT_MATRIX_WIDTH);
     expect(signatureBlock("Ridho Al Amzah").every((line) => line.length <= DOT_MATRIX_WIDTH)).toBe(true);
     expect(signatureBlock("Ridho Al Amzah").join("\n")).toContain("_".repeat(24));
+  });
+
+  it.each([1, 8, 9])("keeps %i sales items on one page without form feed", (itemCount) => {
+    const text = saleWithItemCount(itemCount);
+
+    expect(text).not.toContain("\x0C");
+    expect(text).toContain("1/1");
+    expect((text.match(/INVOICE PENJUALAN/g) || [])).toHaveLength(1);
+  });
+
+  it("splits 10 items into pages of 9 and 1 with a blank line before the second header", () => {
+    const text = saleWithItemCount(10);
+    const pages = text.split("\x0C");
+
+    expect(pages).toHaveLength(2);
+    expect((text.match(/\x0C/g) || [])).toHaveLength(1);
+    expect(pages[0]).toContain("BRG-09");
+    expect(pages[0]).not.toContain("BRG-10");
+    expect(pages[1]).toContain("BRG-10");
+    expect(pages[0]).toContain("1/2");
+    expect(pages[1]).toContain("2/2");
+    expect(pages[0]).toMatch(/1\/2\s*\n {44}\n$/);
+    expect(pages[1].startsWith("INVOICE PENJUALAN")).toBe(true);
+    expect(pages[0]).not.toContain("TOTAL:");
+    expect(pages[1]).toContain("TOTAL:");
+    expect(pages[0]).not.toContain("Tanda Tangan:");
+    expect(pages[1]).toContain("Tanda Tangan:");
+  });
+
+  it("splits 18 items evenly while preserving item order", () => {
+    const pages = saleWithItemCount(18).split("\x0C");
+
+    expect(pages).toHaveLength(2);
+    expect(pages[0]).toContain("BRG-01");
+    expect(pages[0]).toContain("BRG-09");
+    expect(pages[0]).not.toContain("BRG-10");
+    expect(pages[1]).toContain("BRG-10");
+    expect(pages[1]).toContain("BRG-18");
   });
 
   it("formats a tempo sale within 44 columns", () => {
@@ -52,7 +105,9 @@ describe("dot matrix print formatter", () => {
     expect(text).toContain("Toko Contoh");
     expect(text).toContain("Rp 300.000");
     expect(text).toContain("2026-07-04");
-    expect(text).toContain("approved");
+    expect(text).toContain("DP:");
+    expect(text).toContain("SISA TEMPO");
+    expect(text).not.toContain("approved");
     expect(text).toContain("Tanda Tangan:");
   });
 
@@ -78,7 +133,7 @@ describe("dot matrix print formatter", () => {
     expect(text).toContain("Rp 63.270 jt");
   });
 
-  it("prints the Jakarta delivery date and time when available", () => {
+  it("keeps the sales header compact without delivery time and rekening metadata", () => {
     const text = formatSaleDotMatrix({
       id: "S-DELIVERY",
       saleDate: "2026-07-18",
@@ -89,17 +144,18 @@ describe("dot matrix print formatter", () => {
       paymentMethod: "Cash",
       rekeningNameSnapshot: "Kas Walk In",
       total: 10000,
-      items: []
+      items: [{ productRef: "BRG-DELIVERY", quantity: 1, unitPrice: 10000, discount: 0 }]
     });
 
     expectFixedWidth(text);
-    expect(text).toContain("Waktu Kirim:");
-    expect(text).toContain("18/07/2026 13.30 WIB");
-    expect(text).toContain("Rekening:");
-    expect(text).toContain("Kas Walk In");
+    expect(text).toContain("Kirim Kurir");
+    expect(text).not.toContain("Waktu Kirim:");
+    expect(text).not.toContain("18/07/2026 13.30 WIB");
+    expect(text).not.toContain("Rekening:");
+    expect(text).not.toContain("Kas Walk In");
   });
 
-  it("uses Aneka Jaya header for AJ sales and SLM for non-AJ sales", () => {
+  it("uses a generic invoice title without company branding", () => {
     const aj = formatSaleDotMatrix({
       id: "S-AJ",
       saleDate: "2026-06-27",
@@ -107,7 +163,7 @@ describe("dot matrix print formatter", () => {
       customerName: "Toko AJ",
       paymentMethod: "Cash",
       total: 10000,
-      items: []
+      items: [{ productRef: "BRG-AJ", quantity: 1, unitPrice: 10000, discount: 0 }]
     });
     const slm = formatSaleDotMatrix({
       id: "S-W",
@@ -116,14 +172,16 @@ describe("dot matrix print formatter", () => {
       customerName: "Toko W",
       paymentMethod: "Cash",
       total: 10000,
-      items: []
+      items: [{ productRef: "BRG-W", quantity: 1, unitPrice: 10000, discount: 0 }]
     });
 
-    expect(aj).toContain("ANEKA JAYA");
-    expect(slm).toContain("SLM");
+    expect(aj).toContain("INVOICE PENJUALAN");
+    expect(slm).toContain("INVOICE PENJUALAN");
+    expect(aj).not.toContain("ANEKA JAYA");
+    expect(slm).not.toContain("SLM");
   });
 
-  it("can mask sales transaction number for non-owner print access", () => {
+  it("does not print the internal transaction number for non-owner access", () => {
     const text = formatSaleDotMatrix({
       id: "S-SECRET-001",
       saleDate: "2026-06-27",
@@ -131,15 +189,16 @@ describe("dot matrix print formatter", () => {
       customerName: "Toko Admin",
       paymentMethod: "Cash",
       total: 10000,
-      items: []
+      items: [{ productRef: "BRG-ADMIN", quantity: 1, unitPrice: 10000, discount: 0 }]
     }, { showTransactionNumber: false });
 
     expectFixedWidth(text);
-    expect(text).toContain("No -");
+    expect(text).toContain("INVOICE PENJUALAN");
+    expect(text).not.toContain("No -");
     expect(text).not.toContain("S-SECRET-001");
   });
 
-  it("uses Aneka Jaya fixed item positioning without shifting totals", () => {
+  it("uses fixed code-only item positioning without shifting totals", () => {
     const text = formatSaleDotMatrix({
       id: "S-LAYOUT",
       saleDate: "2026-06-27",
@@ -155,13 +214,15 @@ describe("dot matrix print formatter", () => {
     const lines = text.trimEnd().split("\n");
 
     expectFixedWidth(text);
-    expect(text).toContain("NO KODE    NAMA PRODUK");
+    expect(text).toContain("NO KODE");
+    expect(text).not.toContain("NAMA PRODUK");
     expect(text).toContain("HARGA");
     expect(text).toContain("TOTAL:");
     expect(text).toContain("Rp 1.234 jt");
     expect(text).toContain("Admin Cetak");
     expect(text).toContain("10 PCS");
-    expect(lines.some((line) => line.includes("BRG-001") && line.includes("Nama barang"))).toBe(true);
+    expect(lines.some((line) => line.includes("BRG-001"))).toBe(true);
+    expect(text).not.toContain("Nama barang yang panjang sekali");
   });
 
 
@@ -206,7 +267,8 @@ describe("dot matrix print formatter", () => {
     expect(text).toContain("Toko Contoh");
     expect(text).toContain("Rp 100.000");
     expect(text).toContain("Rp 200.000");
-    expect(text).toContain("BCA Operasional");
+    expect(text).toContain("Metode:            TF");
+    expect(text).not.toContain("BCA Operasional");
     expect(text).toContain("Tanda Tangan:");
   });
 
@@ -230,16 +292,17 @@ describe("dot matrix print formatter", () => {
     expect(text).toContain("PENGELUARAN");
     expect(text).toContain("Vendor Contoh");
     expect(text).toContain("Rp 125.000");
-    expect(text).toContain("SLM");
+    expect(text).not.toContain("SLM");
     expect(text).toContain("Tanda Tangan:");
   });
 
-  it("wraps text output as a minimal native ESC/P PRN payload", () => {
+  it("wraps text output as a minimal native ESC/P PRN payload without ejecting a final page", () => {
     const text = "SLM\nTOTAL\n";
     const prn = toEscPosPrn(text);
 
     expect(prn.startsWith("\x1B@\x12")).toBe(true);
     expect(prn).toContain(text);
-    expect(prn.endsWith("\x0C")).toBe(true);
+    expect(prn.endsWith(text)).toBe(true);
+    expect(prn.endsWith("\x0C")).toBe(false);
   });
 });

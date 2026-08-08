@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadPrintPreviewText, printPreviewEndpoint, printPreviewListPath, printPreviewPath } from "@/lib/print/preview";
+import { loadPrintPreviewText, printPreviewEndpoint, printPreviewListPath, printPreviewPath, splitPrintPreviewPages } from "@/lib/print/preview";
 
 describe("print preview UI helpers", () => {
   it("builds print API and page URLs", () => {
@@ -20,6 +20,12 @@ describe("print preview UI helpers", () => {
 
     await expect(loadPrintPreviewText("sales", "S-1", fetcher as unknown as typeof fetch)).resolves.toBe("NOTA\nTOTAL");
     expect(fetcher).toHaveBeenCalledWith("/api/print/sales/S-1", { cache: "no-store" });
+  });
+
+  it("splits form-feed content into browser print sheets without a trailing blank sheet", () => {
+    expect(splitPrintPreviewPages("PAGE 1\n\x0CPAGE 2\n")).toEqual(["PAGE 1\n", "PAGE 2\n"]);
+    expect(splitPrintPreviewPages("PAGE 1\n\x0C")).toEqual(["PAGE 1\n"]);
+    expect(splitPrintPreviewPages("PAGE 1\n")).toEqual(["PAGE 1\n"]);
   });
 
   it("fails clearly when the preview endpoint is forbidden or missing", async () => {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listStocks, listStocksPage } from "@/lib/api/stocks";
-import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
+import { canListStocks } from "@/lib/auth/apiPermissions";
 import { checkStockMinimumAlert } from "@/lib/stockAlerts/store";
 
 function numberParam(value: string | null) {
@@ -15,7 +15,7 @@ function listParam(value: string | null) {
 
 export async function GET(request: Request) {
   const role = await getCurrentRole();
-  if (!can(role, "stock.view")) return NextResponse.json({ success: false, message: "Tidak punya akses Stock Barang." }, { status: 403 });
+  if (!canListStocks(role)) return NextResponse.json({ success: false, message: "Tidak punya akses melihat ketersediaan stok." }, { status: 403 });
   const url = new URL(request.url);
   const hasQuery = ["page", "pageSize", "keyword", "productId", "sku", "warehouse", "productIds", "skus"].some((key) => url.searchParams.has(key));
   const options = {

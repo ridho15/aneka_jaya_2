@@ -1,17 +1,18 @@
-import { getSalesRecord } from "@/lib/sales/store";
+import { getSalesRecordForUser } from "@/lib/sales/access";
 import { can } from "@/lib/auth/roles";
-import { getCurrentRole } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 import { formatSaleDotMatrix, toEscPosPrn } from "@/lib/print/dotMatrix";
 import { listAllRekeningAccounts } from "@/lib/business/masterData";
 import { salesRekeningLabel } from "@/lib/sales/rekening";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const role = await getCurrentRole();
+  const user = await getCurrentUser();
+  const role = user.role;
   if (!can(role, "reports.view") && !can(role, "penjualan.create")) {
     return Response.json({ success: false, message: "Tidak punya akses cetak penjualan." }, { status: 403 });
   }
   const { id } = await params;
-  const sale = await getSalesRecord(id);
+  const sale = await getSalesRecordForUser(id, user);
   if (!sale) return Response.json({ success: false, message: "Transaksi penjualan tidak ditemukan." }, { status: 404 });
   const rekeningNameSnapshot = salesRekeningLabel(sale, await listAllRekeningAccounts());
   const text = formatSaleDotMatrix({ ...sale, rekeningNameSnapshot }, { showTransactionNumber: role === "OWNER" });

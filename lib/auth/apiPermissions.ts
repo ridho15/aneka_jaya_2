@@ -5,11 +5,15 @@ export function canUploadAttachment(role: Role) {
 }
 
 export function canListProducts(role: Role) {
-  return can(role, "stock.view");
+  return can(role, "stock.view") || can(role, "penjualan.create");
+}
+
+export function canListStocks(role: Role) {
+  return can(role, "stock.view") || can(role, "penjualan.create");
 }
 
 export function canViewMasterData(role: Role) {
-  return can(role, "master_data.view");
+  return can(role, "master_data.view") || can(role, "penjualan.create");
 }
 
 export function canListRekening(role: Role) {

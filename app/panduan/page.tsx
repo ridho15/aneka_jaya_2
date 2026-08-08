@@ -178,8 +178,8 @@ const roleGuides = [
   {
     role: "ADMIN",
     title: "Admin",
-    description: "Fokus input penjualan, input pengeluaran, stock barang, dan data master yang dibutuhkan operasional harian.",
-    permissions: ["penjualan.create", "pengeluaran.create", "stock.view"] as Permission[]
+    description: "Fokus input penjualan serta melihat detail dan mencetak riwayat penjualan yang dibuat oleh akunnya sendiri.",
+    permissions: ["penjualan.create"] as Permission[]
   },
   {
     role: "FINANCE",

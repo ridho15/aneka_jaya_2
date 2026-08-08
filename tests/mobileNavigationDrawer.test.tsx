@@ -18,6 +18,13 @@ describe("global navigation", () => {
     expect(ownerLinks.some((link) => link.href.startsWith("/pembelian"))).toBe(false);
   });
 
+  it("shows exactly the two sales menus to Admin", () => {
+    expect(visibleNavLinks("ADMIN").map((link) => [link.href, link.label])).toEqual([
+      ["/penjualan/input", "Input Penjualan"],
+      ["/penjualan", "Riwayat Penjualan"],
+    ]);
+  });
+
   it("keeps nested sections active for their parent navigation item", () => {
     expect(isNavLinkActive("/settings/rekening", "/settings")).toBe(true);
     expect(isNavLinkActive("/barang/item-1/edit", "/barang")).toBe(true);

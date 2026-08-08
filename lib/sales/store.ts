@@ -136,6 +136,9 @@ export type SalesRecordFilters = {
   approvalStatus?: string;
   syncStatus?: string;
 };
+export type SalesRecordScope = {
+  createdByUserId?: string;
+};
 export type PaginatedSalesRecords = {
   data: Sale[];
   meta: { page: number; pageSize: number; total: number; totalPages: number };
@@ -166,8 +169,9 @@ function appendSalesWhereAnd(where: Prisma.SalesRecordWhereInput, condition: Pri
   where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), condition];
 }
 
-function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereInput {
+function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = {}): Prisma.SalesRecordWhereInput {
   const where: Prisma.SalesRecordWhereInput = {};
+  if (scope.createdByUserId) where.createdByUserId = scope.createdByUserId;
   if (filters.from || filters.to) {
     where.saleDate = {};
     if (filters.from) where.saleDate.gte = dateStart(filters.from);
@@ -202,9 +206,10 @@ function buildSalesWhere(filters: SalesRecordFilters): Prisma.SalesRecordWhereIn
   return where;
 }
 
-function filterSalesInMemory(sales: Sale[], filters: SalesRecordFilters) {
+export function filterSalesRecordsInMemory(sales: Sale[], filters: SalesRecordFilters, scope: SalesRecordScope = {}) {
   const keyword = filters.keyword?.trim().toLowerCase();
   return sales.filter((sale) => {
+    if (scope.createdByUserId && sale.createdByUserId !== scope.createdByUserId) return false;
     if (filters.from && sale.saleDate < filters.from) return false;
     if (filters.to && sale.saleDate > filters.to) return false;
     if (filters.tipe && (sale.tipeCodeSnapshot || sale.tipeId || "") !== filters.tipe) return false;
@@ -398,11 +403,11 @@ export async function listSalesRecords(): Promise<Sale[]> {
   return mergeSalesRecords(rows, await listPrismaSalesRecordsSafe());
 }
 
-export async function listSalesRecordsPage(input: { page?: number; pageSize?: number; filters?: SalesRecordFilters } = {}): Promise<PaginatedSalesRecords> {
+export async function listSalesRecordsPage(input: { page?: number; pageSize?: number; filters?: SalesRecordFilters; scope?: SalesRecordScope } = {}): Promise<PaginatedSalesRecords> {
   const page = cleanPage(input.page);
   const pageSize = cleanPageSize(input.pageSize);
   if (isProductionMode()) {
-    const where = buildSalesWhere(input.filters || {});
+    const where = buildSalesWhere(input.filters || {}, input.scope);
     const [total, rows] = await Promise.all([
       prisma.salesRecord.count({ where }),
       prisma.salesRecord.findMany({
@@ -415,7 +420,7 @@ export async function listSalesRecordsPage(input: { page?: number; pageSize?: nu
     ]);
     return { data: rows.map(toSale), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
   }
-  const filtered = filterSalesInMemory(await listSalesRecords(), input.filters || {});
+  const filtered = filterSalesRecordsInMemory(await listSalesRecords(), input.filters || {}, input.scope);
   const total = filtered.length;
   return { data: filtered.slice((page - 1) * pageSize, page * pageSize), meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
 }

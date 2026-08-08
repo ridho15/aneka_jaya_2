@@ -175,9 +175,9 @@ All permissions are in **`lib/auth/roles.ts`** — single source of truth.
 |-----------|-------|-------|---------|---------|--------|
 | `dashboard.view` | ✓ | — | — | — | — |
 | `penjualan.create` | ✓ | ✓ | — | — | — |
-| `pengeluaran.create` | ✓ | ✓ | ✓ | — | — |
+| `pengeluaran.create` | ✓ | — | ✓ | — | — |
 | `pembelian.create` | ✓ | — | ✓ | — | — |
-| `stock.view` / `stock.create` | ✓ | ✓ | — | — | — |
+| `stock.view` / `stock.create` | ✓ | — | — | — | — |
 | `reports.view` | ✓ | — | — | — | — |
 | `reports.finance_view` | ✓ | — | ✓ | ✓ | — |
 | `settings.view` | ✓ | — | — | — | — |

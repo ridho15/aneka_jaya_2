@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Sale } from "@/lib/types/sales";
 
 vi.mock("server-only", () => ({}));
 
@@ -31,7 +32,7 @@ vi.mock("@/lib/api/salesCancellations", () => ({ cancelErpSales: mocks.cancelErp
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe, listAllRekeningAccounts: mocks.listAllRekeningAccounts, resolveSalesRekening: mocks.resolveSalesRekening }));
 
-import { cancelSalesRecord, getSalesRecord, listSalesRecords, listSalesRecordsPage, saveSalesRecord, updateSalesRecord } from "@/lib/sales/store";
+import { cancelSalesRecord, filterSalesRecordsInMemory, getSalesRecord, listSalesRecords, listSalesRecordsPage, saveSalesRecord, updateSalesRecord } from "@/lib/sales/store";
 
 const dbSale = {
   id: "S-1",
@@ -160,6 +161,46 @@ describe("sales store normalized persistence", () => {
     });
     expect(mocks.prisma.salesRecord.count).toHaveBeenCalledWith({ where: expectedWhere });
     expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expectedWhere }));
+  });
+
+  it("applies creator scope in PostgreSQL before counting and pagination", async () => {
+    mocks.prisma.salesRecord.count.mockResolvedValue(1);
+    mocks.prisma.salesRecord.findMany.mockResolvedValue([{ ...dbSale, createdByUserId: "admin-1" }]);
+
+    await expect(listSalesRecordsPage({
+      page: 2,
+      pageSize: 10,
+      scope: { createdByUserId: "admin-1" },
+    })).resolves.toMatchObject({ meta: { page: 2, total: 1 } });
+
+    expect(mocks.prisma.salesRecord.count).toHaveBeenCalledWith({ where: { createdByUserId: "admin-1" } });
+    expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { createdByUserId: "admin-1" },
+      skip: 10,
+      take: 10,
+    }));
+  });
+
+  it("applies creator scope to merged development records and fails closed for missing creators", () => {
+    const scopedSale = (id: string, createdByUserId: string): Sale => ({
+      id,
+      saleDate: "2026-06-27",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Cash",
+      total: 20000,
+      createdByUserId,
+      createdByNameSnapshot: "Admin",
+      createdByRoleSnapshot: "ADMIN",
+      items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }],
+    });
+
+    expect(filterSalesRecordsInMemory(
+      [scopedSale("S-OWN", "admin-1"), scopedSale("S-OTHER", "admin-2"), scopedSale("S-LEGACY", "")],
+      {},
+      { createdByUserId: "admin-1" },
+    ).map((sale) => sale.id)).toEqual(["S-OWN"]);
   });
 
   it("allows editing synced ERP sales before release while preserving ERP reference for PUT retry", async () => {

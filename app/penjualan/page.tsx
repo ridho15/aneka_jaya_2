@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/Input";
 import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
 import { can } from "@/lib/auth/roles";
-import { getCurrentRole } from "@/lib/auth/session";
-import { listSalesRecordsPage, type SalesRecordFilters } from "@/lib/sales/store";
+import { getCurrentUser } from "@/lib/auth/session";
+import type { SalesRecordFilters } from "@/lib/sales/store";
+import { listSalesRecordsPageForUser } from "@/lib/sales/access";
 import { listBookkeepingTypes, listRekeningAccounts, type RekeningAccount } from "@/lib/business/masterData";
 import type { Sale } from "@/lib/types/sales";
 import { SalesHistoryList } from "@/components/transactions/SalesHistoryList";
@@ -72,14 +73,15 @@ function activeFilterLabels(params: SearchParams, rekenings: RekeningAccount[]) 
 }
 
 export default async function PenjualanHistoryPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
-  const role = await getCurrentRole();
+  const user = await getCurrentUser();
+  const role = user.role;
   if (!can(role, "penjualan.create") && !can(role, "reports.view")) redirect("/");
   const canManage = can(role, "penjualan.manage");
   const canViewTransactionNumber = role === "OWNER";
   const params = await searchParams || {};
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
   const [{ data: paged, meta }, tipeOptions, rekeningOptions] = await Promise.all([
-    listSalesRecordsPage({ page, pageSize: PAGE_SIZE, filters: filtersFromParams(params) }),
+    listSalesRecordsPageForUser(user, { page, pageSize: PAGE_SIZE, filters: filtersFromParams(params) }),
     listBookkeepingTypes(),
     listRekeningAccounts()
   ]);

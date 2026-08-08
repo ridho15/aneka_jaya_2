@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 import { can } from "@/lib/auth/roles";
-import { getCurrentRole } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 import { formatJakartaDateTime } from "@/lib/date/jakarta";
 import { listAllRekeningAccounts } from "@/lib/business/masterData";
 import { salesRekeningLabel } from "@/lib/sales/rekening";
-import { getSalesRecord } from "@/lib/sales/store";
+import { getSalesRecordForUser } from "@/lib/sales/access";
 
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
@@ -32,11 +32,12 @@ function statusTone(value?: string) {
 }
 
 export default async function SalesDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const role = await getCurrentRole();
+  const user = await getCurrentUser();
+  const role = user.role;
   if (!can(role, "penjualan.create") && !can(role, "reports.view")) redirect("/");
   const { id } = await params;
-  const sale = await getSalesRecord(id);
-  if (!sale) redirect("/penjualan");
+  const sale = await getSalesRecordForUser(id, user);
+  if (!sale) notFound();
   const rekeningLabel = salesRekeningLabel(sale, await listAllRekeningAccounts());
   const canManage = can(role, "penjualan.manage");
   const canViewTransactionNumber = role === "OWNER";

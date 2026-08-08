@@ -3,9 +3,10 @@ import { barangSchema } from "@/lib/validation/barangSchema";
 import { deactivateProduct, getProduct, updateProduct } from "@/lib/api/products";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
+import { canListProducts } from "@/lib/auth/apiPermissions";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!can(await getCurrentRole(), "stock.view")) return NextResponse.json({ success: false, message: "Tidak punya akses Stock Barang." }, { status: 403 });
+  if (!canListProducts(await getCurrentRole())) return NextResponse.json({ success: false, message: "Tidak punya akses melihat produk." }, { status: 403 });
   const { id } = await params;
   const response = await getProduct(id);
   return NextResponse.json(response, { status: response.success ? 200 : 404 });

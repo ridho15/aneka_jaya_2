@@ -17,6 +17,10 @@ export function printPreviewListPath(kind: PrintPreviewKind) {
   return "/tempo";
 }
 
+export function splitPrintPreviewPages(text: string) {
+  return text.split("\x0C").filter((page) => page.length > 0);
+}
+
 export async function loadPrintPreviewText(
   kind: PrintPreviewKind,
   id: string,

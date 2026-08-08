@@ -21,8 +21,12 @@ describe("Super Admin permission contract", () => {
     }
   });
 
-  it("grants read-only expense and master data permissions to operational roles", () => {
-    for (const role of ["ADMIN", "FINANCE", "MANAGER"] as const) {
+  it("keeps Admin limited to sales creation while preserving other operational roles", () => {
+    expect(ROLE_PERMISSIONS.ADMIN).toEqual(["penjualan.create"]);
+    for (const permission of ["pengeluaran.view", "pengeluaran.create", "stock.view", "stock.create", "master_data.view", "guide.view"] as const) {
+      expect(can("ADMIN", permission)).toBe(false);
+    }
+    for (const role of ["FINANCE", "MANAGER"] as const) {
       expect(can(role, "pengeluaran.view")).toBe(true);
       expect(can(role, "master_data.view")).toBe(true);
     }
@@ -30,8 +34,8 @@ describe("Super Admin permission contract", () => {
     expect(can("VIEWER", "master_data.view")).toBe(false);
   });
 
-  it("keeps expense creation limited to admin and finance roles", () => {
-    expect(can("ADMIN", "pengeluaran.create")).toBe(true);
+  it("keeps expense creation limited to owner and finance roles", () => {
+    expect(can("ADMIN", "pengeluaran.create")).toBe(false);
     expect(can("FINANCE", "pengeluaran.create")).toBe(true);
     expect(can("MANAGER", "pengeluaran.create")).toBe(false);
     expect(can("VIEWER", "pengeluaran.create")).toBe(false);

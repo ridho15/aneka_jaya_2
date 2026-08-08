@@ -78,13 +78,23 @@ describe("proxy permission enforcement", () => {
     expect(input.headers.get("location")).toBe("http://local/approval");
   });
 
-  it.each(["ADMIN", "FINANCE"])("allows %s demo access to expense input", (role) => {
+  it("allows FINANCE demo access to expense input", () => {
     vi.stubEnv("AUTH_PROVIDER", "demo");
-    vi.stubEnv("APP_DEFAULT_ROLE", role);
+    vi.stubEnv("APP_DEFAULT_ROLE", "FINANCE");
 
     const response = proxy(makeRequest("/pengeluaran/input"));
 
     expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("redirects ADMIN demo access away from expense input", () => {
+    vi.stubEnv("AUTH_PROVIDER", "demo");
+    vi.stubEnv("APP_DEFAULT_ROLE", "ADMIN");
+
+    const response = proxy(makeRequest("/pengeluaran/input"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://local/penjualan/input");
   });
 
   it("ignores demo cookies when trusted-header auth is active", () => {

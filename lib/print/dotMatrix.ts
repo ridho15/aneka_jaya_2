@@ -161,7 +161,7 @@ export function formatSaleDotMatrix(
       ? "-"
       : sale.transactionNumber || sale.id;
 
-  const ITEM_PER_PAGE = 10;
+  const ITEM_PER_PAGE = 9;
 
   const pages = chunkItems(sale.items, ITEM_PER_PAGE);
 
@@ -268,7 +268,8 @@ export function formatSaleDotMatrix(
         `${pageIndex + 1}/${pages.length}`,
         DOT_MATRIX_WIDTH,
         "right"
-      )
+      ),
+      ""
     );
 
     return normalizeLines(rows);
@@ -333,6 +334,5 @@ export function formatExpenseDotMatrix(expense: Expense) {
 export function toEscPosPrn(text: string) {
   const resetPrinter = "\x1B@";
   const condensedOff = "\x12";
-  const formFeed = "\x0C";
-  return `${resetPrinter}${condensedOff}${text}${formFeed}`;
+  return `${resetPrinter}${condensedOff}${text}`;
 }
