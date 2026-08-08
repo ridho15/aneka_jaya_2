@@ -246,19 +246,24 @@ export function formatSaleDotMatrix(
           sale.createdByNameSnapshot
         )
       );
-    } else {
-      rows.push(
-        center("LANJUT KE HALAMAN BERIKUTNYA")
-      );
-    }
+    } 
 
-    /* Isi baris kosong sampai bagian bawah halaman */
-    while (rows.length < PAGE_LINES - 1) {
-      rows.push("");
-    }
+    // /* Isi baris kosong sampai bagian bawah halaman */
+    // while (rows.length < PAGE_LINES - 1) {
+    //   rows.push("");
+    // }
 
-    /* Nomor halaman saja, tanpa tulisan HALAMAN */
+    // /* Nomor halaman saja, tanpa tulisan HALAMAN */
+    // rows.push(
+    //   column(
+    //     `${pageIndex + 1}/${pages.length}`,
+    //     DOT_MATRIX_WIDTH,
+    //     "right"
+    //   )
+    // );
+
     rows.push(
+      "",
       column(
         `${pageIndex + 1}/${pages.length}`,
         DOT_MATRIX_WIDTH,
