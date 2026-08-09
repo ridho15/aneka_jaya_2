@@ -1,5 +1,18 @@
 [
   {
+    "id": "SAL-1786305931372",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-08-09T20:05:31.372Z",
+    "resolvedAt": "2026-08-09T20:05:31.446Z"
+  },
+  {
     "id": "SAL-1784321442999",
     "productId": "10",
     "productCodeSnapshot": "FG-SEED-001",
