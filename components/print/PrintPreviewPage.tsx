@@ -55,12 +55,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
     link.remove();
     URL.revokeObjectURL(url);
   };
-  // const paperSize = kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
-  const paperSize =
-    kind === "sales"
-      ? "14cm 12.2cm"
-      : "12.2cm 14cm";
-
+  const paperSize = kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
   const sheetSize = kind === "sales" ? "h-[12.2cm] w-[14cm]" : "h-[14cm] w-[12.2cm]";
   const pages = splitPrintPreviewPages(text);
 
@@ -75,7 +70,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           .print-actions {
             display: none !important;
           }
-
+        
           @page {
             margin: 0;
             size: ${paperSize};
@@ -147,7 +142,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           {pages.map((page, index) => (
             <div
               key={index}
-              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[3.5cm] pt-[1cm] print:max-w-none print:overflow-hidden ${index < pages.length - 1 ? "print-page-break" : ""}`}
+              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[3.5cm] pt-[1cm] print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
               <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
                 {page}
