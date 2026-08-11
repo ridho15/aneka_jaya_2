@@ -138,6 +138,7 @@ export type SalesRecordFilters = {
 };
 export type SalesRecordScope = {
   createdByUserId?: string;
+  excludeSource?: string;
 };
 export type PaginatedSalesRecords = {
   data: Sale[];
@@ -172,6 +173,7 @@ function appendSalesWhereAnd(where: Prisma.SalesRecordWhereInput, condition: Pri
 function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = {}): Prisma.SalesRecordWhereInput {
   const where: Prisma.SalesRecordWhereInput = {};
   if (scope.createdByUserId) where.createdByUserId = scope.createdByUserId;
+  if (scope.excludeSource) where.source = { not: scope.excludeSource };
   if (filters.from || filters.to) {
     where.saleDate = {};
     if (filters.from) where.saleDate.gte = dateStart(filters.from);
@@ -210,6 +212,7 @@ export function filterSalesRecordsInMemory(sales: Sale[], filters: SalesRecordFi
   const keyword = filters.keyword?.trim().toLowerCase();
   return sales.filter((sale) => {
     if (scope.createdByUserId && sale.createdByUserId !== scope.createdByUserId) return false;
+    if (scope.excludeSource && sale.source === scope.excludeSource) return false;
     if (filters.from && sale.saleDate < filters.from) return false;
     if (filters.to && sale.saleDate > filters.to) return false;
     if (filters.tipe && (sale.tipeCodeSnapshot || sale.tipeId || "") !== filters.tipe) return false;
@@ -279,6 +282,14 @@ function toSale(row: SalesRecordWithItems): Sale {
     erpPaymentAttemptedAt: row.erpPaymentAttemptedAt?.toISOString(),
     testReference: row.testReference || undefined,
     isTestTransaction: row.isTestTransaction,
+    source: row.source,
+    externalReference: row.externalReference || undefined,
+    integrationPayloadHash: row.integrationPayloadHash || undefined,
+    integrationClientId: row.integrationClientId || undefined,
+    externalCustomerId: row.externalCustomerId || undefined,
+    erpCustomerId: row.erpCustomerId || undefined,
+    customerSyncStatus: row.customerSyncStatus,
+    customerSyncError: row.customerSyncError || undefined,
     createdByUserId: row.createdByUserId,
     createdByNameSnapshot: row.createdByNameSnapshot,
     createdByRoleSnapshot: row.createdByRoleSnapshot,
@@ -724,6 +735,7 @@ async function updatePrismaSalesRecord(
 export async function updateSalesRecord(id: string, input: PenjualanInput): Promise<Sale> {
   const before = await getSalesRecord(id);
   if (!before) throw Object.assign(new Error("Transaksi penjualan tidak ditemukan."), { code: "SALES_NOT_FOUND" });
+  if (before.source === "MJ") throw Object.assign(new Error("Invoice MJ hanya dapat diubah melalui API integrasi MJ."), { code: "INVOICE_LOCKED" });
   assertSaleManageable(before);
   assertSalesEditable(before);
   if (
@@ -765,6 +777,7 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
   if (!cleanReason) throw new Error("Alasan cancel wajib diisi.");
   const before = await getSalesRecord(id);
   if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
+  if (before.source === "MJ") throw new Error("Cancel invoice MJ menunggu kontrak cancel/reversal AJ dan tidak boleh mengubah status lokal.");
   if (before.approvalStatus === "cancelled") throw new Error("Transaksi sudah dibatalkan.");
   const requiresErpCancellation = before.syncTarget === "erp" && before.syncStatus === "synced";
   const actor = await getCurrentUser();

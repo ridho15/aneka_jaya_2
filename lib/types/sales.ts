@@ -62,4 +62,12 @@ export type Sale = {
   erpPaymentAttemptedAt?: string;
   testReference?: string;
   isTestTransaction?: boolean;
+  source?: "SLM" | "MJ" | string;
+  externalReference?: string;
+  integrationPayloadHash?: string;
+  integrationClientId?: string;
+  externalCustomerId?: string;
+  erpCustomerId?: number;
+  customerSyncStatus?: string;
+  customerSyncError?: string;
 };

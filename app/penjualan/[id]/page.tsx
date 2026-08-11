@@ -56,7 +56,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         <div className="flex flex-wrap gap-2">
           <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
           <Link href={`/print/sales/${sale.id}`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Cetak</Link>
-          {canManage && sale.approvalStatus !== "cancelled" && !needsCancelAndRecreate && <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
+          {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && !needsCancelAndRecreate && <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
         </div>
       </div>
 
@@ -96,7 +96,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
             Transaksi sudah masuk proses lanjutan di ERP. Jika ada salah input, gunakan cancel/void lalu buat transaksi koreksi baru dengan ERP reference baru.
           </p>
         )}
-        {canManage && (
+        {canManage && sale.source !== "MJ" && (
           <div className="mt-5">
             <TransactionCancelButton
               id={sale.id}

@@ -2,7 +2,8 @@ openapi: 3.1.0
 info:
   title: SLM Internal API
   version: 1.0.0
-  description: API internal untuk operasional SLM. Semua response JSON bisnis memakai wrapper success/data/message.
+  description: >-
+    API internal untuk operasional SLM. Semua response JSON bisnis memakai wrapper success/data/message. Error integrasi MJ meliputi AUTH_INVALID, RATE_LIMITED, VALIDATION_FAILED, REFERENCE_CONFLICT, CUSTOMER_INVALID, PRODUCT_INVALID, ACCOUNT_INVALID, INVOICE_LOCKED, PAYMENT_EXCEEDS_REMAINING, PAYMENT_REFERENCE_CONFLICT, AJ_TIMEOUT, AJ_UPSTREAM_ERROR, AJ_CONTRACT_PENDING, dan INTERNAL_ERROR.
 servers:
   - url: http://localhost:3000
 security:
@@ -28,6 +29,11 @@ components:
       type: apiKey
       in: header
       name: x-cron-secret
+    mjBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: SLM integration token
+      description: Token server-to-server yang diprovision satu kali, disimpan sebagai SHA-256 hash, dipisahkan antara sandbox/production, dapat dicabut, kedaluwarsa, dan dirotasi.
   schemas:
     ApiSuccess:
       type: object
@@ -348,6 +354,73 @@ components:
       properties:
         reason:
           type: string
+    MjInvoiceInput:
+      type: object
+      additionalProperties: false
+      required: [source, external_reference, invoice_reference, invoice_date, currency, bookkeeping_type_code, customer, payment, items, subtotal, total]
+      properties:
+        source: { type: string, const: MJ }
+        external_reference: { type: string, maxLength: 150 }
+        invoice_reference: { type: string, maxLength: 100, description: Nomor invoice MJ yang diteruskan ke AJ tanpa diubah. }
+        invoice_date: { type: string, format: date }
+        currency: { type: string, const: IDR }
+        bookkeeping_type_code: { type: string }
+        customer:
+          oneOf:
+            - type: object
+              required: [mode, customer_id]
+              properties: { mode: { const: existing }, customer_id: { type: [string, integer] }, name: { type: string } }
+            - type: object
+              required: [mode, external_id, name, address]
+              properties: { mode: { const: manual }, external_id: { type: string }, name: { type: string }, address: { type: string } }
+        payment:
+          type: object
+          required: [method, status, paid_amount]
+          properties:
+            method: { type: string, enum: [Cash, TF, Tempo] }
+            status: { type: string, enum: [paid, partial, unpaid] }
+            paid_amount: { type: number, minimum: 0 }
+            due_date: { type: string, format: date }
+            account: { $ref: "#/components/schemas/MjAccount" }
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [external_product_id, warehouse_id, quantity, unit_price, subtotal]
+            properties:
+              external_product_id: { type: [string, integer] }
+              warehouse_id: { type: [string, integer] }
+              rack_id: { type: [string, integer] }
+              sku: { type: string }
+              product_name: { type: string }
+              quantity: { type: number, exclusiveMinimum: 0 }
+              unit_price: { type: number, minimum: 0 }
+              discount: { type: number, minimum: 0, default: 0 }
+              subtotal: { type: number, minimum: 0 }
+        subtotal: { type: number, minimum: 0 }
+        discount: { type: number, minimum: 0, default: 0 }
+        total: { type: number, minimum: 0 }
+        notes: { type: string }
+        metadata: { type: object, additionalProperties: true }
+    MjAccount:
+      oneOf:
+        - type: object
+          required: [mode, rekening_id]
+          properties: { mode: { const: slm }, rekening_id: { type: string } }
+        - type: object
+          required: [mode, aj_coa_reference]
+          properties: { mode: { const: manual }, aj_coa_reference: { type: string }, name: { type: string } }
+    MjTempoPaymentInput:
+      type: object
+      required: [payment_reference, payment_date, amount, payment_method, account]
+      properties:
+        payment_reference: { type: string }
+        payment_date: { type: string, format: date }
+        amount: { type: number, exclusiveMinimum: 0 }
+        payment_method: { type: string, enum: [Cash, TF, Other] }
+        account: { $ref: "#/components/schemas/MjAccount" }
+        notes: { type: string }
     UserInput:
       type: object
       required: [externalId, name, role]
@@ -412,6 +485,74 @@ components:
           schema:
             $ref: "#/components/schemas/ApiError"
 paths:
+  /api/integrations/mj/customers:
+    get:
+      summary: Cari customer AJ untuk dipilih MJ.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: query, name: search, schema: { type: string } }
+      responses: { "200": { description: Daftar customer AJ. }, "401": { description: AUTH_INVALID }, "429": { description: RATE_LIMITED }, "502": { description: AJ_UPSTREAM_ERROR }, "504": { description: AJ_TIMEOUT } }
+  /api/integrations/mj/accounts:
+    get:
+      summary: Daftar rekening SLM dengan reference aman untuk MJ.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: query, name: bookkeeping_type_code, required: true, schema: { type: string } }
+      responses: { "200": { description: Rekening aktif; COA AJ tidak diekspos. }, "400": { description: VALIDATION_FAILED }, "401": { description: AUTH_INVALID }, "429": { description: RATE_LIMITED } }
+  /api/integrations/mj/invoices:
+    post:
+      summary: Buat atau lanjutkan invoice MJ secara idempotent.
+      description: >-
+        Unique berdasarkan (source, external_reference). Payload sama mengembalikan 200 already_processed dan hanya melanjutkan tahap customer, invoice AJ, release stok, atau payment yang belum sukses. Payload berbeda mengembalikan REFERENCE_CONFLICT. Request AJ timeout setelah 12 detik dan tidak dilakukan di dalam transaksi database. Rate limit mutation default 60/menit/client, dapat dikonfigurasi.
+      security: [{ mjBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MjInvoiceInput" }
+            examples:
+              cash:
+                value: { source: MJ, external_reference: MJ-2026-0001, invoice_reference: INV-MJ-0001, invoice_date: "2026-08-11", currency: IDR, bookkeeping_type_code: SLM, customer: { mode: existing, customer_id: 25, name: Toko Maju }, payment: { method: TF, status: paid, paid_amount: 100000, account: { mode: slm, rekening_id: bank-operasional } }, items: [{ external_product_id: 10, warehouse_id: 1, quantity: 2, unit_price: 50000, discount: 0, subtotal: 100000 }], subtotal: 100000, discount: 0, total: 100000 }
+      responses:
+        "201": { description: created; semua tahap sukses. }
+        "200": { description: already_processed; payload sama dan semua tahap selesai. }
+        "400": { description: VALIDATION_FAILED, CUSTOMER_INVALID, PRODUCT_INVALID, atau ACCOUNT_INVALID. }
+        "409": { description: REFERENCE_CONFLICT atau INVOICE_LOCKED. }
+        "429": { description: RATE_LIMITED. }
+        "502": { description: AJ_UPSTREAM_ERROR dengan slm_id, substatus, dan retryable=true. }
+        "504": { description: AJ_TIMEOUT dengan slm_id, substatus, dan retryable=true. }
+  /api/integrations/mj/invoices/by-reference/{external_reference}:
+    get:
+      summary: Lookup snapshot dan substatus invoice MJ.
+      description: Mengembalikan customer/identitas AJ, remaining Tempo, error terakhir, retryability, dan URL cetak browser/text/PRN. Rate limit read default 300/menit/client.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: path, name: external_reference, required: true, schema: { type: string } }
+      responses: { "200": { description: Snapshot invoice. }, "401": { description: AUTH_INVALID }, "404": { description: Invoice tidak ditemukan. }, "429": { description: RATE_LIMITED } }
+  /api/integrations/mj/invoices/{external_reference}/payments:
+    post:
+      summary: Catat pembayaran Tempo idempotent.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: path, name: external_reference, required: true, schema: { type: string } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MjTempoPaymentInput" } } } }
+      responses: { "201": { description: Pembayaran dibuat. }, "200": { description: Duplicate sama sudah diproses. }, "400": { description: PAYMENT_EXCEEDS_REMAINING atau validasi. }, "409": { description: PAYMENT_REFERENCE_CONFLICT atau INVOICE_LOCKED. }, "502": { description: AJ_UPSTREAM_ERROR. }, "504": { description: AJ_TIMEOUT. } }
+  /api/integrations/mj/invoices/{external_reference}/cancel:
+    post:
+      summary: Placeholder cancel invoice MJ.
+      description: Selalu 501 AJ_CONTRACT_PENDING dan tidak mengubah status lokal sampai kontrak reversal AJ tersedia.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: path, name: external_reference, required: true, schema: { type: string } }
+      responses: { "501": { description: AJ_CONTRACT_PENDING } }
+  /api/integrations/mj/invoices/{external_reference}/print:
+    get:
+      summary: Cetak snapshot invoice MJ sebagai text atau PRN.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: path, name: external_reference, required: true, schema: { type: string } }
+        - { in: query, name: format, schema: { type: string, enum: [text, prn], default: text } }
+      responses: { "200": { description: Snapshot text/plain atau file PRN. }, "401": { description: AUTH_INVALID }, "404": { description: Invoice tidak ditemukan. } }
   /api/debug/erp-stock-shape:
     get:
       summary: Audit aman bentuk field ERP produk dan stok.

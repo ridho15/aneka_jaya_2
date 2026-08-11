@@ -15,6 +15,7 @@ export default async function EditPenjualanPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [sale, tipes, rekenings, user] = await Promise.all([getSalesRecord(id), listBookkeepingTypes(), listRekeningAccounts(), getCurrentUser()]);
   if (!sale) notFound();
+  if (sale.source === "MJ") notFound();
   const needsCancelAndRecreate =
     sale.syncTarget === "erp" &&
     (sale.stockReleaseStatus === "released" || sale.erpPaymentStatus === "paid" || sale.erpPaymentStatus === "partial");

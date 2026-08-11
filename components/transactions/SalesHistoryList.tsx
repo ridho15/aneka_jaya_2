@@ -71,7 +71,7 @@ function ExpandButton({ sale, expanded, onToggle, compact = false }: { sale: Sal
 function MoreActionsMenu({ sale, mobile = false }: { sale: Sale; mobile?: boolean }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const canEdit = sale.approvalStatus !== "cancelled" && !needsCancelAndRecreate(sale);
+  const canEdit = sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && !needsCancelAndRecreate(sale);
 
   useEffect(() => {
     if (!open) return;
@@ -96,10 +96,10 @@ function MoreActionsMenu({ sale, mobile = false }: { sale: Sale; mobile?: boolea
         <div role="menu" className={`absolute z-30 mt-1 min-w-52 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-xl ${mobile ? "right-0 w-full" : "right-0"}`}>
           <Link role="menuitem" className="block px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50" href={`/print/sales/${sale.id}`}>Cetak transaksi</Link>
           {canEdit && <Link role="menuitem" className="block px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50" href={`/penjualan/${sale.id}/edit`}>Edit transaksi</Link>}
-          {needsCancelAndRecreate(sale) && <p className="border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800">Transaksi ERP harus menggunakan cancel lalu dibuat kembali.</p>}
-          <div className="border-t border-slate-100 px-4 py-2.5">
+          {sale.source !== "MJ" && needsCancelAndRecreate(sale) && <p className="border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800">Transaksi ERP harus menggunakan cancel lalu dibuat kembali.</p>}
+          {sale.source !== "MJ" && <div className="border-t border-slate-100 px-4 py-2.5">
             <TransactionCancelButton id={sale.id} kind="sales" disabled={sale.approvalStatus === "cancelled"} disabledReason="Transaksi sudah dibatalkan." transactionLabel={sale.transactionNumber || sale.customerName} triggerClassName="w-full text-left text-sm font-semibold text-red-700 hover:text-red-800 disabled:cursor-not-allowed disabled:text-slate-400" />
-          </div>
+          </div>}
         </div>
       )}
     </div>
@@ -152,7 +152,7 @@ export function SalesHistoryList({ sales, canManage, canViewTransactionNumber }:
           return (
             <article key={sale.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate font-semibold text-slate-900">{sale.customerName}</p><p className="mt-1 text-xs text-slate-500">{saleDateLabel(sale)} • {sale.tipeCodeSnapshot || sale.tipeId || "W"} • {sale.paymentMethod}</p></div><p className="shrink-0 text-right font-bold text-slate-900">{rupiah(sale.total)}</p></div>
-              <div className="mt-3 flex flex-wrap gap-2"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /><Badge value={`Invoice ${sale.syncStatus || "local"}`} tone={statusTone(sale.syncStatus || "local")} />{sale.syncTarget === "erp" && <Badge value={`Stok ${sale.stockReleaseStatus || "not_required"}`} tone={statusTone(sale.stockReleaseStatus || "not_required")} />}{sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}</div>
+              <div className="mt-3 flex flex-wrap gap-2">{sale.source === "MJ" && <Badge value="Source MJ" tone="blue" />}<Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /><Badge value={`Invoice ${sale.syncStatus || "local"}`} tone={statusTone(sale.syncStatus || "local")} />{sale.syncTarget === "erp" && <Badge value={`Stok ${sale.stockReleaseStatus || "not_required"}`} tone={statusTone(sale.stockReleaseStatus || "not_required")} />}{sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}</div>
               <dl className="mt-3 grid gap-2 text-sm text-slate-600">{canViewTransactionNumber && <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">No Transaksi</dt><dd className="mt-0.5 font-mono text-xs">{sale.transactionNumber || sale.id}</dd></div>}<div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Lokasi</dt><dd className="mt-0.5">{sale.customerLocation || "—"}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pembuat</dt><dd className="mt-0.5">{sale.createdByNameSnapshot || "—"}</dd></div></dl>
               <div className="mt-4"><ExpandButton sale={sale} expanded={expanded} onToggle={() => toggle(sale.id)} /></div>
               {expanded && <SalesItemsDetail sale={sale} className="mt-3" />}
