@@ -142,7 +142,7 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
           {pages.map((page, index) => (
             <div
               key={index}
-              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[3.5cm] pt-[1cm] print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
+              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[4.2cm] pt-[1cm] print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
               <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
                 {page}
