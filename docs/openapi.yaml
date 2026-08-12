@@ -355,13 +355,19 @@ components:
         reason:
           type: string
     MjInvoiceInput:
+      oneOf:
+        - $ref: "#/components/schemas/MjSlmProcessAjInput"
+        - $ref: "#/components/schemas/MjAjAlreadyProcessedInput"
+        - $ref: "#/components/schemas/MjRecordOnlyInput"
+      discriminator: { propertyName: processing_mode }
+    MjInvoiceCommon:
       type: object
-      additionalProperties: false
-      required: [source, external_reference, invoice_reference, invoice_date, currency, bookkeeping_type_code, customer, payment, items, subtotal, total]
+      required: [source, processing_mode, external_reference, invoice_reference, invoice_date, currency, bookkeeping_type_code, customer, payment, items, subtotal, total]
       properties:
         source: { type: string, const: MJ }
+        processing_mode: { type: string, enum: [slm_process_aj, aj_already_processed, record_only] }
         external_reference: { type: string, maxLength: 150 }
-        invoice_reference: { type: string, maxLength: 100, description: Nomor invoice MJ yang diteruskan ke AJ tanpa diubah. }
+        invoice_reference: { type: string, maxLength: 100 }
         invoice_date: { type: string, format: date }
         currency: { type: string, const: IDR }
         bookkeeping_type_code: { type: string }
@@ -373,37 +379,43 @@ components:
             - type: object
               required: [mode, external_id, name, address]
               properties: { mode: { const: manual }, external_id: { type: string }, name: { type: string }, address: { type: string } }
-        payment:
-          type: object
-          required: [method, status, paid_amount]
-          properties:
-            method: { type: string, enum: [Cash, TF, Tempo] }
-            status: { type: string, enum: [paid, partial, unpaid] }
-            paid_amount: { type: number, minimum: 0 }
-            due_date: { type: string, format: date }
-            account: { $ref: "#/components/schemas/MjAccount" }
-        items:
-          type: array
-          minItems: 1
-          items:
-            type: object
-            required: [external_product_id, warehouse_id, quantity, unit_price, subtotal]
-            properties:
-              external_product_id: { type: [string, integer] }
-              warehouse_id: { type: [string, integer] }
-              rack_id: { type: [string, integer] }
-              sku: { type: string }
-              product_name: { type: string }
-              quantity: { type: number, exclusiveMinimum: 0 }
-              unit_price: { type: number, minimum: 0 }
-              discount: { type: number, minimum: 0, default: 0 }
-              subtotal: { type: number, minimum: 0 }
         subtotal: { type: number, minimum: 0 }
         discount: { type: number, minimum: 0, default: 0 }
         total: { type: number, minimum: 0 }
         notes: { type: string }
         metadata: { type: object, additionalProperties: true }
-    MjAccount:
+    MjAjItem:
+      type: object
+      required: [external_product_id, warehouse_id, quantity, unit_price, subtotal]
+      properties:
+        external_product_id: { type: [string, integer] }
+        warehouse_id: { type: [string, integer] }
+        warehouse_name: { type: string }
+        rack_id: { type: [string, integer] }
+        rack_name: { type: string }
+        sku: { type: string }
+        product_name: { type: string }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unit_price: { type: number, minimum: 0 }
+        discount: { type: number, minimum: 0, default: 0 }
+        subtotal: { type: number, minimum: 0 }
+    MjRecordOnlyItem:
+      type: object
+      required: [product_reference, product_name, quantity, unit_price, subtotal]
+      properties:
+        product_reference: { type: string }
+        product_name: { type: string }
+        external_product_id: { type: [string, integer] }
+        warehouse_id: { type: [string, integer] }
+        warehouse_name: { type: string }
+        rack_id: { type: [string, integer] }
+        rack_name: { type: string }
+        unit: { type: string }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unit_price: { type: number, minimum: 0 }
+        discount: { type: number, minimum: 0, default: 0 }
+        subtotal: { type: number, minimum: 0 }
+    MjAjAccount:
       oneOf:
         - type: object
           required: [mode, rekening_id]
@@ -411,6 +423,51 @@ components:
         - type: object
           required: [mode, aj_coa_reference]
           properties: { mode: { const: manual }, aj_coa_reference: { type: string }, name: { type: string } }
+    MjLocalAccount:
+      oneOf:
+        - type: object
+          required: [mode, rekening_id]
+          properties: { mode: { const: slm }, rekening_id: { type: string } }
+        - type: object
+          required: [mode, account_reference, name]
+          properties: { mode: { const: manual }, account_reference: { type: string }, name: { type: string } }
+    MjPayment:
+      type: object
+      required: [method, status, paid_amount]
+      properties:
+        method: { type: string, enum: [Cash, TF, Tempo] }
+        status: { type: string, enum: [paid, partial, unpaid] }
+        paid_amount: { type: number, minimum: 0 }
+        due_date: { type: string, format: date }
+        account: { oneOf: [{ $ref: "#/components/schemas/MjAjAccount" }, { $ref: "#/components/schemas/MjLocalAccount" }] }
+    MjSlmProcessAjInput:
+      allOf:
+        - $ref: "#/components/schemas/MjInvoiceCommon"
+        - type: object
+          properties:
+            processing_mode: { const: slm_process_aj }
+            payment: { $ref: "#/components/schemas/MjPayment" }
+            items: { type: array, minItems: 1, items: { $ref: "#/components/schemas/MjAjItem" } }
+    MjAjAlreadyProcessedInput:
+      allOf:
+        - $ref: "#/components/schemas/MjInvoiceCommon"
+        - type: object
+          required: [aj_invoice_number, aj_customer_id]
+          properties:
+            processing_mode: { const: aj_already_processed }
+            aj_invoice_number: { type: string, description: Wajib sama dengan invoice_reference. }
+            aj_invoice_id: { type: [string, integer] }
+            aj_customer_id: { type: [string, integer] }
+            payment: { $ref: "#/components/schemas/MjPayment" }
+            items: { type: array, minItems: 1, items: { $ref: "#/components/schemas/MjAjItem" } }
+    MjRecordOnlyInput:
+      allOf:
+        - $ref: "#/components/schemas/MjInvoiceCommon"
+        - type: object
+          properties:
+            processing_mode: { const: record_only }
+            payment: { $ref: "#/components/schemas/MjPayment" }
+            items: { type: array, minItems: 1, items: { $ref: "#/components/schemas/MjRecordOnlyItem" } }
     MjTempoPaymentInput:
       type: object
       required: [payment_reference, payment_date, amount, payment_method, account]
@@ -419,7 +476,7 @@ components:
         payment_date: { type: string, format: date }
         amount: { type: number, exclusiveMinimum: 0 }
         payment_method: { type: string, enum: [Cash, TF, Other] }
-        account: { $ref: "#/components/schemas/MjAccount" }
+        account: { oneOf: [{ $ref: "#/components/schemas/MjAjAccount" }, { $ref: "#/components/schemas/MjLocalAccount" }] }
         notes: { type: string }
     UserInput:
       type: object
@@ -498,12 +555,12 @@ paths:
       security: [{ mjBearer: [] }]
       parameters:
         - { in: query, name: bookkeeping_type_code, required: true, schema: { type: string } }
-      responses: { "200": { description: Rekening aktif; COA AJ tidak diekspos. }, "400": { description: VALIDATION_FAILED }, "401": { description: AUTH_INVALID }, "429": { description: RATE_LIMITED } }
+      responses: { "200": { description: Rekening aktif dengan flag aj_compatible; COA AJ tidak diekspos. record_only boleh memakai rekening tanpa kompatibilitas AJ. }, "400": { description: VALIDATION_FAILED }, "401": { description: AUTH_INVALID }, "429": { description: RATE_LIMITED } }
   /api/integrations/mj/invoices:
     post:
       summary: Buat atau lanjutkan invoice MJ secara idempotent.
       description: >-
-        Unique berdasarkan (source, external_reference). Payload sama mengembalikan 200 already_processed dan hanya melanjutkan tahap customer, invoice AJ, release stok, atau payment yang belum sukses. Payload berbeda mengembalikan REFERENCE_CONFLICT. Request AJ timeout setelah 12 detik dan tidak dilakukan di dalam transaksi database. Rate limit mutation default 60/menit/client, dapat dikonfigurasi.
+        processing_mode wajib. slm_process_aj menjalankan seluruh tahap AJ; aj_already_processed dan record_only tidak melakukan request AJ. Unique berdasarkan (source, external_reference). Payload sama mengembalikan 200 already_processed; payload atau mode berbeda mengembalikan REFERENCE_CONFLICT. Request AJ timeout setelah 12 detik dan tidak dilakukan di dalam transaksi database.
       security: [{ mjBearer: [] }]
       requestBody:
         required: true
@@ -511,8 +568,12 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/MjInvoiceInput" }
             examples:
-              cash:
-                value: { source: MJ, external_reference: MJ-2026-0001, invoice_reference: INV-MJ-0001, invoice_date: "2026-08-11", currency: IDR, bookkeeping_type_code: SLM, customer: { mode: existing, customer_id: 25, name: Toko Maju }, payment: { method: TF, status: paid, paid_amount: 100000, account: { mode: slm, rekening_id: bank-operasional } }, items: [{ external_product_id: 10, warehouse_id: 1, quantity: 2, unit_price: 50000, discount: 0, subtotal: 100000 }], subtotal: 100000, discount: 0, total: 100000 }
+              slm_process_aj:
+                value: { source: MJ, processing_mode: slm_process_aj, external_reference: MJ-2026-0001, invoice_reference: INV-MJ-0001, invoice_date: "2026-08-11", currency: IDR, bookkeeping_type_code: SLM, customer: { mode: existing, customer_id: 25, name: Toko Maju }, payment: { method: TF, status: paid, paid_amount: 100000, account: { mode: slm, rekening_id: bank-operasional } }, items: [{ external_product_id: 10, warehouse_id: 1, quantity: 2, unit_price: 50000, discount: 0, subtotal: 100000 }], subtotal: 100000, discount: 0, total: 100000 }
+              aj_already_processed:
+                value: { source: MJ, processing_mode: aj_already_processed, external_reference: INV-MJ-0002, invoice_reference: INV-MJ-0002, aj_invoice_number: INV-MJ-0002, aj_invoice_id: 44, aj_customer_id: 25, invoice_date: "2026-08-11", currency: IDR, bookkeeping_type_code: SLM, customer: { mode: existing, customer_id: 25 }, payment: { method: TF, status: paid, paid_amount: 100000, account: { mode: slm, rekening_id: bank-operasional } }, items: [{ external_product_id: 10, warehouse_id: 1, quantity: 2, unit_price: 50000, subtotal: 100000 }], subtotal: 100000, total: 100000 }
+              record_only:
+                value: { source: MJ, processing_mode: record_only, external_reference: MJ-LOCAL-0003, invoice_reference: INV-MJ-0003, invoice_date: "2026-08-11", currency: IDR, bookkeeping_type_code: SLM, customer: { mode: manual, external_id: C-3, name: Toko Lokal, address: Jakarta }, payment: { method: Cash, status: paid, paid_amount: 100000, account: { mode: manual, account_reference: CASH-MJ, name: Kas MJ } }, items: [{ product_reference: MJ-SKU-1, product_name: Produk Lokal, quantity: 2, unit_price: 50000, subtotal: 100000 }], subtotal: 100000, total: 100000 }
       responses:
         "201": { description: created; semua tahap sukses. }
         "200": { description: already_processed; payload sama dan semua tahap selesai. }
@@ -532,6 +593,7 @@ paths:
   /api/integrations/mj/invoices/{external_reference}/payments:
     post:
       summary: Catat pembayaran Tempo idempotent.
+      description: slm_process_aj meneruskan pembayaran ke AJ; aj_already_processed dan record_only hanya memperbarui piutang lokal SLM.
       security: [{ mjBearer: [] }]
       parameters:
         - { in: path, name: external_reference, required: true, schema: { type: string } }
@@ -539,12 +601,13 @@ paths:
       responses: { "201": { description: Pembayaran dibuat. }, "200": { description: Duplicate sama sudah diproses. }, "400": { description: PAYMENT_EXCEEDS_REMAINING atau validasi. }, "409": { description: PAYMENT_REFERENCE_CONFLICT atau INVOICE_LOCKED. }, "502": { description: AJ_UPSTREAM_ERROR. }, "504": { description: AJ_TIMEOUT. } }
   /api/integrations/mj/invoices/{external_reference}/cancel:
     post:
-      summary: Placeholder cancel invoice MJ.
-      description: Selalu 501 AJ_CONTRACT_PENDING dan tidak mengubah status lokal sampai kontrak reversal AJ tersedia.
+      summary: Cancel invoice MJ sesuai processing mode.
+      description: record_only dibatalkan lokal beserta Tempo; slm_process_aj dan aj_already_processed mengembalikan 501 AJ_CONTRACT_PENDING tanpa perubahan.
       security: [{ mjBearer: [] }]
       parameters:
         - { in: path, name: external_reference, required: true, schema: { type: string } }
-      responses: { "501": { description: AJ_CONTRACT_PENDING } }
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string, minLength: 3 } } } } } }
+      responses: { "200": { description: record_only cancelled atau already_cancelled. }, "400": { description: VALIDATION_FAILED. }, "501": { description: AJ_CONTRACT_PENDING. } }
   /api/integrations/mj/invoices/{external_reference}/print:
     get:
       summary: Cetak snapshot invoice MJ sebagai text atau PRN.

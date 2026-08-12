@@ -286,6 +286,7 @@ function toSale(row: SalesRecordWithItems): Sale {
     externalReference: row.externalReference || undefined,
     integrationPayloadHash: row.integrationPayloadHash || undefined,
     integrationClientId: row.integrationClientId || undefined,
+    integrationProcessingMode: row.integrationProcessingMode as Sale["integrationProcessingMode"] || undefined,
     externalCustomerId: row.externalCustomerId || undefined,
     erpCustomerId: row.erpCustomerId || undefined,
     customerSyncStatus: row.customerSyncStatus,

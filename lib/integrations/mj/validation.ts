@@ -1,11 +1,19 @@
 import { z } from "zod";
 
+export const MJ_PROCESSING_MODES = ["slm_process_aj", "aj_already_processed", "record_only"] as const;
+export type MjProcessingMode = typeof MJ_PROCESSING_MODES[number];
+
 const money = z.number().finite().nonnegative().multipleOf(0.01);
 const positiveId = z.union([z.string().regex(/^\d+$/), z.number().int().positive()]).transform(String);
 
-const accountSchema = z.discriminatedUnion("mode", [
+const ajAccountSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("slm"), rekening_id: z.string().min(1) }).strict(),
   z.object({ mode: z.literal("manual"), aj_coa_reference: z.string().min(1), name: z.string().min(1).optional() }).strict()
+]);
+
+const localAccountSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("slm"), rekening_id: z.string().min(1) }).strict(),
+  z.object({ mode: z.literal("manual"), account_reference: z.string().min(1), name: z.string().min(1) }).strict()
 ]);
 
 const customerSchema = z.discriminatedUnion("mode", [
@@ -13,22 +21,46 @@ const customerSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("manual"), external_id: z.string().min(1).max(150), name: z.string().min(1).max(200), address: z.string().min(1).max(500) }).strict()
 ]);
 
-const itemSchema = z.object({
+const ajItemSchema = z.object({
   external_product_id: positiveId,
   product_name: z.string().min(1).max(200).optional(),
   sku: z.string().min(1).max(100).optional(),
   warehouse_id: positiveId,
+  warehouse_name: z.string().min(1).max(200).optional(),
   rack_id: positiveId.optional(),
+  rack_name: z.string().min(1).max(200).optional(),
   quantity: z.number().finite().positive().multipleOf(0.01),
   unit_price: money,
   discount: money.default(0),
   subtotal: money
-}).strict().superRefine((item, context) => {
-  const expected = roundMoney(item.quantity * item.unit_price - item.discount);
-  if (item.subtotal !== expected) context.addIssue({ code: "custom", path: ["subtotal"], message: `subtotal harus ${expected}` });
-});
+}).strict();
 
-export const mjInvoiceSchema = z.object({
+const localItemSchema = z.object({
+  product_reference: z.string().min(1).max(150),
+  product_name: z.string().min(1).max(200),
+  external_product_id: positiveId.optional(),
+  warehouse_id: positiveId.optional(),
+  warehouse_name: z.string().min(1).max(200).optional(),
+  rack_id: positiveId.optional(),
+  rack_name: z.string().min(1).max(200).optional(),
+  unit: z.string().min(1).max(50).optional(),
+  quantity: z.number().finite().positive().multipleOf(0.01),
+  unit_price: money,
+  discount: money.default(0),
+  subtotal: money
+}).strict();
+
+function paymentSchema(account: typeof ajAccountSchema | typeof localAccountSchema) {
+  return z.object({
+    method: z.enum(["Cash", "TF", "Tempo"]),
+    status: z.enum(["paid", "partial", "unpaid"]),
+    paid_amount: money,
+    due_date: z.string().date().optional(),
+    account: account.optional()
+  }).strict();
+}
+
+const common = {
   source: z.literal("MJ"),
   external_reference: z.string().min(1).max(150),
   invoice_reference: z.string().min(1).max(100),
@@ -36,20 +68,42 @@ export const mjInvoiceSchema = z.object({
   currency: z.literal("IDR"),
   bookkeeping_type_code: z.string().min(1).max(50),
   customer: customerSchema,
-  payment: z.object({
-    method: z.enum(["Cash", "TF", "Tempo"]),
-    status: z.enum(["paid", "partial", "unpaid"]),
-    paid_amount: money,
-    due_date: z.string().date().optional(),
-    account: accountSchema.optional()
-  }).strict(),
-  items: z.array(itemSchema).min(1).max(500),
   subtotal: money,
   discount: money.default(0),
   total: money,
   notes: z.string().max(1000).optional(),
   metadata: z.record(z.unknown()).optional()
-}).strict().superRefine((payload, context) => {
+};
+
+const slmProcessAjSchema = z.object({
+  ...common,
+  processing_mode: z.literal("slm_process_aj"),
+  payment: paymentSchema(ajAccountSchema),
+  items: z.array(ajItemSchema).min(1).max(500)
+}).strict();
+
+const ajAlreadyProcessedSchema = z.object({
+  ...common,
+  processing_mode: z.literal("aj_already_processed"),
+  aj_invoice_number: z.string().min(1).max(100),
+  aj_invoice_id: positiveId.optional(),
+  aj_customer_id: positiveId,
+  payment: paymentSchema(ajAccountSchema),
+  items: z.array(ajItemSchema).min(1).max(500)
+}).strict();
+
+const recordOnlySchema = z.object({
+  ...common,
+  processing_mode: z.literal("record_only"),
+  payment: paymentSchema(localAccountSchema),
+  items: z.array(localItemSchema).min(1).max(500)
+}).strict();
+
+export const mjInvoiceSchema = z.discriminatedUnion("processing_mode", [slmProcessAjSchema, ajAlreadyProcessedSchema, recordOnlySchema]).superRefine((payload, context) => {
+  payload.items.forEach((item, index) => {
+    const expected = roundMoney(item.quantity * item.unit_price - item.discount);
+    if (item.subtotal !== expected) context.addIssue({ code: "custom", path: ["items", index, "subtotal"], message: `subtotal harus ${expected}` });
+  });
   const itemSubtotal = roundMoney(payload.items.reduce((sum, item) => sum + item.subtotal, 0));
   if (payload.subtotal !== itemSubtotal) context.addIssue({ code: "custom", path: ["subtotal"], message: `subtotal invoice harus ${itemSubtotal}` });
   const expectedTotal = roundMoney(payload.subtotal - payload.discount);
@@ -62,6 +116,10 @@ export const mjInvoiceSchema = z.object({
   if (payload.payment.method === "Tempo" && payload.payment.paid_amount > payload.total) context.addIssue({ code: "custom", path: ["payment", "paid_amount"], message: "paid_amount tidak boleh melebihi total" });
   if (payload.payment.paid_amount > 0 && !payload.payment.account) context.addIssue({ code: "custom", path: ["payment", "account"], message: "rekening wajib untuk pembayaran lebih dari nol" });
   if (payload.payment.due_date && payload.payment.due_date < payload.invoice_date) context.addIssue({ code: "custom", path: ["payment", "due_date"], message: "due_date tidak boleh sebelum invoice_date" });
+  if (payload.processing_mode === "aj_already_processed") {
+    if (payload.external_reference !== payload.invoice_reference) context.addIssue({ code: "custom", path: ["external_reference"], message: "external_reference dan invoice_reference wajib sama" });
+    if (payload.aj_invoice_number !== payload.invoice_reference) context.addIssue({ code: "custom", path: ["aj_invoice_number"], message: "aj_invoice_number dan invoice_reference wajib sama" });
+  }
 });
 
 export const mjTempoPaymentSchema = z.object({
@@ -69,11 +127,14 @@ export const mjTempoPaymentSchema = z.object({
   payment_date: z.string().date(),
   amount: z.number().finite().positive().multipleOf(0.01),
   payment_method: z.enum(["Cash", "TF", "Other"]),
-  account: accountSchema,
+  account: z.union([ajAccountSchema, localAccountSchema]),
   notes: z.string().max(1000).optional()
 }).strict();
 
+export const mjCancelSchema = z.object({ reason: z.string().trim().min(3).max(500) }).strict();
+
 export type MjInvoiceInput = z.infer<typeof mjInvoiceSchema>;
+export type MjAjInvoiceInput = Extract<MjInvoiceInput, { processing_mode: "slm_process_aj" | "aj_already_processed" }>;
 export type MjTempoPaymentInput = z.infer<typeof mjTempoPaymentSchema>;
 
 export function roundMoney(value: number) {

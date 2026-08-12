@@ -1,23 +1,38 @@
 # Integrasi MJ → SLM
 
-Integrasi ini menerima invoice MJ melalui Bearer token server-to-server, menyimpan snapshot lokal secara idempotent, lalu menjalankan tahap customer AJ, invoice AJ, release stok, dan pembayaran AJ secara berurutan. Setiap tahap yang sukses tidak dipanggil ulang saat retry. Request jaringan AJ tidak pernah ditahan di dalam transaksi database dan memiliki timeout 12 detik.
+Semua create invoice wajib mengirim `processing_mode`. Token Bearer hanya dipakai server-to-server dan dipisahkan antara sandbox dan production.
+
+## Mode pemrosesan
+
+| Mode | Perilaku SLM | Identifier item | Payment Tempo lanjutan | Cancel |
+|---|---|---|---|---|
+| `slm_process_aj` | Customer → invoice → release stok → payment AJ | Produk dan gudang AJ wajib | Diteruskan ke AJ | `501 AJ_CONTRACT_PENDING` |
+| `aj_already_processed` | Hanya menyimpan snapshot; tidak memanggil AJ | Produk dan gudang AJ wajib | Lokal SLM saja | `501 AJ_CONTRACT_PENDING` |
+| `record_only` | Hanya menyimpan snapshot non-AJ | `product_reference` dan `product_name` wajib; seluruh ID AJ opsional | Lokal SLM saja | Cancel lokal diizinkan |
+
+Untuk `aj_already_processed`, `external_reference`, `invoice_reference`, dan `aj_invoice_number` wajib sama. `aj_customer_id` wajib dan `aj_invoice_id` opsional. Rekening manual `record_only` memakai `account_reference` dan `name`; COA AJ tidak diperlukan.
+
+## Idempotency dan status
+
+`source=MJ` dan `external_reference` membentuk unique key. Hash immutable mencakup mode, identitas AJ, customer, payment, item, dan nominal. Duplicate identik mengembalikan `200 already_processed`; perubahan payload atau mode menghasilkan `409 REFERENCE_CONFLICT`.
+
+Lookup mengembalikan `processing_mode`, identitas AJ, `status.customer`, `status.invoice`, `status.stock_release`, `status.aj_payment`, `receivable_status`, remaining amount, error terakhir, serta URL print. Status `externally_processed` berarti tahap dilakukan di luar SLM; `not_required` berarti tahap AJ tidak berlaku.
+
+Kegagalan AJ hanya mungkin pada `slm_process_aj` dan menghasilkan `502 AJ_UPSTREAM_ERROR` atau `504 AJ_TIMEOUT` dengan `retryable=true`. Request jaringan AJ memiliki timeout 12 detik dan tidak dijalankan di dalam transaksi database.
+
+## Payment dan cancel
+
+`POST /api/integrations/mj/invoices/{external_reference}/payments` selalu idempotent berdasarkan `payment_reference`. Overpayment ditolak. Hanya invoice `slm_process_aj` yang meneruskan payment ke AJ.
+
+`POST /api/integrations/mj/invoices/{external_reference}/cancel` menerima `{ "reason": "..." }`. Hanya `record_only` yang mengubah invoice dan Tempo lokal menjadi `cancelled`; attempt audit menyimpan client integrasi dan alasan. Invoice MJ tetap tidak dapat diedit atau dibatalkan melalui UI penjualan umum.
 
 ## Deployment
 
-1. Jalankan `npm run db:migrate:deploy` lalu `npm run prisma:generate`.
-2. Atur `MJ_INTEGRATION_ENVIRONMENT=sandbox` pada sandbox atau `production` pada production. Token dari environment lain selalu ditolak.
-3. Opsional: atur `MJ_RATE_LIMIT_MUTATION_PER_MINUTE` (default 60) dan `MJ_RATE_LIMIT_READ_PER_MINUTE` (default 300).
-4. Provision token sandbox sekali dengan `npm run integration:token:provision -- --client=mj --environment=sandbox`. Secret hanya tampil sekali; SLM hanya menyimpan hash SHA-256 dan prefix.
-5. Untuk rotasi, provision token baru dengan `--rotate-from=<token-id>`, pindahkan MJ ke token baru, lalu cabut token lama dengan mengubah `IntegrationToken.isActive=false` dan mengisi `revokedAt`. Production token baru boleh diterbitkan setelah smoke test sandbox berhasil.
+1. Jalankan `npm run db:migrate:deploy` dan `npm run prisma:generate`.
+2. Atur `MJ_INTEGRATION_ENVIRONMENT=sandbox` atau `production`.
+3. Rate limit default: 60 mutation/menit dan 300 read/menit per client.
+4. Provision token sandbox dengan `npm run integration:token:provision -- --client=mj --environment=sandbox`.
+5. Tetapkan Base URL sandbox dari deployment, lalu berikan Base URL, token, dan `/api/docs/openapi.json` kepada MJ.
+6. UAT ketiga mode sebelum migration dan token production diterbitkan.
 
-## Idempotency dan retry
-
-`source=MJ` dan `external_reference` membentuk unique key. Payload dikanonisasi dan di-hash. Duplicate dengan hash sama melanjutkan tahap berstatus `pending`/`failed`; duplicate dengan hash berbeda mendapat `409 REFERENCE_CONFLICT`. Referensi AJ deterministik: `MJ-INVOICE-{external_reference}`, release berbasis referensi invoice, dan `MJ-PAY-{external_reference}-{payment_reference}`.
-
-Kegagalan AJ menghasilkan `502 AJ_UPSTREAM_ERROR` atau `504 AJ_TIMEOUT`, termasuk `slm_id`, substatus, error terakhir, serta `retryable=true`. Endpoint cancel sengaja selalu menjawab `501 AJ_CONTRACT_PENDING` dan tidak mengubah data.
-
-## Akses UI dan smoke test
-
-Invoice bersumber MJ terlihat pada riwayat penjualan dengan penanda `Source MJ`, tetapi detail dan cetak browser hanya dapat dibuka Owner. Admin dan role lain disaring di query sekaligus diperiksa ulang saat membuka detail/cetak.
-
-Urutan smoke test sandbox: create → lookup → duplicate payload sama → simulasi timeout AJ → retry → cetak text/PRN/browser. OpenAPI lengkap tersedia di `/api/docs` dan `/api/docs/openapi.json`.
+Smoke test sandbox: create → lookup → duplicate → payment Tempo → cancel sesuai mode → print text/PRN/browser. Untuk `slm_process_aj`, tambahkan simulasi timeout AJ dan retry.

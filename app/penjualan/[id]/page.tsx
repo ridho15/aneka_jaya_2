@@ -72,6 +72,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           <Info label="Lokasi" value={sale.customerLocation || "—"} />
           <Info label="Pengiriman" value={sale.shippingMethod || "—"} />
           <Info label="Pembuat" value={sale.createdByNameSnapshot || "—"} />
+          {sale.source === "MJ" && <Info label="Mode Integrasi MJ" value={sale.integrationProcessingMode || "slm_process_aj"} />}
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Approval</p><div className="mt-1"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /></div></div>
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Invoice ERP</p><div className="mt-1"><Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} /></div></div>
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Release Stok</p><div className="mt-1">{sale.syncTarget === "erp" ? <Badge value={sale.stockReleaseStatus || "not_required"} tone={statusTone(sale.stockReleaseStatus || "not_required")} /> : <span className="text-sm text-slate-500">—</span>}</div></div>

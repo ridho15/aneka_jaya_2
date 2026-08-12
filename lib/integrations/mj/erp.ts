@@ -5,7 +5,7 @@ import { erpInvoiceIdentityFrom, erpReferenceFrom } from "@/lib/api/sales";
 import { releaseSaleStock } from "@/lib/api/stockReleases";
 import { createErpSalesPayment } from "@/lib/api/salesPayments";
 import type { ApiResponse } from "@/lib/types/api";
-import type { MjInvoiceInput } from "./validation";
+import type { MjAjInvoiceInput } from "./validation";
 
 function numberId(value: unknown) {
   if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
@@ -64,7 +64,7 @@ export function deterministicReference(kind: "invoice" | "payment", externalRefe
   return `${prefix}-${externalReference}${suffix ? `-${suffix}` : ""}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
 }
 
-export async function createMjErpInvoice(input: MjInvoiceInput, customerId: number) {
+export async function createMjErpInvoice(input: MjAjInvoiceInput, customerId: number) {
   const erpReference = deterministicReference("invoice", input.external_reference);
   const dueDate = input.payment.due_date || input.invoice_date;
   const response = await anikaRequest<unknown>("/sales", {
@@ -90,7 +90,7 @@ export async function createMjErpInvoice(input: MjInvoiceInput, customerId: numb
   return { success: true as const, data: { erpReference: erpReferenceFrom(response.data) || erpReference, ...erpInvoiceIdentityFrom(response.data), raw: response.data }, details: response.details };
 }
 
-export async function releaseMjStock(input: MjInvoiceInput, saleId: string, erpReference: string) {
+export async function releaseMjStock(input: MjAjInvoiceInput, saleId: string, erpReference: string) {
   return releaseSaleStock({
     saleId, saleDate: input.invoice_date, erpReference, sourceNumber: input.invoice_reference,
     items: input.items.map((item) => ({ productRef: item.sku || String(item.external_product_id), productId: String(item.external_product_id), warehouseId: String(item.warehouse_id), rackId: item.rack_id ? String(item.rack_id) : undefined, quantity: item.quantity, unitPrice: item.unit_price, discount: item.discount }))

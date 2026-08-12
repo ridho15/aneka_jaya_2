@@ -66,6 +66,7 @@ export type Sale = {
   externalReference?: string;
   integrationPayloadHash?: string;
   integrationClientId?: string;
+  integrationProcessingMode?: "slm_process_aj" | "aj_already_processed" | "record_only";
   externalCustomerId?: string;
   erpCustomerId?: number;
   customerSyncStatus?: string;

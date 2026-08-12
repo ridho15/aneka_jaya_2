@@ -27,6 +27,8 @@ describe("openapi docs", () => {
     expect(document.paths?.["/api/approval/{id}"]).toMatchObject({ post: expect.any(Object) });
     expect(document.components?.schemas?.ExpenseInput?.required).toEqual(expect.arrayContaining(["description", "rekeningNameSnapshot"]));
     expect(document.components?.schemas?.ExpenseInput?.properties).toEqual(expect.objectContaining({ coaId: expect.any(Object), coaNameSnapshot: expect.any(Object) }));
+    expect(document.components?.schemas?.MjInvoiceInput).toMatchObject({ discriminator: { propertyName: "processing_mode" } });
+    expect(document.components?.schemas?.MjRecordOnlyInput).toBeTruthy();
   });
 
   it("documents every app/api route", async () => {

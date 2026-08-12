@@ -216,6 +216,7 @@ model SalesRecord {
   externalReference     String?
   integrationPayloadHash String?
   integrationClientId   String?
+  integrationProcessingMode String?
   externalCustomerId    String?
   erpCustomerId         Int?
   customerSyncStatus    String    @default("not_required")
@@ -243,6 +244,7 @@ model SalesRecord {
   @@index([testReference])
   @@unique([source, externalReference])
   @@index([integrationClientId])
+  @@index([integrationProcessingMode])
   @@index([customerSyncStatus])
 }
 
