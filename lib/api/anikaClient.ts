@@ -182,12 +182,14 @@ export async function anikaRequest<T>(
   init: RequestInit = {},
 ): Promise<ApiResponse<T>> {
   const baseUrl = process.env.ANIKA_ERP_API_BASE_URL;
-  const token =
-    process.env.ANIKA_ERP_API_TOKEN || (await currentAnikaErpToken());
+  const authProvider = resolveAuthProvider();
+  const sessionToken =
+    authProvider === "anika_erp" ? await currentAnikaErpToken() : null;
+  const token = sessionToken || process.env.ANIKA_ERP_API_TOKEN;
   if (!baseUrl)
     return failure("Konfigurasi ERP belum lengkap.", "ERP_NOT_CONFIGURED");
   if (!token) {
-    return resolveAuthProvider() === "anika_erp"
+    return authProvider === "anika_erp"
       ? failure(
           "Sesi ERP tidak tersedia. Silakan masuk kembali.",
           "ERP_SESSION_REQUIRED",

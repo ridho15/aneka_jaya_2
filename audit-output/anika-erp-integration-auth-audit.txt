@@ -1,0 +1,169 @@
+===== ANIKA ERP INTEGRATION AUTH AUDIT =====
+
+=== 1. PROJECT TYPE ===
+Laravel artisan: FOUND
+Laravel Framework 12.39.0
+
+=== 2. INTEGRATION ROUTES ===
+  GET|HEAD  admin/inventory-stocks filament.admin.resources.inventory-stocks.index › App\Filament\Resources\InventoryStockR…
+  GET|HEAD  admin/inventory-stocks/create filament.admin.resources.inventory-stocks.create › App\Filament\Resources\Invento…
+  GET|HEAD  admin/inventory-stocks/{record} filament.admin.resources.inventory-stocks.view › App\Filament\Resources\Invento…
+  GET|HEAD  admin/inventory-stocks/{record}/edit filament.admin.resources.inventory-stocks.edit › App\Filament\Resources\In…
+  GET|HEAD  admin/products filament.admin.resources.products.index › App\Filament\Resources\ProductResource\Pages\ListProdu…
+  GET|HEAD  admin/products/create filament.admin.resources.products.create › App\Filament\Resources\ProductResource\Pages\C…
+  GET|HEAD  admin/products/{record} filament.admin.resources.products.view › App\Filament\Resources\ProductResource\Pages\V…
+  GET|HEAD  admin/products/{record}/edit filament.admin.resources.products.edit › App\Filament\Resources\ProductResource\Pa…
+  GET|HEAD  admin/return-products filament.admin.resources.return-products.index › App\Filament\Resources\ReturnProductReso…
+  GET|HEAD  admin/return-products/create filament.admin.resources.return-products.create › App\Filament\Resources\ReturnPro…
+  GET|HEAD  admin/return-products/{record} filament.admin.resources.return-products.view › App\Filament\Resources\ReturnPro…
+  GET|HEAD  admin/return-products/{record}/edit filament.admin.resources.return-products.edit › App\Filament\Resources\Retu…
+  GET|HEAD  api/integrations/asset-depreciations ........ Api\Integration\AssetIntegrationController@assetDepreciationsIndex
+  GET|HEAD  api/integrations/asset-disposals ................ Api\Integration\AssetIntegrationController@assetDisposalsIndex
+  POST      api/integrations/asset-disposals ................ Api\Integration\AssetIntegrationController@assetDisposalsStore
+  GET|HEAD  api/integrations/asset-transfers ................ Api\Integration\AssetIntegrationController@assetTransfersIndex
+  POST      api/integrations/asset-transfers ................ Api\Integration\AssetIntegrationController@assetTransfersStore
+  POST      api/integrations/asset-transfers/{assetTransfer}/approve Api\Integration\AssetIntegrationController@assetTransf…
+  POST      api/integrations/asset-transfers/{assetTransfer}/cancel Api\Integration\AssetIntegrationController@assetTransfe…
+  POST      api/integrations/asset-transfers/{assetTransfer}/complete Api\Integration\AssetIntegrationController@assetTrans…
+  GET|HEAD  api/integrations/assets ................................. Api\Integration\AssetIntegrationController@assetsIndex
+  GET|HEAD  api/integrations/auth/context ......................................................... integration.auth.context
+  POST      api/integrations/auth/login ............................................................. integration.docs.login
+  POST      api/integrations/auth/token ............................................................. integration.docs.token
+  GET|HEAD  api/integrations/cabangs .......................... Api\Integration\MasterDataIntegrationController@cabangsIndex
+  POST      api/integrations/cabangs .......................... Api\Integration\MasterDataIntegrationController@cabangsStore
+  PUT       api/integrations/cabangs/{cabang} ................ Api\Integration\MasterDataIntegrationController@cabangsUpdate
+  DELETE    api/integrations/cabangs/{cabang} ................ Api\Integration\MasterDataIntegrationController@cabangsDelete
+  GET|HEAD  api/integrations/chart-of-accounts ........ Api\Integration\MasterDataIntegrationController@chartOfAccountsIndex
+  POST      api/integrations/chart-of-accounts ........ Api\Integration\MasterDataIntegrationController@chartOfAccountsStore
+  PUT       api/integrations/chart-of-accounts/{chartOfAccount} Api\Integration\MasterDataIntegrationController@chartOfAcco…
+  DELETE    api/integrations/chart-of-accounts/{chartOfAccount} Api\Integration\MasterDataIntegrationController@chartOfAcco…
+  GET|HEAD  api/integrations/currencies .................... Api\Integration\MasterDataIntegrationController@currenciesIndex
+  POST      api/integrations/currencies .................... Api\Integration\MasterDataIntegrationController@currenciesStore
+  PUT       api/integrations/currencies/{currency} ........ Api\Integration\MasterDataIntegrationController@currenciesUpdate
+  DELETE    api/integrations/currencies/{currency} ........ Api\Integration\MasterDataIntegrationController@currenciesDelete
+  GET|HEAD  api/integrations/customer-returns .............. Api\Integration\SalesIntegrationController@customerReturnsIndex
+  POST      api/integrations/customer-returns/{customerReturn}/complete Api\Integration\SalesIntegrationController@customer…
+  GET|HEAD  api/integrations/customers ...................... Api\Integration\MasterDataIntegrationController@customersIndex
+  POST      api/integrations/customers ...................... Api\Integration\MasterDataIntegrationController@customersStore
+  PUT       api/integrations/customers/{customer} .......... Api\Integration\MasterDataIntegrationController@customersUpdate
+  DELETE    api/integrations/customers/{customer} .......... Api\Integration\MasterDataIntegrationController@customersDelete
+  GET|HEAD  api/integrations/delivery-queue ......................... Api\Integration\NeoIntegrationController@deliveryQueue
+  POST      api/integrations/delivery-queue/message .......... Api\Integration\NeoIntegrationController@deliveryQueueMessage
+  GET|HEAD  api/integrations/goods-issues .................. Api\Integration\InventoryIntegrationController@goodsIssuesIndex
+  POST      api/integrations/goods-issues .................. Api\Integration\InventoryIntegrationController@goodsIssuesStore
+  GET|HEAD  api/integrations/goods-receipts ............. Api\Integration\PurchasingIntegrationController@goodsReceiptsIndex
+  POST      api/integrations/goods-receipts ............. Api\Integration\PurchasingIntegrationController@goodsReceiptsStore
+  POST      api/integrations/goods-receipts/manual Api\Integration\PurchasingIntegrationController@goodsReceiptsManualStore
+  GET|HEAD  api/integrations/inbound-delivery-notes Api\Integration\PurchasingIntegrationController@inboundDeliveryNotesInd…
+  POST      api/integrations/inbound-delivery-notes Api\Integration\PurchasingIntegrationController@inboundDeliveryNotesSto…
+  GET|HEAD  api/integrations/inbound-delivery-notes/{inboundDeliveryNote} Api\Integration\PurchasingIntegrationController@i…
+  POST      api/integrations/inbound-delivery-notes/{inboundDeliveryNote}/link-receipt Api\Integration\PurchasingIntegratio…
+  GET|HEAD  api/integrations/invoices ........................... Api\Integration\FinanceIntegrationController@invoicesIndex
+  GET|HEAD  api/integrations/invoices/payment-status Api\Integration\FinanceIntegrationController@invoicePaymentStatusesInd…
+  GET|HEAD  api/integrations/manufacturing/bill-of-materials Api\Integration\ManufacturingIntegrationController@billOfMater…
+  POST      api/integrations/manufacturing/material-issue-warehouse-confirmations/sync Api\Integration\ManufacturingIntegra…
+  GET|HEAD  api/integrations/manufacturing/material-issues Api\Integration\ManufacturingIntegrationController@materialIssue…
+  GET|HEAD  api/integrations/manufacturing/orders Api\Integration\ManufacturingIntegrationController@manufacturingOrdersInd…
+  GET|HEAD  api/integrations/manufacturing/production-plans Api\Integration\ManufacturingIntegrationController@productionPl…
+  GET|HEAD  api/integrations/manufacturing/productions . Api\Integration\ManufacturingIntegrationController@productionsIndex
+  GET|HEAD  api/integrations/manufacturing/quality-controls Api\Integration\ManufacturingIntegrationController@manufacturin…
+  POST      api/integrations/manufacturing/warehouse-confirmations Api\Integration\ManufacturingIntegrationController@manuf…
+  POST      api/integrations/neo/commands ................................ Api\Integration\NeoIntegrationController@commands
+  GET|HEAD  api/integrations/payables ........................... Api\Integration\FinanceIntegrationController@payablesIndex
+  GET|HEAD  api/integrations/payments ........................... Api\Integration\FinanceIntegrationController@paymentsIndex
+  GET|HEAD  api/integrations/product-categories ..... Api\Integration\MasterDataIntegrationController@productCategoriesIndex
+  POST      api/integrations/product-categories ..... Api\Integration\MasterDataIntegrationController@productCategoriesStore
+  PUT       api/integrations/product-categories/{productCategory} Api\Integration\MasterDataIntegrationController@productCa…
+  DELETE    api/integrations/product-categories/{productCategory} Api\Integration\MasterDataIntegrationController@productCa…
+  GET|HEAD  api/integrations/products ........................ Api\Integration\MasterDataIntegrationController@productsIndex
+  POST      api/integrations/products ........................ Api\Integration\MasterDataIntegrationController@productsStore
+  PUT       api/integrations/products/{product} ............. Api\Integration\MasterDataIntegrationController@productsUpdate
+  DELETE    api/integrations/products/{product} ............. Api\Integration\MasterDataIntegrationController@productsDelete
+  GET|HEAD  api/integrations/purchase-payments .......... Api\Integration\FinanceIntegrationController@purchasePaymentsIndex
+  POST      api/integrations/purchase-payments .......... Api\Integration\FinanceIntegrationController@purchasePaymentsStore
+  GET|HEAD  api/integrations/purchase-returns ......... Api\Integration\PurchasingIntegrationController@purchaseReturnsIndex
+  GET|HEAD  api/integrations/purchases ...................... Api\Integration\PurchasingIntegrationController@purchasesIndex
+  POST      api/integrations/purchases ...................... Api\Integration\PurchasingIntegrationController@purchasesStore
+  GET|HEAD  api/integrations/quotations ......................... Api\Integration\SalesIntegrationController@quotationsIndex
+  GET|HEAD  api/integrations/raks ................................ Api\Integration\MasterDataIntegrationController@raksIndex
+  POST      api/integrations/raks ................................ Api\Integration\MasterDataIntegrationController@raksStore
+  GET|HEAD  api/integrations/receivables ..................... Api\Integration\FinanceIntegrationController@receivablesIndex
+  GET|HEAD  api/integrations/sales ................................... Api\Integration\SalesIntegrationController@salesIndex
+  POST      api/integrations/sales ................................... Api\Integration\SalesIntegrationController@salesStore
+  POST      api/integrations/sales-cancellations ........ Api\Integration\SalesIntegrationController@salesCancellationsStore
+  GET|HEAD  api/integrations/sales-payments ................ Api\Integration\FinanceIntegrationController@salesPaymentsIndex
+  POST      api/integrations/sales-payments ................ Api\Integration\FinanceIntegrationController@salesPaymentsStore
+  PUT       api/integrations/sales/{erpReference} ................... Api\Integration\SalesIntegrationController@salesUpdate
+  POST      api/integrations/stock-adjustments ........ Api\Integration\InventoryIntegrationController@stockAdjustmentsStore
+  GET|HEAD  api/integrations/stock-movements ............ Api\Integration\InventoryIntegrationController@stockMovementsIndex
+  POST      api/integrations/stock-releases .............. Api\Integration\InventoryIntegrationController@stockReleasesStore
+  GET|HEAD  api/integrations/stocks ............................. Api\Integration\InventoryIntegrationController@stocksIndex
+  GET|HEAD  api/integrations/stocks/readiness ................ Api\Integration\InventoryIntegrationController@stockReadiness
+  GET|HEAD  api/integrations/suppliers ...................... Api\Integration\MasterDataIntegrationController@suppliersIndex
+  POST      api/integrations/suppliers ...................... Api\Integration\MasterDataIntegrationController@suppliersStore
+  PUT       api/integrations/suppliers/{supplier} .......... Api\Integration\MasterDataIntegrationController@suppliersUpdate
+  DELETE    api/integrations/suppliers/{supplier} .......... Api\Integration\MasterDataIntegrationController@suppliersDelete
+  GET|HEAD  api/integrations/surat-jalans .................. Api\Integration\InventoryIntegrationController@suratJalansIndex
+  GET|HEAD  api/integrations/unit-of-measures .......... Api\Integration\MasterDataIntegrationController@unitOfMeasuresIndex
+  POST      api/integrations/unit-of-measures .......... Api\Integration\MasterDataIntegrationController@unitOfMeasuresStore
+  PUT       api/integrations/unit-of-measures/{unitOfMeasure} Api\Integration\MasterDataIntegrationController@unitOfMeasure…
+  DELETE    api/integrations/unit-of-measures/{unitOfMeasure} Api\Integration\MasterDataIntegrationController@unitOfMeasure…
+  GET|HEAD  api/integrations/uoms ...................... Api\Integration\MasterDataIntegrationController@unitOfMeasuresIndex
+  POST      api/integrations/uoms ...................... Api\Integration\MasterDataIntegrationController@unitOfMeasuresStore
+  GET|HEAD  api/integrations/warehouse-confirmations Api\Integration\InventoryIntegrationController@warehouseConfirmationsI…
+  POST      api/integrations/warehouse-confirmations/{warehouseConfirmation}/approve Api\Integration\InventoryIntegrationCo…
+  POST      api/integrations/warehouse-confirmations/{warehouseConfirmation}/reject Api\Integration\InventoryIntegrationCon…
+  GET|HEAD  api/integrations/warehouses .................... Api\Integration\MasterDataIntegrationController@warehousesIndex
+  POST      api/integrations/warehouses .................... Api\Integration\MasterDataIntegrationController@warehousesStore
+  PUT       api/integrations/warehouses/{warehouse} ....... Api\Integration\MasterDataIntegrationController@warehousesUpdate
+  DELETE    api/integrations/warehouses/{warehouse} ....... Api\Integration\MasterDataIntegrationController@warehousesDelete
+  GET|HEAD  integrations/docs ............................................................................. integration.docs
+  GET|HEAD  integrations/openapi.yaml .................................................................. integration.openapi
+  GET|HEAD  integrations/postman.collection.json ............................................ integration.postman.collection
+
+=== 3. EXACT 403 MESSAGE SOURCE ===
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiPermission.php:24:                'message' => 'Forbidden integration API request.',
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:96:            'message' => 'Forbidden integration API request.',
+
+=== 4. INTEGRATION AUTH REFERENCES ===
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Exceptions/IntegrationApiAuthorizationException.php:7:class IntegrationApiAuthorizationException extends RuntimeException
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Filament/Resources/CustomerReturnResource.php:46:    // Authorization
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:19:        $configuredToken = (string) config('integration_api.token');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:21:        $issuedTokenKey = 'integration_api:issued_tokens:'.hash('sha256', $providedToken);
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:35:            $request->attributes->set('integration_api.auth_source', 'configured_token');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:38:                array_values((array) config('integration_api.static_token_permissions', []))
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:52:            $rateLimitKey = 'integration_api:service_token_rate:'.hash('sha256', $providedToken);
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:68:            $request->attributes->set('integration_api.auth_source', 'service_token');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:100:        $request->attributes->set('integration_api.auth_source', 'issued_token');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Middleware/EnsureIntegrationApiToken.php:112:        foreach ((array) config('integration_api.service_tokens', []) as $serviceToken) {
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Controllers/Api/Integration/NeoIntegrationController.php:5:use App\Exceptions\IntegrationApiAuthorizationException;
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Http/Controllers/Api/Integration/NeoIntegrationController.php:20:        } catch (IntegrationApiAuthorizationException $exception) {
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/VoucherRequestService.php:10:use Illuminate\Auth\Access\AuthorizationException;
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/VoucherRequestService.php:78:            throw new AuthorizationException('Tidak memiliki izin untuk mengajukan voucher request.');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/VoucherRequestService.php:125:            throw new AuthorizationException('Tidak memiliki izin untuk menyetujui voucher request.');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/VoucherRequestService.php:188:            throw new AuthorizationException('Tidak memiliki izin untuk menolak voucher request.');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/VoucherRequestService.php:220:            throw new AuthorizationException('Tidak memiliki izin untuk membatalkan voucher request.');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/Integration/NeoCommandService.php:5:use App\Exceptions\IntegrationApiAuthorizationException;
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/Integration/NeoCommandService.php:118:            throw new IntegrationApiAuthorizationException(
+/Users/lrmcorporation/Documents/Website/aneka_jaya/app/Services/Integration/IntegrationApiPermissionService.php:65:        $path = trim((string) Str::after($request->path(), 'api/integrations/'), '/');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/auth.php:34:            throw new \Illuminate\Auth\Access\AuthorizationException;
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/auth.php:38:            throw new \Illuminate\Auth\Access\AuthorizationException;
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/web.php:63:    $serverUrl = rtrim(url('/api/integrations'), '/');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:18:Route::post('integrations/auth/login', function (Request $request) {
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:36:            'message' => 'The authenticated user is not allowed to issue integration tokens.',
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:41:    $ttlMinutes = max(15, (int) config('integration_api.issued_token_ttl_minutes', 720));
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:42:    $issuedTokenKey = 'integration_api:issued_tokens:'.hash('sha256', $token);
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:53:        'token_type' => 'Bearer',
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:64:Route::post('integrations/auth/token', function (Request $request) {
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:76:    $token = (string) config('integration_api.token');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:86:        'token_type' => 'Bearer',
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:87:        'source' => 'integration_api.token',
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:89:})->name('integration.docs.token');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:121:})->middleware('integration.token')->name('integration.auth.context');
+/Users/lrmcorporation/Documents/Website/aneka_jaya/routes/api.php:124:    ->middleware(['integration.token', 'integration.permission'])
+
+=== 5. ARTISAN COMMANDS RELATED TO TOKEN / INTEGRATION ===
+  auth:clear-resets                            Flush expired password reset tokens
+  install:api                                  Create an API routes file and install Laravel Sanctum or Laravel Passport
+ integration
+  integration:partner-bootstrap                Buat/update akun partner integrasi dan assign role + permission preset

@@ -1,5 +1,69 @@
 [
   {
+    "id": "6c518bda-2ecd-40f7-970d-1791e585a5ab",
+    "createdAt": "2026-08-13T07:14:38.854Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "entityType": "rekening",
+    "entityId": "cash-w",
+    "action": "update",
+    "beforeValue": {
+      "id": "cash-w",
+      "bank": "Cash",
+      "name": "Kas Walk In",
+      "accountNumber": "***",
+      "erpCoaId": "CASH",
+      "erpCoaNameSnapshot": "Kas",
+      "isCash": true,
+      "isActive": true,
+      "tipeIds": [
+        "W"
+      ]
+    },
+    "afterValue": {
+      "id": "cash-w",
+      "bank": "Cash",
+      "name": "Kas Walk In",
+      "accountNumber": "***",
+      "erpCoaId": "CASH",
+      "erpCoaNameSnapshot": "Kas",
+      "isCash": true,
+      "isActive": true,
+      "tipeIds": [
+        "W",
+        "SLM"
+      ]
+    }
+  },
+  {
+    "id": "62f66ac8-e96f-4044-8fc4-440d3cef366a",
+    "createdAt": "2026-08-12T09:37:27.200Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1786527447194",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1786527447194",
+      "productId": "10",
+      "productCodeSnapshot": "FG-SEED-001",
+      "productNameSnapshot": "Panel Kontrol Industri",
+      "currentStock": 0,
+      "minimumStock": 8,
+      "warehouseSnapshot": "Gudang Utama",
+      "rackSnapshot": "Rak A1",
+      "status": "failed",
+      "createdAt": "2026-08-12T09:37:27.194Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
     "id": "40774d56-0ab4-4f29-a182-c2aba243c353",
     "createdAt": "2026-08-11T19:36:34.507Z",
     "userId": "unauthenticated",

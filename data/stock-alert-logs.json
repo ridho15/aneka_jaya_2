@@ -1,5 +1,17 @@
 [
   {
+    "id": "SAL-1786527447194",
+    "productId": "10",
+    "productCodeSnapshot": "FG-SEED-001",
+    "productNameSnapshot": "Panel Kontrol Industri",
+    "currentStock": 0,
+    "minimumStock": 8,
+    "warehouseSnapshot": "Gudang Utama",
+    "rackSnapshot": "Rak A1",
+    "status": "failed",
+    "createdAt": "2026-08-12T09:37:27.194Z"
+  },
+  {
     "id": "SAL-1786435115667",
     "productId": "15",
     "productCodeSnapshot": "SKU-026",
@@ -46,8 +58,9 @@
     "minimumStock": 8,
     "warehouseSnapshot": "Gudang Utama",
     "rackSnapshot": "Rak A1",
-    "status": "failed",
-    "createdAt": "2026-07-17T20:50:42.999Z"
+    "status": "resolved",
+    "createdAt": "2026-07-17T20:50:42.999Z",
+    "resolvedAt": "2026-08-12T09:37:27.141Z"
   },
   {
     "id": "SAL-1784320845952",

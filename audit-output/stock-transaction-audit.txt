@@ -1,0 +1,759 @@
+[
+  {
+    "id": "ee7f91c9-1625-4c51-aa2b-312d10e90f56",
+    "transactionNumber": "MJ-20260812-9001",
+    "createdAt": "2026-08-11T20:01:28.951Z",
+    "tipeCodeSnapshot": "SLM",
+    "paymentMethod": "Cash",
+    "syncTarget": "local",
+    "syncStatus": "not_required",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "MJ-UAT-PRODUCT-001",
+        "productId": null,
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "a9964641-0956-4314-99b3-7f1bfc7f7c15",
+    "transactionNumber": "MJ-UAT-AJ-20260811193357",
+    "createdAt": "2026-08-11T19:34:01.578Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-MJ-INVOICE-MJ-UAT-AJ-20260811193357",
+    "erpPaymentStatus": "paid",
+    "erpPaymentError": null,
+    "erpReference": "MJ-INVOICE-MJ-UAT-AJ-20260811193357",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "341ea0c1-7d22-4a72-82c6-e0c8c352ab86",
+    "transactionNumber": "MJ-UAT-AJEXT-20260811193357",
+    "createdAt": "2026-08-11T19:34:01.403Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "externally_processed",
+    "syncError": null,
+    "stockReleaseStatus": "externally_processed",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "0bf6bb8f-1248-40ce-b82d-cb56539f51b0",
+    "transactionNumber": "MJ-UAT-LOCAL-20260811193357",
+    "createdAt": "2026-08-11T19:33:59.441Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Tempo",
+    "syncTarget": "local",
+    "syncStatus": "not_required",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "LOCAL-PROD-20260811193357",
+        "productId": null,
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "9e8d8ee4-29c7-4385-ac82-c9083151cd2f",
+    "transactionNumber": "MJ-UAT-AJ-20260811192743",
+    "createdAt": "2026-08-11T19:27:46.846Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "pending",
+    "syncError": null,
+    "stockReleaseStatus": "pending",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "2d12c18b-bdf3-44c0-884c-7005041f5e8f",
+    "transactionNumber": "MJ-UAT-AJEXT-20260811192743",
+    "createdAt": "2026-08-11T19:27:46.678Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "externally_processed",
+    "syncError": null,
+    "stockReleaseStatus": "externally_processed",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "bf1b7c97-f51c-4ca7-a187-f26f11caf8a4",
+    "transactionNumber": "MJ-UAT-LOCAL-20260811192743",
+    "createdAt": "2026-08-11T19:27:44.107Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Tempo",
+    "syncTarget": "local",
+    "syncStatus": "not_required",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "LOCAL-PROD-20260811192743",
+        "productId": null,
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1784707622019-6b3aefa7",
+    "transactionNumber": "220726-01",
+    "createdAt": "2026-07-22T08:07:02.325Z",
+    "tipeCodeSnapshot": "SLM",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": "Transaksi dibatalkan dan sudah dibatalkan di ERP.",
+    "stockReleaseStatus": "reversed",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-SLM-SALE-MRVSU5OD-09E0DA",
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "SLM-SALE-MRVSU5OD-09E0DA",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1784320404959-49817923",
+    "transactionNumber": "180726-01",
+    "createdAt": "2026-07-17T20:33:24.960Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "failed",
+    "stockReleaseError": "Gudang release stok belum dipilih untuk SA-BROWSER-NULL-RAK.",
+    "stockReleaseReference": "SLM-STOCK-SLM-SALE-MRPEARF5-5F6727",
+    "erpPaymentStatus": "pending",
+    "erpPaymentError": "Payment ERP menunggu release stok berhasil.",
+    "erpReference": "SLM-SALE-MRPEARF5-5F6727",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "4",
+        "warehouseId": "",
+        "rackId": ""
+      }
+    ]
+  },
+  {
+    "id": "S-1784214011243-1eaa0a8f",
+    "transactionNumber": null,
+    "createdAt": "2026-07-16T15:00:11.498Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "failed",
+    "syncError": "ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru.",
+    "stockReleaseStatus": "pending",
+    "stockReleaseError": "Menunggu update invoice ERP berhasil sebelum release stok ulang.",
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "pending",
+    "erpPaymentError": "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP.",
+    "erpReference": "SLM-SALE-MRNMYDI1-373DDB",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "4",
+        "warehouseId": "1",
+        "rackId": ""
+      }
+    ]
+  },
+  {
+    "id": "S-1784209251353-0e1db85c",
+    "transactionNumber": null,
+    "createdAt": "2026-07-16T13:40:51.533Z",
+    "tipeCodeSnapshot": "AJ",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "pending",
+    "syncError": "Transaksi diubah dan menunggu sinkronisasi ulang.",
+    "stockReleaseStatus": "pending",
+    "stockReleaseError": "Menunggu update invoice ERP berhasil sebelum release stok ulang.",
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "pending",
+    "erpPaymentError": "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP.",
+    "erpReference": "SLM-SALE-MRNK4CRY-848E9F",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "2",
+        "warehouseId": "1",
+        "rackId": ""
+      }
+    ]
+  },
+  {
+    "id": "S-1784207908985-8b5d8940",
+    "transactionNumber": null,
+    "createdAt": "2026-07-16T13:18:31.865Z",
+    "tipeCodeSnapshot": "AJ",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "failed",
+    "syncError": "ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru.",
+    "stockReleaseStatus": "pending",
+    "stockReleaseError": "Menunggu update invoice ERP berhasil sebelum release stok ulang.",
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "pending",
+    "erpPaymentError": "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP.",
+    "erpReference": "SLM-SALE-MRNJBDDB-147A29",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "1",
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1784207787338-98c9cfc2",
+    "transactionNumber": null,
+    "createdAt": "2026-07-16T13:16:27.532Z",
+    "tipeCodeSnapshot": "AJ",
+    "paymentMethod": "Tempo",
+    "syncTarget": "erp",
+    "syncStatus": "pending",
+    "syncError": "Transaksi diubah dan menunggu sinkronisasi ulang.",
+    "stockReleaseStatus": "pending",
+    "stockReleaseError": "Menunggu update invoice ERP berhasil sebelum release stok ulang.",
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "pending",
+    "erpPaymentError": "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP.",
+    "erpReference": "SLM-SALE-MRNJ8YJ8-F98EE0",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "2",
+        "warehouseId": "1",
+        "rackId": ""
+      }
+    ]
+  },
+  {
+    "id": "S-1784050917154-c0189efe",
+    "transactionNumber": null,
+    "createdAt": "2026-07-14T17:41:57.438Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-SLM-INV-MRKXUPNH-74E43F",
+    "erpPaymentStatus": "paid",
+    "erpPaymentError": null,
+    "erpReference": "SLM-INV-MRKXUPNH-74E43F",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1784050776732-bbb582cc",
+    "transactionNumber": null,
+    "createdAt": "2026-07-14T17:39:36.993Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-SLM-INV-MRKXRP82-947D20",
+    "erpPaymentStatus": "paid",
+    "erpPaymentError": null,
+    "erpReference": "SLM-INV-MRKXRP82-947D20",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1784019955204-a199f4fb",
+    "transactionNumber": null,
+    "createdAt": "2026-07-14T09:05:55.257Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "failed",
+    "stockReleaseError": "Stok ERP tidak cukup untuk release.",
+    "stockReleaseReference": "SLM-STOCK-SLM-INV-MRKFF36X-57D0FC",
+    "erpPaymentStatus": "pending",
+    "erpPaymentError": "Payment ERP menunggu release stok berhasil.",
+    "erpReference": "SLM-INV-MRKFF36X-57D0FC",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1784002201199-96f2ab1c",
+    "transactionNumber": null,
+    "createdAt": "2026-07-14T04:10:01.555Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-SLM-INV-MRK4UK5V-172DDC",
+    "erpPaymentStatus": "paid",
+    "erpPaymentError": null,
+    "erpReference": "SLM-INV-MRK4UK5V-172DDC",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783998708274-a2a9529f",
+    "transactionNumber": null,
+    "createdAt": "2026-07-14T03:11:48.274Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": "Transaksi dibatalkan dan sudah dibatalkan di ERP.",
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-35",
+    "erpPaymentStatus": "paid",
+    "erpPaymentError": null,
+    "erpReference": "SLM-INV-MRK33VLK-B76BE7",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "2",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783997321681-d4863809",
+    "transactionNumber": null,
+    "createdAt": "2026-07-14T02:48:41.681Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-SLM-INV-MRK4TN84-6E5A56",
+    "erpPaymentStatus": "paid",
+    "erpPaymentError": null,
+    "erpReference": "SLM-INV-MRK4TN84-6E5A56",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "2",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783970311910-bf343ab7",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T19:18:31.910Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "failed",
+    "syncError": "Customer manual belum cukup jelas untuk dibuat di ERP.",
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783969674229-3b8b4a64",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T19:07:54.358Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-34",
+    "erpPaymentStatus": "failed",
+    "erpPaymentError": "COA ERP rekening penerima belum valid.",
+    "erpReference": "34",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783968884980-b5ac8d3f",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T18:54:44.980Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "failed",
+    "syncError": "Customer manual belum cukup jelas untuk dibuat di ERP.",
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783968787249-247fac68",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T18:53:07.249Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "failed",
+    "syncError": "Customer manual belum cukup jelas untuk dibuat di ERP.",
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": null,
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "5",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783966861713-88c84fdb",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T18:21:01.829Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "released",
+    "stockReleaseError": null,
+    "stockReleaseReference": "SLM-STOCK-33",
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "33",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": "46",
+        "rackId": "35"
+      }
+    ]
+  },
+  {
+    "id": "S-1783959409765-17d789bb",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T16:16:49.765Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "32",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1783959317327-fd094f98",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T16:15:17.327Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "31",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1783959223548-64507d74",
+    "transactionNumber": null,
+    "createdAt": "2026-07-13T16:13:43.548Z",
+    "tipeCodeSnapshot": "W",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "30",
+    "items": [
+      {
+        "productRef": "SA-BROWSER-NULL-RAK",
+        "productId": "62",
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1782851391825-3bacf99c",
+    "transactionNumber": null,
+    "createdAt": "2026-06-30T20:29:51.826Z",
+    "tipeCodeSnapshot": "AJ",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "486",
+    "items": [
+      {
+        "productRef": "KukuPalsuWarnapink",
+        "productId": "1370",
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      },
+      {
+        "productRef": "QA-SLM-MIXED-1782851235338",
+        "productId": "1376",
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1782847984826-01f17468",
+    "transactionNumber": null,
+    "createdAt": "2026-06-30T19:33:04.826Z",
+    "tipeCodeSnapshot": "AJ",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "485",
+    "items": [
+      {
+        "productRef": "QA-SLM-AJ-1782847955217",
+        "productId": "1375",
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  },
+  {
+    "id": "S-1782842845523-dec98745",
+    "transactionNumber": null,
+    "createdAt": "2026-06-30T18:07:25.523Z",
+    "tipeCodeSnapshot": "AJ",
+    "paymentMethod": "Cash",
+    "syncTarget": "erp",
+    "syncStatus": "synced",
+    "syncError": null,
+    "stockReleaseStatus": "not_required",
+    "stockReleaseError": null,
+    "stockReleaseReference": null,
+    "erpPaymentStatus": "not_required",
+    "erpPaymentError": null,
+    "erpReference": "484",
+    "items": [
+      {
+        "productRef": "QA-SLM-1782842806776",
+        "productId": null,
+        "quantity": "1",
+        "warehouseId": null,
+        "rackId": null
+      }
+    ]
+  }
+]

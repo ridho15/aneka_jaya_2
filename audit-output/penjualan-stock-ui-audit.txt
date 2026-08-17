@@ -1,0 +1,483 @@
+===== STOCK UI =====
+  1630	export function buildProductOptions(
+  1631	  products: Product[],
+  1632	  stocks: StockItem[],
+  1633	): ProductOption[] {
+  1634	  return products.map((product) => {
+  1635	    const stockRows = stocks.filter(
+  1636	      (stock) =>
+  1637	        normalizeCode(stock.productCode) === normalizeCode(product.code),
+  1638	    );
+  1639	    const validQuantities = stockRows
+  1640	      .map((stock) => stock.quantity)
+  1641	      .filter(
+  1642	        (quantity): quantity is number =>
+  1643	          typeof quantity === "number" && Number.isFinite(quantity),
+  1644	      );
+  1645	    const quantity =
+  1646	      product.stockSummary?.quantity ??
+  1647	      (stockRows.length > 0 && validQuantities.length === stockRows.length
+  1648	        ? validQuantities.reduce((sum, value) => sum + value, 0)
+  1649	        : null);
+  1650	    const stockMinimum =
+  1651	      product.stockSummary?.minimumStock ??
+  1652	      stockRows.find(
+  1653	        (stock) =>
+  1654	          stock.minimumStock !== null && stock.minimumStock !== undefined,
+  1655	      )?.minimumStock ??
+  1656	      null;
+  1657	    const unit =
+  1658	      product.unit ?? stockRows.find((stock) => stock.unit)?.unit ?? null;
+  1659	    const warehouses = Array.from(
+  1660	      new Set(
+  1661	        stockRows
+  1662	          .map((stock) => stock.warehouse)
+  1663	          .filter((warehouse): warehouse is string => Boolean(warehouse)),
+  1664	      ),
+  1665	    );
+  1666	    const warnings = [
+  1667	      ...(product.dataQualityWarnings ?? []),
+  1668	      ...stockRows.flatMap((stock) => stock.dataQualityWarnings ?? []),
+  1669	    ];
+  1670	    if (stockRows.length === 0 && !product.stockSummary)
+  1671	      warnings.push("stok ERP");
+  1672	    if (quantity === null) warnings.push("qty ERP");
+  1673	    if (product.sellingPrice === null) warnings.push("harga jual");
+  1674	    return {
+  1675	      product,
+  1676	      stockRows,
+  1677	      quantity,
+  1678	      minimumStock: product.minimumStock ?? stockMinimum,
+  1679	      unit,
+  1680	      warehouses,
+  1681	      warnings: Array.from(new Set(warnings)),
+  1682	    };
+  1683	  });
+  1684	}
+  1685	
+  1686	function productCacheKey(product: Product) {
+  1687	  return product.productId?.trim()
+  1688	    ? `id:${product.productId.trim()}`
+  1689	    : `sku:${normalizeCode(product.code)}`;
+  1690	}
+  1691	
+  1692	export function mergeErpProductResults(
+  1693	  current: Product[],
+  1694	  incoming: Product[],
+  1695	): Product[] {
+  1696	  const products = new Map(
+  1697	    current.map((product) => [productCacheKey(product), product]),
+  1698	  );
+  1699	  for (const product of incoming)
+  1700	    products.set(productCacheKey(product), product);
+  1701	  return Array.from(products.values());
+  1702	}
+  1703	
+  1704	export function isSalesItemReady(item: PenjualanInput["items"][number]) {
+  1705	  if (item.productInputMode === "manual") {
+  1706	    const sku = item.manualProduct?.sku || item.productRef;
+  1707	    const hasBasic = Boolean(
+  1708	      String(sku || "").trim() && String(item.manualProduct?.name || "").trim(),
+  1709	    );
+  1710	    return (
+  1711	      hasBasic &&
+  1712	      Boolean(
+  1713	        item.manualProduct?.productCategoryId &&
+  1714	        item.manualProduct?.uomId &&
+  1715	        String(item.manualProduct?.brandCode || "").trim(),
+  1716	      )
+  1717	    );
+  1718	  }
+  1719	  return Boolean(item.productRef?.trim() && item.productId?.trim());
+  1720	}
+  1721	
+  1722	function mergeProductsWithSaleItems(
+  1723	  products: Product[],
+  1724	  sale?: Sale,
+  1725	): Product[] {
+  1726	  if (!sale?.items?.length) return products;
+  1727	  const existingCodes = new Set(
+  1728	    products.map((product) => normalizeCode(product.code)),
+  1729	  );
+  1730	  const fallbacks = sale.items
+  1731	    .filter(
+  1732	      (item) =>
+  1733	        item.productRef && !existingCodes.has(normalizeCode(item.productRef)),
+  1734	    )
+  1735	    .map(
+  1736	      (item): Product => ({
+  1737	        id: `saved-${item.productRef}`,
+  1738	        productId: item.productId,
+  1739	        code: item.productRef,
+  1740	        name: `Produk tersimpan ${item.productRef}`,
+  1741	        category: null,
+  1742	        unit: item.unitSnapshot || null,
+  1743	        uomId: item.uomIdSnapshot,
+  1744	        sellingPrice: item.unitPrice,
+  1745	        costPrice: null,
+  1746	        minimumStock: null,
+  1747	        isActive: true,
+  1748	        updatedAt: sale.createdAt || new Date().toISOString(),
+  1749	        dataQualityWarnings: [
+  1750	          "Produk tidak masuk hasil produk ERP awal. Cari dan pilih ulang bila ingin mengganti barang.",
+  1751	        ],
+  1752	      }),
+  1753	    );
+  1754	  return [...products, ...fallbacks];
+  1755	}
+  1756	
+  1757	function DependencyNotice({ message }: { message: string }) {
+  1758	  return (
+  1759	    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+  1760	      {message}
+  1761	    </div>
+  1762	  );
+  1763	}
+  1764	
+  1765	function ProductDependencyState({
+  1766	  state,
+  1767	  onRetry,
+  1768	}: {
+  1769	  state: ProductState;
+  1770	  onRetry: () => Promise<void>;
+  1771	}) {
+  1772	  if (state.status === "ready")
+  1773	    return (
+  1774	      <p className="border-b border-emerald-100 bg-emerald-50 px-5 py-2 text-xs text-emerald-800 sm:px-6">
+  1775	        Produk ERP siap digunakan.
+  1776	      </p>
+  1777	    );
+  1778	  if (state.status === "loading")
+  1779	    return (
+  1780	      <p className="border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-sm text-neutral-600 sm:px-6">
+  1781	        Memuat produk dari ERP...
+  1782	      </p>
+  1783	    );
+  1784	  return (
+  1785	    <div className="flex flex-col gap-3 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+  1786	      <div>
+  1787	        <p className="font-semibold">
+  1788	          {state.status === "empty"
+  1789	            ? "Produk belum tersedia"
+  1790	            : "Produk gagal dimuat"}
+  1791	        </p>
+  1792	        <p className="mt-0.5 text-xs">{state.message}</p>
+  1793	      </div>
+  1794	      <Button type="button" variant="secondary" onClick={() => void onRetry()}>
+  1795	        Muat ulang
+  1796	      </Button>
+  1797	    </div>
+  1798	  );
+  1799	}
+  1800	
+  1801	function StockDependencyState({ state }: { state: StockState }) {
+  1802	  if (state.status === "loading")
+  1803	    return (
+  1804	      <p className="border-b border-neutral-100 bg-neutral-50 px-5 py-2 text-xs text-neutral-600 sm:px-6">
+  1805	        Memuat stok ERP...
+  1806	      </p>
+  1807	    );
+  1808	  if (state.status === "success")
+  1809	    return (
+  1810	      <p className="border-b border-blue-100 bg-blue-50 px-5 py-2 text-xs text-blue-800 sm:px-6">
+  1811	        Stok ERP berhasil dimuat · terakhir {state.updatedAt}
+  1812	      </p>
+  1813	    );
+  1814	  return (
+  1815	    <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs font-medium text-amber-800 sm:px-6">
+  1816	      {state.message}
+  1817	    </p>
+  1818	  );
+  1819	}
+  1820	
+  1821	function ProductSearchSelect({
+  1822	  name,
+  1823	  value,
+  1824	  options,
+  1825	  disabled,
+  1826	  onSelect,
+  1827	  onInvalidInput,
+  1828	  onSearch,
+  1829	}: {
+  1830	  name: string;
+  1831	  value: string;
+  1832	  options: ProductOption[];
+  1833	  disabled?: boolean;
+  1834	  onSelect: (option: ProductOption) => void;
+  1835	  onInvalidInput: (value: string) => void;
+  1836	  onSearch?: (value: string) => void;
+  1837	}) {
+  1838	  const selected = options.find(
+  1839	    (option) => normalizeCode(option.product.code) === normalizeCode(value),
+  1840	  );
+  1841	  const [query, setQuery] = useState(selected ? optionLabel(selected) : value);
+  1842	  const [open, setOpen] = useState(false);
+  1843	  const [activeIndex, setActiveIndex] = useState(0);
+  1844	  const filtered = useMemo(() => {
+  1845	    const normalized = query.trim().toLowerCase();
+  1846	    const rows = normalized
+  1847	      ? options.filter((option) =>
+  1848	        `${option.product.code} ${option.product.name}`
+  1849	          .toLowerCase()
+  1850	          .includes(normalized),
+  1851	      )
+  1852	      : options;
+  1853	    return rows.slice(0, 12);
+  1854	  }, [options, query]);
+  1855	
+  1856	  useEffect(() => {
+  1857	    if (open) return;
+  1858	    let cancelled = false;
+  1859	    queueMicrotask(() => {
+  1860	      if (!cancelled) setQuery(selected ? optionLabel(selected) : value);
+  1861	    });
+  1862	    return () => {
+  1863	      cancelled = true;
+  1864	    };
+  1865	  }, [open, selected, value]);
+  1866	
+  1867	  const choose = (option: ProductOption) => {
+  1868	    setQuery(optionLabel(option));
+  1869	    setOpen(false);
+  1870	    onSelect(option);
+  1871	  };
+  1872	
+  1873	  return (
+  1874	    <div className="relative">
+  1875	      <input
+  1876	        name={name}
+  1877	        role="combobox"
+  1878	        aria-expanded={open}
+  1879	        aria-controls={`${name}-options`}
+  1880	        aria-autocomplete="list"
+  1881	        autoComplete="off"
+  1882	        disabled={disabled}
+  1883	        value={query}
+  1884	        placeholder="Cari kode / nama barang ERP"
+  1885	        className="block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 disabled:bg-neutral-100"
+  1886	        onFocus={() => setOpen(true)}
+  1887	        onChange={(event) => {
+  1888	          setQuery(event.target.value);
+  1889	          setActiveIndex(0);
+  1890	          setOpen(true);
+  1891	          onInvalidInput(event.target.value);
+  1892	          onSearch?.(event.target.value);
+  1893	        }}
+  1894	        onKeyDown={(event) => {
+  1895	          if (event.key === "Escape") setOpen(false);
+  1896	          if (event.key === "ArrowDown") {
+  1897	            event.preventDefault();
+  1898	            setOpen(true);
+  1899	            setActiveIndex((current) =>
+  1900	              Math.min(current + 1, Math.max(0, filtered.length - 1)),
+  1901	            );
+  1902	          }
+  1903	          if (event.key === "ArrowUp") {
+  1904	            event.preventDefault();
+  1905	            setActiveIndex((current) => Math.max(0, current - 1));
+  1906	          }
+  1907	          if (event.key === "Enter" && open && filtered[activeIndex]) {
+  1908	            event.preventDefault();
+  1909	            choose(filtered[activeIndex]);
+  1910	          }
+  1911	        }}
+  1912	        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+  1913	      />
+  1914	      {open && !disabled && (
+  1915	        <div
+  1916	          id={`${name}-options`}
+  1917	          role="listbox"
+  1918	          className="absolute z-[100] mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-xl"
+  1919	        >
+  1920	          {filtered.map((option, index) => (
+  1921	            <button
+  1922	              key={option.product.id || option.product.code}
+  1923	              type="button"
+  1924	              role="option"
+  1925	              aria-selected={
+  1926	                normalizeCode(option.product.code) === normalizeCode(value)
+  1927	              }
+  1928	              className={`w-full rounded-lg px-3 py-2 text-left transition ${index === activeIndex ? "bg-emerald-50" : "hover:bg-neutral-50"}`}
+  1929	              onMouseDown={(event) => event.preventDefault()}
+  1930	              onClick={() => choose(option)}
+  1931	            >
+  1932	              <span className="block font-bold text-slate-900">
+  1933	                {option.product.code} · {option.product.name}
+  1934	              </span>
+  1935	              <span className="mt-0.5 block text-xs text-slate-600">
+  1936	                Stok {formatNumber(option.quantity)} {option.unit ?? ""} ·{" "}
+  1937	                {option.warehouses.length
+  1938	                  ? option.warehouses.join(", ")
+  1939	                  : "Gudang —"}{" "}
+  1940	                · Harga {rupiah(option.product.sellingPrice ?? 0)}
+  1941	              </span>
+  1942	            </button>
+  1943	          ))}
+  1944	          {filtered.length === 0 && (
+  1945	            <p className="px-3 py-4 text-center text-sm text-slate-500">
+  1946	              Barang ERP tidak ditemukan.
+  1947	            </p>
+  1948	          )}
+  1949	        </div>
+  1950	      )}
+  1951	    </div>
+  1952	  );
+  1953	}
+  1954	
+  1955	function ProductSelectionInfo({
+  1956	  option,
+  1957	  selectedWarehouseId,
+  1958	  selectedRackId,
+  1959	  stockExceeded,
+  1960	  stockState,
+  1961	  targetsErp,
+  1962	  onStockSelect,
+  1963	}: {
+  1964	  option?: ProductOption;
+  1965	  selectedWarehouseId?: string;
+  1966	  selectedRackId?: string;
+  1967	  stockExceeded: boolean;
+  1968	  stockState: StockState;
+  1969	  targetsErp: boolean;
+  1970	  onStockSelect: (stock: StockItem) => void;
+  1971	}) {
+  1972	  if (!option)
+  1973	    return (
+  1974	      <p className="mt-2 text-xs text-amber-700">
+  1975	        Pilih barang dari dropdown ERP. Input bebas tidak dapat disimpan.
+  1976	      </p>
+  1977	    );
+  1978	  const stockOptions = option.stockRows.filter((stock) => stock.warehouseId);
+  1979	  const selectedKey = selectedWarehouseId
+  1980	    ? `${selectedWarehouseId}::${selectedRackId || ""}`
+  1981	    : "";
+  1982	  return (
+  1983	    <div className="mt-2 space-y-2 text-xs text-slate-600">
+  1984	      <div className="flex flex-wrap gap-2">
+  1985	        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+  1986	          Stok ERP: <b>{formatNumber(option.quantity)}</b>
+  1987	          {option.unit ? ` ${option.unit}` : ""}
+  1988	        </span>
+  1989	        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+  1990	          Gudang:{" "}
+  1991	          <b>{option.warehouses.length ? option.warehouses.join(", ") : "—"}</b>
+  1992	        </span>
+  1993	        <span className="rounded-full bg-slate-100 px-2.5 py-1">
+  1994	          Minimum: <b>{formatNumber(option.minimumStock)}</b>
+  1995	        </span>
+  1996	        {stockExceeded && (
+  1997	          <span className="rounded-full bg-red-50 px-2.5 py-1 font-semibold text-red-700">
+  1998	            Qty melebihi stok lokasi
+  1999	          </span>
+  2000	        )}
+  2001	        {stockState.status === "failed" && (
+  2002	          <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+  2003	            Stok tidak terverifikasi
+  2004	          </span>
+  2005	        )}
+  2006	        {option.warnings.length > 0 && (
+  2007	          <span className="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+  2008	            Data ERP tidak lengkap
+  2009	          </span>
+  2010	        )}
+  2011	      </div>
+  2012	      {targetsErp && (
+  2013	        <label className="block max-w-xl text-xs font-semibold text-slate-700">
+  2014	          Lokasi release stok
+  2015	          <select
+  2016	            className="mt-1 block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+  2017	            value={selectedKey}
+  2018	            onChange={(event) => {
+  2019	              const stock = stockOptions.find(
+  2020	                (row) =>
+  2021	                  `${row.warehouseId || ""}::${row.rackId || ""}` ===
+  2022	                  event.target.value,
+  2023	              );
+  2024	              if (stock) onStockSelect(stock);
+  2025	            }}
+  2026	          >
+  2027	            <option value="">Pilih gudang/rak untuk release stok</option>
+  2028	            {stockOptions.map((stock) => (
+  2029	              <option
+  2030	                key={`${stock.warehouseId || ""}::${stock.rackId || ""}`}
+  2031	                value={`${stock.warehouseId || ""}::${stock.rackId || ""}`}
+  2032	              >
+  2033	                {stock.warehouse || "Gudang"}
+  2034	                {stock.rack ? ` / ${stock.rack}` : ""} · stok{" "}
+  2035	                {formatNumber(stock.quantity)} {stock.unit || ""}
+  2036	              </option>
+  2037	            ))}
+  2038	          </select>
+  2039	          {stockOptions.length === 0 && (
+  2040	            <span className="mt-1 block font-normal text-amber-700">
+
+===== ALL DISABLED =====
+935-              <Field label="Tipe" error={errors.tipeId?.message}>
+936-                <Select
+937-                  {...register("tipeId")}
+938:                  disabled={activeTipes.length === 0}
+939-                >
+940-                  {activeTipes.length === 0 && (
+941-                    <option value="">— tipe belum tersedia —</option>
+942-                  )}
+943-                  {activeTipes.map((t) => (
+--
+1103-                type="button"
+1104-                variant="secondary"
+1105-                onClick={addItem}
+1106:                disabled={productState.status !== "ready"}
+1107-              >
+1108-                + Tambah barang
+1109-              </Button>
+1110-            </div>
+1111-            <ProductDependencyState
+--
+1331-                          <ProductSearchSelect
+1332-                            name={`items.${index}.productRef`}
+1333-                            value={values[index]?.productRef || ""}
+1334:                            disabled={productState.status !== "ready"}
+1335-                            options={productOptions}
+1336-                            onSelect={(option) => {
+1337-                              setValue(
+1338-                                `items.${index}.productInputMode`,
+1339-                                "erp",
+--
+1589-              <Button
+1590-                type="submit"
+1591-                className="w-full"
+1592:                // disabled={
+1593-                //   isSubmitting || !dependenciesReady || !selectedProductsReady
+1594-                // }
+1595-              >
+1596-                {isSubmitting
+1597-                  ? "Menyimpan..."
+--
+1879-        aria-controls={`${name}-options`}
+1880-        aria-autocomplete="list"
+1881-        autoComplete="off"
+1882:        disabled={disabled}
+1883-        value={query}
+1884-        placeholder="Cari kode / nama barang ERP"
+1885-        className="block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 disabled:bg-neutral-100"
+1886-        onFocus={() => setOpen(true)}
+1887-        onChange={(event) => {
+--
+2109-            {...register(`items.${index}.manualProduct.productCategoryId`, {
+2110-              valueAsNumber: true,
+2111-            })}
+2112:            disabled={referenceState.status !== "ready"}
+2113-          >
+2114-            <option value="">— pilih kategori —</option>
+2115-            {referenceState.status === "ready" &&
+2116-              referenceState.categories.map((item) => (
+2117-                <option key={item.id} value={item.id}>
+--
+2126-            {...register(`items.${index}.manualProduct.uomId`, {
+2127-              valueAsNumber: true,
+2128-            })}
+2129:            disabled={referenceState.status !== "ready"}
+2130-            onChange={(event) => {
+2131-              const uomId = Number(event.target.value);
+2132-              const selectedUom =
+2133-                referenceState.status === "ready"
+2134-                  ? referenceState.uoms.find((item) => item.id === uomId)
