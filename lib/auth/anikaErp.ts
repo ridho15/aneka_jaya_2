@@ -7,7 +7,18 @@ import { setLocalSessionCookie } from "./localSession";
 export const ANIKA_ERP_TOKEN_COOKIE = "aneka_jaya_erp_token";
 const INVALID_MESSAGE = "Email atau password ERP tidak valid.";
 
-type AnikaLoginResponse = {
+type AnikaVerifyUserResponse = {
+  success?: boolean;
+  message?: string;
+  user?: {
+    id?: unknown;
+    name?: unknown;
+    email?: unknown;
+    username?: unknown;
+    roles?: unknown;
+    allowed_apps?: unknown;
+    status?: unknown;
+  };
   token?: unknown;
   token_type?: unknown;
   expires_in_minutes?: unknown;
@@ -31,7 +42,8 @@ function roleFromAnika(value: unknown): Role {
 function loginUrl() {
   const baseUrl = process.env.ANIKA_ERP_API_BASE_URL?.trim();
   if (!baseUrl) throw new Error("Konfigurasi ERP belum lengkap.");
-  return `${baseUrl.replace(/\/$/, "")}/auth/login`;
+  const normalized = baseUrl.replace(/\/$/, "");
+  return normalized.endsWith("/auth/verify-user") ? normalized : `${normalized}/auth/verify-user`;
 }
 
 export async function setAnikaErpTokenCookie(token: string, expiresInMinutes: number) {
@@ -66,26 +78,32 @@ export async function currentAnikaErpToken() {
 
 export async function loginWithAnikaErp(input: unknown) {
   const body = input && typeof input === "object" ? input as Record<string, unknown> : {};
-  const email = typeof body.identifier === "string" ? body.identifier.trim().toLowerCase() : "";
+  const identifier = typeof body.identifier === "string" ? body.identifier.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (!email || !password) throw new Error(INVALID_MESSAGE);
+  if (!identifier || !password) throw new Error(INVALID_MESSAGE);
 
   const response = await fetch(loginUrl(), {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password, app: "slm" }),
     cache: "no-store"
   });
-  const result = await response.json().catch(() => null) as AnikaLoginResponse | null;
-  if (!response.ok || typeof result?.token !== "string" || !result.token) {
-    throw new Error(response.status === 401 || response.status === 422 ? INVALID_MESSAGE : "Login ERP sedang tidak tersedia.");
+  const result = await response.json().catch(() => null) as AnikaVerifyUserResponse | null;
+  if (!response.ok || result?.success === false) {
+    if (response.status === 403) {
+      throw new Error(result?.message || "Akun Anda tidak memiliki izin untuk mengakses aplikasi SLM.");
+    }
+    if (response.status === 401 || response.status === 422) {
+      throw new Error(result?.message || INVALID_MESSAGE);
+    }
+    throw new Error(result?.message || "Login ERP sedang tidak tersedia.");
   }
 
-  const issuedBy = result.issued_by || {};
-  const issuedEmail = typeof issuedBy.email === "string" ? issuedBy.email.trim().toLowerCase() : email;
-  const externalId = `anika:${String(issuedBy.id || issuedEmail)}`;
-  const name = typeof issuedBy.name === "string" && issuedBy.name.trim() ? issuedBy.name.trim() : issuedEmail;
-  const role = roleFromAnika(issuedBy.roles);
+  const userData = result?.user || result?.issued_by || {};
+  const issuedEmail = typeof userData.email === "string" ? userData.email.trim().toLowerCase() : identifier.toLowerCase();
+  const externalId = `anika:${String(userData.id || (userData as { username?: unknown }).username || issuedEmail)}`;
+  const name = typeof userData.name === "string" && userData.name.trim() ? userData.name.trim() : issuedEmail;
+  const role = roleFromAnika(userData.roles);
   const existing = await prisma.user.findFirst({ where: { OR: [{ externalId }, { email: issuedEmail }] } });
   const user = existing
     ? await prisma.user.update({
@@ -96,9 +114,10 @@ export async function loginWithAnikaErp(input: unknown) {
         data: { id: crypto.randomUUID(), externalId, email: issuedEmail, name, role, isActive: true, lastLoginAt: new Date() }
       });
 
-  const expiresInMinutes = Number(result.expires_in_minutes) || 720;
+  const token = typeof result?.token === "string" && result.token ? result.token : process.env.ANIKA_ERP_API_TOKEN || "verified_user";
+  const expiresInMinutes = Number(result?.expires_in_minutes) || 720;
   await setLocalSessionCookie(user.externalId);
-  await setAnikaErpTokenCookie(result.token, expiresInMinutes);
+  await setAnikaErpTokenCookie(token, expiresInMinutes);
   await prisma.auditLog.create({
     data: {
       id: crypto.randomUUID(),

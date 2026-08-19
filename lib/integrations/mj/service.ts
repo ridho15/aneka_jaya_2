@@ -26,7 +26,7 @@ function accountReference(snapshot: unknown) {
 
 async function resolveMasterData(input: MjInvoiceInput) {
   const tipe = await prisma.bookkeepingType.findFirst({ where: { code: { equals: input.bookkeeping_type_code, mode: "insensitive" }, isActive: true } });
-  if (!tipe) throw new MjIntegrationError("VALIDATION_FAILED", "Tipe pembukuan tidak aktif atau tidak ditemukan.", 400, { field: "bookkeeping_type_code" });
+  if (!tipe) throw new MjIntegrationError("VALIDATION_FAILED", `Tipe pembukuan ${input.bookkeeping_type_code || ""} tidak aktif atau tidak ditemukan.`, 400, { field: "bookkeeping_type_code" });
   const account = input.payment.account;
   if (!account) return { tipe, accountSnapshot: undefined };
   if (account.mode === "manual") {
@@ -37,10 +37,22 @@ async function resolveMasterData(input: MjInvoiceInput) {
   const rekening = await prisma.rekeningAccount.findFirst({
     where: { id: account.rekening_id, isActive: true, tipeLinks: { some: { bookkeepingTypeId: tipe.id } } }
   });
-  if (!rekening || (input.processing_mode !== "record_only" && !rekening.erpCoaId)) {
-    throw new MjIntegrationError("ACCOUNT_INVALID", input.processing_mode === "record_only"
-      ? "Rekening SLM tidak aktif atau tidak sesuai tipe pembukuan."
-      : "Rekening SLM tidak aktif, tidak sesuai tipe, atau belum memiliki referensi COA AJ.", 400);
+  if (!rekening) {
+    const anyRekening = await prisma.rekeningAccount.findFirst({ where: { id: account.rekening_id } });
+    if (!anyRekening) {
+      throw new MjIntegrationError("ACCOUNT_INVALID", "Rekening SLM tidak ditemukan.", 400);
+    }
+    if (!anyRekening.isActive) {
+      throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening SLM ${anyRekening.name} sedang tidak aktif.`, 400);
+    }
+    throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${anyRekening.name} tidak terhubung dengan tipe pembukuan ${tipe.code}.`, 400);
+  }
+  if (input.processing_mode !== "record_only" && !rekening.erpCoaId) {
+    throw new MjIntegrationError(
+      "ACCOUNT_INVALID",
+      `Rekening ${rekening.name} belum memiliki referensi COA Aneka Jaya (AJ). Silakan atur kode COA di menu Pengaturan Rekening SLM.`,
+      400
+    );
   }
   return { tipe, accountSnapshot: {
     mode: "slm", rekening_id: rekening.id, name: rekening.name, account_number: rekening.accountNumber,
@@ -164,13 +176,16 @@ async function attempt(row: InvoiceRow, stage: string, action: () => Promise<{ s
 async function upstreamError(result: { code?: string; message?: string; details?: unknown }, row: InvoiceRow): Promise<never> {
   const timeout = result.code === "ERP_TIMEOUT";
   const current = await prisma.salesRecord.findUnique({ where: { id: row.id }, include: includeInvoice });
-  throw new MjIntegrationError(timeout ? "AJ_TIMEOUT" : "AJ_UPSTREAM_ERROR", result.message || "AJ gagal memproses invoice.", timeout ? 504 : 502, current ? invoiceSnapshot(current) : invoiceSnapshot(row), true);
+  const defaultMsg = timeout
+    ? "Koneksi ke sistem Aneka Jaya ERP melebihi batas waktu (timeout). Silakan lakukan retry sync."
+    : "Sistem Aneka Jaya ERP gagal memproses transaksi.";
+  throw new MjIntegrationError(timeout ? "AJ_TIMEOUT" : "AJ_UPSTREAM_ERROR", result.message || defaultMsg, timeout ? 504 : 502, current ? invoiceSnapshot(current) : invoiceSnapshot(row), true);
 }
 
 async function processCustomer(row: InvoiceRow, input: MjAjInvoiceInput) {
   if (row.erpCustomerId && row.customerSyncStatus === "synced") return row;
   const locked = await prisma.salesRecord.updateMany({ where: { id: row.id, customerSyncStatus: { in: ["pending", "failed"] } }, data: { customerSyncStatus: "processing", customerSyncError: null } });
-  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Invoice sedang diproses oleh request lain.", 409, invoiceSnapshot(row), true);
+  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Sinkronisasi customer sedang diproses oleh request lain. Harap tunggu beberapa saat.", 409, invoiceSnapshot(row), true);
   const result = await attempt(row, "customer", async () => {
     if (input.customer.mode === "existing") return { success: true, data: { id: Number(input.customer.customer_id) } };
     const mapping = await prisma.integrationCustomerMapping.findUnique({ where: { source_externalCustomerId: { source: "MJ", externalCustomerId: input.customer.external_id } } });
@@ -194,7 +209,7 @@ async function processCustomer(row: InvoiceRow, input: MjAjInvoiceInput) {
 async function processInvoice(row: InvoiceRow, input: MjAjInvoiceInput) {
   if (row.syncStatus === "synced") return row;
   const locked = await prisma.salesRecord.updateMany({ where: { id: row.id, syncStatus: { in: ["pending", "failed"] } }, data: { syncStatus: "processing", syncError: null, syncAttemptedAt: new Date() } });
-  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Invoice sedang diproses oleh request lain.", 409, invoiceSnapshot(row), true);
+  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Sinkronisasi invoice sedang diproses oleh request lain. Harap tunggu beberapa saat.", 409, invoiceSnapshot(row), true);
   const result = await attempt(row, "invoice", () => createMjErpInvoice(input, row.erpCustomerId!));
   if (!result.success) {
     await prisma.salesRecord.update({ where: { id: row.id }, data: { syncStatus: "failed", syncError: result.message } });
@@ -211,7 +226,7 @@ async function processInvoice(row: InvoiceRow, input: MjAjInvoiceInput) {
 async function processRelease(row: InvoiceRow, input: MjAjInvoiceInput) {
   if (row.stockReleaseStatus === "released") return row;
   const locked = await prisma.salesRecord.updateMany({ where: { id: row.id, stockReleaseStatus: { in: ["pending", "failed"] } }, data: { stockReleaseStatus: "processing", stockReleaseError: null } });
-  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Release stok sedang diproses oleh request lain.", 409, invoiceSnapshot(row), true);
+  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Pelepasan stok barang sedang diproses oleh request lain. Harap tunggu beberapa saat.", 409, invoiceSnapshot(row), true);
   const result = await attempt(row, "stock_release", () => releaseMjStock(input, row.id, row.erpReference!));
   if (!result.success) {
     await prisma.salesRecord.update({ where: { id: row.id }, data: { stockReleaseStatus: "failed", stockReleaseError: result.message } });
@@ -224,7 +239,7 @@ async function processRelease(row: InvoiceRow, input: MjAjInvoiceInput) {
 async function processInitialPayment(row: InvoiceRow, input: MjAjInvoiceInput) {
   if (input.payment.paid_amount <= 0 || row.erpPaymentStatus === "paid" || row.erpPaymentStatus === "partial") return row;
   const locked = await prisma.salesRecord.updateMany({ where: { id: row.id, erpPaymentStatus: { in: ["pending", "failed"] } }, data: { erpPaymentStatus: "processing", erpPaymentError: null, erpPaymentAttemptedAt: new Date() } });
-  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Pembayaran sedang diproses oleh request lain.", 409, invoiceSnapshot(row), true);
+  if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Sinkronisasi pembayaran sedang diproses oleh request lain. Harap tunggu beberapa saat.", 409, invoiceSnapshot(row), true);
   const reference = deterministicReference("payment", input.external_reference, "INITIAL");
   const result = await attempt(row, "payment", () => createMjPayment({ reference, invoiceId: row.erpInvoiceId!, customerId: row.erpCustomerId!, invoiceNumber: row.erpInvoiceNumber || undefined, paymentDate: input.invoice_date, coaReference: accountReference(row.accountSnapshot), method: input.payment.method, amount: input.payment.paid_amount, notes: "Pembayaran awal invoice MJ" }));
   if (!result.success) {
@@ -305,7 +320,15 @@ async function resolvePaymentAccount(row: InvoiceRow, input: MjTempoPaymentInput
     return { mode: "manual", name: input.account.name || input.account.aj_coa_reference, aj_coa_reference: input.account.aj_coa_reference };
   }
   const rekening = await prisma.rekeningAccount.findFirst({ where: { id: input.account.rekening_id, isActive: true, tipeLinks: { some: { bookkeepingTypeId: row.tipeId } } } });
-  if (!rekening || (processingMode(row) === "slm_process_aj" && !rekening.erpCoaId)) throw new MjIntegrationError("ACCOUNT_INVALID", "Rekening pembayaran tidak valid untuk mode invoice.", 400);
+  if (!rekening) {
+    const anyRekening = await prisma.rekeningAccount.findFirst({ where: { id: input.account.rekening_id } });
+    if (!anyRekening) throw new MjIntegrationError("ACCOUNT_INVALID", "Rekening SLM tidak ditemukan.", 400);
+    if (!anyRekening.isActive) throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening SLM ${anyRekening.name} sedang tidak aktif.`, 400);
+    throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${anyRekening.name} tidak terhubung dengan tipe pembukuan invoice ini.`, 400);
+  }
+  if (processingMode(row) === "slm_process_aj" && !rekening.erpCoaId) {
+    throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${rekening.name} belum memiliki referensi COA Aneka Jaya (AJ). Silakan atur kode COA di menu Pengaturan Rekening SLM.`, 400);
+  }
   return { mode: "slm", rekening_id: rekening.id, name: rekening.name, erpCoaId: rekening.erpCoaId };
 }
 

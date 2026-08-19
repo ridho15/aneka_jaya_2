@@ -1,5 +1,17 @@
 [
   {
+    "id": "SAL-1787150913410",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "failed",
+    "createdAt": "2026-08-19T14:48:33.410Z"
+  },
+  {
     "id": "SAL-1786527447194",
     "productId": "10",
     "productCodeSnapshot": "FG-SEED-001",
@@ -20,8 +32,9 @@
     "minimumStock": 18,
     "warehouseSnapshot": "Gudang eum",
     "rackSnapshot": "delectus suscipit",
-    "status": "failed",
-    "createdAt": "2026-08-11T07:58:35.667Z"
+    "status": "resolved",
+    "createdAt": "2026-08-11T07:58:35.667Z",
+    "resolvedAt": "2026-08-19T14:48:33.135Z"
   },
   {
     "id": "SAL-1786435047334",

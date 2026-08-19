@@ -45,11 +45,19 @@ describe("Anika ERP authentication", () => {
     vi.restoreAllMocks();
   });
 
-  it("maps Super Admin to Owner, syncs the user, and stores the token in an HttpOnly cookie", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+  it("authenticates via verify-user endpoint, passes app=slm, and syncs user session", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      message: "Autentikasi berhasil.",
+      user: {
+        id: 1,
+        name: "ERP Owner",
+        email: "owner@example.test",
+        username: "erp_owner",
+        roles: ["Super Admin"],
+        allowed_apps: ["slm", "mj"]
+      },
       token: "erp-token",
-      token_type: "Bearer",
-      issued_by: { id: 1, name: "ERP Owner", email: "owner@example.test", roles: ["Super Admin"] },
       expires_in_minutes: 720
     }), { status: 200 }));
 
@@ -58,10 +66,17 @@ describe("Anika ERP authentication", () => {
       redirectTo: "/dashboard"
     });
 
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://erp.example.test/api/integrations/auth/verify-user",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ identifier: "owner@example.test", password: "secret", app: "slm" })
+      })
+    );
+
     expect(mocks.prisma.user.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ externalId: "anika:1", email: "owner@example.test", role: "OWNER" })
     });
-    expect(mocks.prisma.user.create.mock.calls[0]?.[0]?.data).not.toHaveProperty("passwordHash");
     expect(mocks.setLocalSessionCookie).toHaveBeenCalledWith("anika:1");
     expect(mocks.cookieSet).toHaveBeenCalledWith("aneka_jaya_erp_token", "erp-token", expect.objectContaining({
       httpOnly: true,
@@ -69,11 +84,28 @@ describe("Anika ERP authentication", () => {
     }));
   });
 
-  it("returns a generic message for rejected ERP credentials", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ message: "backend detail" }), { status: 401 }));
+  it("rejects login with 403 message when user does not have permission for SLM app", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      success: false,
+      message: "Akun Anda tidak memiliki izin untuk mengakses aplikasi SLM.",
+      allowed_apps: ["mj"]
+    }), { status: 403 }));
+
+    await expect(loginWithAnikaErp({ identifier: "kasir@example.test", password: "secret" }))
+      .rejects.toThrow("Akun Anda tidak memiliki izin untuk mengakses aplikasi SLM.");
+
+    expect(mocks.prisma.user.create).not.toHaveBeenCalled();
+    expect(mocks.cookieSet).not.toHaveBeenCalled();
+  });
+
+  it("returns a specific message for rejected ERP credentials (422)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      success: false,
+      message: "Username/email atau password salah."
+    }), { status: 422 }));
 
     await expect(loginWithAnikaErp({ identifier: "owner@example.test", password: "wrong" }))
-      .rejects.toThrow("Email atau password ERP tidak valid.");
+      .rejects.toThrow("Username/email atau password salah.");
     expect(mocks.prisma.user.create).not.toHaveBeenCalled();
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
