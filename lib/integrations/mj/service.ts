@@ -47,13 +47,6 @@ async function resolveMasterData(input: MjInvoiceInput) {
     }
     throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${anyRekening.name} tidak terhubung dengan tipe pembukuan ${tipe.code}.`, 400);
   }
-  if (input.processing_mode !== "record_only" && !rekening.erpCoaId) {
-    throw new MjIntegrationError(
-      "ACCOUNT_INVALID",
-      `Rekening ${rekening.name} belum memiliki referensi COA Aneka Jaya (AJ). Silakan atur kode COA di menu Pengaturan Rekening SLM.`,
-      400
-    );
-  }
   return { tipe, accountSnapshot: {
     mode: "slm", rekening_id: rekening.id, name: rekening.name, account_number: rekening.accountNumber,
     bank_name: rekening.bankName, erpCoaId: rekening.erpCoaId, erpCoaNameSnapshot: rekening.erpCoaNameSnapshot
@@ -241,7 +234,14 @@ async function processInitialPayment(row: InvoiceRow, input: MjAjInvoiceInput) {
   const locked = await prisma.salesRecord.updateMany({ where: { id: row.id, erpPaymentStatus: { in: ["pending", "failed"] } }, data: { erpPaymentStatus: "processing", erpPaymentError: null, erpPaymentAttemptedAt: new Date() } });
   if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Sinkronisasi pembayaran sedang diproses oleh request lain. Harap tunggu beberapa saat.", 409, invoiceSnapshot(row), true);
   const reference = deterministicReference("payment", input.external_reference, "INITIAL");
-  const result = await attempt(row, "payment", () => createMjPayment({ reference, invoiceId: row.erpInvoiceId!, customerId: row.erpCustomerId!, invoiceNumber: row.erpInvoiceNumber || undefined, paymentDate: input.invoice_date, coaReference: accountReference(row.accountSnapshot), method: input.payment.method, amount: input.payment.paid_amount, notes: "Pembayaran awal invoice MJ" }));
+  const coaRef = accountReference(row.accountSnapshot);
+  const result = !coaRef
+    ? await attempt(row, "payment", async () => ({
+        success: false,
+        code: "ACCOUNT_COA_MISSING",
+        message: `Rekening ${(row.accountSnapshot as Record<string, unknown>)?.name || "SLM"} belum memiliki referensi COA Aneka Jaya (AJ). Silakan atur kode COA di menu Pengaturan Rekening SLM lalu lakukan retry sync.`
+      }))
+    : await attempt(row, "payment", () => createMjPayment({ reference, invoiceId: row.erpInvoiceId!, customerId: row.erpCustomerId!, invoiceNumber: row.erpInvoiceNumber || undefined, paymentDate: input.invoice_date, coaReference: coaRef, method: input.payment.method, amount: input.payment.paid_amount, notes: "Pembayaran awal invoice MJ" }));
   if (!result.success) {
     await prisma.salesRecord.update({ where: { id: row.id }, data: { erpPaymentStatus: "failed", erpPaymentError: result.message } });
     await upstreamError(result, row);
