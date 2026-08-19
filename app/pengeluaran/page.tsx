@@ -107,38 +107,45 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
       <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} pengeluaran.</div>
         <div className="space-y-3 p-4 md:hidden">
-          {paged.map((expense) => (
-            <article key={expense.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-slate-900">{expense.vendorName}</p>
-                  <p className="mt-1 text-xs text-slate-500">{expense.expenseDate} • {expense.tipeCodeSnapshot} • {expense.category}</p>
+          {paged.map((expense) => {
+            const isMj = expense.createdByUserId === "integration:mj" || expense.createdByNameSnapshot?.toLowerCase().includes("mj") || expense.vendorName?.toLowerCase().includes("mj");
+            return (
+              <article key={expense.id} className={`rounded-lg p-4 shadow-sm transition-all ${isMj ? "border-2 border-sky-300 bg-sky-50/50 ring-1 ring-sky-200" : "border border-slate-200 bg-white"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate font-semibold text-slate-900">{expense.vendorName}</p>
+                      {isMj && <span className="inline-flex items-center rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{expense.expenseDate} • {expense.tipeCodeSnapshot} • {expense.category}</p>
+                  </div>
+                  <p className="shrink-0 text-right font-bold text-slate-900">{rupiah(expense.amount)}</p>
                 </div>
-                <p className="shrink-0 text-right font-bold text-slate-900">{rupiah(expense.amount)}</p>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.approvalStatus || "approved"] || "bg-slate-100 text-slate-600"}`}>{expense.approvalStatus || "approved"}</span>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.erpSyncStatus || "not_required"] || "bg-slate-100 text-slate-600"}`}>{expense.erpSyncStatus || "not_required"}</span>
-              </div>
-              <dl className="mt-3 grid gap-2 text-sm text-slate-600">
-                <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Rekening</dt><dd className="mt-0.5">{expense.rekeningNameSnapshot}</dd></div>
-                <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">COA / Kategori</dt><dd className="mt-0.5">{expense.coaNameSnapshot} / {expense.category}</dd></div>
-              </dl>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Link className="rounded-sm bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700" href={`/pengeluaran/${expense.id}`}>Detail</Link>
-                <Link className="rounded-sm border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/print/expenses/${expense.id}`}>Cetak</Link>
-                {expense.attachmentUrl && <a className="rounded-sm border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={expense.attachmentUrl} target="_blank" rel="noreferrer">Lampiran</a>}
-                {canManage && expense.approvalStatus !== "cancelled" && <Link className="rounded-sm border border-blue-200 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
-                {canManage && <TransactionCancelButton id={expense.id} kind="expenses" disabled={expense.approvalStatus === "cancelled" || (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced")} disabledReason={expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced" ? "Pengeluaran AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Pengeluaran sudah dibatalkan."} />}
-              </div>
-            </article>
-          ))}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.approvalStatus || "approved"] || "bg-slate-100 text-slate-600"}`}>{expense.approvalStatus || "approved"}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.erpSyncStatus || "not_required"] || "bg-slate-100 text-slate-600"}`}>{expense.erpSyncStatus || "not_required"}</span>
+                </div>
+                <dl className="mt-3 grid gap-2 text-sm text-slate-600">
+                  <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Rekening</dt><dd className="mt-0.5">{expense.rekeningNameSnapshot}</dd></div>
+                  <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">COA / Kategori</dt><dd className="mt-0.5">{expense.coaNameSnapshot} / {expense.category}</dd></div>
+                </dl>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Link className="rounded-md bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700" href={`/pengeluaran/${expense.id}`}>Detail</Link>
+                  <Link className="rounded-md border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/print/expenses/${expense.id}`}>Cetak</Link>
+                  {expense.attachmentUrl && <a className="rounded-md border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={expense.attachmentUrl} target="_blank" rel="noreferrer">Lampiran</a>}
+                  {canManage && expense.approvalStatus !== "cancelled" && <Link className="rounded-md border border-blue-200 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
+                  {canManage && <TransactionCancelButton id={expense.id} kind="expenses" disabled={expense.approvalStatus === "cancelled" || (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced")} disabledReason={expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced" ? "Pengeluaran AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Pengeluaran sudah dibatalkan."} />}
+                </div>
+              </article>
+            );
+          })}
           {paged.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Tidak ada pengeluaran sesuai filter.</p>}
         </div>
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
               <tr>
+                <th className="px-5 py-3">Aksi</th>
                 <th className="px-5 py-3">Tanggal</th>
                 <th className="px-5 py-3">Tipe</th>
                 <th className="px-5 py-3">Rekening</th>
@@ -148,40 +155,47 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
                 <th className="px-5 py-3">Approval</th>
                 <th className="px-5 py-3">ERP Sync</th>
                 <th className="px-5 py-3">Lampiran</th>
-                <th className="px-5 py-3">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {paged.map((expense) => (
-              <tr key={expense.id} className="border-b border-slate-100">
-                <td className="px-5 py-4 text-slate-600">{expense.expenseDate}</td>
-                <td className="px-5 py-4 font-semibold">{expense.tipeCodeSnapshot}</td>
-                <td className="px-5 py-4">{expense.rekeningNameSnapshot}</td>
-                <td className="px-5 py-4">{expense.coaNameSnapshot} / {expense.category}</td>
-                <td className="px-5 py-4">{expense.vendorName}</td>
-                <td className="px-5 py-4 text-right font-semibold">{rupiah(expense.amount)}</td>
-                <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.approvalStatus || "approved"] || "bg-slate-100 text-slate-600"}`}>{expense.approvalStatus || "approved"}</span></td>
-                <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.erpSyncStatus || "not_required"] || "bg-slate-100 text-slate-600"}`}>{expense.erpSyncStatus || "not_required"}</span></td>
-                <td className="px-5 py-4">{expense.attachmentUrl ? <a className="font-semibold text-emerald-700 hover:text-emerald-800" href={expense.attachmentUrl} target="_blank" rel="noreferrer">Buka</a> : "—"}</td>
-                <td className="px-5 py-4">
-                  <div className="flex flex-col gap-2">
-                    <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/pengeluaran/${expense.id}`}>Detail</Link>
-                    <Link className="font-semibold text-emerald-700 hover:text-emerald-800" href={`/print/expenses/${expense.id}`}>Cetak</Link>
-                    {canManage && (
-                      <>
-                        {expense.approvalStatus !== "cancelled" && <Link className="font-semibold text-blue-700 hover:text-blue-800" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
-                        <TransactionCancelButton
-                          id={expense.id}
-                          kind="expenses"
-                          disabled={expense.approvalStatus === "cancelled" || (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced")}
-                          disabledReason={expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced" ? "Pengeluaran AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Pengeluaran sudah dibatalkan."}
-                        />
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-              ))}
+              {paged.map((expense) => {
+                const isMj = expense.createdByUserId === "integration:mj" || expense.createdByNameSnapshot?.toLowerCase().includes("mj") || expense.vendorName?.toLowerCase().includes("mj");
+                return (
+                  <tr key={expense.id} className={`border-b transition-colors ${isMj ? "border-sky-200/80 bg-sky-50/75 hover:bg-sky-100/70" : "border-slate-100 hover:bg-slate-50/80"}`}>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs" href={`/pengeluaran/${expense.id}`}>Detail</Link>
+                        <Link className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" href={`/print/expenses/${expense.id}`}>Cetak</Link>
+                        {canManage && (
+                          <>
+                            {expense.approvalStatus !== "cancelled" && <Link className="whitespace-nowrap rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
+                            <TransactionCancelButton
+                              id={expense.id}
+                              kind="expenses"
+                              disabled={expense.approvalStatus === "cancelled" || (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced")}
+                              disabledReason={expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced" ? "Pengeluaran AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Pengeluaran sudah dibatalkan."}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600">{expense.expenseDate}</td>
+                    <td className="px-5 py-4 font-semibold">{expense.tipeCodeSnapshot}</td>
+                    <td className="px-5 py-4">{expense.rekeningNameSnapshot}</td>
+                    <td className="px-5 py-4">{expense.coaNameSnapshot} / {expense.category}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-1.5 font-semibold text-slate-900">
+                        {expense.vendorName}
+                        {isMj && <span className="inline-flex items-center rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-right font-semibold">{rupiah(expense.amount)}</td>
+                    <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.approvalStatus || "approved"] || "bg-slate-100 text-slate-600"}`}>{expense.approvalStatus || "approved"}</span></td>
+                    <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass[expense.erpSyncStatus || "not_required"] || "bg-slate-100 text-slate-600"}`}>{expense.erpSyncStatus || "not_required"}</span></td>
+                    <td className="px-5 py-4">{expense.attachmentUrl ? <a className="font-semibold text-emerald-700 hover:text-emerald-800" href={expense.attachmentUrl} target="_blank" rel="noreferrer">Buka</a> : "—"}</td>
+                  </tr>
+                );
+              })}
               {paged.length === 0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-500">Tidak ada pengeluaran sesuai filter.</td></tr>}
             </tbody>
           </table>
