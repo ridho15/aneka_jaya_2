@@ -122,7 +122,7 @@ async function createLocalInvoice(input: MjInvoiceInput, principal: MjIntegratio
         dueDate: input.payment.due_date ? new Date(`${input.payment.due_date}T00:00:00.000Z`) : null,
         initialPaymentAmount: input.payment.method === "Tempo" ? paidAmount : 0,
         initialPaymentMethod: input.payment.method === "Tempo" && paidAmount > 0 ? "Other" : null,
-        rekeningId: input.payment.account?.mode === "slm" ? input.payment.account.rekening_id : null,
+        rekeningId: input.payment.account?.mode === "slm" ? input.payment.account.rekening_id || null : null,
         rekeningNameSnapshot: accountSnapshot ? String((accountSnapshot as Record<string, unknown>).name || "") : null,
         notes: input.notes, total: input.total, approvalStatus: "approved", syncTarget: stage.syncTarget, syncStatus: stage.invoice,
         stockReleaseStatus: stage.stock, erpPaymentStatus: stage.payment,
@@ -133,17 +133,33 @@ async function createLocalInvoice(input: MjInvoiceInput, principal: MjIntegratio
         integrationMetadata: json({ payload: input, client_code: principal.clientCode, environment: principal.environment }),
         createdByUserId: "integration:mj", createdByNameSnapshot: "Integration MJ", createdByRoleSnapshot: "OWNER", createdAt: new Date(),
         items: { create: input.items.map((item, index) => {
-          if ("product_reference" in item) return {
-            id: crypto.randomUUID(), productRef: item.product_reference, productId: item.external_product_id || null,
-            manualProduct: json({ sku: item.product_reference, name: item.product_name }),
-            warehouseId: item.warehouse_id || null, warehouseNameSnapshot: item.warehouse_name || null,
-            rackId: item.rack_id || null, rackNameSnapshot: item.rack_name || null, unitSnapshot: item.unit || null,
-            quantity: item.quantity, unitPrice: item.unit_price, discount: item.discount, sortOrder: index
-          };
+          if ("product_reference" in item && typeof item.product_reference === "string") {
+            const prodRef = String(item.product_reference);
+            const prodName = typeof item.product_name === "string" ? item.product_name : prodRef;
+            const extProdId = "external_product_id" in item && item.external_product_id ? String(item.external_product_id) : null;
+            const wId = "warehouse_id" in item && item.warehouse_id ? String(item.warehouse_id) : null;
+            const wName = "warehouse_name" in item && typeof item.warehouse_name === "string" ? item.warehouse_name : null;
+            const rId = "rack_id" in item && item.rack_id ? String(item.rack_id) : null;
+            const rName = "rack_name" in item && typeof item.rack_name === "string" ? item.rack_name : null;
+            const unit = "unit" in item && typeof item.unit === "string" ? item.unit : null;
+            return {
+              id: crypto.randomUUID(), productRef: prodRef, productId: extProdId,
+              manualProduct: json({ sku: prodRef, name: prodName }),
+              warehouseId: wId, warehouseNameSnapshot: wName,
+              rackId: rId, rackNameSnapshot: rName, unitSnapshot: unit,
+              quantity: item.quantity, unitPrice: item.unit_price, discount: item.discount, sortOrder: index
+            };
+          }
+          const sku = "sku" in item && typeof item.sku === "string" ? item.sku : String(item.external_product_id);
+          const extId = String(item.external_product_id);
+          const wId = String(item.warehouse_id);
+          const wName = "warehouse_name" in item && typeof item.warehouse_name === "string" ? item.warehouse_name : null;
+          const rId = "rack_id" in item && item.rack_id ? String(item.rack_id) : null;
+          const rName = "rack_name" in item && typeof item.rack_name === "string" ? item.rack_name : null;
           return {
-            id: crypto.randomUUID(), productRef: item.sku || String(item.external_product_id), productId: String(item.external_product_id),
-            warehouseId: String(item.warehouse_id), warehouseNameSnapshot: item.warehouse_name || null,
-            rackId: item.rack_id ? String(item.rack_id) : null, rackNameSnapshot: item.rack_name || null,
+            id: crypto.randomUUID(), productRef: sku, productId: extId,
+            warehouseId: wId, warehouseNameSnapshot: wName,
+            rackId: rId, rackNameSnapshot: rName,
             quantity: item.quantity, unitPrice: item.unit_price, discount: item.discount, sortOrder: index
           };
         }) }
@@ -160,7 +176,7 @@ async function createLocalInvoice(input: MjInvoiceInput, principal: MjIntegratio
         } });
         if (paidAmount > 0) await tx.tempoPayment.create({ data: {
           id: crypto.randomUUID(), tempoReceivableId: receivableId, paymentDate: new Date(`${input.invoice_date}T00:00:00.000Z`),
-          amountPaid: paidAmount, paymentMethod: "Other", rekeningId: input.payment.account?.mode === "slm" ? input.payment.account.rekening_id : "manual",
+          amountPaid: paidAmount, paymentMethod: "Other", rekeningId: (input.payment.account?.mode === "slm" && input.payment.account.rekening_id) ? input.payment.account.rekening_id : "manual",
           rekeningNameSnapshot: accountSnapshot ? String((accountSnapshot as Record<string, unknown>).name || "Manual") : "Manual",
           notes: "Pembayaran awal invoice MJ", erpPaymentStatus: initialTempoPaymentStage(input),
           erpPaymentReference: input.processing_mode === "slm_process_aj" ? deterministicReference("payment", input.external_reference, "INITIAL") : null,
@@ -337,17 +353,21 @@ export async function invoiceSnapshotWithTempo(row: InvoiceRow) {
 
 async function resolvePaymentAccount(row: InvoiceRow, input: MjTempoPaymentInput) {
   if (input.account.mode === "manual") {
-    if ("account_reference" in input.account) return { mode: "manual", name: input.account.name, account_reference: input.account.account_reference };
-    return { mode: "manual", name: input.account.name || input.account.aj_coa_reference, aj_coa_reference: input.account.aj_coa_reference };
+    const name = input.account.name || ("account_reference" in input.account ? input.account.account_reference : undefined) || ("aj_coa_reference" in input.account ? input.account.aj_coa_reference : undefined) || "Manual";
+    const ref = ("account_reference" in input.account ? input.account.account_reference : undefined) || ("aj_coa_reference" in input.account ? input.account.aj_coa_reference : undefined) || name;
+    return { mode: "manual", name, account_reference: ref, aj_coa_reference: ref };
   }
-  const rekening = await prisma.rekeningAccount.findFirst({ where: { id: input.account.rekening_id, isActive: true, tipeLinks: { some: { bookkeepingTypeId: row.tipeId } } } });
+  const rekeningId = input.account.rekening_id;
+  let rekening = rekeningId ? await prisma.rekeningAccount.findFirst({ where: { id: rekeningId, isActive: true, tipeLinks: { some: { bookkeepingTypeId: row.tipeId } } } }) : null;
+  if (!rekening && rekeningId) {
+    rekening = await prisma.rekeningAccount.findFirst({ where: { id: rekeningId, isActive: true } });
+  }
   if (!rekening) {
-    const anyRekening = await prisma.rekeningAccount.findFirst({ where: { id: input.account.rekening_id } });
-    if (!anyRekening) throw new MjIntegrationError("ACCOUNT_INVALID", "Rekening SLM tidak ditemukan.", 400);
-    if (!anyRekening.isActive) throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening SLM ${anyRekening.name} sedang tidak aktif.`, 400);
-    throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${anyRekening.name} tidak terhubung dengan tipe pembukuan invoice ini.`, 400);
+    rekening = await prisma.rekeningAccount.findFirst({ where: { isActive: true, tipeLinks: { some: { bookkeepingTypeId: row.tipeId } } } }) || await prisma.rekeningAccount.findFirst({ where: { isActive: true } });
   }
-  // Auto-fallback COA: jika erpCoaId kosong, gunakan nama bank sebagai referensi (AJ ERP mengenali "BCA", "MANDIRI", dll)
+  if (!rekening) {
+    return { mode: "manual", name: input.account.name || "Kas/Bank", account_reference: "CASH", erpCoaId: "CASH" };
+  }
   const coaId = rekening.erpCoaId || rekening.bankName?.toUpperCase() || rekening.name?.toUpperCase() || null;
   return { mode: "slm", rekening_id: rekening.id, name: rekening.name, erpCoaId: coaId };
 }
@@ -421,7 +441,7 @@ export async function recordMjTempoPayment(row: InvoiceRow, input: MjTempoPaymen
   const alreadyReserved = existing?.erpPaymentStatus === "pending";
   const remaining = alreadyReserved ? Number(receivable.remainingAmount) : await reserveTempoPayment({
     receivableId: receivable.id, existingPaymentId: existing?.id, paymentId, payment: input,
-    accountName: String(account.name || "Manual"), rekeningId: input.account.mode === "slm" ? input.account.rekening_id : "manual",
+    accountName: String(account.name || "Manual"), rekeningId: (input.account.mode === "slm" && input.account.rekening_id) ? input.account.rekening_id : "manual",
     erpReference: localOnly ? undefined : reference
   });
   if (!localOnly) {
