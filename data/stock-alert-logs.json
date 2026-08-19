@@ -1,6 +1,6 @@
 [
   {
-    "id": "SAL-1787150913410",
+    "id": "SAL-1787157416990",
     "productId": "15",
     "productCodeSnapshot": "SKU-026",
     "productNameSnapshot": "Produk dignissimos 26",
@@ -9,7 +9,20 @@
     "warehouseSnapshot": "Gudang eum",
     "rackSnapshot": "delectus suscipit",
     "status": "failed",
-    "createdAt": "2026-08-19T14:48:33.410Z"
+    "createdAt": "2026-08-19T16:36:56.990Z"
+  },
+  {
+    "id": "SAL-1787150913410",
+    "productId": "15",
+    "productCodeSnapshot": "SKU-026",
+    "productNameSnapshot": "Produk dignissimos 26",
+    "currentStock": 14,
+    "minimumStock": 18,
+    "warehouseSnapshot": "Gudang eum",
+    "rackSnapshot": "delectus suscipit",
+    "status": "resolved",
+    "createdAt": "2026-08-19T14:48:33.410Z",
+    "resolvedAt": "2026-08-19T16:36:56.929Z"
   },
   {
     "id": "SAL-1786527447194",

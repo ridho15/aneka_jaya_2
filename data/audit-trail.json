@@ -1,5 +1,30 @@
 [
   {
+    "id": "dd5de653-1dc3-48a5-9a35-9c71c9da80b8",
+    "createdAt": "2026-08-19T16:36:56.996Z",
+    "userId": "anika:4",
+    "userNameSnapshot": "Admin",
+    "userRoleSnapshot": "ADMIN",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1787157416990",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1787157416990",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-08-19T16:36:56.990Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
     "id": "83efa3d6-98b2-4e5a-8638-dfaa46193cda",
     "createdAt": "2026-08-19T14:48:33.419Z",
     "userId": "anika:4",

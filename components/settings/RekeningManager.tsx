@@ -108,6 +108,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                     {statusBadge(rek.isActive !== false)}
                   </div>
                   <dl className="space-y-3 text-sm">
+                    <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">ID Rekening SLM</dt><dd className="mt-1 font-mono text-xs font-semibold text-sky-700">{rek.id}</dd></div>
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Nomor rekening</dt><dd className="mt-1 font-mono text-slate-700">{rek.accountNumber}</dd></div>
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">COA/Alias ERP</dt><dd className="mt-1 text-slate-700">{rek.erpCoaId ? `${rek.erpCoaId}${rek.erpCoaNameSnapshot ? ` - ${rek.erpCoaNameSnapshot}` : ""}` : "Belum diatur"}</dd></div>
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tipe yang diassign</dt><dd className="mt-1 flex flex-wrap gap-1">{assignedTipes(rek.tipeIds)}</dd></div>
@@ -125,14 +126,17 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
         <div className="hidden overflow-x-auto md:block">
           <table className="min-w-[920px] text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-              <tr><th className="px-5 py-3">Nama</th><th className="px-5 py-3">Bank</th><th className="px-5 py-3">Nomor rekening</th><th className="px-5 py-3">COA/Alias ERP</th><th className="px-5 py-3">Tipe yang diassign</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Aksi</th></tr>
+              <tr><th className="px-5 py-3">Nama & ID</th><th className="px-5 py-3">Bank</th><th className="px-5 py-3">Nomor rekening</th><th className="px-5 py-3">COA/Alias ERP</th><th className="px-5 py-3">Tipe yang diassign</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Aksi</th></tr>
             </thead>
             <tbody>
             {rekenings.map((rek) => (
               <tr key={rek.id} className="border-b border-slate-100 align-top">
                 {editingId === rek.id ? (
                   <>
-                    <td className="px-5 py-4"><Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} /></td>
+                    <td className="px-5 py-4">
+                      <Input value={draft.name} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} />
+                      <div className="mt-1 font-mono text-xs text-slate-400">ID: {rek.id}</div>
+                    </td>
                     <td className="px-5 py-4"><Select value={draft.bank} onChange={(e) => setDraft((prev) => ({ ...prev, bank: e.target.value }))}>{INDONESIAN_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}</Select></td>
                     <td className="px-5 py-4"><Input value={draft.accountNumber} onChange={(e) => setDraft((prev) => ({ ...prev, accountNumber: e.target.value }))} placeholder="-" /></td>
                     <td className="px-5 py-4"><div className="space-y-2"><Input value={draft.erpCoaId} onChange={(e) => setDraft((prev) => ({ ...prev, erpCoaId: e.target.value }))} placeholder="1112.01 atau BCA_OPERASIONAL" /><Input value={draft.erpCoaNameSnapshot} onChange={(e) => setDraft((prev) => ({ ...prev, erpCoaNameSnapshot: e.target.value }))} placeholder="Nama akun" /></div></td>
@@ -151,7 +155,10 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                   </>
                 ) : (
                   <>
-                    <td className="px-5 py-4 font-semibold">{rek.name}</td>
+                    <td className="px-5 py-4">
+                      <div className="font-semibold text-slate-900">{rek.name}</div>
+                      <div className="mt-0.5 font-mono text-xs font-medium text-sky-700">{rek.id}</div>
+                    </td>
                     <td className="px-5 py-4">{rek.bank}</td>
                     <td className="px-5 py-4 font-mono text-slate-600">{rek.accountNumber}</td>
                     <td className="px-5 py-4">{rek.erpCoaId ? <span>{rek.erpCoaId}{rek.erpCoaNameSnapshot ? ` - ${rek.erpCoaNameSnapshot}` : ""}</span> : <span className="text-slate-400">Belum diatur</span>}</td>
