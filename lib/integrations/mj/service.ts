@@ -21,7 +21,15 @@ function processingMode(row: InvoiceRow): MjProcessingMode {
 
 function accountReference(snapshot: unknown) {
   const row = snapshot && typeof snapshot === "object" ? snapshot as Record<string, unknown> : {};
-  return String(row.aj_coa_reference || row.erpCoaId || row.account_reference || "");
+  // Prioritas: COA ID manual → account_reference → nama bank/rekening sebagai fallback otomatis
+  const explicit = String(row.aj_coa_reference || row.erpCoaId || row.account_reference || "");
+  if (explicit) return explicit;
+  // Auto-fallback: gunakan nama bank sebagai referensi COA (AJ ERP mengenali nama bank seperti "BCA", "MANDIRI", "CASH")
+  const bankName = String(row.bank_name || "").toUpperCase().trim();
+  const rekeningName = String(row.name || "").toUpperCase().trim();
+  if (bankName) return bankName;
+  if (rekeningName) return rekeningName;
+  return "";
 }
 
 async function resolveMasterData(input: MjInvoiceInput) {
@@ -234,14 +242,9 @@ async function processInitialPayment(row: InvoiceRow, input: MjAjInvoiceInput) {
   const locked = await prisma.salesRecord.updateMany({ where: { id: row.id, erpPaymentStatus: { in: ["pending", "failed"] } }, data: { erpPaymentStatus: "processing", erpPaymentError: null, erpPaymentAttemptedAt: new Date() } });
   if (!locked.count) throw new MjIntegrationError("INVOICE_LOCKED", "Sinkronisasi pembayaran sedang diproses oleh request lain. Harap tunggu beberapa saat.", 409, invoiceSnapshot(row), true);
   const reference = deterministicReference("payment", input.external_reference, "INITIAL");
-  const coaRef = accountReference(row.accountSnapshot);
-  const result = !coaRef
-    ? await attempt(row, "payment", async () => ({
-        success: false,
-        code: "ACCOUNT_COA_MISSING",
-        message: `Rekening ${(row.accountSnapshot as Record<string, unknown>)?.name || "SLM"} belum memiliki referensi COA Aneka Jaya (AJ). Silakan atur kode COA di menu Pengaturan Rekening SLM lalu lakukan retry sync.`
-      }))
-    : await attempt(row, "payment", () => createMjPayment({ reference, invoiceId: row.erpInvoiceId!, customerId: row.erpCustomerId!, invoiceNumber: row.erpInvoiceNumber || undefined, paymentDate: input.invoice_date, coaReference: coaRef, method: input.payment.method, amount: input.payment.paid_amount, notes: "Pembayaran awal invoice MJ" }));
+  // Auto-resolve COA: menggunakan nama bank sebagai fallback jika erpCoaId belum diisi
+  const coaRef = accountReference(row.accountSnapshot) || input.payment.method;
+  const result = await attempt(row, "payment", () => createMjPayment({ reference, invoiceId: row.erpInvoiceId!, customerId: row.erpCustomerId!, invoiceNumber: row.erpInvoiceNumber || undefined, paymentDate: input.invoice_date, coaReference: coaRef, method: input.payment.method, amount: input.payment.paid_amount, notes: "Pembayaran awal invoice MJ" }));
   if (!result.success) {
     await prisma.salesRecord.update({ where: { id: row.id }, data: { erpPaymentStatus: "failed", erpPaymentError: result.message } });
     await upstreamError(result, row);
@@ -326,10 +329,9 @@ async function resolvePaymentAccount(row: InvoiceRow, input: MjTempoPaymentInput
     if (!anyRekening.isActive) throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening SLM ${anyRekening.name} sedang tidak aktif.`, 400);
     throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${anyRekening.name} tidak terhubung dengan tipe pembukuan invoice ini.`, 400);
   }
-  if (processingMode(row) === "slm_process_aj" && !rekening.erpCoaId) {
-    throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${rekening.name} belum memiliki referensi COA Aneka Jaya (AJ). Silakan atur kode COA di menu Pengaturan Rekening SLM.`, 400);
-  }
-  return { mode: "slm", rekening_id: rekening.id, name: rekening.name, erpCoaId: rekening.erpCoaId };
+  // Auto-fallback COA: jika erpCoaId kosong, gunakan nama bank sebagai referensi (AJ ERP mengenali "BCA", "MANDIRI", dll)
+  const coaId = rekening.erpCoaId || rekening.bankName?.toUpperCase() || rekening.name?.toUpperCase() || null;
+  return { mode: "slm", rekening_id: rekening.id, name: rekening.name, erpCoaId: coaId };
 }
 
 async function reserveTempoPayment(input: {
