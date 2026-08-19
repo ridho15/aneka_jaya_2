@@ -199,8 +199,82 @@ function buildMonthlyPerformance(sales, expenses, now = new Date(), range = {}) 
   return months;
 }
 
-function buildOperationalProfitSummary(sales, expenses, todayKey, monthKeyValue, grossProfitPercent = 0) {
+function buildProductCostMap(products = []) {
+  const costMap = new Map();
+  for (const product of products) {
+    const cost = Number(product.costPrice);
+    if (!Number.isFinite(cost) || cost <= 0) continue;
+    if (product.id) costMap.set(String(product.id).trim().toLowerCase(), cost);
+    if (product.code) costMap.set(String(product.code).trim().toLowerCase(), cost);
+    if (product.name) costMap.set(String(product.name).trim().toLowerCase(), cost);
+  }
+  return costMap;
+}
+
+function calculateSaleGrossProfit(sale, grossProfitPercent, productCostMap) {
   const percent = Number.isFinite(Number(grossProfitPercent)) ? Math.min(100, Math.max(0, Number(grossProfitPercent))) : 0;
+  const saleTotal = Number(sale.total) || 0;
+
+  if (!Array.isArray(sale.items) || sale.items.length === 0) {
+    return (saleTotal * percent) / 100;
+  }
+
+  const resolvedItems = sale.items.map((item) => {
+    const qty = Number(item.quantity) || 0;
+    const unitPrice = Number(item.unitPrice) || 0;
+    const discount = Number(item.discount) || 0;
+    const itemRevenue = Math.max(0, qty * unitPrice - discount);
+
+    let effectiveCost = null;
+    const manualCost = Number(item.manualProduct?.costPrice);
+    if (Number.isFinite(manualCost) && manualCost > 0) {
+      effectiveCost = manualCost;
+    } else {
+      const productIdKey = item.productId ? String(item.productId).trim().toLowerCase() : "";
+      const productRefKey = item.productRef ? String(item.productRef).trim().toLowerCase() : "";
+      if (productIdKey && productCostMap.has(productIdKey)) {
+        effectiveCost = productCostMap.get(productIdKey);
+      } else if (productRefKey && productCostMap.has(productRefKey)) {
+        effectiveCost = productCostMap.get(productRefKey);
+      }
+    }
+
+    return {
+      qty,
+      itemRevenue,
+      effectiveCost: effectiveCost !== null && effectiveCost > 0 ? effectiveCost : null
+    };
+  });
+
+  const hasRealCost = resolvedItems.some((item) => item.effectiveCost !== null);
+  if (!hasRealCost) {
+    return (saleTotal * percent) / 100;
+  }
+
+  let totalProfit = 0;
+  let accountedRevenue = 0;
+
+  for (const item of resolvedItems) {
+    accountedRevenue += item.itemRevenue;
+    if (item.effectiveCost !== null) {
+      const itemCost = item.qty * item.effectiveCost;
+      totalProfit += item.itemRevenue - itemCost;
+    } else {
+      totalProfit += (item.itemRevenue * percent) / 100;
+    }
+  }
+
+  const unallocatedRevenue = Math.max(0, saleTotal - accountedRevenue);
+  if (unallocatedRevenue > 0) {
+    totalProfit += (unallocatedRevenue * percent) / 100;
+  }
+
+  return totalProfit;
+}
+
+function buildOperationalProfitSummary(sales, expenses, todayKey, monthKeyValue, grossProfitPercent = 0, products = []) {
+  const percent = Number.isFinite(Number(grossProfitPercent)) ? Math.min(100, Math.max(0, Number(grossProfitPercent))) : 0;
+  const productCostMap = buildProductCostMap(products);
   const approvedOperationalSales = sales.filter((sale) => approved(sale) && isOperationalSale(sale));
   const approvedOperationalExpenses = expenses.filter((expense) => approved(expense) && isOperationalExpense(expense));
   const monthlySales = approvedOperationalSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
@@ -209,7 +283,7 @@ function buildOperationalProfitSummary(sales, expenses, todayKey, monthKeyValue,
   const todayExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate === todayKey);
   const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const monthlyExpenseTotal = monthlyExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-  const grossProfit = monthlyRevenue * percent / 100;
+  const grossProfit = monthlySales.reduce((sum, sale) => sum + calculateSaleGrossProfit(sale, percent, productCostMap), 0);
   return {
     grossProfitPercent: percent,
     monthlyRevenue,
@@ -251,7 +325,14 @@ function toSale(row) {
     syncTarget: row.syncTarget || undefined,
     syncStatus: row.syncStatus || undefined,
     createdAt: row.createdAt?.toISOString?.() || row.createdAt,
-    items: []
+    items: Array.isArray(row.items) ? row.items.map((item) => ({
+      productRef: item.productRef,
+      productId: item.productId || undefined,
+      manualProduct: item.manualProduct,
+      quantity: Number(item.quantity),
+      unitPrice: Number(item.unitPrice),
+      discount: Number(item.discount || 0)
+    })) : []
   };
 }
 
@@ -272,7 +353,7 @@ function toExpense(row) {
 
 async function readDataFromPrisma(prisma, appMode) {
   const [salesRows, expenseRows, setting, rekeningRows] = await Promise.all([
-    prisma.salesRecord.findMany(),
+    prisma.salesRecord.findMany({ include: { items: true } }),
     prisma.expenseRecord.findMany(),
     prisma.appSetting.findFirst({ where: { key: { in: [PROFIT_KEY, LEGACY_PROFIT_KEY] } }, orderBy: { key: "asc" } }),
     prisma.rekeningAccount.findMany()

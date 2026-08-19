@@ -134,8 +134,82 @@ function isOperationalExpense(row: Pick<Expense, "tipeId" | "tipeCodeSnapshot">)
   return typeCode(row) !== "AJ";
 }
 
-export function buildOperationalProfitSummary(sales: Sale[], expenses: Expense[], todayKey: string, monthKeyValue: string, grossProfitPercent = 0): DashboardOperationalProfitSummary {
+function buildProductCostMap(products: Product[] = []) {
+  const costMap = new Map<string, number>();
+  for (const product of products) {
+    const cost = Number(product.costPrice);
+    if (!Number.isFinite(cost) || cost <= 0) continue;
+    if (product.id) costMap.set(product.id.trim().toLowerCase(), cost);
+    if (product.code) costMap.set(product.code.trim().toLowerCase(), cost);
+    if (product.name) costMap.set(product.name.trim().toLowerCase(), cost);
+  }
+  return costMap;
+}
+
+function calculateSaleGrossProfit(sale: Sale, grossProfitPercent: number, productCostMap: Map<string, number>): number {
   const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
+  const saleTotal = Number(sale.total) || 0;
+
+  if (!Array.isArray(sale.items) || sale.items.length === 0) {
+    return (saleTotal * percent) / 100;
+  }
+
+  const resolvedItems = sale.items.map((item) => {
+    const qty = Number(item.quantity) || 0;
+    const unitPrice = Number(item.unitPrice) || 0;
+    const discount = Number(item.discount) || 0;
+    const itemRevenue = Math.max(0, qty * unitPrice - discount);
+
+    let effectiveCost: number | null = null;
+    const manualCost = Number(item.manualProduct?.costPrice);
+    if (Number.isFinite(manualCost) && manualCost > 0) {
+      effectiveCost = manualCost;
+    } else {
+      const productIdKey = item.productId ? item.productId.trim().toLowerCase() : "";
+      const productRefKey = item.productRef ? item.productRef.trim().toLowerCase() : "";
+      if (productIdKey && productCostMap.has(productIdKey)) {
+        effectiveCost = productCostMap.get(productIdKey)!;
+      } else if (productRefKey && productCostMap.has(productRefKey)) {
+        effectiveCost = productCostMap.get(productRefKey)!;
+      }
+    }
+
+    return {
+      qty,
+      itemRevenue,
+      effectiveCost: effectiveCost !== null && effectiveCost > 0 ? effectiveCost : null
+    };
+  });
+
+  const hasRealCost = resolvedItems.some((item) => item.effectiveCost !== null);
+  if (!hasRealCost) {
+    return (saleTotal * percent) / 100;
+  }
+
+  let totalProfit = 0;
+  let accountedRevenue = 0;
+
+  for (const item of resolvedItems) {
+    accountedRevenue += item.itemRevenue;
+    if (item.effectiveCost !== null) {
+      const itemCost = item.qty * item.effectiveCost;
+      totalProfit += item.itemRevenue - itemCost;
+    } else {
+      totalProfit += (item.itemRevenue * percent) / 100;
+    }
+  }
+
+  const unallocatedRevenue = Math.max(0, saleTotal - accountedRevenue);
+  if (unallocatedRevenue > 0) {
+    totalProfit += (unallocatedRevenue * percent) / 100;
+  }
+
+  return totalProfit;
+}
+
+export function buildOperationalProfitSummary(sales: Sale[], expenses: Expense[], todayKey: string, monthKeyValue: string, grossProfitPercent = 0, products: Product[] = []): DashboardOperationalProfitSummary {
+  const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
+  const productCostMap = buildProductCostMap(products);
   const approvedOperationalSales = sales.filter((sale) => sale.approvalStatus === "approved" && isOperationalSale(sale));
   const approvedOperationalExpenses = expenses.filter((expense) => expense.approvalStatus === "approved" && isOperationalExpense(expense));
   const monthlySales = approvedOperationalSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
@@ -144,7 +218,7 @@ export function buildOperationalProfitSummary(sales: Sale[], expenses: Expense[]
   const todayExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate === todayKey);
   const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
   const monthlyExpenseTotal = monthlyExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
-  const grossProfit = monthlyRevenue * percent / 100;
+  const grossProfit = monthlySales.reduce((sum, sale) => sum + calculateSaleGrossProfit(sale, percent, productCostMap), 0);
   return {
     grossProfitPercent: percent,
     monthlyRevenue,

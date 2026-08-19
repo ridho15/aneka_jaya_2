@@ -238,4 +238,66 @@ describe("dashboard summaries", () => {
     expect(activityStatusText({ ...baseAudit, action: "reject" })).toBe("Ditolak");
     expect(activityStatusText({ ...baseAudit, action: "archive" })).toBe("Audit");
   });
+
+  it("calculates real gross profit from manualProduct.costPrice with fallback to global margin", () => {
+    const saleWithManualCost: Sale = {
+      ...sale,
+      id: "sale-manual-cost",
+      tipeId: "W",
+      tipeCodeSnapshot: "W",
+      saleDate: "2026-07-08",
+      total: 350_000,
+      items: [
+        // Item 1: Real cost = 80,000, Unit price = 100,000, Qty = 2 -> Revenue = 200,000, Profit = 200,000 - 160,000 = 40,000
+        {
+          productRef: "MANUAL-1",
+          quantity: 2,
+          unitPrice: 100_000,
+          manualProduct: { sku: "MANUAL-1", name: "Barang Manual", costPrice: 80_000 }
+        },
+        // Item 2: No cost (0/null) -> Revenue = 150,000, Fallback 10% -> Profit = 15,000
+        {
+          productRef: "MANUAL-2",
+          quantity: 1,
+          unitPrice: 150_000,
+          manualProduct: { sku: "MANUAL-2", name: "Barang Tanpa Modal", costPrice: 0 }
+        }
+      ]
+    };
+
+    const result = buildOperationalProfitSummary([saleWithManualCost], [], "2026-07-08", "2026-07", 10);
+    // Expected gross profit = 40,000 + 15,000 = 55,000
+    expect(result.grossProfit).toBe(55_000);
+    expect(result.nettProfit).toBe(55_000);
+    expect(result.monthlyRevenue).toBe(350_000);
+  });
+
+  it("looks up real costPrice from ERP product master with fallback for unknown products", () => {
+    const products: Product[] = [
+      { id: "prod-1", code: "BRG-001", name: "Produk ERP 1", costPrice: 60_000 } as Product,
+      { id: "prod-2", code: "BRG-002", name: "Produk ERP 2", costPrice: null } as Product
+    ];
+
+    const saleWithErpProducts: Sale = {
+      ...sale,
+      id: "sale-erp-cost",
+      tipeId: "SLM",
+      tipeCodeSnapshot: "SLM",
+      saleDate: "2026-07-08",
+      total: 500_000,
+      items: [
+        // Item 1: Found in products (cost 60k), Qty 3, UnitPrice 100k, Discount 10k -> Revenue = 290k, Cost = 180k -> Profit = 110,000
+        { productRef: "BRG-001", productId: "prod-1", quantity: 3, unitPrice: 100_000, discount: 10_000 },
+        // Item 2: Found in products but costPrice is null -> Revenue = 200k, Fallback 20% -> Profit = 40,000
+        { productRef: "BRG-002", productId: "prod-2", quantity: 2, unitPrice: 100_000 },
+        // Item 3: Not in product master -> Revenue = 10k, Fallback 20% -> Profit = 2,000
+        { productRef: "UNKNOWN", quantity: 1, unitPrice: 10_000 }
+      ]
+    };
+
+    const result = buildOperationalProfitSummary([saleWithErpProducts], [], "2026-07-08", "2026-07", 20, products);
+    // Expected gross profit = 110,000 + 40,000 + 2,000 = 152,000
+    expect(result.grossProfit).toBe(152_000);
+    expect(result.monthlyRevenue).toBe(500_000);
+  });
 });
