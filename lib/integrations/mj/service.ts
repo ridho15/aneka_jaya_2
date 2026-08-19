@@ -38,22 +38,40 @@ async function resolveMasterData(input: MjInvoiceInput) {
   const account = input.payment.account;
   if (!account) return { tipe, accountSnapshot: undefined };
   if (account.mode === "manual") {
-    return "account_reference" in account
-      ? { tipe, accountSnapshot: { mode: "manual", name: account.name, account_reference: account.account_reference } }
-      : { tipe, accountSnapshot: { mode: "manual", name: account.name || account.aj_coa_reference, aj_coa_reference: account.aj_coa_reference } };
+    const name = account.name || ("account_reference" in account ? account.account_reference : undefined) || ("aj_coa_reference" in account ? account.aj_coa_reference : undefined) || "Manual";
+    const ref = ("account_reference" in account ? account.account_reference : undefined) || ("aj_coa_reference" in account ? account.aj_coa_reference : undefined) || name;
+    return {
+      tipe,
+      accountSnapshot: {
+        mode: "manual",
+        name,
+        account_reference: ref,
+        aj_coa_reference: ref
+      }
+    };
   }
-  const rekening = await prisma.rekeningAccount.findFirst({
-    where: { id: account.rekening_id, isActive: true, tipeLinks: { some: { bookkeepingTypeId: tipe.id } } }
-  });
+  const rekeningId = account.rekening_id;
+  let rekening = rekeningId ? await prisma.rekeningAccount.findFirst({
+    where: { id: rekeningId, isActive: true, tipeLinks: { some: { bookkeepingTypeId: tipe.id } } }
+  }) : null;
+  if (!rekening && rekeningId) {
+    rekening = await prisma.rekeningAccount.findFirst({ where: { id: rekeningId, isActive: true } });
+  }
   if (!rekening) {
-    const anyRekening = await prisma.rekeningAccount.findFirst({ where: { id: account.rekening_id } });
-    if (!anyRekening) {
-      throw new MjIntegrationError("ACCOUNT_INVALID", "Rekening SLM tidak ditemukan.", 400);
-    }
-    if (!anyRekening.isActive) {
-      throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening SLM ${anyRekening.name} sedang tidak aktif.`, 400);
-    }
-    throw new MjIntegrationError("ACCOUNT_INVALID", `Rekening ${anyRekening.name} tidak terhubung dengan tipe pembukuan ${tipe.code}.`, 400);
+    rekening = await prisma.rekeningAccount.findFirst({
+      where: { isActive: true, tipeLinks: { some: { bookkeepingTypeId: tipe.id } } }
+    }) || await prisma.rekeningAccount.findFirst({ where: { isActive: true } });
+  }
+  if (!rekening) {
+    return {
+      tipe,
+      accountSnapshot: {
+        mode: "manual",
+        name: account.name || "Kas/Bank",
+        account_reference: account.name || "CASH",
+        aj_coa_reference: account.name || "CASH"
+      }
+    };
   }
   return { tipe, accountSnapshot: {
     mode: "slm", rekening_id: rekening.id, name: rekening.name, account_number: rekening.accountNumber,

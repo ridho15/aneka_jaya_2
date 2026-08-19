@@ -7,18 +7,18 @@ const money = z.number().finite().nonnegative().multipleOf(0.01);
 const positiveId = z.union([z.string().regex(/^\d+$/), z.number().int().positive()]).transform(String);
 
 const ajAccountSchema = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("slm"), rekening_id: z.string().min(1) }).strict(),
-  z.object({ mode: z.literal("manual"), aj_coa_reference: z.string().min(1), name: z.string().min(1).optional() }).strict()
+  z.object({ mode: z.literal("slm"), rekening_id: z.string().min(1).optional(), name: z.string().optional() }).passthrough(),
+  z.object({ mode: z.literal("manual"), aj_coa_reference: z.string().optional(), account_reference: z.string().optional(), name: z.string().optional(), bank: z.string().optional(), bank_name: z.string().optional() }).passthrough()
 ]);
 
 const localAccountSchema = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("slm"), rekening_id: z.string().min(1) }).strict(),
-  z.object({ mode: z.literal("manual"), account_reference: z.string().min(1), name: z.string().min(1) }).strict()
+  z.object({ mode: z.literal("slm"), rekening_id: z.string().min(1).optional(), name: z.string().optional() }).passthrough(),
+  z.object({ mode: z.literal("manual"), account_reference: z.string().optional(), aj_coa_reference: z.string().optional(), name: z.string().optional(), bank: z.string().optional(), bank_name: z.string().optional() }).passthrough()
 ]);
 
 const customerSchema = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("existing"), customer_id: positiveId, name: z.string().min(1).optional() }).strict(),
-  z.object({ mode: z.literal("manual"), external_id: z.string().min(1).max(150), name: z.string().min(1).max(200), address: z.string().min(1).max(500) }).strict()
+  z.object({ mode: z.literal("existing"), customer_id: positiveId, name: z.string().min(1).optional() }).passthrough(),
+  z.object({ mode: z.literal("manual"), external_id: z.string().min(1).max(150), name: z.string().min(1).max(200), address: z.string().max(500).optional().default("-") }).passthrough()
 ]);
 
 const ajItemSchema = z.object({
@@ -33,7 +33,7 @@ const ajItemSchema = z.object({
   unit_price: money,
   discount: money.default(0),
   subtotal: money
-}).strict();
+}).passthrough();
 
 const localItemSchema = z.object({
   product_reference: z.string().min(1).max(150),
@@ -48,16 +48,16 @@ const localItemSchema = z.object({
   unit_price: money,
   discount: money.default(0),
   subtotal: money
-}).strict();
+}).passthrough();
 
 function paymentSchema(account: typeof ajAccountSchema | typeof localAccountSchema) {
   return z.object({
-    method: z.enum(["Cash", "TF", "Tempo"]),
+    method: z.enum(["Cash", "TF", "Tempo", "Other", "Transfer"]),
     status: z.enum(["paid", "partial", "unpaid"]),
     paid_amount: money,
     due_date: z.string().date().optional(),
     account: account.optional()
-  }).strict();
+  }).passthrough();
 }
 
 const common = {
@@ -108,10 +108,10 @@ export const mjInvoiceSchema = z.discriminatedUnion("processing_mode", [slmProce
   if (payload.subtotal !== itemSubtotal) context.addIssue({ code: "custom", path: ["subtotal"], message: `subtotal invoice harus ${itemSubtotal}` });
   const expectedTotal = roundMoney(payload.subtotal - payload.discount);
   if (payload.total !== expectedTotal) context.addIssue({ code: "custom", path: ["total"], message: `total harus ${expectedTotal}` });
-  const immediate = payload.payment.method === "Cash" || payload.payment.method === "TF";
-  if (immediate && payload.payment.status !== "paid") context.addIssue({ code: "custom", path: ["payment", "status"], message: "Cash/TF wajib berstatus paid" });
-  if (immediate && payload.payment.paid_amount !== payload.total) context.addIssue({ code: "custom", path: ["payment", "paid_amount"], message: "paid_amount Cash/TF harus sama dengan total" });
-  if (immediate && !payload.payment.account) context.addIssue({ code: "custom", path: ["payment", "account"], message: "rekening Cash/TF wajib diisi" });
+  const immediate = payload.payment.method === "Cash" || payload.payment.method === "TF" || payload.payment.method === "Transfer";
+  if (immediate && payload.payment.status !== "paid") context.addIssue({ code: "custom", path: ["payment", "status"], message: "Cash/TF/Transfer wajib berstatus paid" });
+  if (immediate && payload.payment.paid_amount !== payload.total) context.addIssue({ code: "custom", path: ["payment", "paid_amount"], message: "paid_amount Cash/TF/Transfer harus sama dengan total" });
+  if (immediate && !payload.payment.account) context.addIssue({ code: "custom", path: ["payment", "account"], message: "rekening Cash/TF/Transfer wajib diisi" });
   if (payload.payment.method === "Tempo" && !payload.payment.due_date) context.addIssue({ code: "custom", path: ["payment", "due_date"], message: "due_date Tempo wajib diisi" });
   if (payload.payment.method === "Tempo" && payload.payment.paid_amount > payload.total) context.addIssue({ code: "custom", path: ["payment", "paid_amount"], message: "paid_amount tidak boleh melebihi total" });
   if (payload.payment.paid_amount > 0 && !payload.payment.account) context.addIssue({ code: "custom", path: ["payment", "account"], message: "rekening wajib untuk pembayaran lebih dari nol" });
