@@ -110,12 +110,12 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
           {paged.map((expense) => {
             const isMj = expense.createdByUserId === "integration:mj" || expense.createdByNameSnapshot?.toLowerCase().includes("mj") || expense.vendorName?.toLowerCase().includes("mj");
             return (
-              <article key={expense.id} className={`rounded-lg p-4 shadow-sm transition-all ${isMj ? "border-2 border-sky-300 bg-sky-50/50 ring-1 ring-sky-200" : "border border-slate-200 bg-white"}`}>
+              <article key={expense.id} className={`rounded-lg p-4 shadow-sm transition-all ${isMj ? "border-2 border-amber-300 bg-amber-50/60 ring-1 ring-amber-200" : "border border-slate-200 bg-white"}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="truncate font-semibold text-slate-900">{expense.vendorName}</p>
-                      {isMj && <span className="inline-flex items-center rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>}
+                      {isMj && <span className="inline-flex items-center rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">MJ</span>}
                     </div>
                     <p className="mt-1 text-xs text-slate-500">{expense.expenseDate} • {expense.tipeCodeSnapshot} • {expense.category}</p>
                   </div>
@@ -161,7 +161,7 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
               {paged.map((expense) => {
                 const isMj = expense.createdByUserId === "integration:mj" || expense.createdByNameSnapshot?.toLowerCase().includes("mj") || expense.vendorName?.toLowerCase().includes("mj");
                 return (
-                  <tr key={expense.id} className={`border-b transition-colors ${isMj ? "border-sky-200/80 bg-sky-50/75 hover:bg-sky-100/70" : "border-slate-100 hover:bg-slate-50/80"}`}>
+                  <tr key={expense.id} className={`border-b transition-colors ${isMj ? "border-amber-200/90 bg-amber-50/80 hover:bg-amber-100/70" : "border-slate-100 hover:bg-slate-50/80"}`}>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Link className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs" href={`/pengeluaran/${expense.id}`}>Detail</Link>
@@ -186,7 +186,7 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5 font-semibold text-slate-900">
                         {expense.vendorName}
-                        {isMj && <span className="inline-flex items-center rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>}
+                        {isMj && <span className="inline-flex items-center rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">MJ</span>}
                       </div>
                     </td>
                     <td className="px-5 py-4 text-right font-semibold">{rupiah(expense.amount)}</td>

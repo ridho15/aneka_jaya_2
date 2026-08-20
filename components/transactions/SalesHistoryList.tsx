@@ -151,18 +151,18 @@ export function SalesHistoryList({ sales, canManage, canViewTransactionNumber }:
           const expanded = expandedSaleId === sale.id;
           const isMj = sale.source === "MJ" || sale.createdByUserId === "integration:mj";
           return (
-            <article key={sale.id} className={`rounded-lg p-4 shadow-sm transition-all ${isMj ? "border-2 border-sky-300 bg-sky-50/50 ring-1 ring-sky-200" : "border border-slate-200 bg-white"}`}>
+            <article key={sale.id} className={`rounded-lg p-4 shadow-sm transition-all ${isMj ? "border-2 border-amber-300 bg-amber-50/60 ring-1 ring-amber-200" : "border border-slate-200 bg-white"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="truncate font-semibold text-slate-900">{sale.customerName}</p>
-                    {isMj && <span className="inline-flex items-center rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>}
+                    {isMj && <span className="inline-flex items-center rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">MJ</span>}
                   </div>
                   <p className="mt-1 text-xs text-slate-500">{saleDateLabel(sale)} • {sale.tipeCodeSnapshot || sale.tipeId || "W"} • {sale.paymentMethod}</p>
                 </div>
                 <p className="shrink-0 text-right font-bold text-slate-900">{rupiah(sale.total)}</p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">{sale.source === "MJ" && <Badge value={`MJ · ${sale.integrationProcessingMode || "slm_process_aj"}`} tone="blue" />}<Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /><Badge value={`Invoice ${sale.syncStatus || "local"}`} tone={statusTone(sale.syncStatus || "local")} />{sale.syncTarget === "erp" && <Badge value={`Stok ${sale.stockReleaseStatus || "not_required"}`} tone={statusTone(sale.stockReleaseStatus || "not_required")} />}{sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}</div>
+              <div className="mt-3 flex flex-wrap gap-2">{sale.source === "MJ" && <Badge value={`MJ · ${sale.integrationProcessingMode || "slm_process_aj"}`} tone="amber" />}<Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /><Badge value={`Invoice ${sale.syncStatus || "local"}`} tone={statusTone(sale.syncStatus || "local")} />{sale.syncTarget === "erp" && <Badge value={`Stok ${sale.stockReleaseStatus || "not_required"}`} tone={statusTone(sale.stockReleaseStatus || "not_required")} />}{sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}</div>
               <dl className="mt-3 grid gap-2 text-sm text-slate-600">{canViewTransactionNumber && <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">No Transaksi</dt><dd className="mt-0.5 font-mono text-xs">{sale.transactionNumber || sale.id}</dd></div>}<div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Lokasi</dt><dd className="mt-0.5">{sale.customerLocation || "—"}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pembuat</dt><dd className="mt-0.5">{sale.createdByNameSnapshot || "—"}</dd></div></dl>
               <div className="mt-4"><ExpandButton sale={sale} expanded={expanded} onToggle={() => toggle(sale.id)} /></div>
               {expanded && <SalesItemsDetail sale={sale} className="mt-3" />}
@@ -199,7 +199,7 @@ export function SalesHistoryList({ sales, canManage, canViewTransactionNumber }:
               const isMj = sale.source === "MJ" || sale.createdByUserId === "integration:mj";
               return (
                 <Fragment key={sale.id}>
-                  <tr className={`border-b transition-colors ${isMj ? "border-sky-200/80 bg-sky-50/75 hover:bg-sky-100/70" : "border-slate-100 hover:bg-slate-50/80"}`}>
+                  <tr className={`border-b transition-colors ${isMj ? "border-amber-200/90 bg-amber-50/80 hover:bg-amber-100/70" : "border-slate-100 hover:bg-slate-50/80"}`}>
                     <td className="px-3 py-4"><ExpandButton sale={sale} expanded={expanded} onToggle={() => toggle(sale.id)} compact /></td>
                     <td className="px-5 py-4"><div className="flex items-center gap-2"><Link className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs" href={`/penjualan/${sale.id}`}>Detail</Link>{canManage ? <MoreActionsMenu sale={sale} /> : <Link className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/print/sales/${sale.id}`}>Cetak</Link>}</div></td>
                     <td className="px-5 py-4 text-slate-600">{saleDateLabel(sale)}</td>
@@ -207,7 +207,7 @@ export function SalesHistoryList({ sales, canManage, canViewTransactionNumber }:
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5 font-bold text-slate-900">
                         {sale.customerName}
-                        {isMj && <span className="inline-flex items-center rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>}
+                        {isMj && <span className="inline-flex items-center rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">MJ</span>}
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500">{sale.customerLocation || "—"}</p>
                     </td>
