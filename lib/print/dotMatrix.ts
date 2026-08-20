@@ -3,7 +3,7 @@ import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
 import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
 
-export const DOT_MATRIX_WIDTH = 44;
+export const DOT_MATRIX_WIDTH = 30;
 const LEFT_HEADER_WIDTH = 21;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
 const SIGNATURE_WIDTH = 24;
@@ -16,24 +16,26 @@ type TempoPrintInput = {
 
 export function truncate(
   text: string | number | undefined | null,
-  width = DOT_MATRIX_WIDTH
+  width = DOT_MATRIX_WIDTH,
 ) {
-  const value =
-    text === undefined || text === null
-      ? "-"
-      : String(text);
+  const value = text === undefined || text === null ? "-" : String(text);
 
-  return value.length > width
-    ? value.slice(0, width)
-    : value;
+  return value.length > width ? value.slice(0, width) : value;
 }
 
-export function column(text: string | number | undefined | null, width: number, align: "left" | "right" = "left") {
+export function column(
+  text: string | number | undefined | null,
+  width: number,
+  align: "left" | "right" = "left",
+) {
   const value = truncate(text, width);
   return align === "right" ? value.padStart(width) : value.padEnd(width);
 }
 
-export function twoColumn(left: string | number | undefined | null, right: string | number | undefined | null) {
+export function twoColumn(
+  left: string | number | undefined | null,
+  right: string | number | undefined | null,
+) {
   return `${column(left, LEFT_HEADER_WIDTH)} ${column(right, RIGHT_HEADER_WIDTH)}`;
 }
 
@@ -49,13 +51,15 @@ function center(text: string) {
 
 function pair(label: string, value?: string | number) {
   const left = `${label}:`;
-  const right = value === undefined || value === null || value === "" ? "-" : String(value);
+  const right =
+    value === undefined || value === null || value === "" ? "-" : String(value);
   return truncate(`${left.padEnd(18)} ${right}`);
 }
 
 function money(value?: number) {
   const amount = Math.round(value || 0);
-  if (Math.abs(amount) >= 1_000_000) return `Rp ${Math.round(amount / 1_000).toLocaleString("id-ID")} jt`;
+  if (Math.abs(amount) >= 1_000_000)
+    return `Rp ${Math.round(amount / 1_000).toLocaleString("id-ID")} jt`;
   return `Rp ${amount.toLocaleString("id-ID")}`;
 }
 
@@ -80,14 +84,15 @@ export function signatureBlock(name?: string) {
     "",
     column(signer, DOT_MATRIX_WIDTH, "right"),
     "",
-    column(underline, DOT_MATRIX_WIDTH, "right")
+    column(underline, DOT_MATRIX_WIDTH, "right"),
   ];
 }
 
 function layoutHeader(left: string[], right: string[]) {
   const rows: string[] = [];
   const length = Math.max(left.length, right.length);
-  for (let index = 0; index < length; index += 1) rows.push(twoColumn(left[index] || "", right[index] || ""));
+  for (let index = 0; index < length; index += 1)
+    rows.push(twoColumn(left[index] || "", right[index] || ""));
   return rows;
 }
 
@@ -101,41 +106,37 @@ function itemLines(
   quantity: number,
   unitPrice: number,
   discount = 0,
-  unit?: string
+  unit?: string,
 ) {
   const total = quantity * unitPrice - discount;
   const code = getProductCode(productRef);
 
   const quantityWithUnit = [quantity, unit]
-    .filter(
-      (value) =>
-        value !== undefined &&
-        value !== null &&
-        value !== ""
-    )
+    .filter((value) => value !== undefined && value !== null && value !== "")
     .join(" ");
 
   const firstLine = [
     column(index + 1, 3),
     column(code, 15),
-    column(quantityWithUnit, 12, "right")
+    column(quantityWithUnit, 12, "right"),
   ].join("");
 
   const secondLine = [
     column("", 3),
     column(money(unitPrice), 17, "right"),
-    column(money(total), 24, "right")
+    column(money(total), 24, "right"),
   ].join("");
 
   return [firstLine, secondLine];
 }
 
-function infoHeader(title: string, dateLabel: string, idLabel: string, right: string[]) {
-  return layoutHeader([
-    title,
-    dateLabel,
-    idLabel
-  ], right);
+function infoHeader(
+  title: string,
+  dateLabel: string,
+  idLabel: string,
+  right: string[],
+) {
+  return layoutHeader([title, dateLabel, idLabel], right);
 }
 
 function normalizeLines(lines: string[]) {
@@ -154,7 +155,7 @@ function chunkItems<T>(items: T[], size: number): T[][] {
 
 export function formatSaleDotMatrix(
   sale: Sale,
-  options: { showTransactionNumber?: boolean } = {}
+  options: { showTransactionNumber?: boolean } = {},
 ) {
   const transactionNumber =
     options.showTransactionNumber === false
@@ -171,9 +172,10 @@ export function formatSaleDotMatrix(
     const rows: string[] = [
       ...infoHeader(
         "INVOICE PENJUALAN",
-        `${sale.transactionAt
-          ? formatJakartaDateTimeCompact(sale.transactionAt)
-          : sale.saleDate
+        `${
+          sale.transactionAt
+            ? formatJakartaDateTimeCompact(sale.transactionAt)
+            : sale.saleDate
         }`,
         "",
         [
@@ -182,29 +184,24 @@ export function formatSaleDotMatrix(
           `Bayar ${sale.paymentMethod}`,
           sale.paymentMethod === "Tempo"
             ? `Tempo ${sale.dueDate || "-"}`
-            : `Kirim ${sale.shippingMethod || "-"}`
-        ]
+            : `Kirim ${sale.shippingMethod || "-"}`,
+        ],
       ),
 
       line("="),
 
-      `${column("NO", 3)}${column("KODE", 15)}${column(
-        "QTY",
-        12,
-        "right"
-      )}`,
+      `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
 
       `${column("", 3)}${column(
         "HARGA",
         17,
-        "right"
+        "right",
       )}${column("TOTAL", 24, "right")}`,
 
       line("-"),
 
       ...pageItems.flatMap((item, localIndex) => {
-        const actualIndex =
-          pageIndex * ITEM_PER_PAGE + localIndex;
+        const actualIndex = pageIndex * ITEM_PER_PAGE + localIndex;
 
         return itemLines(
           actualIndex,
@@ -212,11 +209,11 @@ export function formatSaleDotMatrix(
           item.quantity,
           item.unitPrice,
           item.discount || 0,
-          item.unitSnapshot
+          item.unitSnapshot,
         );
       }),
 
-      line("-")
+      line("-"),
     ];
 
     if (isLastPage) {
@@ -225,28 +222,19 @@ export function formatSaleDotMatrix(
 
         ...(sale.paymentMethod === "Tempo"
           ? [
-            amountLine(
-              "DP",
-              sale.initialPaymentAmount || 0
-            ),
-            amountLine(
-              "SISA TEMPO",
-              Math.max(
-                0,
-                sale.total -
-                (sale.initialPaymentAmount || 0)
-              )
-            )
-          ]
+              amountLine("DP", sale.initialPaymentAmount || 0),
+              amountLine(
+                "SISA TEMPO",
+                Math.max(0, sale.total - (sale.initialPaymentAmount || 0)),
+              ),
+            ]
           : []),
 
         line("="),
 
-        ...signatureBlock(
-          sale.createdByNameSnapshot
-        )
+        ...signatureBlock(sale.createdByNameSnapshot),
       );
-    } 
+    }
 
     // /* Isi baris kosong sampai bagian bawah halaman */
     // while (rows.length < PAGE_LINES - 1) {
@@ -264,12 +252,8 @@ export function formatSaleDotMatrix(
 
     rows.push(
       "",
-      column(
-        `${pageIndex + 1}/${pages.length}`,
-        DOT_MATRIX_WIDTH,
-        "right"
-      ),
-      ""
+      column(`${pageIndex + 1}/${pages.length}`, DOT_MATRIX_WIDTH, "right"),
+      "",
     );
 
     return normalizeLines(rows);
@@ -278,19 +262,27 @@ export function formatSaleDotMatrix(
   return pageContents.join("\x0C");
 }
 
-export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrintInput) {
+export function formatTempoPaymentDotMatrix({
+  receivable,
+  payments,
+}: TempoPrintInput) {
   const latestPayment = payments[0];
   const rows: string[] = [
-    ...infoHeader("BAYAR TEMPO", `${latestPayment?.paymentDate || receivable.transactionDate}`, `No ${receivable.id}`, [
-      receivable.customerName,
-      `Sales ${receivable.salesId}`,
-      `Tempo ${receivable.dueDate}`,
-    ]),
+    ...infoHeader(
+      "BAYAR TEMPO",
+      `${latestPayment?.paymentDate || receivable.transactionDate}`,
+      `No ${receivable.id}`,
+      [
+        receivable.customerName,
+        `Sales ${receivable.salesId}`,
+        `Tempo ${receivable.dueDate}`,
+      ],
+    ),
     line("="),
     amountLine("TOTAL TEMPO", receivable.originalAmount),
     amountLine("SUDAH DIBAYAR", receivable.paidAmount),
     amountLine("SISA TEMPO", receivable.remainingAmount),
-    line("-")
+    line("-"),
   ];
 
   if (latestPayment) {
@@ -298,13 +290,18 @@ export function formatTempoPaymentDotMatrix({ receivable, payments }: TempoPrint
       pair("Pembayaran", latestPayment.id),
       pair("Tanggal Bayar", latestPayment.paymentDate),
       pair("Metode", latestPayment.paymentMethod),
-      amountLine("NOMINAL BAYAR", latestPayment.amountPaid)
+      amountLine("NOMINAL BAYAR", latestPayment.amountPaid),
     );
   } else {
     rows.push(center("Belum ada pembayaran tercatat"));
   }
 
-  rows.push(line("="), ...signatureBlock(latestPayment?.createdByNameSnapshot || receivable.createdByNameSnapshot));
+  rows.push(
+    line("="),
+    ...signatureBlock(
+      latestPayment?.createdByNameSnapshot || receivable.createdByNameSnapshot,
+    ),
+  );
   return normalizeLines(rows);
 }
 
@@ -314,7 +311,7 @@ export function formatExpenseDotMatrix(expense: Expense) {
       expense.vendorName,
       expense.rekeningNameSnapshot || expense.rekeningId || "-",
       expense.category,
-      expense.coaNameSnapshot || expense.coaId || "-"
+      expense.coaNameSnapshot || expense.coaId || "-",
     ]),
     line("="),
     pair("Metode", expense.paymentMethod),
@@ -325,7 +322,7 @@ export function formatExpenseDotMatrix(expense: Expense) {
     line("-"),
     amountLine("TOTAL", expense.amount),
     line("="),
-    ...signatureBlock(expense.createdByNameSnapshot)
+    ...signatureBlock(expense.createdByNameSnapshot),
   ].filter(Boolean);
 
   return normalizeLines(rows);
