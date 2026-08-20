@@ -616,6 +616,27 @@ paths:
         - { in: path, name: external_reference, required: true, schema: { type: string } }
         - { in: query, name: format, schema: { type: string, enum: [text, prn], default: text } }
       responses: { "200": { description: Snapshot text/plain atau file PRN. }, "401": { description: AUTH_INVALID }, "404": { description: Invoice tidak ditemukan. } }
+  /api/integrations/mj/invoices/{external_reference}/print-events:
+    post:
+      summary: Sinkronisasi event cetak invoice dari MJ ke SLM.
+      description: Mencatat status cetak, waktu, dan kasir/operator pencetak invoice dari sistem MJ ke database SLM dan riwayat transaksi.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: path, name: external_reference, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                printed_at: { type: string, format: date-time, description: Timestamp pencetakan }
+                printed_by: { type: string, description: Nama operator/kasir yang mencetak }
+                print_count: { type: integer, minimum: 1, description: Jumlah cetak }
+                printer_name: { type: string, description: Nama printer }
+                format: { type: string, description: Format cetak (dot_matrix, thermal, prn, browser) }
+                notes: { type: string, description: Catatan cetak }
+      responses: { "200": { description: Event cetak berhasil dicatat. }, "400": { description: VALIDATION_FAILED }, "401": { description: AUTH_INVALID }, "404": { description: Invoice tidak ditemukan. } }
   /api/debug/erp-stock-shape:
     get:
       summary: Audit aman bentuk field ERP produk dan stok.

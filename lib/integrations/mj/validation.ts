@@ -133,9 +133,20 @@ export const mjTempoPaymentSchema = z.object({
 
 export const mjCancelSchema = z.object({ reason: z.string().trim().min(3).max(500) }).strict();
 
+export const mjPrintEventSchema = z.object({
+  printed_at: z.string().datetime({ offset: true }).or(z.string()).optional(),
+  printed_by: z.string().max(200).optional(),
+  print_count: z.number().int().positive().optional(),
+  printer_name: z.string().max(200).optional(),
+  format: z.string().max(50).optional(),
+  notes: z.string().max(1000).optional(),
+  metadata: z.record(z.unknown()).optional()
+}).passthrough();
+
 export type MjInvoiceInput = z.infer<typeof mjInvoiceSchema>;
 export type MjAjInvoiceInput = Extract<MjInvoiceInput, { processing_mode: "slm_process_aj" | "aj_already_processed" }>;
 export type MjTempoPaymentInput = z.infer<typeof mjTempoPaymentSchema>;
+export type MjPrintEventInput = z.infer<typeof mjPrintEventSchema>;
 
 export function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;

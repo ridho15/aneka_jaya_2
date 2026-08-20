@@ -44,7 +44,7 @@ vi.mock("@/lib/integrations/mj/erp", () => ({
   deterministicReference: (kind: string, external: string, suffix = "") => `${kind}-${external}-${suffix}`
 }));
 
-import { cancelMjInvoice, createOrResumeMjInvoice, recordMjTempoPayment } from "@/lib/integrations/mj/service";
+import { cancelMjInvoice, createOrResumeMjInvoice, recordMjPrintEvent, recordMjTempoPayment } from "@/lib/integrations/mj/service";
 
 const principal = { clientId: "client-1", clientCode: "mj-sandbox", environment: "sandbox", tokenId: "token-1" };
 const base = {
@@ -223,5 +223,54 @@ describe("MJ processing mode orchestration", () => {
     const result = await cancelMjInvoice(cancelled, "Dibatalkan lagi", principal);
     expect(result).toMatchObject({ status: "already_cancelled" });
     expect(mocks.cancelErpSales).not.toHaveBeenCalled();
+  });
+
+  it("records print event and updates invoice print metadata and audit log", async () => {
+    const invoice = row("slm_process_aj", {
+      integrationMetadata: {
+        payload: base,
+        client_code: "mj-sandbox",
+        environment: "sandbox"
+      }
+    });
+
+    const result = await recordMjPrintEvent(
+      invoice,
+      {
+        printed_at: "2026-08-20T15:30:00.000Z",
+        printed_by: "Kasir MJ",
+        printer_name: "Epson LX-310",
+        format: "dot_matrix"
+      },
+      principal
+    );
+
+    expect(result).toMatchObject({
+      status: "recorded",
+      is_printed: true,
+      print_count: 1,
+      printed_at: "2026-08-20T15:30:00.000Z",
+      printed_by: "Kasir MJ"
+    });
+
+    expect(mocks.salesUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "sale-1" },
+      data: expect.objectContaining({
+        integrationMetadata: expect.objectContaining({
+          is_printed: true,
+          print_count: 1,
+          printed_by: "Kasir MJ"
+        })
+      })
+    }));
+
+    expect(mocks.auditLogCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        entityType: "sales",
+        entityId: "sale-1",
+        action: "print",
+        userId: "integration:mj-sandbox"
+      })
+    }));
   });
 });

@@ -232,6 +232,10 @@ export function filterSalesRecordsInMemory(sales: Sale[], filters: SalesRecordFi
 }
 
 function toSale(row: SalesRecordWithItems): Sale {
+  const metadata = row.integrationMetadata && typeof row.integrationMetadata === "object"
+    ? (row.integrationMetadata as Record<string, unknown>)
+    : {};
+
   return {
     id: row.id,
     saleDate: jakartaDateKey(row.saleDate),
@@ -291,6 +295,10 @@ function toSale(row: SalesRecordWithItems): Sale {
     erpCustomerId: row.erpCustomerId || undefined,
     customerSyncStatus: row.customerSyncStatus,
     customerSyncError: row.customerSyncError || undefined,
+    isPrinted: Boolean(metadata.is_printed),
+    printedAt: metadata.printed_at ? String(metadata.printed_at) : undefined,
+    printedBy: metadata.printed_by ? String(metadata.printed_by) : undefined,
+    printCount: typeof metadata.print_count === "number" ? metadata.print_count : undefined,
     createdByUserId: row.createdByUserId,
     createdByNameSnapshot: row.createdByNameSnapshot,
     createdByRoleSnapshot: row.createdByRoleSnapshot,

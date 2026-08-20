@@ -20,11 +20,13 @@ Lookup mengembalikan `processing_mode`, identitas AJ, `status.customer`, `status
 
 Kegagalan AJ hanya mungkin pada `slm_process_aj` dan menghasilkan `502 AJ_UPSTREAM_ERROR` atau `504 AJ_TIMEOUT` dengan `retryable=true`. Request jaringan AJ memiliki timeout 12 detik dan tidak dijalankan di dalam transaksi database.
 
-## Payment dan cancel
+## Payment, cancel, dan sinkronisasi cetak (Print Events)
 
 `POST /api/integrations/mj/invoices/{external_reference}/payments` selalu idempotent berdasarkan `payment_reference`. Overpayment ditolak. Hanya invoice `slm_process_aj` yang meneruskan payment ke AJ.
 
 `POST /api/integrations/mj/invoices/{external_reference}/cancel` menerima `{ "reason": "..." }`. Untuk `slm_process_aj`, SLM meneruskan reversal faktur, stok, dan pembayaran ke AJ ERP. Pada pembukuan SLM, invoice dan Tempo diubah menjadi `cancelled`, dan pembayaran Tempo dibalikkan (`TempoPaymentReversal`). Attempt audit menyimpan client integrasi dan alasan. Invoice MJ tetap tidak dapat diedit atau dibatalkan melalui UI penjualan umum.
+
+`POST /api/integrations/mj/invoices/{external_reference}/print-events` menerima payload event pencetakan dari MJ (misal: `{ "printed_at": "...", "printed_by": "Kasir MJ", "printer_name": "...", "format": "dot_matrix" }`). SLM mencatat status cetak (`is_printed`, `printed_at`, `printed_by`, `print_count`) ke dalam metadata transaksi dan membuat log audit. Riwayat transaksi dan detail penjualan di SLM menampilkan indikator bahwa invoice telah dicetak.
 
 Untuk transaksi koreksi baru, sistem pengirim (MJ) wajib menggunakan `external_reference` baru (unik) agar tidak terjadi konflik referensi dengan transaksi lama yang telah dibatalkan.
 

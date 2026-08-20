@@ -66,18 +66,19 @@ export function PrintPreviewPage({
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize =
-    kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
-  const sheetSize =
-    kind === "sales" ? "h-[12.2cm] w-[14cm]" : "h-[14cm] w-[12.2cm]";
+  const paperSize = "12.5cm 14cm";
+  const sheetSize = "w-[12.5cm] min-h-[14cm]";
   const pages = splitPrintPreviewPages(text);
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-5 text-slate-950 sm:px-6 print:bg-white print:p-0">
       <style>{`
         @media print {
-          body {
+          html, body {
             background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 12.5cm !important;
           }
 
           .print-actions {
@@ -85,19 +86,28 @@ export function PrintPreviewPage({
           }
         
           @page {
-            margin: 0;
+            margin: 0 !important;
             size: ${paperSize};
           }
 
           .print-sheet {
             box-shadow: none !important;
-            min-height: 14cm !important;
+            width: 12.5cm !important;
+            height: 14cm !important;
             max-height: 14cm !important;
+            margin: 0 !important;
+            padding: 0.3cm 0.4cm 0 0.4cm !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: always;
+            break-after: page;
           }
 
-          .print-page-break {
-            break-after: page;
-            page-break-after: always;
+          .print-sheet:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
           }
         }
       `}</style>
@@ -142,7 +152,7 @@ export function PrintPreviewPage({
           <b className="text-slate-950">{title}</b>
           <span className="ml-2">{id}</span>
           <span className="ml-2 text-xs text-slate-500">
-            .prn untuk raw dot matrix printer
+            .prn untuk raw dot matrix printer (12.5 x 14 cm)
           </span>
         </div>
       </div>
@@ -159,9 +169,9 @@ export function PrintPreviewPage({
           {pages.map((page, index) => (
             <div
               key={index}
-              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-auto px-[0.4cm] pb-[0.4cm] pl-[4.2cm] pt-[1cm] print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
+              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-hidden px-[0.4cm] pb-[0.2cm] pt-[0.3cm] print:max-w-none print:overflow-hidden ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
-              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[12px] font-semibold leading-[1.35] text-slate-950">
+              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[11px] font-semibold leading-[1.25] text-slate-950">
                 {page}
               </pre>
             </div>

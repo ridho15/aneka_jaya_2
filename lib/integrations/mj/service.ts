@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { immutablePayloadHash } from "./hash";
 import { MjIntegrationError } from "./errors";
 import type { MjIntegrationPrincipal } from "./auth";
-import type { MjAjInvoiceInput, MjInvoiceInput, MjProcessingMode, MjTempoPaymentInput } from "./validation";
+import type { MjAjInvoiceInput, MjInvoiceInput, MjPrintEventInput, MjProcessingMode, MjTempoPaymentInput } from "./validation";
 import { cancelMjErpSales, createMjErpCustomer, createMjErpInvoice, createMjPayment, deterministicReference, releaseMjStock } from "./erp";
 import type { SalesCancellationResult } from "@/lib/api/salesCancellations";
 
@@ -320,8 +320,34 @@ export async function createOrResumeMjInvoice(input: MjInvoiceInput, principal: 
 }
 
 export async function findMjInvoice(externalReference: string) {
-  const row = await prisma.salesRecord.findUnique({ where: { source_externalReference: { source: "MJ", externalReference } }, include: includeInvoice });
-  if (!row) throw new MjIntegrationError("VALIDATION_FAILED", "Invoice MJ tidak ditemukan.", 404);
+  const decoded = decodeURIComponent(externalReference);
+  let row = await prisma.salesRecord.findUnique({
+    where: { source_externalReference: { source: "MJ", externalReference: decoded } },
+    include: includeInvoice
+  });
+  if (!row && decoded !== externalReference) {
+    row = await prisma.salesRecord.findUnique({
+      where: { source_externalReference: { source: "MJ", externalReference } },
+      include: includeInvoice
+    });
+  }
+  if (!row) {
+    row = await prisma.salesRecord.findFirst({
+      where: {
+        source: "MJ",
+        OR: [
+          { externalReference: decoded },
+          { externalReference },
+          { transactionNumber: decoded },
+          { transactionNumber: externalReference },
+          { id: decoded },
+          { id: externalReference }
+        ]
+      },
+      include: includeInvoice
+    });
+  }
+  if (!row) throw new MjIntegrationError("VALIDATION_FAILED", `Invoice MJ ${externalReference} tidak ditemukan.`, 404);
   return row;
 }
 
@@ -329,12 +355,23 @@ export function invoiceSnapshot(row: InvoiceRow) {
   const receivableRemaining = Number(row.total) - Number(row.initialPaymentAmount || 0);
   const external = encodeURIComponent(row.externalReference || "");
   const lastFailure = [...row.integrationAttempts].reverse().find((item) => item.status === "failed");
+  const metadata = row.integrationMetadata && typeof row.integrationMetadata === "object"
+    ? (row.integrationMetadata as Record<string, unknown>)
+    : {};
   return {
     slm_id: row.id, source: row.source, processing_mode: processingMode(row), external_reference: row.externalReference,
     invoice_reference: row.transactionNumber, invoice_date: row.saleDate.toISOString().slice(0, 10), total: Number(row.total),
     customer: { name: row.customerName, external_id: row.externalCustomerId, aj_customer_id: row.erpCustomerId },
     aj_invoice_id: row.erpInvoiceId, aj_invoice_number: row.erpInvoiceNumber,
-    status: { customer: row.customerSyncStatus, invoice: row.syncStatus, stock_release: row.stockReleaseStatus, aj_payment: row.erpPaymentStatus },
+    status: {
+      customer: row.customerSyncStatus,
+      invoice: row.syncStatus,
+      stock_release: row.stockReleaseStatus,
+      aj_payment: row.erpPaymentStatus,
+      is_printed: Boolean(metadata.is_printed),
+      printed_at: metadata.printed_at ? String(metadata.printed_at) : null,
+      print_count: typeof metadata.print_count === "number" ? metadata.print_count : metadata.is_printed ? 1 : 0
+    },
     receivable_status: row.paymentMethod === "Tempo" ? (Number(row.initialPaymentAmount) >= Number(row.total) ? "paid" : Number(row.initialPaymentAmount) > 0 ? "partial_paid" : "open") : "not_applicable",
     remaining_amount: row.paymentMethod === "Tempo" ? Math.max(0, receivableRemaining) : 0,
     last_error: lastFailure ? { stage: lastFailure.stage, code: lastFailure.errorCode, message: lastFailure.errorMessage } : null,
@@ -588,4 +625,85 @@ export async function cancelMjInvoice(row: InvoiceRow, reason: string, principal
 
   const updated = await findMjInvoice(row.externalReference!);
   return { status: "cancelled" as const, invoice: await invoiceSnapshotWithTempo(updated) };
+}
+
+export async function recordMjPrintEvent(
+  row: InvoiceRow,
+  input: MjPrintEventInput,
+  principal: MjIntegrationPrincipal
+) {
+  const existingMetadata = row.integrationMetadata && typeof row.integrationMetadata === "object"
+    ? (row.integrationMetadata as Record<string, unknown>)
+    : {};
+
+  const existingPrintEvents = Array.isArray(existingMetadata.print_events)
+    ? (existingMetadata.print_events as Record<string, unknown>[])
+    : [];
+
+  let printedAt: Date;
+  try {
+    printedAt = input.printed_at ? new Date(input.printed_at) : new Date();
+    if (isNaN(printedAt.getTime())) printedAt = new Date();
+  } catch {
+    printedAt = new Date();
+  }
+
+  const printedBy = input.printed_by || `Integration ${principal.clientCode.toUpperCase()}`;
+  const printCount = (Number(existingMetadata.print_count) || (existingMetadata.is_printed ? 1 : 0) || existingPrintEvents.length || 0) + (input.print_count || 1);
+
+  const newEvent = {
+    id: crypto.randomUUID(),
+    printed_at: printedAt.toISOString(),
+    printed_by: printedBy,
+    printer_name: input.printer_name || null,
+    format: input.format || null,
+    notes: input.notes || null,
+    metadata: input.metadata || null,
+    recorded_at: new Date().toISOString(),
+    client_code: principal.clientCode
+  };
+
+  const updatedMetadata = {
+    ...existingMetadata,
+    is_printed: true,
+    printed_at: printedAt.toISOString(),
+    printed_by: printedBy,
+    print_count: printCount,
+    last_print_event: newEvent,
+    print_events: [...existingPrintEvents, newEvent]
+  };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.salesRecord.update({
+      where: { id: row.id },
+      data: {
+        integrationMetadata: json(updatedMetadata)
+      }
+    });
+
+    await tx.auditLog.create({
+      data: {
+        id: crypto.randomUUID(),
+        entityType: "sales",
+        entityId: row.id,
+        action: "print",
+        beforeValue: json({ is_printed: existingMetadata.is_printed ?? false, print_count: existingMetadata.print_count ?? 0 }),
+        afterValue: json({ is_printed: true, print_count: printCount, printed_at: printedAt.toISOString(), printed_by: printedBy }),
+        userId: `integration:${principal.clientCode}`,
+        userNameSnapshot: `Integration ${principal.clientCode.toUpperCase()}`,
+        userRoleSnapshot: "OWNER",
+        reason: input.notes || `Invoice dicetak oleh ${printedBy}`
+      }
+    });
+  });
+
+  const updated = await findMjInvoice(row.externalReference || row.id);
+  return {
+    status: "recorded" as const,
+    is_printed: true,
+    print_count: printCount,
+    printed_at: printedAt.toISOString(),
+    printed_by: printedBy,
+    invoice: await invoiceSnapshotWithTempo(updated)
+  };
 }

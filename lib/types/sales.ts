@@ -71,4 +71,8 @@ export type Sale = {
   erpCustomerId?: number;
   customerSyncStatus?: string;
   customerSyncError?: string;
+  isPrinted?: boolean;
+  printedAt?: string;
+  printedBy?: string;
+  printCount?: number;
 };

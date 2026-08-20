@@ -55,7 +55,8 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
-          <Link href={`/print/sales/${sale.id}`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Cetak</Link>
+          <Link href={`/print/sales/${sale.id}?auto=1`} target="_blank" className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-xs">Cetak Langsung</Link>
+          <Link href={`/print/sales/${sale.id}`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Preview Cetak</Link>
           {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && !needsCancelAndRecreate && <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
         </div>
       </div>
@@ -73,6 +74,17 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           <Info label="Pengiriman" value={sale.shippingMethod || "—"} />
           <Info label="Pembuat" value={sale.createdByNameSnapshot || "—"} />
           {sale.source === "MJ" && <Info label="Mode Integrasi MJ" value={sale.integrationProcessingMode || "slm_process_aj"} />}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status Cetak</p>
+            <div className="mt-1">
+              {sale.isPrinted ? (
+                <Badge value={`🖨️ Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}`} tone="emerald" />
+              ) : (
+                <Badge value="Belum Dicetak" tone="slate" />
+              )}
+            </div>
+          </div>
+          {sale.printedAt && <Info label="Waktu Cetak Terakhir" value={`${formatJakartaDateTime(sale.printedAt)}${sale.printedBy ? ` (${sale.printedBy})` : ""}`} />}
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Approval</p><div className="mt-1"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /></div></div>
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Invoice ERP</p><div className="mt-1"><Badge value={sale.syncStatus || "local"} tone={statusTone(sale.syncStatus || "local")} /></div></div>
           <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Release Stok</p><div className="mt-1">{sale.syncTarget === "erp" ? <Badge value={sale.stockReleaseStatus || "not_required"} tone={statusTone(sale.stockReleaseStatus || "not_required")} /> : <span className="text-sm text-slate-500">—</span>}</div></div>

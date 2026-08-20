@@ -94,10 +94,11 @@ function MoreActionsMenu({ sale, mobile = false }: { sale: Sale; mobile?: boolea
       <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} className={mobile ? "w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50" : "inline-flex h-9 items-center gap-1 rounded-md border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"}>Lainnya <span aria-hidden="true">⋮</span></button>
       {open && (
         <div role="menu" className={`absolute z-30 mt-1 min-w-52 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-xl ${mobile ? "right-0 w-full" : "right-0"}`}>
-          <Link role="menuitem" className="block px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50" href={`/print/sales/${sale.id}`}>Cetak transaksi</Link>
-          {canEdit && <Link role="menuitem" className="block px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50" href={`/penjualan/${sale.id}/edit`}>Edit transaksi</Link>}
-          {sale.source !== "MJ" && needsCancelAndRecreate(sale) && <p className="border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800">Transaksi ERP harus menggunakan cancel lalu dibuat kembali.</p>}
-          {sale.source !== "MJ" && <div className="border-t border-slate-100 px-4 py-2.5">
+          <Link role="menuitem" className="block px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50" href={`/print/sales/${sale.id}?auto=1`} target="_blank">Cetak Langsung</Link>
+          <Link role="menuitem" className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" href={`/print/sales/${sale.id}`}>Preview Cetak</Link>
+          {canEdit && <Link role="menuitem" className="block px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50" href={`/penjualan/${sale.id}/edit`}>Edit transaksi</Link>}
+          {sale.source !== "MJ" && needsCancelAndRecreate(sale) && <p className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800">Transaksi ERP harus menggunakan cancel lalu dibuat kembali.</p>}
+          {sale.source !== "MJ" && <div className="border-t border-slate-100 px-4 py-2">
             <TransactionCancelButton id={sale.id} kind="sales" disabled={sale.approvalStatus === "cancelled"} disabledReason="Transaksi sudah dibatalkan." transactionLabel={sale.transactionNumber || sale.customerName} triggerClassName="w-full text-left text-sm font-semibold text-red-700 hover:text-red-800 disabled:cursor-not-allowed disabled:text-slate-400" />
           </div>}
         </div>
@@ -162,7 +163,18 @@ export function SalesHistoryList({ sales, canManage, canViewTransactionNumber }:
                 </div>
                 <p className="shrink-0 text-right font-bold text-slate-900">{rupiah(sale.total)}</p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">{sale.source === "MJ" && <Badge value={`MJ · ${sale.integrationProcessingMode || "slm_process_aj"}`} tone="amber" />}<Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /><Badge value={`Invoice ${sale.syncStatus || "local"}`} tone={statusTone(sale.syncStatus || "local")} />{sale.syncTarget === "erp" && <Badge value={`Stok ${sale.stockReleaseStatus || "not_required"}`} tone={statusTone(sale.stockReleaseStatus || "not_required")} />}{sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {sale.source === "MJ" && <Badge value={`MJ · ${sale.integrationProcessingMode || "slm_process_aj"}`} tone="amber" />}
+                {sale.isPrinted ? (
+                  <Badge value={`🖨️ Tercetak${sale.printCount && sale.printCount > 1 ? ` (${sale.printCount}x)` : ""}`} tone="emerald" />
+                ) : sale.source === "MJ" ? (
+                  <Badge value="Belum Cetak" tone="slate" />
+                ) : null}
+                <Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} />
+                <Badge value={`Invoice ${sale.syncStatus || "local"}`} tone={statusTone(sale.syncStatus || "local")} />
+                {sale.syncTarget === "erp" && <Badge value={`Stok ${sale.stockReleaseStatus || "not_required"}`} tone={statusTone(sale.stockReleaseStatus || "not_required")} />}
+                {sale.syncTarget === "erp" && <Badge value={`Payment ${sale.erpPaymentStatus || "not_required"}`} tone={statusTone(sale.erpPaymentStatus || "not_required")} />}
+              </div>
               <dl className="mt-3 grid gap-2 text-sm text-slate-600">{canViewTransactionNumber && <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">No Transaksi</dt><dd className="mt-0.5 font-mono text-xs">{sale.transactionNumber || sale.id}</dd></div>}<div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Lokasi</dt><dd className="mt-0.5">{sale.customerLocation || "—"}</dd></div><div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pembuat</dt><dd className="mt-0.5">{sale.createdByNameSnapshot || "—"}</dd></div></dl>
               <div className="mt-4"><ExpandButton sale={sale} expanded={expanded} onToggle={() => toggle(sale.id)} /></div>
               {expanded && <SalesItemsDetail sale={sale} className="mt-3" />}
@@ -208,6 +220,15 @@ export function SalesHistoryList({ sales, canManage, canViewTransactionNumber }:
                       <div className="flex items-center gap-1.5 font-bold text-slate-900">
                         {sale.customerName}
                         {isMj && <span className="inline-flex items-center rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">MJ</span>}
+                        {sale.isPrinted ? (
+                          <span title={`Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}${sale.printedAt ? ` pada ${sale.printedAt}` : ""}`} className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 shadow-xs">
+                            🖨️ Cetak
+                          </span>
+                        ) : isMj ? (
+                          <span title="Belum dicetak" className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                            Belum Cetak
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mt-0.5 text-xs text-slate-500">{sale.customerLocation || "—"}</p>
                     </td>
