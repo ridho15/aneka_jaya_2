@@ -3,7 +3,7 @@ import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
 import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
 
-export const DOT_MATRIX_WIDTH = 30;
+export const DOT_MATRIX_WIDTH = 44;
 const LEFT_HEADER_WIDTH = 21;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
 const SIGNATURE_WIDTH = 24;
