@@ -7,8 +7,10 @@ const mocks = vi.hoisted(() => ({
   salesFind: vi.fn(), salesCreate: vi.fn(), salesUpdate: vi.fn(), salesUpdateMany: vi.fn(),
   tipeFind: vi.fn(), rekeningFind: vi.fn(), attemptCount: vi.fn(), attemptCreate: vi.fn(),
   tempoReceivableFind: vi.fn(), tempoReceivableUpdate: vi.fn(), tempoReceivableUpdateMany: vi.fn(), tempoPaymentFind: vi.fn(), tempoPaymentCreate: vi.fn(), tempoPaymentUpdate: vi.fn(),
+  tempoPaymentReversalUpsert: vi.fn(), auditLogCreate: vi.fn(),
   customerMappingFind: vi.fn(), customerMappingUpsert: vi.fn(),
-  createCustomer: vi.fn(), createInvoice: vi.fn(), releaseStock: vi.fn(), createPayment: vi.fn()
+  createCustomer: vi.fn(), createInvoice: vi.fn(), releaseStock: vi.fn(), createPayment: vi.fn(),
+  cancelErpSales: vi.fn()
 }));
 
 vi.mock("@/lib/db/prisma", () => {
@@ -16,7 +18,9 @@ vi.mock("@/lib/db/prisma", () => {
     salesRecord: { create: mocks.salesCreate, update: mocks.salesUpdate },
     tempoReceivable: { create: vi.fn(), findUnique: mocks.tempoReceivableFind, update: mocks.tempoReceivableUpdate, updateMany: mocks.tempoReceivableUpdateMany },
     tempoPayment: { create: mocks.tempoPaymentCreate, update: mocks.tempoPaymentUpdate },
-    integrationStageAttempt: { create: mocks.attemptCreate }
+    tempoPaymentReversal: { upsert: mocks.tempoPaymentReversalUpsert },
+    auditLog: { create: mocks.auditLogCreate },
+    integrationStageAttempt: { create: mocks.attemptCreate, count: mocks.attemptCount }
   };
   return { prisma: {
     salesRecord: { findUnique: mocks.salesFind, update: mocks.salesUpdate, updateMany: mocks.salesUpdateMany },
@@ -24,6 +28,8 @@ vi.mock("@/lib/db/prisma", () => {
     integrationStageAttempt: { count: mocks.attemptCount, create: mocks.attemptCreate, update: vi.fn() },
     tempoReceivable: { findUnique: mocks.tempoReceivableFind, update: mocks.tempoReceivableUpdate, updateMany: mocks.tempoReceivableUpdateMany },
     tempoPayment: { findUnique: mocks.tempoPaymentFind, create: mocks.tempoPaymentCreate, update: mocks.tempoPaymentUpdate, updateMany: vi.fn() },
+    tempoPaymentReversal: { upsert: mocks.tempoPaymentReversalUpsert },
+    auditLog: { create: mocks.auditLogCreate },
     integrationCustomerMapping: { findUnique: mocks.customerMappingFind, upsert: mocks.customerMappingUpsert },
     $transaction: vi.fn(async (input: unknown) => typeof input === "function" ? await (input as (client: typeof tx) => unknown)(tx) : await Promise.all(input as Promise<unknown>[]))
   } };
@@ -34,6 +40,7 @@ vi.mock("@/lib/integrations/mj/erp", () => ({
   createMjErpInvoice: mocks.createInvoice,
   releaseMjStock: mocks.releaseStock,
   createMjPayment: mocks.createPayment,
+  cancelMjErpSales: mocks.cancelErpSales,
   deterministicReference: (kind: string, external: string, suffix = "") => `${kind}-${external}-${suffix}`
 }));
 
@@ -137,15 +144,84 @@ describe("MJ processing mode orchestration", () => {
     expect(mocks.createPayment).not.toHaveBeenCalled();
   });
 
-  it("allows local cancel only for record_only", async () => {
+  it("cancels record_only locally", async () => {
     const local = row("record_only");
     mocks.attemptCount.mockResolvedValue(0);
     mocks.salesUpdate.mockResolvedValue({});
-    mocks.tempoReceivableUpdateMany.mockResolvedValue({ count: 1 });
-    mocks.attemptCreate.mockResolvedValue({});
+    mocks.tempoReceivableFind.mockResolvedValue(null);
     mocks.salesFind.mockResolvedValue(row("record_only", { approvalStatus: "cancelled" }));
 
     await expect(cancelMjInvoice(local, "Dibatalkan MJ", principal)).resolves.toMatchObject({ status: "cancelled" });
-    await expect(cancelMjInvoice(row("aj_already_processed"), "Dibatalkan MJ", principal)).rejects.toMatchObject({ code: "AJ_CONTRACT_PENDING", status: 501 });
+    expect(mocks.cancelErpSales).not.toHaveBeenCalled();
+  });
+
+  it("cancels aj_already_processed locally without calling ERP", async () => {
+    const ajProcessed = row("aj_already_processed");
+    mocks.attemptCount.mockResolvedValue(0);
+    mocks.salesUpdate.mockResolvedValue({});
+    mocks.tempoReceivableFind.mockResolvedValue(null);
+    mocks.salesFind.mockResolvedValue(row("aj_already_processed", { approvalStatus: "cancelled" }));
+
+    await expect(cancelMjInvoice(ajProcessed, "Dibatalkan MJ", principal)).resolves.toMatchObject({ status: "cancelled" });
+    expect(mocks.cancelErpSales).not.toHaveBeenCalled();
+  });
+
+  it("calls cancelMjErpSales for synced slm_process_aj invoice and reverses tempo payments", async () => {
+    const ajInvoice = row("slm_process_aj", {
+      syncStatus: "synced",
+      erpInvoiceId: 44,
+      erpInvoiceNumber: "INV-MJ-1",
+      stockReleaseReference: "REL-1",
+      erpPaymentReference: "PAY-1"
+    });
+    mocks.attemptCount.mockResolvedValue(0);
+    mocks.cancelErpSales.mockResolvedValue({
+      success: true,
+      data: {
+        status: "cancelled",
+        stockReversalStatus: "reversed",
+        paymentReversalStatus: "reversed",
+        reversalReference: "REV-REF-1"
+      }
+    });
+    mocks.salesUpdate.mockResolvedValue({});
+    mocks.tempoReceivableFind.mockResolvedValue({
+      id: "tempo-1",
+      salesId: "sale-1",
+      status: "open",
+      payments: [{ id: "pay-1", amountPaid: 50_000, erpPaymentStatus: "paid" }]
+    });
+    mocks.tempoReceivableUpdate.mockResolvedValue({});
+    mocks.tempoPaymentReversalUpsert.mockResolvedValue({});
+    mocks.auditLogCreate.mockResolvedValue({});
+    mocks.salesFind.mockResolvedValue(row("slm_process_aj", { approvalStatus: "cancelled", syncStatus: "synced" }));
+
+    const result = await cancelMjInvoice(ajInvoice, "Dibatalkan MJ", principal);
+    expect(result).toMatchObject({ status: "cancelled" });
+    expect(mocks.cancelErpSales).toHaveBeenCalledWith(expect.objectContaining({
+      externalReference: "INV-MJ-1",
+      saleId: "sale-1",
+      invoiceId: 44,
+      invoiceNumber: "INV-MJ-1",
+      stockReleaseReference: "REL-1",
+      paymentReference: "PAY-1",
+      reason: "Dibatalkan MJ"
+    }));
+    expect(mocks.tempoPaymentReversalUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "TPR-CANCEL-pay-1" },
+      create: expect.objectContaining({
+        tempoPaymentId: "pay-1",
+        amount: 50_000,
+        reason: "Dibatalkan MJ",
+        erpStatus: "reversed"
+      })
+    }));
+  });
+
+  it("returns already_cancelled when invoice is already cancelled", async () => {
+    const cancelled = row("slm_process_aj", { approvalStatus: "cancelled" });
+    const result = await cancelMjInvoice(cancelled, "Dibatalkan lagi", principal);
+    expect(result).toMatchObject({ status: "already_cancelled" });
+    expect(mocks.cancelErpSales).not.toHaveBeenCalled();
   });
 });

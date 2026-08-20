@@ -5,7 +5,8 @@ import { immutablePayloadHash } from "./hash";
 import { MjIntegrationError } from "./errors";
 import type { MjIntegrationPrincipal } from "./auth";
 import type { MjAjInvoiceInput, MjInvoiceInput, MjProcessingMode, MjTempoPaymentInput } from "./validation";
-import { createMjErpCustomer, createMjErpInvoice, createMjPayment, deterministicReference, releaseMjStock } from "./erp";
+import { cancelMjErpSales, createMjErpCustomer, createMjErpInvoice, createMjPayment, deterministicReference, releaseMjStock } from "./erp";
+import type { SalesCancellationResult } from "@/lib/api/salesCancellations";
 
 const includeInvoice = { items: { orderBy: { sortOrder: "asc" as const } }, integrationAttempts: { orderBy: { startedAt: "asc" as const } } };
 type InvoiceRow = Prisma.SalesRecordGetPayload<{ include: typeof includeInvoice }>;
@@ -459,18 +460,132 @@ export async function recordMjTempoPayment(row: InvoiceRow, input: MjTempoPaymen
 }
 
 export async function cancelMjInvoice(row: InvoiceRow, reason: string, principal: MjIntegrationPrincipal) {
-  if (processingMode(row) !== "record_only") throw new MjIntegrationError("AJ_CONTRACT_PENDING", "Cancel hanya tersedia untuk record_only; invoice yang terkait AJ memerlukan kontrak reversal AJ.", 501);
   if (row.approvalStatus === "cancelled") return { status: "already_cancelled" as const, invoice: await invoiceSnapshotWithTempo(row) };
-  const attemptNumber = await prisma.integrationStageAttempt.count({ where: { salesRecordId: row.id, stage: "cancel" } }) + 1;
+
+  let erpCancellation: SalesCancellationResult | undefined;
+  const requiresErpCancellation = processingMode(row) === "slm_process_aj" && row.syncStatus === "synced";
+
+  if (requiresErpCancellation) {
+    const result = await attempt(row, "cancel", () => cancelMjErpSales({
+      externalReference: row.externalReference!,
+      saleId: row.id,
+      invoiceId: row.erpInvoiceId || undefined,
+      invoiceNumber: row.erpInvoiceNumber || row.transactionNumber || undefined,
+      stockReleaseReference: row.stockReleaseReference || undefined,
+      paymentReference: row.erpPaymentReference || undefined,
+      cancelDate: new Date().toISOString().slice(0, 10),
+      reason,
+      requestedBy: {
+        id: principal.clientId,
+        name: `Integration ${principal.clientCode.toUpperCase()}`,
+        role: "INTEGRATION"
+      }
+    }));
+    if (!result.success) {
+      await upstreamError(result, row);
+    }
+    erpCancellation = result.data as SalesCancellationResult | undefined;
+  }
+
   await prisma.$transaction(async (tx) => {
-    await tx.salesRecord.update({ where: { id: row.id }, data: { approvalStatus: "cancelled" } });
-    await tx.tempoReceivable.updateMany({ where: { salesId: row.id, status: { notIn: ["cancelled", "written_off"] } }, data: { status: "cancelled", updatedAt: new Date() } });
-    await tx.integrationStageAttempt.create({ data: {
-      id: crypto.randomUUID(), salesRecordId: row.id, stage: "cancel", attemptNumber, status: "succeeded",
-      response: json({ reason, client_id: principal.clientId, client_code: principal.clientCode, actor: "integration:mj" }),
-      startedAt: new Date(), completedAt: new Date()
-    } });
+    await tx.salesRecord.update({
+      where: { id: row.id },
+      data: {
+        approvalStatus: "cancelled",
+        stockReleaseStatus: erpCancellation?.stockReversalStatus === "reversed" ? "reversed" : row.stockReleaseStatus,
+        erpPaymentStatus: erpCancellation?.paymentReversalStatus === "reversed" ? "reversed" : erpCancellation?.paymentReversalStatus === "not_found" ? "not_required" : row.erpPaymentStatus,
+        erpPaymentError: erpCancellation?.paymentReversalStatus === "not_found" ? null : row.erpPaymentError
+      }
+    });
+
+    const tempo = await tx.tempoReceivable.findUnique({ where: { salesId: row.id }, include: { payments: true } });
+    if (tempo && !["cancelled", "written_off"].includes(tempo.status)) {
+      await tx.tempoReceivable.update({ where: { id: tempo.id }, data: { status: "cancelled", updatedAt: new Date() } });
+      for (const payment of tempo.payments) {
+        await tx.tempoPaymentReversal.upsert({
+          where: { id: `TPR-CANCEL-${payment.id}` },
+          create: {
+            id: `TPR-CANCEL-${payment.id}`,
+            tempoPaymentId: payment.id,
+            reversalDate: new Date(),
+            amount: payment.amountPaid,
+            reason,
+            erpStatus: erpCancellation?.paymentReversalStatus || (payment.erpPaymentStatus === "not_required" ? "not_required" : "reversed"),
+            erpReference: erpCancellation?.reversalReference,
+            createdByUserId: `integration:${principal.clientCode}`,
+            createdByNameSnapshot: `Integration ${principal.clientCode.toUpperCase()}`,
+            createdAt: new Date()
+          },
+          update: {}
+        });
+        await tx.auditLog.create({
+          data: {
+            id: crypto.randomUUID(),
+            entityType: "tempo_payment",
+            entityId: payment.id,
+            action: "reverse",
+            beforeValue: json(payment),
+            afterValue: json({
+              reversalId: `TPR-CANCEL-${payment.id}`,
+              amount: Number(payment.amountPaid),
+              erpStatus: erpCancellation?.paymentReversalStatus || "not_required",
+              erpReference: erpCancellation?.reversalReference
+            }),
+            userId: `integration:${principal.clientCode}`,
+            userNameSnapshot: `Integration ${principal.clientCode.toUpperCase()}`,
+            userRoleSnapshot: "OWNER",
+            reason
+          }
+        });
+      }
+      await tx.auditLog.create({
+        data: {
+          id: crypto.randomUUID(),
+          entityType: "tempo",
+          entityId: tempo.id,
+          action: "cancel",
+          beforeValue: json(tempo),
+          afterValue: json({ status: "cancelled", reversals: tempo.payments.map((payment) => `TPR-CANCEL-${payment.id}`) }),
+          userId: `integration:${principal.clientCode}`,
+          userNameSnapshot: `Integration ${principal.clientCode.toUpperCase()}`,
+          userRoleSnapshot: "OWNER",
+          reason
+        }
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        id: crypto.randomUUID(),
+        entityType: "sales",
+        entityId: row.id,
+        action: "cancel",
+        beforeValue: json(row),
+        afterValue: json(erpCancellation ? { approvalStatus: "cancelled", erpCancellation } : { approvalStatus: "cancelled" }),
+        userId: `integration:${principal.clientCode}`,
+        userNameSnapshot: `Integration ${principal.clientCode.toUpperCase()}`,
+        userRoleSnapshot: "OWNER",
+        reason
+      }
+    });
+
+    if (!requiresErpCancellation) {
+      const attemptNumber = await tx.integrationStageAttempt.count({ where: { salesRecordId: row.id, stage: "cancel" } }) + 1;
+      await tx.integrationStageAttempt.create({
+        data: {
+          id: crypto.randomUUID(),
+          salesRecordId: row.id,
+          stage: "cancel",
+          attemptNumber,
+          status: "succeeded",
+          response: json({ reason, client_id: principal.clientId, client_code: principal.clientCode, actor: `integration:${principal.clientCode}` }),
+          startedAt: new Date(),
+          completedAt: new Date()
+        }
+      });
+    }
   });
+
   const updated = await findMjInvoice(row.externalReference!);
   return { status: "cancelled" as const, invoice: await invoiceSnapshotWithTempo(updated) };
 }

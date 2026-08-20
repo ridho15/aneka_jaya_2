@@ -602,12 +602,12 @@ paths:
   /api/integrations/mj/invoices/{external_reference}/cancel:
     post:
       summary: Cancel invoice MJ sesuai processing mode.
-      description: record_only dibatalkan lokal beserta Tempo; slm_process_aj dan aj_already_processed mengembalikan 501 AJ_CONTRACT_PENDING tanpa perubahan.
+      description: slm_process_aj meneruskan reversal ke AJ ERP dan membatalkan pembukuan lokal; record_only dan aj_already_processed dibatalkan secara lokal di SLM beserta pembalikan pembayaran Tempo.
       security: [{ mjBearer: [] }]
       parameters:
         - { in: path, name: external_reference, required: true, schema: { type: string } }
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string, minLength: 3 } } } } } }
-      responses: { "200": { description: record_only cancelled atau already_cancelled. }, "400": { description: VALIDATION_FAILED. }, "501": { description: AJ_CONTRACT_PENDING. } }
+      responses: { "200": { description: Invoice cancelled atau already_cancelled. }, "400": { description: VALIDATION_FAILED. }, "502": { description: AJ_UPSTREAM_ERROR. }, "504": { description: AJ_TIMEOUT. } }
   /api/integrations/mj/invoices/{external_reference}/print:
     get:
       summary: Cetak snapshot invoice MJ sebagai text atau PRN.

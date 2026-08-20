@@ -6,9 +6,9 @@ Semua create invoice wajib mengirim `processing_mode`. Token Bearer hanya dipaka
 
 | Mode | Perilaku SLM | Identifier item | Payment Tempo lanjutan | Cancel |
 |---|---|---|---|---|
-| `slm_process_aj` | Customer → invoice → release stok → payment AJ | Produk dan gudang AJ wajib | Diteruskan ke AJ | `501 AJ_CONTRACT_PENDING` |
-| `aj_already_processed` | Hanya menyimpan snapshot; tidak memanggil AJ | Produk dan gudang AJ wajib | Lokal SLM saja | `501 AJ_CONTRACT_PENDING` |
-| `record_only` | Hanya menyimpan snapshot non-AJ | `product_reference` dan `product_name` wajib; seluruh ID AJ opsional | Lokal SLM saja | Cancel lokal diizinkan |
+| `slm_process_aj` | Customer → invoice → release stok → payment AJ | Produk dan gudang AJ wajib | Diteruskan ke AJ | Reversal otomatis ke AJ & pembukuan SLM |
+| `aj_already_processed` | Hanya menyimpan snapshot; tidak memanggil AJ | Produk dan gudang AJ wajib | Lokal SLM saja | Cancel lokal SLM |
+| `record_only` | Hanya menyimpan snapshot non-AJ | `product_reference` dan `product_name` wajib; seluruh ID AJ opsional | Lokal SLM saja | Cancel lokal SLM |
 
 Untuk `aj_already_processed`, `external_reference`, `invoice_reference`, dan `aj_invoice_number` wajib sama. `aj_customer_id` wajib dan `aj_invoice_id` opsional. Rekening manual `record_only` memakai `account_reference` dan `name`; COA AJ tidak diperlukan.
 
@@ -24,7 +24,9 @@ Kegagalan AJ hanya mungkin pada `slm_process_aj` dan menghasilkan `502 AJ_UPSTRE
 
 `POST /api/integrations/mj/invoices/{external_reference}/payments` selalu idempotent berdasarkan `payment_reference`. Overpayment ditolak. Hanya invoice `slm_process_aj` yang meneruskan payment ke AJ.
 
-`POST /api/integrations/mj/invoices/{external_reference}/cancel` menerima `{ "reason": "..." }`. Hanya `record_only` yang mengubah invoice dan Tempo lokal menjadi `cancelled`; attempt audit menyimpan client integrasi dan alasan. Invoice MJ tetap tidak dapat diedit atau dibatalkan melalui UI penjualan umum.
+`POST /api/integrations/mj/invoices/{external_reference}/cancel` menerima `{ "reason": "..." }`. Untuk `slm_process_aj`, SLM meneruskan reversal faktur, stok, dan pembayaran ke AJ ERP. Pada pembukuan SLM, invoice dan Tempo diubah menjadi `cancelled`, dan pembayaran Tempo dibalikkan (`TempoPaymentReversal`). Attempt audit menyimpan client integrasi dan alasan. Invoice MJ tetap tidak dapat diedit atau dibatalkan melalui UI penjualan umum.
+
+Untuk transaksi koreksi baru, sistem pengirim (MJ) wajib menggunakan `external_reference` baru (unik) agar tidak terjadi konflik referensi dengan transaksi lama yang telah dibatalkan.
 
 ## Deployment
 

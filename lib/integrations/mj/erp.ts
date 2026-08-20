@@ -4,6 +4,7 @@ import { listErpPaginated } from "@/lib/api/pagination";
 import { erpInvoiceIdentityFrom, erpReferenceFrom } from "@/lib/api/sales";
 import { releaseSaleStock } from "@/lib/api/stockReleases";
 import { createErpSalesPayment } from "@/lib/api/salesPayments";
+import { cancelErpSales } from "@/lib/api/salesCancellations";
 import type { ApiResponse } from "@/lib/types/api";
 import type { MjAjInvoiceInput } from "./validation";
 
@@ -59,8 +60,8 @@ export async function createMjErpCustomer(input: { externalId: string; name: str
   return { success: true, data: { id, code, name: input.name, address: input.address }, details: response.details };
 }
 
-export function deterministicReference(kind: "invoice" | "payment", externalReference: string, suffix = "") {
-  const prefix = kind === "invoice" ? "MJ-INVOICE" : "MJ-PAY";
+export function deterministicReference(kind: "invoice" | "payment" | "cancel", externalReference: string, suffix = "") {
+  const prefix = kind === "invoice" ? "MJ-INVOICE" : kind === "payment" ? "MJ-PAY" : "MJ-CANCEL";
   return `${prefix}-${externalReference}${suffix ? `-${suffix}` : ""}`.replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 100);
 }
 
@@ -99,4 +100,29 @@ export async function releaseMjStock(input: MjAjInvoiceInput, saleId: string, er
 
 export async function createMjPayment(input: { reference: string; invoiceId: number; customerId: number; invoiceNumber?: string; paymentDate: string; coaReference: string; method: string; amount: number; notes?: string }) {
   return createErpSalesPayment({ erpReference: input.reference, invoiceId: input.invoiceId, customerId: input.customerId, paymentDate: input.paymentDate, paymentAccountCode: input.coaReference, paymentMethod: input.method, amount: input.amount, notes: input.notes });
+}
+
+export async function cancelMjErpSales(input: {
+  externalReference: string;
+  saleId: string;
+  invoiceId?: number;
+  invoiceNumber?: string;
+  stockReleaseReference?: string;
+  paymentReference?: string;
+  cancelDate: string;
+  reason: string;
+  requestedBy: { id: string; name: string; role: string };
+}) {
+  const erpReference = deterministicReference("cancel", input.externalReference);
+  return cancelErpSales({
+    erpReference,
+    saleReference: input.saleId,
+    invoiceId: input.invoiceId,
+    sourceNumber: input.invoiceNumber,
+    stockReleaseReference: input.stockReleaseReference,
+    paymentReference: input.paymentReference,
+    cancelDate: input.cancelDate,
+    reason: input.reason,
+    requestedBy: input.requestedBy
+  });
 }
