@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { loadPrintPreviewText, printPreviewEndpoint, printPreviewListPath, splitPrintPreviewPages, type PrintPreviewKind } from "@/lib/print/preview";
+import {
+  loadPrintPreviewText,
+  printPreviewEndpoint,
+  printPreviewListPath,
+  splitPrintPreviewPages,
+  type PrintPreviewKind,
+} from "@/lib/print/preview";
 
 type Props = {
   kind: PrintPreviewKind;
@@ -11,7 +17,12 @@ type Props = {
   autoPrint?: boolean;
 };
 
-export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) {
+export function PrintPreviewPage({
+  kind,
+  id,
+  title,
+  autoPrint = false,
+}: Props) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -55,8 +66,10 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize = kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
-  const sheetSize = kind === "sales" ? "h-[12.2cm] w-[14cm]" : "h-[14cm] w-[12.2cm]";
+  const paperSize =
+    kind === "sales" ? "14cm 12.2cm landscape" : "12.2cm 14cm portrait";
+  const sheetSize =
+    kind === "sales" ? "h-[12.2cm] w-[14cm]" : "h-[14cm] w-[12.2cm]";
   const pages = splitPrintPreviewPages(text);
 
   return (
@@ -78,6 +91,8 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
 
           .print-sheet {
             box-shadow: none !important;
+            min-height: 14cm !important;
+            max-height: 14cm !important;
           }
 
           .print-page-break {
@@ -126,7 +141,9 @@ export function PrintPreviewPage({ kind, id, title, autoPrint = false }: Props) 
         <div className="ml-0 text-sm text-slate-600 sm:ml-3">
           <b className="text-slate-950">{title}</b>
           <span className="ml-2">{id}</span>
-          <span className="ml-2 text-xs text-slate-500">.prn untuk raw dot matrix printer</span>
+          <span className="ml-2 text-xs text-slate-500">
+            .prn untuk raw dot matrix printer
+          </span>
         </div>
       </div>
 
