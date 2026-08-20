@@ -78,7 +78,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status Cetak</p>
             <div className="mt-1">
               {sale.isPrinted ? (
-                <Badge value={`🖨️ Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}`} tone="emerald" />
+                <Badge value={`🖨️ Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}`} tone="green" />
               ) : (
                 <Badge value="Belum Dicetak" tone="slate" />
               )}

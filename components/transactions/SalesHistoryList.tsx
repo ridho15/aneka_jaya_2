@@ -166,7 +166,7 @@ export function SalesHistoryList({ sales, canManage, canViewTransactionNumber }:
               <div className="mt-3 flex flex-wrap gap-2">
                 {sale.source === "MJ" && <Badge value={`MJ · ${sale.integrationProcessingMode || "slm_process_aj"}`} tone="amber" />}
                 {sale.isPrinted ? (
-                  <Badge value={`🖨️ Tercetak${sale.printCount && sale.printCount > 1 ? ` (${sale.printCount}x)` : ""}`} tone="emerald" />
+                  <Badge value={`🖨️ Tercetak${sale.printCount && sale.printCount > 1 ? ` (${sale.printCount}x)` : ""}`} tone="green" />
                 ) : sale.source === "MJ" ? (
                   <Badge value="Belum Cetak" tone="slate" />
                 ) : null}
