@@ -18,7 +18,7 @@
     "app:check-core-readiness": "node scripts/check-core-readiness.mjs",
     "auth:gateway": "node scripts/auth-gateway.mjs",
     "auth:hash-password": "node scripts/auth-password.mjs",
-    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:deploy": "node scripts/db-migrate-deploy.mjs",
     "db:migrate:json": "node scripts/migrate-json-to-prisma.mjs",
     "db:seed-owner": "node scripts/seed-initial-owner.mjs",
     "db:seed-core": "node scripts/seed-core-master-data.mjs",
