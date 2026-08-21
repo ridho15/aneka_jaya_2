@@ -171,7 +171,7 @@ export function PrintPreviewPage({
               key={index}
               className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-hidden px-[0.4cm] pb-[0.2cm] pt-[0.3cm] print:max-w-none print:overflow-hidden ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
-              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[11px] font-semibold leading-[1.25] text-slate-950">
+              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13px] font-semibold leading-[1.25] text-slate-950">
                 {page}
               </pre>
             </div>
