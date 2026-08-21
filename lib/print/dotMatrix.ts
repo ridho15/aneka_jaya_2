@@ -100,6 +100,36 @@ function getProductCode(productRef: string) {
   return productRef.split(/\s+/)[0] || productRef;
 }
 
+// function itemLines(
+//   index: number,
+//   productRef: string,
+//   quantity: number,
+//   unitPrice: number,
+//   discount = 0,
+//   unit?: string,
+// ) {
+//   const total = quantity * unitPrice - discount;
+//   const code = getProductCode(productRef);
+
+//   const quantityWithUnit = [quantity, unit]
+//     .filter((value) => value !== undefined && value !== null && value !== "")
+//     .join(" ");
+
+//   const firstLine = [
+//     column(index + 1, 3),
+//     column(code, 15),
+//     column(quantityWithUnit, 12, "right"),
+//   ].join("");
+
+//   const secondLine = [
+//     column("", 3),
+//     column(money(unitPrice), 17, "right"),
+//     column(money(total), 24, "right"),
+//   ].join("");
+
+//   return [firstLine, secondLine];
+// }
+
 function itemLines(
   index: number,
   productRef: string,
@@ -110,24 +140,18 @@ function itemLines(
 ) {
   const total = quantity * unitPrice - discount;
   const code = getProductCode(productRef);
-
   const quantityWithUnit = [quantity, unit]
     .filter((value) => value !== undefined && value !== null && value !== "")
     .join(" ");
-
-  const firstLine = [
+  // 3 (NO) + 12 (KODE) + 8 (QTY) + 10 (HARGA) + 11 (TOTAL) = 44 Karakter
+  const line = [
     column(index + 1, 3),
-    column(code, 15),
-    column(quantityWithUnit, 12, "right"),
+    column(code, 12),
+    column(quantityWithUnit, 8, "right"),
+    column(money(unitPrice), 10, "right"),
+    column(money(total), 11, "right"),
   ].join("");
-
-  const secondLine = [
-    column("", 3),
-    column(money(unitPrice), 17, "right"),
-    column(money(total), 24, "right"),
-  ].join("");
-
-  return [firstLine, secondLine];
+  return [line];
 }
 
 function infoHeader(
@@ -162,7 +186,7 @@ export function formatSaleDotMatrix(
       ? "-"
       : sale.transactionNumber || sale.id;
 
-  const ITEM_PER_PAGE = 10;
+  const ITEM_PER_PAGE = 14;
 
   const pages = chunkItems(sale.items, ITEM_PER_PAGE);
 
@@ -190,13 +214,15 @@ export function formatSaleDotMatrix(
 
       line("="),
 
-      `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
+      // `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
 
-      `${column("", 3)}${column(
-        "HARGA",
-        17,
-        "right",
-      )}${column("TOTAL", 24, "right")}`,
+      // `${column("", 3)}${column(
+      //   "HARGA",
+      //   17,
+      //   "right",
+      // )}${column("TOTAL", 24, "right")}`,
+
+      `${column("NO", 3)}${column("KODE", 12)}${column("QTY", 8, "right")}${column("HARGA", 10, "right")}${column("TOTAL", 11, "right")}`,
 
       line("-"),
 
