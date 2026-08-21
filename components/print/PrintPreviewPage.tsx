@@ -78,7 +78,7 @@ export function PrintPreviewPage({
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 15cm !important;
+            width: 13.5cm !important;
           }
 
           .print-actions {
@@ -92,7 +92,7 @@ export function PrintPreviewPage({
 
           .print-sheet {
             box-shadow: none !important;
-            width: 15cm !important;
+            width: 13.5cm !important;
             height: 14cm !important;
             max-height: 14cm !important;
             margin: 0 !important;
