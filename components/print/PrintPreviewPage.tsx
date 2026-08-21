@@ -66,8 +66,8 @@ export function PrintPreviewPage({
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize = "12.5cm 14cm";
-  const sheetSize = "w-[12.5cm] min-h-[14cm]";
+  const paperSize = "15cm 14cm";
+  const sheetSize = "w-[15cm] min-h-[14cm]";
   const pages = splitPrintPreviewPages(text);
 
   return (
