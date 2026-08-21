@@ -3,10 +3,10 @@ import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
 import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
 
-export const DOT_MATRIX_WIDTH = 44;
-const LEFT_HEADER_WIDTH = 21;
+export const DOT_MATRIX_WIDTH = 54;
+const LEFT_HEADER_WIDTH = 26;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
-const SIGNATURE_WIDTH = 24;
+const SIGNATURE_WIDTH = 27;
 const PAGE_LINES = 44;
 
 type TempoPrintInput = {
@@ -117,14 +117,14 @@ function itemLines(
 
   const firstLine = [
     column(index + 1, 3),
-    column(code, 15),
-    column(quantityWithUnit, 12, "right"),
+    column(code, 33),
+    column(quantityWithUnit, 18, "right"),
   ].join("");
 
   const secondLine = [
     column("", 3),
-    column(money(unitPrice), 17, "right"),
-    column(money(total), 24, "right"),
+    column(money(unitPrice), 23, "right"),
+    column(money(total), 28, "right"),
   ].join("");
 
   return [firstLine, secondLine];
