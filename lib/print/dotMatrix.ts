@@ -3,13 +3,10 @@ import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
 import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
 
-// export const DOT_MATRIX_WIDTH = 44;
-export const DOT_MATRIX_WIDTH = 64;
-// const LEFT_HEADER_WIDTH = 21;
-const LEFT_HEADER_WIDTH = 34;
+export const DOT_MATRIX_WIDTH = 44;
+const LEFT_HEADER_WIDTH = 21;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
-// const SIGNATURE_WIDTH = 24;
-const SIGNATURE_WIDTH = 30;
+const SIGNATURE_WIDTH = 24;
 const PAGE_LINES = 44;
 
 type TempoPrintInput = {
@@ -103,36 +100,6 @@ function getProductCode(productRef: string) {
   return productRef.split(/\s+/)[0] || productRef;
 }
 
-// function itemLines(
-//   index: number,
-//   productRef: string,
-//   quantity: number,
-//   unitPrice: number,
-//   discount = 0,
-//   unit?: string,
-// ) {
-//   const total = quantity * unitPrice - discount;
-//   const code = getProductCode(productRef);
-
-//   const quantityWithUnit = [quantity, unit]
-//     .filter((value) => value !== undefined && value !== null && value !== "")
-//     .join(" ");
-
-//   const firstLine = [
-//     column(index + 1, 3),
-//     column(code, 15),
-//     column(quantityWithUnit, 12, "right"),
-//   ].join("");
-
-//   const secondLine = [
-//     column("", 3),
-//     column(money(unitPrice), 17, "right"),
-//     column(money(total), 24, "right"),
-//   ].join("");
-
-//   return [firstLine, secondLine];
-// }
-
 function itemLines(
   index: number,
   productRef: string,
@@ -143,17 +110,24 @@ function itemLines(
 ) {
   const total = quantity * unitPrice - discount;
   const code = getProductCode(productRef);
+
   const quantityWithUnit = [quantity, unit]
     .filter((value) => value !== undefined && value !== null && value !== "")
     .join(" ");
-  const row = [
+
+  const firstLine = [
     column(index + 1, 3),
-    column(code, 17),
-    column(quantityWithUnit, 10, "right"),
-    column(money(unitPrice), 16, "right"),
-    column(money(total), 18, "right"),
+    column(code, 15),
+    column(quantityWithUnit, 12, "right"),
   ].join("");
-  return [row];
+
+  const secondLine = [
+    column("", 3),
+    column(money(unitPrice), 17, "right"),
+    column(money(total), 24, "right"),
+  ].join("");
+
+  return [firstLine, secondLine];
 }
 
 function infoHeader(
@@ -216,15 +190,13 @@ export function formatSaleDotMatrix(
 
       line("="),
 
-      // `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
+      `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
 
-      // `${column("", 3)}${column(
-      //   "HARGA",
-      //   17,
-      //   "right",
-      // )}${column("TOTAL", 24, "right")}`,
-
-      `${column("NO", 3)}${column("KODE / NAMA", 17)}${column("QTY", 10, "right")}${column("HARGA", 16, "right")}${column("TOTAL", 18, "right")}`,
+      `${column("", 3)}${column(
+        "HARGA",
+        17,
+        "right",
+      )}${column("TOTAL", 24, "right")}`,
 
       line("-"),
 

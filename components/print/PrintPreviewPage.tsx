@@ -96,7 +96,7 @@ export function PrintPreviewPage({
             height: 14cm !important;
             max-height: 14cm !important;
             margin: 0 !important;
-            padding: 0.3cm 0.4cm 0 4.3cm !important;
+            padding: 0.3cm 0.4cm 0 5cm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-inside: avoid !important;
