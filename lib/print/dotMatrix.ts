@@ -189,8 +189,8 @@ export function formatSaleDotMatrix(
     options.showTransactionNumber === false
       ? "-"
       : sale.transactionNumber || sale.id;
-
-  const ITEM_PER_PAGE = 7;
+  const totalItems = sale.items.length;
+  const ITEM_PER_PAGE = totalItems > 7 ? 9 : 7;
 
   const pages = chunkItems(sale.items, ITEM_PER_PAGE);
 
