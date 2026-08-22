@@ -94,6 +94,7 @@ export function PrintPreviewPage({
           }
         
           @page {
+            margin: 0 !important;
             size: ${paperSize};
           }
 
@@ -102,7 +103,7 @@ export function PrintPreviewPage({
             width: ${widthSize} !important;
             height: ${heightSize} !important;
             max-height: ${heightSize} !important;
-            margin: 0cm 0cm 0cm 5cm !important;
+            margin: 0 0 0 2.8cm !important;
             padding: ${paddingSize} !important;
             box-sizing: border-box !important;
             overflow: visible !important;
