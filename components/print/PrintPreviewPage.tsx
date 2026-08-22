@@ -75,6 +75,7 @@ export function PrintPreviewPage({
   // const heightSize = "19cm"; // ini yang akan kita ubah ubah
   const heightSize = "17cm"; // ini yang akan kita ubah ubah
   const paddingSize = "0";
+  const marginSize = "0 0 0 5cm";
 
   const pages = splitPrintPreviewPages(text);
 
@@ -103,7 +104,7 @@ export function PrintPreviewPage({
             width: ${widthSize} !important;
             height: ${heightSize} !important;
             max-height: ${heightSize} !important;
-            margin: 0 0 0 10cm !important;
+            margin: ${marginSize} !important;
             padding: ${paddingSize} !important;
             box-sizing: border-box !important;
             overflow: visible !important;
