@@ -3,8 +3,8 @@ import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
 import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
 
-export const DOT_MATRIX_WIDTH = 44;
-const LEFT_HEADER_WIDTH = 21;
+export const DOT_MATRIX_WIDTH = 54;
+const LEFT_HEADER_WIDTH = 26;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
 const SIGNATURE_WIDTH = 24;
 const PAGE_LINES = 44;
@@ -146,10 +146,10 @@ function itemLines(
   // 3 (NO) + 12 (KODE) + 8 (QTY) + 10 (HARGA) + 11 (TOTAL) = 44 Karakter
   const line = [
     column(index + 1, 3),
-    column(code, 12),
+    column(code, 18),
     column(quantityWithUnit, 8, "right"),
-    column(money(unitPrice), 10, "right"),
-    column(money(total), 11, "right"),
+    column(money(unitPrice), 11, "right"),
+    column(money(total), 12, "right"),
   ].join("");
   return [line];
 }
@@ -222,7 +222,7 @@ export function formatSaleDotMatrix(
       //   "right",
       // )}${column("TOTAL", 24, "right")}`,
 
-      `${column("NO", 3)}${column("KODE", 12)}${column("QTY", 8, "right")}${column("HARGA", 10, "right")}${column("TOTAL", 11, "right")}`,
+      `${column("NO", 3)}${column("KODE / NAMA BARANG", 18)}${column("QTY", 8, "right")} ${column("HARGA", 11, "right")} ${column("TOTAL", 12, "right")}`,
 
       line("-"),
 

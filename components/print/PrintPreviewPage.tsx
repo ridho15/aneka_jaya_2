@@ -96,9 +96,9 @@ export function PrintPreviewPage({
             height: 14cm !important;
             max-height: 14cm !important;
             margin: 0 !important;
-            padding: 0.3cm 0.4cm 0 2.5cm !important;
+            padding: 0.3cm 0.4cm 0 5cm !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             page-break-after: always;
@@ -169,7 +169,7 @@ export function PrintPreviewPage({
           {pages.map((page, index) => (
             <div
               key={index}
-              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-hidden px-[0.4cm] pb-[0.2cm] pt-[0.3cm] print:max-w-none print:overflow-hidden ${index < pages.length - 1 ? "print-page-break" : ""}`}
+              className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-visible print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
               <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13px] font-semibold leading-[1.25] text-slate-950">
                 {page}
