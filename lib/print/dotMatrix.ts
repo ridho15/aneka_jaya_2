@@ -181,6 +181,48 @@ function chunkItems<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+function paginateSaleItems<T>(items: T[]): T[][] {
+  const total = items.length;
+
+  // Kasus 1: 1 sampai 7 item (Muat 1 halaman utuh bersama Tanda Tangan)
+  if (total <= 7) {
+    return [items];
+  }
+
+  // Kasus 2: 8 atau 9 item (Bagi 2 halaman seimbang agar halaman 2 ada barangnya)
+  if (total === 8) {
+    return [items.slice(0, 4), items.slice(4)]; // Halaman 1 (4 item), Halaman 2 (4 item + TTD)
+  }
+  if (total === 9) {
+    return [items.slice(0, 5), items.slice(5)]; // Halaman 1 (5 item), Halaman 2 (4 item + TTD)
+  }
+
+  // Kasus 3: 10 item ke atas (Multi Halaman)
+  const pages: T[][] = [];
+  let remaining = [...items];
+
+  while (remaining.length > 0) {
+    // Jika sisa barang muat di halaman terakhir bersama tanda tangan (<= 7 item)
+    if (remaining.length <= 7) {
+      pages.push(remaining);
+      break;
+    }
+
+    // Jika sisa barang tepat 8 (agar halaman terakhir tidak sendirian tanda tangan)
+    if (remaining.length === 8) {
+      pages.push(remaining.slice(0, 4));
+      remaining = remaining.slice(4);
+      continue;
+    }
+
+    // Halaman biasa (tanpa tanda tangan) muat maksimal 9 item
+    pages.push(remaining.slice(0, 9));
+    remaining = remaining.slice(9);
+  }
+
+  return pages;
+}
+
 export function formatSaleDotMatrix(
   sale: Sale,
   options: { showTransactionNumber?: boolean } = {},
@@ -189,10 +231,12 @@ export function formatSaleDotMatrix(
     options.showTransactionNumber === false
       ? "-"
       : sale.transactionNumber || sale.id;
-  const totalItems = sale.items.length;
-  const ITEM_PER_PAGE = totalItems > 7 ? 9 : 7;
 
-  const pages = chunkItems(sale.items, ITEM_PER_PAGE);
+  // const totalItems = sale.items.length;
+  // const ITEM_PER_PAGE = totalItems > 7 ? 9 : 7;
+  // const pages = chunkItems(sale.items, ITEM_PER_PAGE);
+
+  const pages = paginateSaleItems(sale.items);
 
   const pageContents = pages.map((pageItems, pageIndex) => {
     const isLastPage = pageIndex === pages.length - 1;
@@ -236,7 +280,11 @@ export function formatSaleDotMatrix(
       line("-"),
 
       ...pageItems.flatMap((item, localIndex) => {
-        const actualIndex = pageIndex * ITEM_PER_PAGE + localIndex;
+        // Hitung total barang dari halaman-halaman sebelumnya
+        const previousCount = pages
+          .slice(0, pageIndex)
+          .reduce((sum, p) => sum + p.length, 0);
+        const actualIndex = previousCount + localIndex;
 
         return itemLines(
           actualIndex,
