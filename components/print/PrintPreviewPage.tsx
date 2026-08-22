@@ -74,7 +74,7 @@ export function PrintPreviewPage({
   const widthSize = "13.5cm"; // ini yang akan kita ubah ubah
   // const heightSize = "19cm"; // ini yang akan kita ubah ubah
   const heightSize = "14cm"; // ini yang akan kita ubah ubah
-  const paddingSize = "0.3cm 0.4cm 0 6cm";
+  const paddingSize = "0cm 0.4cm 0 6cm";
 
   const pages = splitPrintPreviewPages(text);
 
