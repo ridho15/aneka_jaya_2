@@ -3,8 +3,8 @@ import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
 import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
 
-export const DOT_MATRIX_WIDTH = 50;
-const LEFT_HEADER_WIDTH = 25;
+export const DOT_MATRIX_WIDTH = 44;
+const LEFT_HEADER_WIDTH = 21;
 const RIGHT_HEADER_WIDTH = DOT_MATRIX_WIDTH - LEFT_HEADER_WIDTH - 1;
 const SIGNATURE_WIDTH = 24;
 const PAGE_LINES = 44;
@@ -146,14 +146,14 @@ function itemLines(
   // Baris 1: NO (3) + KODE/NAMA (24) + QTY (15) = 42 karakter
   const firstLine = [
     column(index + 1, 3),
-    column(code, 28),
-    column(quantityWithUnit, 19, "right"),
+    column(code, 26),
+    column(quantityWithUnit, 15, "right"),
   ].join("");
   // Baris 2: Spasi (3) + HARGA (18) + TOTAL (21) = 42 karakter
   const secondLine = [
     column("", 3),
-    column(money(unitPrice), 22, "right"),
-    column(money(total), 25, "right"),
+    column(money(unitPrice), 19, "right"),
+    column(money(total), 22, "right"),
   ].join("");
   return [firstLine, secondLine];
 }
@@ -226,12 +226,12 @@ export function formatSaleDotMatrix(
       //   "right",
       // )}${column("TOTAL", 24, "right")}`,
 
-      `${column("NO", 3)}${column("KODE / NAMA BARANG", 28)}${column("QTY", 19, "right")}`,
+      `${column("NO", 3)}${column("KODE / NAMA BARANG", 26)}${column("QTY", 15, "right")}`,
       `${column("", 3)}${column(
         "HARGA",
-        22,
+        19,
         "right",
-      )}${column("TOTAL", 25, "right")}`,
+      )}${column("TOTAL", 22, "right")}`,
 
       line("-"),
 
