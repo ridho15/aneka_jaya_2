@@ -94,6 +94,7 @@ export function PrintPreviewPage({
           }
         
           @page {
+            margin: 0 !important;
             size: ${paperSize};
           }
 
@@ -179,7 +180,7 @@ export function PrintPreviewPage({
               style={{ padding: paddingSize }}
               className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-visible print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
-              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13px] font-semibold leading-[1.5] text-slate-950">
+              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[15px] font-semibold leading-[1.5] text-slate-950">
                 {page}
               </pre>
             </div>
