@@ -66,8 +66,14 @@ export function PrintPreviewPage({
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize = "13.5cm 14cm";
-  const sheetSize = "w-[13.5cm] min-h-[14cm]";
+  // const paperSize = "13.5cm 14cm";
+  const paperSize = "18.5cm 19cm";
+  // const sheetSize = "w-[13.5cm] min-h-[14cm]";
+  const sheetSize = "w-[18.5cm] min-h-[19cm]";
+  const widthSize = "18.5cm"; // ini yang akan kita ubah ubah
+  const heightSize = "19cm"; // ini yang akan kita ubah ubah
+  const paddingSize = "0.3cm 0.4cm 0 5cm";
+
   const pages = splitPrintPreviewPages(text);
 
   return (
@@ -78,7 +84,7 @@ export function PrintPreviewPage({
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 13.5cm !important;
+            width: ${widthSize} !important;
           }
 
           .print-actions {
@@ -92,11 +98,11 @@ export function PrintPreviewPage({
 
           .print-sheet {
             box-shadow: none !important;
-            width: 13.5cm !important;
-            height: 14cm !important;
-            max-height: 14cm !important;
+            width: ${widthSize} !important;
+            height: ${heightSize} !important;
+            max-height: ${heightSize} !important;
             margin: 0 !important;
-            padding: 0.3cm 0.4cm 0 5cm !important;
+            padding: ${paddingSize} !important;
             box-sizing: border-box !important;
             overflow: visible !important;
             page-break-inside: avoid !important;
@@ -169,9 +175,10 @@ export function PrintPreviewPage({
           {pages.map((page, index) => (
             <div
               key={index}
+              style={{ padding: paddingSize }}
               className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-visible print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
-              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13px] font-semibold leading-[1.25] text-slate-950">
+              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13px] font-semibold leading-[1.5] text-slate-950">
                 {page}
               </pre>
             </div>
