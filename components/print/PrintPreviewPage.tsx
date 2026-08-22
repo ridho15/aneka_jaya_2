@@ -66,15 +66,15 @@ export function PrintPreviewPage({
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize = "13.5cm 14cm";
+  const paperSize = "15cm 15.5cm";
   // const paperSize = "18.5cm 19cm";
-  const sheetSize = "w-[13.5cm] min-h-[14cm]";
+  const sheetSize = "w-[15cm] min-h-[15.5cm]";
   // const sheetSize = "w-[18.5cm] min-h-[19cm]";
   // const widthSize = "18.5cm"; // ini yang akan kita ubah ubah
-  const widthSize = "13.5cm"; // ini yang akan kita ubah ubah
+  const widthSize = "15cm"; // ini yang akan kita ubah ubah
   // const heightSize = "19cm"; // ini yang akan kita ubah ubah
-  const heightSize = "14cm"; // ini yang akan kita ubah ubah
-  const paddingSize = "0cm 0.4cm 0 6cm";
+  const heightSize = "15.5cm"; // ini yang akan kita ubah ubah
+  const paddingSize = "0cm 0.4cm 0 4.8cm";
 
   const pages = splitPrintPreviewPages(text);
 
