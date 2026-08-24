@@ -76,7 +76,7 @@ export function PrintPreviewPage({
   // const heightSize = "17cm"; // ini yang akan kita ubah ubah
   const paddingSize = "0";
   // const marginSize = "0 0 0 5cm";
-  const marginSize = "0.3 0 0 5cm";
+  const marginSize = "0.3cm 0cm 0cm 5cm";
 
   const pages = splitPrintPreviewPages(text);
 

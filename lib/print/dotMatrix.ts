@@ -351,11 +351,11 @@ export function formatSaleDotMatrix(
     //   )
     // );
 
-    rows.push(
-      "",
-      column(`${pageIndex + 1}/${pages.length}`, DOT_MATRIX_WIDTH, "right"),
-      "",
-    );
+    // rows.push(
+    //   "",
+    //   column(`${pageIndex + 1}/${pages.length}`, DOT_MATRIX_WIDTH, "right"),
+    //   "",
+    // );
 
     return normalizeLines(rows);
   });
