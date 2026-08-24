@@ -191,10 +191,10 @@ function paginateSaleItems<T>(items: T[]): T[][] {
 
   // Kasus 2: 8 atau 9 item (Bagi 2 halaman seimbang agar halaman 2 ada barangnya)
   if (total === 8) {
-    return [items.slice(0, 4), items.slice(4)]; // Halaman 1 (4 item), Halaman 2 (4 item + TTD)
+    return [items.slice(0, 7), items.slice(7)]; // Halaman 1 (7 item), Halaman 2 (1 item + TTD)
   }
   if (total === 9) {
-    return [items.slice(0, 5), items.slice(5)]; // Halaman 1 (5 item), Halaman 2 (4 item + TTD)
+    return [items.slice(0, 8), items.slice(8)]; // Halaman 1 (8 item), Halaman 2 (1 item + TTD)
   }
 
   // Kasus 3: 10 item ke atas (Multi Halaman)
@@ -210,8 +210,15 @@ function paginateSaleItems<T>(items: T[]): T[][] {
 
     // Jika sisa barang tepat 8 (agar halaman terakhir tidak sendirian tanda tangan)
     if (remaining.length === 8) {
-      pages.push(remaining.slice(0, 4));
-      remaining = remaining.slice(4);
+      pages.push(remaining.slice(0, 7));
+      remaining = remaining.slice(7);
+      continue;
+    }
+
+    // Jika sisa barang tepat 8 (agar halaman terakhir tidak sendirian tanda tangan)
+    if (remaining.length === 9) {
+      pages.push(remaining.slice(0, 8));
+      remaining = remaining.slice(8);
       continue;
     }
 
