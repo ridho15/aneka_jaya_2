@@ -66,16 +66,17 @@ export function PrintPreviewPage({
     link.remove();
     URL.revokeObjectURL(url);
   };
-  const paperSize = "16.5cm 17cm";
-  // const paperSize = "18.5cm 19cm";
-  const sheetSize = "w-[16.5] min-h-[17cm]";
-  // const sheetSize = "w-[18.5cm] min-h-[19cm]";
-  // const widthSize = "18.5cm"; // ini yang akan kita ubah ubah
-  const widthSize = "16.5"; // ini yang akan kita ubah ubah
-  // const heightSize = "19cm"; // ini yang akan kita ubah ubah
-  const heightSize = "17cm"; // ini yang akan kita ubah ubah
+  // const paperSize = "16.5cm 17cm";
+  const paperSize = "12.5cm 14cm";
+  // const sheetSize = "w-[16.5] min-h-[17cm]";
+  const sheetSize = "w-[12.5cm] min-h-[14cm]";
+  const widthSize = "12.5cm"; // ini yang akan kita ubah ubah
+  // const widthSize = "16.5"; // ini yang akan kita ubah ubah
+  const heightSize = "14cm"; // ini yang akan kita ubah ubah
+  // const heightSize = "17cm"; // ini yang akan kita ubah ubah
   const paddingSize = "0";
-  const marginSize = "0 0 0 5cm";
+  // const marginSize = "0 0 0 5cm";
+  const marginSize = "0 0 0 4.2cm";
 
   const pages = splitPrintPreviewPages(text);
 
@@ -181,7 +182,7 @@ export function PrintPreviewPage({
               style={{ padding: paddingSize }}
               className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-visible print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
-              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[15px] font-semibold leading-[1.5] text-slate-950">
+              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13.5px] font-semibold leading-[1.25] text-slate-950">
                 {page}
               </pre>
             </div>

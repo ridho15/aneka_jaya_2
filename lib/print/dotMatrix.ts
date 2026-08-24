@@ -185,10 +185,14 @@ function paginateSaleItems<T>(items: T[]): T[][] {
   const total = items.length;
 
   // Kasus 1: 1 sampai 7 item (Muat 1 halaman utuh bersama Tanda Tangan)
-  if (total <= 7) {
+  if (total <= 6) {
     return [items];
   }
 
+  // Kasus 2: 7 atau 8 item (Bagi 2 halaman seimbang agar halaman 2 ada barangnya)
+  if (total === 7) {
+    return [items.slice(0, 6), items.slice(6)]; // Halaman 1 (6 item), Halaman 2 (1 item + TTD)
+  }
   // Kasus 2: 8 atau 9 item (Bagi 2 halaman seimbang agar halaman 2 ada barangnya)
   if (total === 8) {
     return [items.slice(0, 7), items.slice(7)]; // Halaman 1 (7 item), Halaman 2 (1 item + TTD)
@@ -203,9 +207,16 @@ function paginateSaleItems<T>(items: T[]): T[][] {
 
   while (remaining.length > 0) {
     // Jika sisa barang muat di halaman terakhir bersama tanda tangan (<= 7 item)
-    if (remaining.length <= 7) {
+    if (remaining.length <= 6) {
       pages.push(remaining);
       break;
+    }
+
+    // Jika sisa barang tepat 7 (agar halaman terakhir tidak sendirian tanda tangan)
+    if (remaining.length === 7) {
+      pages.push(remaining.slice(0, 6));
+      remaining = remaining.slice(6);
+      continue;
     }
 
     // Jika sisa barang tepat 8 (agar halaman terakhir tidak sendirian tanda tangan)
