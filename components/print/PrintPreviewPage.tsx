@@ -76,7 +76,7 @@ export function PrintPreviewPage({
   // const heightSize = "17cm"; // ini yang akan kita ubah ubah
   const paddingSize = "0";
   // const marginSize = "0 0 0 5cm";
-  const marginSize = "0 0 0 5cm";
+  const marginSize = "0.3 0 0 5cm";
 
   const pages = splitPrintPreviewPages(text);
 
@@ -182,7 +182,7 @@ export function PrintPreviewPage({
               style={{ padding: paddingSize }}
               className={`print-sheet bg-white shadow-sm ${sheetSize} max-w-full overflow-visible print:max-w-none print:overflow-visible ${index < pages.length - 1 ? "print-page-break" : ""}`}
             >
-              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[16px] font-semibold leading-[1.5] text-slate-950">
+              <pre className="m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[15px] font-semibold leading-[1.5] text-slate-950">
                 {page}
               </pre>
             </div>
