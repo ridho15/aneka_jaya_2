@@ -4,13 +4,13 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { roleLabel, type Role } from "@/lib/auth/roles";
 import { APP_BRAND_INITIALS, APP_BRAND_NAME } from "@/lib/appBrand";
-import { isNavLinkActive, visibleNavLinks } from "./navigation";
+import { isNavLinkActive, visibleNavGroups } from "./navigation";
 
 export function MobileNavigationDrawer({ role, userName }: { role: Role; userName: string }) {
   const pathname = usePathname();
   const [drawerState, setDrawerState] = useState({ open: false, pathname });
   const open = drawerState.open && drawerState.pathname === pathname;
-  const visibleLinks = visibleNavLinks(role);
+  const groups = visibleNavGroups(role);
   const setOpen = (nextOpen: boolean) => setDrawerState({ open: nextOpen, pathname });
 
   return (
@@ -46,8 +46,33 @@ export function MobileNavigationDrawer({ role, userName }: { role: Role; userNam
               <span aria-hidden="true">×</span>
             </button>
           </div>
-          <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            {visibleLinks.map((link) => <Link key={link.href} href={link.href} onClick={() => setOpen(false)} className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition ${isNavLinkActive(pathname, link.href) ? "bg-emerald-600 text-white shadow-sm" : "text-neutral-700 hover:bg-emerald-50 hover:text-emerald-800"}`}><span className="grid h-5 w-5 place-items-center text-base leading-none">{link.icon}</span><span>{link.label}</span></Link>)}
+          <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+            {groups.map((group) => (
+              <div key={group.category}>
+                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                  {group.category}
+                </p>
+                <div className="space-y-0.5">
+                  {group.links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                        isNavLinkActive(pathname, link.href)
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "text-neutral-700 hover:bg-emerald-50 hover:text-emerald-800"
+                      }`}
+                    >
+                      <span className="grid h-5 w-5 place-items-center text-base leading-none">
+                        {link.icon}
+                      </span>
+                      <span>{link.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
           </nav>
           <div className="border-t border-neutral-200 px-5 py-4 text-xs text-neutral-400">Operasional harian • akses sesuai role</div>
         </aside>

@@ -1651,3 +1651,87 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/reports/products:
+    get:
+      summary: Laporan penjualan produk dengan ekspor Excel/JSON.
+      description: >-
+        Permission reports.view. Mengembalikan rekap penjualan produk berdasarkan
+        rentang tanggal, filter keyword/sku. Query param format=excel menghasilkan
+        file .xls XML Spreadsheet siap unduh.
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "2026-08-01"
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "2026-08-26"
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, excel]
+            default: json
+      responses:
+        "200":
+          description: Data laporan produk atau file Excel.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/reports/stocks:
+    get:
+      summary: Laporan persediaan stok barang dengan ekspor Excel/JSON.
+      description: >-
+        Permission stock.view atau reports.view. Mengembalikan audit persediaan
+        stok fisik per gudang/rak beserta valuasi aset. Query param format=excel
+        menghasilkan file .xls XML Spreadsheet siap unduh.
+      parameters:
+        - name: warehouse
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, safe, warning, out_of_stock]
+            default: all
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, excel]
+            default: json
+      responses:
+        "200":
+          description: Data laporan stok atau file Excel.
+        "403":
+          $ref: "#/components/responses/Forbidden"

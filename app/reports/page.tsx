@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
@@ -27,9 +28,32 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
 
   return (
     <AppShell>
-      <div className="mb-7">
-        <h2 className="aj-page-title text-3xl font-bold">Laporan</h2>
-        <p className="mt-2 text-sm text-slate-600">Laporan penerimaan harian dari penjualan lunas dan pembayaran Tempo. Transaksi QA dikecualikan.</p>
+      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h2 className="aj-page-title text-3xl font-bold">Laporan Penerimaan Harian</h2>
+          <p className="mt-1 text-sm text-slate-600">Laporan penerimaan harian dari penjualan lunas dan pembayaran Tempo. Transaksi QA dikecualikan.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/reports/products"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-emerald-500 hover:text-emerald-700 sm:text-sm"
+          >
+            📊 Laporan Produk
+          </Link>
+          <Link
+            href="/reports/stocks"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-emerald-500 hover:text-emerald-700 sm:text-sm"
+          >
+            📦 Laporan Stok
+          </Link>
+          <Link
+            href="/reports/finance"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-emerald-500 hover:text-emerald-700 sm:text-sm"
+          >
+            💰 Laporan Finance
+          </Link>
+        </div>
       </div>
 
       <form className="aj-surface mb-5 flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
