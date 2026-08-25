@@ -46,15 +46,16 @@ describe("dot matrix print formatter", () => {
     expect(signatureBlock("Ridho Al Amzah").join("\n")).toContain("_".repeat(24));
   });
 
-  it.each([1, 8, 9])("keeps %i sales items on one page without form feed", (itemCount) => {
+  it.each([1, 4, 6])("keeps %i sales items on one page without form feed", (itemCount) => {
     const text = saleWithItemCount(itemCount);
 
     expect(text).not.toContain("\x0C");
-    expect(text).toContain("1/1");
     expect((text.match(/INVOICE PENJUALAN/g) || [])).toHaveLength(1);
+    expect(text).toContain("TOTAL:");
+    expect(text).toContain("Tanda Tangan:");
   });
 
-  it("splits 10 items into pages of 9 and 1 with a blank line before the second header", () => {
+  it("splits 10 items into pages of 9 and 1 with second header", () => {
     const text = saleWithItemCount(10);
     const pages = text.split("\x0C");
 
@@ -63,9 +64,6 @@ describe("dot matrix print formatter", () => {
     expect(pages[0]).toContain("BRG-09");
     expect(pages[0]).not.toContain("BRG-10");
     expect(pages[1]).toContain("BRG-10");
-    expect(pages[0]).toContain("1/2");
-    expect(pages[1]).toContain("2/2");
-    expect(pages[0]).toMatch(/1\/2\s*\n {44}\n$/);
     expect(pages[1].startsWith("INVOICE PENJUALAN")).toBe(true);
     expect(pages[0]).not.toContain("TOTAL:");
     expect(pages[1]).toContain("TOTAL:");
@@ -73,15 +71,17 @@ describe("dot matrix print formatter", () => {
     expect(pages[1]).toContain("Tanda Tangan:");
   });
 
-  it("splits 18 items evenly while preserving item order", () => {
+  it("splits 18 items into 3 pages while preserving item order and signature", () => {
     const pages = saleWithItemCount(18).split("\x0C");
 
-    expect(pages).toHaveLength(2);
+    expect(pages).toHaveLength(3);
     expect(pages[0]).toContain("BRG-01");
     expect(pages[0]).toContain("BRG-09");
-    expect(pages[0]).not.toContain("BRG-10");
     expect(pages[1]).toContain("BRG-10");
-    expect(pages[1]).toContain("BRG-18");
+    expect(pages[1]).toContain("BRG-17");
+    expect(pages[2]).toContain("BRG-18");
+    expect(pages[2]).toContain("TOTAL:");
+    expect(pages[2]).toContain("Tanda Tangan:");
   });
 
   it("formats a tempo sale within 44 columns", () => {

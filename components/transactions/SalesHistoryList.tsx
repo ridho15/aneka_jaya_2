@@ -183,6 +183,13 @@ function MoreActionsMenu({
           </Link>
           <Link
             role="menuitem"
+            className="block px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
+            href={`/print/sales/${sale.id}/continuous`}
+          >
+            Cetak LX-310 (Continuous)
+          </Link>
+          <Link
+            role="menuitem"
             className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             href={`/print/sales/${sale.id}`}
           >
@@ -408,21 +415,27 @@ export function SalesHistoryList({
                   melakukan koreksi.
                 </p>
               )}
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="mt-4 grid grid-cols-3 gap-2">
                 <Link
-                  className="rounded-md bg-emerald-600 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-emerald-700"
+                  className="rounded-md bg-emerald-600 px-2.5 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700"
                   href={`/penjualan/${sale.id}`}
                 >
-                  Lihat detail
+                  Detail
+                </Link>
+                <Link
+                  className="rounded-md border border-sky-300 bg-sky-50 px-2.5 py-2 text-center text-xs font-bold text-sky-800 hover:bg-sky-100"
+                  href={`/print/sales/${sale.id}/continuous`}
+                >
+                  LX-310
                 </Link>
                 {canManage ? (
                   <MoreActionsMenu sale={sale} mobile />
                 ) : (
                   <Link
-                    className="rounded-md border border-slate-300 px-3 py-2.5 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    className="rounded-md border border-slate-300 px-2.5 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
                     href={`/print/sales/${sale.id}`}
                   >
-                    Cetak transaksi
+                    Cetak
                   </Link>
                 )}
               </div>
@@ -479,18 +492,25 @@ export function SalesHistoryList({
                       />
                     </td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <Link
-                          className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs"
+                          className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
                           href={`/penjualan/${sale.id}`}
                         >
                           Detail
+                        </Link>
+                        <Link
+                          className="whitespace-nowrap rounded-md border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100 shadow-xs"
+                          href={`/print/sales/${sale.id}/continuous`}
+                          title="Cetak Continuous Form Epson LX-310 (12.5 x 14 cm)"
+                        >
+                          LX-310
                         </Link>
                         {canManage ? (
                           <MoreActionsMenu sale={sale} />
                         ) : (
                           <Link
-                            className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                             href={`/print/sales/${sale.id}`}
                           >
                             Cetak
