@@ -84,6 +84,51 @@ describe("dot matrix print formatter", () => {
     expect(pages[2]).toContain("Tanda Tangan:");
   });
 
+  it("formats sales with single-line item layout within 44 columns", () => {
+    const text = formatSaleDotMatrix(
+      {
+        id: "S-TEST-SINGLE",
+        saleDate: "2026-06-27",
+        customerName: "Toko Single Line",
+        customerLocation: "Jakarta",
+        shippingMethod: "di Tempat",
+        paymentMethod: "Cash",
+        approvalStatus: "approved",
+        total: 250000,
+        items: [
+          { productRef: "BRG-001 Kain Katun", quantity: 2, unitPrice: 125000, discount: 0, unitSnapshot: "Roll" },
+        ],
+      },
+      { itemLayout: "single" },
+    );
+
+    expectFixedWidth(text);
+    expect(text).toContain("NO KODE/BARANG       QTY     HARGA     TOTAL");
+    expect(text).toContain("1  BRG-001        2 Roll   125.000   250.000");
+  });
+
+  it("keeps up to 12 items on a single page with single-line item layout", () => {
+    const sale = {
+      id: "S-TEST-12",
+      saleDate: "2026-06-27",
+      customerName: "Toko 12 Items",
+      paymentMethod: "Cash",
+      approvalStatus: "approved",
+      total: 120000,
+      items: Array.from({ length: 12 }, (_, index) => ({
+        productRef: `BRG-${String(index + 1).padStart(2, "0")}`,
+        quantity: 1,
+        unitPrice: 10000,
+        discount: 0,
+      })),
+    };
+
+    const text = formatSaleDotMatrix(sale, { itemLayout: "single" });
+    expect(text).not.toContain("\x0C");
+    expect(text).toContain("TOTAL:");
+    expect(text).toContain("Tanda Tangan:");
+  });
+
   it("formats a tempo sale within 44 columns", () => {
     const text = formatSaleDotMatrix({
       id: "S-TEST-001",

@@ -28,14 +28,16 @@ export function ContinuousPaperPreview({
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [itemLayout, setItemLayout] = useState<"single" | "double">("double");
   const [paperColor, setPaperColor] = useState<PaperColor>("white");
   const [showDriverHelp, setShowDriverHelp] = useState(false);
   const printedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
 
-    loadPrintPreviewText(kind, id)
+    loadPrintPreviewText(kind, id, fetch, itemLayout)
       .then((preview) => {
         if (active) setText(preview);
       })
@@ -49,7 +51,7 @@ export function ContinuousPaperPreview({
     return () => {
       active = false;
     };
-  }, [id, kind]);
+  }, [id, kind, itemLayout]);
 
   useEffect(() => {
     if (!autoPrint || printedRef.current || loading || error || !text) return;
@@ -191,6 +193,37 @@ export function ContinuousPaperPreview({
               Print LX-310 (Browser)
             </button>
 
+            {/* Toggle Format: 1 Baris vs 2 Baris */}
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+              <span className="px-1.5 text-xs font-semibold text-slate-600">
+                Format:
+              </span>
+              <button
+                type="button"
+                onClick={() => setItemLayout("double")}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                  itemLayout === "double"
+                    ? "bg-white text-emerald-800 shadow-xs border border-emerald-300 ring-1 ring-emerald-400/50"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="Format 2 Baris: Kode & Harga terpisah (Standar)"
+              >
+                2 Baris (Standar)
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemLayout("single")}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                  itemLayout === "single"
+                    ? "bg-white text-emerald-800 shadow-xs border border-emerald-300 ring-1 ring-emerald-400/50"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="Format 1 Baris: 1 Item 1 Baris (Ringkas & Hemat Kertas)"
+              >
+                1 Baris (Ringkas)
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={downloadText}
@@ -201,7 +234,7 @@ export function ContinuousPaperPreview({
             </button>
 
             <a
-              href={printPreviewEndpoint(kind, id, "prn")}
+              href={printPreviewEndpoint(kind, id, "prn", itemLayout)}
               download={`${kind}-${id}.prn`}
               className={`rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-100 ${loading || error ? "pointer-events-none opacity-50" : ""}`}
             >

@@ -6,8 +6,13 @@ export function printPreviewEndpoint(
   kind: PrintPreviewKind,
   id: string,
   format: PrintPreviewFormat = "txt",
+  layout?: "single" | "double",
 ) {
-  const suffix = format === "prn" ? "?format=prn" : "";
+  const params = new URLSearchParams();
+  if (format === "prn") params.set("format", "prn");
+  if (layout) params.set("layout", layout);
+  const query = params.toString();
+  const suffix = query ? `?${query}` : "";
   return `/api/print/${kind}/${encodeURIComponent(id)}${suffix}`;
 }
 
@@ -33,8 +38,9 @@ export async function loadPrintPreviewText(
   kind: PrintPreviewKind,
   id: string,
   fetcher: typeof fetch = fetch,
+  layout?: "single" | "double",
 ) {
-  const response = await fetcher(printPreviewEndpoint(kind, id), {
+  const response = await fetcher(printPreviewEndpoint(kind, id, "txt", layout), {
     cache: "no-store",
   });
   const text = await response.text();

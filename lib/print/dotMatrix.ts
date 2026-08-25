@@ -130,6 +130,32 @@ function getProductCode(productRef: string) {
 //   return [firstLine, secondLine];
 // }
 
+export type DotMatrixItemLayout = "single" | "double";
+
+function itemLineSingle(
+  index: number,
+  productRef: string,
+  quantity: number,
+  unitPrice: number,
+  discount = 0,
+  unit?: string,
+) {
+  const total = quantity * unitPrice - discount;
+  const code = getProductCode(productRef);
+  const quantityWithUnit = [quantity, unit]
+    .filter((value) => value !== undefined && value !== null && value !== "")
+    .join(" ");
+
+  // Kolom: NO(3) + KODE/BARANG(14) + QTY(7) + HARGA(10) + TOTAL(10) = 44 karakter
+  return [
+    column(index + 1, 3),
+    column(code, 14),
+    column(quantityWithUnit, 7, "right"),
+    column(Math.round(unitPrice).toLocaleString("id-ID"), 10, "right"),
+    column(Math.round(total).toLocaleString("id-ID"), 10, "right"),
+  ].join("");
+}
+
 function itemLines(
   index: number,
   productRef: string,
@@ -143,13 +169,13 @@ function itemLines(
   const quantityWithUnit = [quantity, unit]
     .filter((value) => value !== undefined && value !== null && value !== "")
     .join(" ");
-  // Baris 1: NO (3) + KODE/NAMA (24) + QTY (15) = 42 karakter
+  // Baris 1: NO (3) + KODE/NAMA (26) + QTY (15)
   const firstLine = [
     column(index + 1, 3),
     column(code, 26),
     column(quantityWithUnit, 15, "right"),
   ].join("");
-  // Baris 2: Spasi (3) + HARGA (18) + TOTAL (21) = 42 karakter
+  // Baris 2: Spasi (3) + HARGA (19) + TOTAL (22)
   const secondLine = [
     column("", 3),
     column(money(unitPrice), 19, "right"),
@@ -181,24 +207,67 @@ function chunkItems<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+function paginateSaleItemsSingle<T>(items: T[]): T[][] {
+  const total = items.length;
+
+  // 1 sampai 12 item muat 1 halaman bersama Tanda Tangan
+  if (total <= 12) {
+    return [items];
+  }
+
+  // Jika 13 atau 14 item (Bagi 2 halaman seimbang agar halaman terakhir ada barangnya)
+  if (total === 13) {
+    return [items.slice(0, 11), items.slice(11)];
+  }
+  if (total === 14) {
+    return [items.slice(0, 12), items.slice(12)];
+  }
+
+  const pages: T[][] = [];
+  let remaining = [...items];
+
+  while (remaining.length > 0) {
+    if (remaining.length <= 12) {
+      pages.push(remaining);
+      break;
+    }
+
+    if (remaining.length === 13) {
+      pages.push(remaining.slice(0, 11));
+      remaining = remaining.slice(11);
+      continue;
+    }
+
+    if (remaining.length === 14) {
+      pages.push(remaining.slice(0, 12));
+      remaining = remaining.slice(12);
+      continue;
+    }
+
+    pages.push(remaining.slice(0, 16));
+    remaining = remaining.slice(16);
+  }
+
+  return pages;
+}
+
 function paginateSaleItems<T>(items: T[]): T[][] {
   const total = items.length;
 
-  // Kasus 1: 1 sampai 7 item (Muat 1 halaman utuh bersama Tanda Tangan)
+  // Kasus 1: 1 sampai 6 item (Muat 1 halaman utuh bersama Tanda Tangan)
   if (total <= 6) {
     return [items];
   }
 
-  // Kasus 2: 7 atau 8 item (Bagi 2 halaman seimbang agar halaman 2 ada barangnya)
+  // Kasus 2: 7, 8, atau 9 item (Bagi 2 halaman seimbang agar halaman 2 ada barangnya)
   if (total === 7) {
-    return [items.slice(0, 6), items.slice(6)]; // Halaman 1 (6 item), Halaman 2 (1 item + TTD)
+    return [items.slice(0, 6), items.slice(6)];
   }
-  // Kasus 2: 8 atau 9 item (Bagi 2 halaman seimbang agar halaman 2 ada barangnya)
   if (total === 8) {
-    return [items.slice(0, 7), items.slice(7)]; // Halaman 1 (7 item), Halaman 2 (1 item + TTD)
+    return [items.slice(0, 7), items.slice(7)];
   }
   if (total === 9) {
-    return [items.slice(0, 8), items.slice(8)]; // Halaman 1 (8 item), Halaman 2 (1 item + TTD)
+    return [items.slice(0, 8), items.slice(8)];
   }
 
   // Kasus 3: 10 item ke atas (Multi Halaman)
@@ -206,34 +275,29 @@ function paginateSaleItems<T>(items: T[]): T[][] {
   let remaining = [...items];
 
   while (remaining.length > 0) {
-    // Jika sisa barang muat di halaman terakhir bersama tanda tangan (<= 7 item)
     if (remaining.length <= 6) {
       pages.push(remaining);
       break;
     }
 
-    // Jika sisa barang tepat 7 (agar halaman terakhir tidak sendirian tanda tangan)
     if (remaining.length === 7) {
       pages.push(remaining.slice(0, 6));
       remaining = remaining.slice(6);
       continue;
     }
 
-    // Jika sisa barang tepat 8 (agar halaman terakhir tidak sendirian tanda tangan)
     if (remaining.length === 8) {
       pages.push(remaining.slice(0, 7));
       remaining = remaining.slice(7);
       continue;
     }
 
-    // Jika sisa barang tepat 8 (agar halaman terakhir tidak sendirian tanda tangan)
     if (remaining.length === 9) {
       pages.push(remaining.slice(0, 8));
       remaining = remaining.slice(8);
       continue;
     }
 
-    // Halaman biasa (tanpa tanda tangan) muat maksimal 9 item
     pages.push(remaining.slice(0, 9));
     remaining = remaining.slice(9);
   }
@@ -243,21 +307,33 @@ function paginateSaleItems<T>(items: T[]): T[][] {
 
 export function formatSaleDotMatrix(
   sale: Sale,
-  options: { showTransactionNumber?: boolean } = {},
+  options: {
+    showTransactionNumber?: boolean;
+    itemLayout?: DotMatrixItemLayout;
+  } = {},
 ) {
-  const transactionNumber =
-    options.showTransactionNumber === false
-      ? "-"
-      : sale.transactionNumber || sale.id;
-
-  // const totalItems = sale.items.length;
-  // const ITEM_PER_PAGE = totalItems > 7 ? 9 : 7;
-  // const pages = chunkItems(sale.items, ITEM_PER_PAGE);
-
-  const pages = paginateSaleItems(sale.items);
+  const itemLayout = options.itemLayout || "double";
+  const pages =
+    itemLayout === "single"
+      ? paginateSaleItemsSingle(sale.items)
+      : paginateSaleItems(sale.items);
 
   const pageContents = pages.map((pageItems, pageIndex) => {
     const isLastPage = pageIndex === pages.length - 1;
+
+    const tableHeaders =
+      itemLayout === "single"
+        ? [
+            `${column("NO", 3)}${column("KODE/BARANG", 14)}${column("QTY", 7, "right")}${column("HARGA", 10, "right")}${column("TOTAL", 10, "right")}`,
+          ]
+        : [
+            `${column("NO", 3)}${column("KODE / NAMA BARANG", 26)}${column("QTY", 15, "right")}`,
+            `${column("", 3)}${column(
+              "HARGA",
+              19,
+              "right",
+            )}${column("TOTAL", 22, "right")}`,
+          ];
 
     const rows: string[] = [
       ...infoHeader(
@@ -280,29 +356,28 @@ export function formatSaleDotMatrix(
 
       line("="),
 
-      // `${column("NO", 3)}${column("KODE", 15)}${column("QTY", 12, "right")}`,
-
-      // `${column("", 3)}${column(
-      //   "HARGA",
-      //   17,
-      //   "right",
-      // )}${column("TOTAL", 24, "right")}`,
-
-      `${column("NO", 3)}${column("KODE / NAMA BARANG", 26)}${column("QTY", 15, "right")}`,
-      `${column("", 3)}${column(
-        "HARGA",
-        19,
-        "right",
-      )}${column("TOTAL", 22, "right")}`,
+      ...tableHeaders,
 
       line("-"),
 
       ...pageItems.flatMap((item, localIndex) => {
-        // Hitung total barang dari halaman-halaman sebelumnya
         const previousCount = pages
           .slice(0, pageIndex)
           .reduce((sum, p) => sum + p.length, 0);
         const actualIndex = previousCount + localIndex;
+
+        if (itemLayout === "single") {
+          return [
+            itemLineSingle(
+              actualIndex,
+              item.productRef,
+              item.quantity,
+              item.unitPrice,
+              item.discount || 0,
+              item.unitSnapshot,
+            ),
+          ];
+        }
 
         return itemLines(
           actualIndex,

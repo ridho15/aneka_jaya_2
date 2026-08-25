@@ -15,8 +15,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const sale = await getSalesRecordForUser(id, user);
   if (!sale) return Response.json({ success: false, message: "Transaksi penjualan tidak ditemukan." }, { status: 404 });
   const rekeningNameSnapshot = salesRekeningLabel(sale, await listAllRekeningAccounts());
-  const text = formatSaleDotMatrix({ ...sale, rekeningNameSnapshot }, { showTransactionNumber: role === "OWNER" });
-  const isPrn = new URL(request.url).searchParams.get("format") === "prn";
+  const url = new URL(request.url);
+  const layout = url.searchParams.get("layout") === "single" ? "single" : "double";
+  const text = formatSaleDotMatrix(
+    { ...sale, rekeningNameSnapshot },
+    { showTransactionNumber: role === "OWNER", itemLayout: layout },
+  );
+  const isPrn = url.searchParams.get("format") === "prn";
   return new Response(isPrn ? toEscPosPrn(text) : text, {
     headers: {
       "content-type": isPrn ? "application/octet-stream" : "text/plain; charset=utf-8",
