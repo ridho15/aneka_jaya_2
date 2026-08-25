@@ -171,7 +171,7 @@ function MoreActionsMenu({
       {open && (
         <div
           role="menu"
-          className={`absolute z-30 mt-1 min-w-52 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-xl ${mobile ? "right-0 w-full" : "right-0"}`}
+          className={`absolute z-30 mt-1 min-w-52 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-xl ${mobile ? "right-0 w-full" : "left-0"}`}
         >
           <Link
             role="menuitem"
@@ -180,13 +180,6 @@ function MoreActionsMenu({
             target="_blank"
           >
             Cetak Langsung
-          </Link>
-          <Link
-            role="menuitem"
-            className="block px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
-            href={`/print/sales/${sale.id}/continuous`}
-          >
-            Cetak LX-310 (Continuous)
           </Link>
           <Link
             role="menuitem"
