@@ -120,6 +120,7 @@ export function ContinuousPaperPreview({
             background: transparent !important;
             box-shadow: none !important;
             border: none !important;
+            display: block !important;
           }
 
           .screen-paper-frame {
@@ -129,6 +130,8 @@ export function ContinuousPaperPreview({
             margin: 0 !important;
             padding: 0 !important;
             width: 12.5cm !important;
+            height: 14cm !important;
+            display: block !important;
           }
 
           .print-page-break {
@@ -144,8 +147,8 @@ export function ContinuousPaperPreview({
             height: 14cm !important;
             max-height: 14cm !important;
             min-height: 14cm !important;
-            margin: 0.8cm 0 0 1.2cm !important;
-            padding: 0 !important;
+            margin: 0 !important;
+            padding: 0.8cm 0.3cm 0.2cm 1.2cm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-inside: avoid !important;
@@ -157,6 +160,7 @@ export function ContinuousPaperPreview({
             line-height: 1.12 !important;
             font-weight: 700 !important;
             color: #000 !important;
+            margin: 0 !important;
           }
         }
       `}</style>
