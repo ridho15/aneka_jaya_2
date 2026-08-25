@@ -225,7 +225,9 @@ export default async function StockReportPrintPage({
                   {report.summary.totalItems} Baris Item
                 </td>
                 <td className="py-2.5 px-2 text-right text-slate-950 font-black">
-                  {rupiah(report.summary.totalCostValuation)}
+                  {report.summary.totalCostValuation > 0
+                    ? rupiah(report.summary.totalCostValuation)
+                    : "-"}
                 </td>
               </tr>
             </tfoot>

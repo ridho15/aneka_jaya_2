@@ -1735,3 +1735,56 @@ paths:
           description: Data laporan stok atau file Excel.
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/reports/daily:
+    get:
+      summary: Laporan penerimaan harian dengan ekspor Excel/JSON.
+      description: >-
+        Permission reports.view. Mengembalikan rekap penerimaan kas, transfer, dan
+        pelunasan tempo harian. Query param format=excel menghasilkan file .xls
+        XML Spreadsheet siap unduh.
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "2026-08-26"
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, excel]
+            default: json
+      responses:
+        "200":
+          description: Data laporan harian atau file Excel.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/reports/finance:
+    get:
+      summary: Laporan finance bulanan dengan ekspor Excel/JSON.
+      description: >-
+        Permission reports.finance_view. Mengembalikan rekapitulasi keuangan bulanan,
+        rincian pengeluaran approved, dan piutang tempo aktif. Query param format=excel
+        menghasilkan file .xls XML Spreadsheet siap unduh.
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "2026-08"
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [json, excel]
+            default: json
+      responses:
+        "200":
+          description: Data laporan finance atau file Excel.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+

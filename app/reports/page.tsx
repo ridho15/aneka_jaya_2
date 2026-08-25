@@ -35,24 +35,20 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/reports/products"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-emerald-500 hover:text-emerald-700 sm:text-sm"
+          <a
+            href={`/api/reports/daily?date=${encodeURIComponent(selectedDate)}&format=excel`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 shadow-xs transition hover:bg-emerald-100 sm:text-sm"
           >
-            📊 Laporan Produk
-          </Link>
-          <Link
-            href="/reports/stocks"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-emerald-500 hover:text-emerald-700 sm:text-sm"
+            📊 Unduh Excel
+          </a>
+          <a
+            href={`/reports/print?date=${encodeURIComponent(selectedDate)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 sm:text-sm"
           >
-            📦 Laporan Stok
-          </Link>
-          <Link
-            href="/reports/finance"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-800 shadow-xs transition hover:border-emerald-500 hover:text-emerald-700 sm:text-sm"
-          >
-            💰 Laporan Finance
-          </Link>
+            🖨️ Cetak / PDF
+          </a>
         </div>
       </div>
 
