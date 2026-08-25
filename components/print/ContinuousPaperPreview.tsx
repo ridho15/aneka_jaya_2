@@ -335,14 +335,14 @@ export function ContinuousPaperPreview({
                 </a>
 
                 <a
-                  href="/scripts/setup_kertas_mac.command"
-                  download="setup_kertas_mac.command"
+                  href="/scripts/setup_kertas_mac.zip"
+                  download="setup_kertas_mac.zip"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white shadow-xs transition hover:bg-slate-900 active:scale-95"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  📥 Unduh Setup Mac (.command)
+                  📥 Unduh Setup Mac (.zip)
                 </a>
               </div>
             </div>
@@ -360,9 +360,9 @@ export function ContinuousPaperPreview({
               <div>
                 <p className="font-bold text-sky-950">Cara Pakai di Mac (MacBook):</p>
                 <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-slate-700">
-                  <li>Unduh file <b>setup_kertas_mac.command</b>.</li>
-                  <li>Klik 2x file tersebut di Finder Mac.</li>
-                  <li>Printer LX-310 akan otomatis terkonfigurasi ke ukuran <b>12.5 × 14 cm</b>.</li>
+                  <li>Unduh file <b>setup_kertas_mac.zip</b> lalu klik 2x untuk ekstrak.</li>
+                  <li>Klik 2x file <b>setup_kertas_mac.command</b> hasil ekstrak.</li>
+                  <li>Ukuran kertas <b>SLM Continuous 12.5x14</b> otomatis aktif di Mac.</li>
                 </ol>
               </div>
             </div>
