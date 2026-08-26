@@ -46,8 +46,8 @@ export default async function SettingsPage() {
     can(role, "settings.erp_sync.manage")
       ? {
           href: "/settings/erp-sync",
-          title: "ERP Sync",
-          description: "Atur mode sinkronisasi otomatis setelah edit transaksi ERP",
+          title: "Integrasi & ERP Sync",
+          description: "Atur koneksi transaksi Aneka Jaya ERP, mode MJ, dan stok",
           tone: "emerald",
         }
       : null,
