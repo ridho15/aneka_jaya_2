@@ -80,10 +80,12 @@ export function PrintPreviewPage({
       <style>{`
         @media print {
           html, body {
-            background: #fff !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: ${widthSize} !important;
+            background: #fff !important;
           }
 
           .print-actions {
