@@ -101,7 +101,7 @@ export function ContinuousPaperPreview({
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 12.5cm !important;
+            width: 12cm !important;
           }
 
           .print-actions,
@@ -113,7 +113,7 @@ export function ContinuousPaperPreview({
 
           @page {
             margin: 0 !important;
-            size: 12.5cm 14cm;
+            size: 12cm 14cm;
           }
 
           .continuous-sheet-container {
@@ -131,7 +131,7 @@ export function ContinuousPaperPreview({
             background: transparent !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 12.5cm !important;
+            width: 12cm !important;
             height: 14cm !important;
             display: block !important;
           }
@@ -145,12 +145,12 @@ export function ContinuousPaperPreview({
             box-shadow: none !important;
             border: none !important;
             background: transparent !important;
-            width: 12.5cm !important;
+            width: 12cm !important;
             height: 14cm !important;
             max-height: 14cm !important;
             min-height: 14cm !important;
             margin: 0 !important;
-            padding: 0.8cm 0.3cm 0.2cm 1.2cm !important;
+            padding: 0.6cm 0.3cm 0.2cm 0.8cm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-inside: avoid !important;
@@ -301,7 +301,7 @@ export function ContinuousPaperPreview({
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 font-mono font-semibold text-sky-800">
-              Continuous Form: 12.5 cm × 14.0 cm
+              Continuous Form: 12.0 cm × 14.0 cm
             </span>
             <span className="font-medium text-slate-600">
               Total Lembar: {pages.length} Halaman
@@ -318,7 +318,7 @@ export function ContinuousPaperPreview({
                   ⚡ Setup Otomatis Ukuran Kertas (1-Klik untuk Petugas):
                 </p>
                 <p className="mt-0.5 text-slate-600">
-                  Unduh file script di bawah ini lalu jalankan di komputer petugas agar ukuran kertas <b>12.5 cm × 14 cm</b> otomatis terdaftar di printer:
+                  Unduh file script di bawah ini lalu jalankan di komputer petugas agar ukuran kertas <b>12 cm × 14 cm</b> otomatis terdaftar di printer:
                 </p>
               </div>
 
@@ -353,7 +353,7 @@ export function ContinuousPaperPreview({
                 <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-slate-700">
                   <li>Unduh file <b>setup_kertas_windows.bat</b>.</li>
                   <li>Klik kanan file &rarr; pilih <b>Run as administrator</b>.</li>
-                  <li>Saat print di browser, pilih ukuran <b>SLM Continuous 12.5x14</b>.</li>
+                  <li>Saat print di browser, pilih ukuran <b>SLM Continuous 12x14</b>.</li>
                 </ol>
               </div>
 
@@ -362,7 +362,7 @@ export function ContinuousPaperPreview({
                 <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-slate-700">
                   <li>Unduh file <b>setup_kertas_mac.zip</b> lalu klik 2x untuk ekstrak.</li>
                   <li>Klik 2x file <b>setup_kertas_mac.command</b> hasil ekstrak.</li>
-                  <li>Ukuran kertas <b>SLM Continuous 12.5x14</b> otomatis aktif di Mac.</li>
+                  <li>Ukuran kertas <b>SLM Continuous 12x14</b> otomatis aktif di Mac.</li>
                 </ol>
               </div>
             </div>
@@ -404,19 +404,19 @@ export function ContinuousPaperPreview({
                 className={`flex flex-col items-center print:block ${index < pages.length - 1 ? "print-page-break" : ""}`}
               >
                 {/* Header Indikator Halaman (Screen Only) */}
-                <div className="screen-only-element mb-1.5 flex w-[15.5cm] items-center justify-between text-xs font-semibold text-slate-600">
+                <div className="screen-only-element mb-1.5 flex w-[14.8cm] items-center justify-between text-xs font-semibold text-slate-600">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block h-2 w-2 rounded-full bg-emerald-600"></span>
                     Lembar {index + 1} dari {pages.length}
                   </span>
                   <span className="font-mono text-slate-400">
-                    12.5 cm × 14.0 cm
+                    12.0 cm × 14.0 cm
                   </span>
                 </div>
 
                 {/* Lembar Fisik Simulasi */}
                 <div
-                  className={`screen-paper-frame relative flex w-[15.5cm] rounded-sm border shadow-md transition-colors duration-200 ${paperBgClass}`}
+                  className={`screen-paper-frame relative flex w-[14.8cm] rounded-sm border shadow-md transition-colors duration-200 ${paperBgClass}`}
                 >
                   {/* Strip Traktor Kiri (Screen Only) */}
                   <div
@@ -431,9 +431,9 @@ export function ContinuousPaperPreview({
                     ))}
                   </div>
 
-                  {/* Area Badan Nota (Printable Area 12.5 cm x 14 cm) */}
-                  <div className="continuous-sheet relative w-[12.7cm] min-h-[14cm] max-h-[14cm] overflow-visible pl-[1.2cm] pt-[0.8cm] pr-[0.3cm] pb-[0.2cm]">
-                    <pre className="continuous-print-text m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[15px] font-bold leading-[1.12] tracking-tight text-slate-950">
+                  {/* Area Badan Nota (Printable Area 12 cm x 14 cm) */}
+                  <div className="continuous-sheet relative w-[12.0cm] min-h-[14cm] max-h-[14cm] overflow-visible pl-[0.8cm] pt-[0.6cm] pr-[0.3cm] pb-[0.2cm]">
+                    <pre className="continuous-print-text m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13.5px] font-bold leading-[1.12] tracking-tight text-slate-950">
                       {page}
                     </pre>
                   </div>

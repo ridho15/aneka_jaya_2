@@ -1,22 +1,22 @@
 #!/bin/bash
 # =========================================================================
-# SLM Internal App - Auto Setup Ukuran Kertas Continuous Form (12.5 x 14 cm)
+# SLM Internal App - Auto Setup Ukuran Kertas Continuous Form (12.0 x 14.0 cm)
 # Kompatibel dengan: macOS Sonoma, Ventura, Monterey, Big Sur, Catalina
 # =========================================================================
 
 clear
 echo "======================================================================="
 echo "         SLM AUTO SETUP UKURAN KERTAS CONTINUOUS FORM (macOS)"
-echo "              Ukuran: 12.5 cm (Lebar) x 14.0 cm (Tinggi)"
+echo "              Ukuran: 12.0 cm (Lebar) x 14.0 cm (Tinggi)"
 echo "======================================================================="
 echo ""
 
 # Ukuran dalam points (1 cm = 28.3465 pt)
-# 12.5 cm = 354.33 pt -> 354
+# 12.0 cm = 340.15 pt -> 340
 # 14.0 cm = 396.85 pt -> 397
 
-PAPER_NAME="SLM Continuous 12.5x14"
-WIDTH_PT=354.33
+PAPER_NAME="SLM Continuous 12x14"
+WIDTH_PT=340.15
 HEIGHT_PT=396.85
 
 echo "1. Mendaftarkan ukuran kertas kustom ke sistem macOS..."
@@ -82,8 +82,8 @@ if [ -z "$PRINTERS" ]; then
 else
     for PRINTER in $PRINTERS; do
         echo "   -> Mengonfigurasi printer: $PRINTER ..."
-        lpadmin -p "$PRINTER" -o "PageSize=Custom.354x397" 2>/dev/null || true
-        lpadmin -p "$PRINTER" -o "media=Custom.354x397" 2>/dev/null || true
+        lpadmin -p "$PRINTER" -o "PageSize=Custom.340x397" 2>/dev/null || true
+        lpadmin -p "$PRINTER" -o "media=Custom.340x397" 2>/dev/null || true
     done
 fi
 
@@ -94,7 +94,7 @@ echo "======================================================================="
 echo "Petunjuk Cetak di Google Chrome / Safari:"
 echo "1. Buka kembali halaman cetak di browser (refresh halaman atau tekan Cmd+P)."
 echo "2. Di pilihan Paper Size (Ukuran Kertas), pilih:"
-echo "   -> \"$PAPER_NAME\" (atau 12.5 x 14 cm)"
+echo "   -> \"$PAPER_NAME\" (atau 12 x 14 cm)"
 echo "3. Margins: Pilih 'None'"
 echo "4. Scale: Pilih '100%'"
 echo "5. Hilangkan centang 'Headers and footers'"

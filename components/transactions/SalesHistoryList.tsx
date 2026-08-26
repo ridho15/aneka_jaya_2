@@ -495,7 +495,7 @@ export function SalesHistoryList({
                         <Link
                           className="whitespace-nowrap rounded-md border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100 shadow-xs"
                           href={`/print/sales/${sale.id}/continuous`}
-                          title="Cetak Continuous Form Epson LX-310 (12.5 x 14 cm)"
+                          title="Cetak Continuous Form Epson LX-310 (12 x 14 cm)"
                         >
                           LX-310
                         </Link>
