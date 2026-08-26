@@ -15,8 +15,8 @@ export default async function ErpSyncSettingsPage() {
   return (
     <AppShell>
       <div className="mb-7">
-        <h2 className="aj-page-title text-3xl font-bold">ERP Sync</h2>
-        <p className="mt-2 text-sm text-slate-600">Atur apakah transaksi ERP yang diedit langsung dicoba sinkron ulang otomatis.</p>
+        <h2 className="aj-page-title text-3xl font-bold">Integrasi &amp; ERP Sync</h2>
+        <p className="mt-2 text-sm text-slate-600">Kelola koneksi sinkronisasi transaksi ke Aneka Jaya ERP, mode integrasi inbound MJ, dan otomasi sinkronisasi ulang.</p>
       </div>
       <ErpSyncSettingsForm initialSetting={setting} />
     </AppShell>

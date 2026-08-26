@@ -65,7 +65,9 @@ export const operationalProfitSettingSchema = z.object({
 });
 
 export const erpSyncSettingSchema = z.object({
-  autoSyncAfterSalesEdit: z.boolean()
+  autoSyncAfterSalesEdit: z.boolean().optional(),
+  erpTransactionSyncEnabled: z.boolean().optional(),
+  mjTransactionMode: z.enum(["disabled", "record_only", "process_aj"]).optional()
 });
 
 export const slmProfitSettingSchema = operationalProfitSettingSchema;

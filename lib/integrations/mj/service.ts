@@ -6,6 +6,7 @@ import { MjIntegrationError } from "./errors";
 import type { MjIntegrationPrincipal } from "./auth";
 import type { MjAjInvoiceInput, MjInvoiceInput, MjPrintEventInput, MjProcessingMode, MjTempoPaymentInput } from "./validation";
 import { cancelMjErpSales, createMjErpCustomer, createMjErpInvoice, createMjPayment, deterministicReference, releaseMjStock } from "./erp";
+import { getMjTransactionMode, isErpTransactionSyncEnabled } from "@/lib/settings/erpSync";
 import type { SalesCancellationResult } from "@/lib/api/salesCancellations";
 
 const includeInvoice = { items: { orderBy: { sortOrder: "asc" as const } }, integrationAttempts: { orderBy: { startedAt: "asc" as const } } };
@@ -303,6 +304,15 @@ async function normalizeLegacyHash(row: InvoiceRow, input: MjInvoiceInput, hash:
 }
 
 export async function createOrResumeMjInvoice(input: MjInvoiceInput, principal: MjIntegrationPrincipal) {
+  const mjMode = await getMjTransactionMode();
+  if (mjMode === "disabled") {
+    throw new MjIntegrationError(
+      "INTEGRATION_DISABLED",
+      "Integrasi transaksi dari sistem MJ saat ini dinonaktifkan oleh administrator.",
+      503
+    );
+  }
+
   const hash = immutablePayloadHash(input);
   let row = await prisma.salesRecord.findUnique({ where: { source_externalReference: { source: "MJ", externalReference: input.external_reference } }, include: includeInvoice });
   const existed = Boolean(row);
@@ -310,7 +320,11 @@ export async function createOrResumeMjInvoice(input: MjInvoiceInput, principal: 
     throw new MjIntegrationError("REFERENCE_CONFLICT", "external_reference sudah digunakan dengan payload immutable atau processing_mode berbeda.", 409, invoiceSnapshot(row));
   }
   if (!row) row = await createLocalInvoice(input, principal, hash);
-  if (input.processing_mode === "slm_process_aj") {
+
+  const isSyncEnabled = await isErpTransactionSyncEnabled();
+  const shouldProcessAj = input.processing_mode === "slm_process_aj" && mjMode === "process_aj" && isSyncEnabled;
+
+  if (shouldProcessAj) {
     row = await processCustomer(row, input);
     row = await processInvoice(row, input);
     row = await processRelease(row, input);
@@ -463,6 +477,14 @@ async function releaseTempoPaymentReservation(receivableId: string, paymentId: s
 }
 
 export async function recordMjTempoPayment(row: InvoiceRow, input: MjTempoPaymentInput) {
+  const mjMode = await getMjTransactionMode();
+  if (mjMode === "disabled") {
+    throw new MjIntegrationError(
+      "INTEGRATION_DISABLED",
+      "Integrasi transaksi dari sistem MJ saat ini dinonaktifkan oleh administrator.",
+      503
+    );
+  }
   if (row.paymentMethod !== "Tempo") throw new MjIntegrationError("VALIDATION_FAILED", "Invoice bukan transaksi Tempo.", 400);
   if (row.approvalStatus === "cancelled") throw new MjIntegrationError("INVOICE_LOCKED", "Invoice sudah dibatalkan.", 409);
   const receivable = await prisma.tempoReceivable.findUnique({ where: { salesId: row.id } });
@@ -473,7 +495,8 @@ export async function recordMjTempoPayment(row: InvoiceRow, input: MjTempoPaymen
     if (existing.erpPaymentSyncedAt) return { status: "already_processed" as const, payment_id: existing.id, invoice: await invoiceSnapshotWithTempo(row) };
   }
   const account = await resolvePaymentAccount(row, input);
-  const localOnly = processingMode(row) !== "slm_process_aj";
+  const isSyncEnabled = await isErpTransactionSyncEnabled();
+  const localOnly = processingMode(row) !== "slm_process_aj" || mjMode !== "process_aj" || !isSyncEnabled;
   const paymentId = existing?.id || crypto.randomUUID();
   const reference = deterministicReference("payment", row.externalReference!, input.payment_reference);
   const alreadyReserved = existing?.erpPaymentStatus === "pending";

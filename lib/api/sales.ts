@@ -12,6 +12,7 @@ import { allocateTransactionIdentity, saveSalesRecord } from "@/lib/sales/store"
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { erpSalesTypeCodes as configuredErpSalesTypeCodes, salesTargetForTypeCode } from "@/lib/api/transactionRouting";
+import { isErpTransactionSyncEnabled } from "@/lib/settings/erpSync";
 import type { Role } from "@/lib/auth/roles";
 import { createOfficialProduct, findProductIdBySku, listProducts } from "@/lib/api/products";
 import { listErpPaginated } from "@/lib/api/pagination";
@@ -743,7 +744,8 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     ? await resolveSalesRekening(input.initialPaymentMethod, tipe.id, input.initialPaymentRekeningId)
     : undefined;
   const approvalStatus: NonNullable<Sale["approvalStatus"]> = "approved";
-  const target = salesTargetForType(tipe.code);
+  const isSyncEnabled = await isErpTransactionSyncEnabled();
+  const target = salesTargetForTypeCode(tipe.code, process.env, isSyncEnabled);
   const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
   const testReference = isTestTransaction ? `TEST-${tipe.code.toUpperCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
   const customerName = testReference ? `[TEST ${tipe.code.toUpperCase()}] ${input.customerName}` : input.customerName;

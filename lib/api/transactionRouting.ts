@@ -18,14 +18,32 @@ export function erpTransactionTypeCodes(env: RoutingEnv = process.env) {
   return erpSalesTypeCodes(env);
 }
 
-export function salesTargetForTypeCode(code: string, env: RoutingEnv = process.env): "erp" | "local" {
+export function salesTargetForTypeCode(
+  code: string,
+  env: RoutingEnv = process.env,
+  isSyncEnabled = true
+): "erp" | "local" {
+  if (!isSyncEnabled || env.ENABLE_ERP_TRANSACTION_SYNC === "false") {
+    return "local";
+  }
   return erpSalesTypeCodes(env).has(code.trim().toUpperCase()) ? "erp" : "local";
 }
 
-export function expenseTargetForTypeCode(code: string, env: RoutingEnv = process.env): "erp" | "local" {
+export function expenseTargetForTypeCode(
+  code: string,
+  env: RoutingEnv = process.env,
+  isSyncEnabled = true
+): "erp" | "local" {
+  if (!isSyncEnabled || env.ENABLE_ERP_TRANSACTION_SYNC === "false") {
+    return "local";
+  }
   return erpExpenseTypeCodes(env).has(code.trim().toUpperCase()) ? "erp" : "local";
 }
 
-export function transactionTargetForType(code: string, env: RoutingEnv = process.env): "erp" | "local" {
-  return salesTargetForTypeCode(code, env);
+export function transactionTargetForType(
+  code: string,
+  env: RoutingEnv = process.env,
+  isSyncEnabled = true
+): "erp" | "local" {
+  return salesTargetForTypeCode(code, env, isSyncEnabled);
 }

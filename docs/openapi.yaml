@@ -171,11 +171,17 @@ components:
           maximum: 100
     ErpSyncSetting:
       type: object
-      required: [autoSyncAfterSalesEdit]
       properties:
         autoSyncAfterSalesEdit:
           type: boolean
           description: Jika true, edit transaksi penjualan ERP langsung menjalankan retry sinkronisasi setelah data lokal tersimpan.
+        erpTransactionSyncEnabled:
+          type: boolean
+          description: Jika false, sistem berjalan dalam Mode Stok Saja (transaksi disimpan lokal dan tidak dikirim ke Aneka Jaya ERP).
+        mjTransactionMode:
+          type: string
+          enum: [disabled, record_only, process_aj]
+          description: Mode integrasi inbound untuk transaksi dari sistem MJ.
     CancelInput:
       type: object
       required: [reason]
