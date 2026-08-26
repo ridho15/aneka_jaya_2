@@ -116,6 +116,16 @@ export function PrintPreviewPage({
             page-break-after: auto !important;
             break-after: auto !important;
           }
+
+          .print-sheet pre,
+          .continuous-sheet pre {
+            font-size: 13px !important;  /* atau 10.5px / 11.5px sesuai keinginan */
+            line-height: 1.15 !important;
+          }
+
+          .continuous-print-text {
+            font-size: 15px !important; /* <--- Font saat cetak masih terkunci 15px */
+          }
         }
       `}</style>
       <div className="print-actions mb-5 flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4">

@@ -158,11 +158,17 @@ export function ContinuousPaperPreview({
           }
 
           .continuous-print-text {
-            font-size: 15px !important;
+            font-size: 13px !important;
             line-height: 1.12 !important;
             font-weight: 700 !important;
             color: #000 !important;
             margin: 0 !important;
+          }
+
+          .print-sheet pre,
+          .continuous-sheet pre {
+            font-size: 13px !important;  /* atau 10.5px / 11.5px sesuai keinginan */
+            line-height: 1.15 !important;
           }
         }
       `}</style>
@@ -318,7 +324,9 @@ export function ContinuousPaperPreview({
                   ⚡ Setup Otomatis Ukuran Kertas (1-Klik untuk Petugas):
                 </p>
                 <p className="mt-0.5 text-slate-600">
-                  Unduh file script di bawah ini lalu jalankan di komputer petugas agar ukuran kertas <b>12 cm × 14 cm</b> otomatis terdaftar di printer:
+                  Unduh file script di bawah ini lalu jalankan di komputer
+                  petugas agar ukuran kertas <b>12 cm × 14 cm</b> otomatis
+                  terdaftar di printer:
                 </p>
               </div>
 
@@ -328,8 +336,18 @@ export function ContinuousPaperPreview({
                   download="setup_kertas_windows.bat"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white shadow-xs transition hover:bg-blue-700 active:scale-95"
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
                   </svg>
                   📥 Unduh Setup Windows (.bat)
                 </a>
@@ -339,8 +357,18 @@ export function ContinuousPaperPreview({
                   download="setup_kertas_mac.zip"
                   className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white shadow-xs transition hover:bg-slate-900 active:scale-95"
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                    />
                   </svg>
                   📥 Unduh Setup Mac (.zip)
                 </a>
@@ -349,26 +377,49 @@ export function ContinuousPaperPreview({
 
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <p className="font-bold text-sky-950">Cara Pakai di Windows (PC):</p>
+                <p className="font-bold text-sky-950">
+                  Cara Pakai di Windows (PC):
+                </p>
                 <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-slate-700">
-                  <li>Unduh file <b>setup_kertas_windows.bat</b>.</li>
-                  <li>Klik kanan file &rarr; pilih <b>Run as administrator</b>.</li>
-                  <li>Saat print di browser, pilih ukuran <b>SLM Continuous 12x14</b>.</li>
+                  <li>
+                    Unduh file <b>setup_kertas_windows.bat</b>.
+                  </li>
+                  <li>
+                    Klik kanan file &rarr; pilih <b>Run as administrator</b>.
+                  </li>
+                  <li>
+                    Saat print di browser, pilih ukuran{" "}
+                    <b>SLM Continuous 12x14</b>.
+                  </li>
                 </ol>
               </div>
 
               <div>
-                <p className="font-bold text-sky-950">Cara Pakai di Mac (MacBook):</p>
+                <p className="font-bold text-sky-950">
+                  Cara Pakai di Mac (MacBook):
+                </p>
                 <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-slate-700">
-                  <li>Unduh file <b>setup_kertas_mac.zip</b> lalu klik 2x untuk ekstrak.</li>
-                  <li>Klik 2x file <b>setup_kertas_mac.command</b> hasil ekstrak.</li>
-                  <li>Ukuran kertas <b>SLM Continuous 12x14</b> otomatis aktif di Mac.</li>
+                  <li>
+                    Unduh file <b>setup_kertas_mac.zip</b> lalu klik 2x untuk
+                    ekstrak.
+                  </li>
+                  <li>
+                    Klik 2x file <b>setup_kertas_mac.command</b> hasil ekstrak.
+                  </li>
+                  <li>
+                    Ukuran kertas <b>SLM Continuous 12x14</b> otomatis aktif di
+                    Mac.
+                  </li>
                 </ol>
               </div>
             </div>
 
             <div className="mt-3 border-t border-sky-200 pt-2 text-slate-600">
-              <span className="font-semibold text-slate-900">Settingan Tambahan Dialog Print Browser:</span> Margins: <b>None</b> | Scale: <b>100%</b> | Headers & Footers: <b>Uncheck (Hilangkan centang)</b>.
+              <span className="font-semibold text-slate-900">
+                Settingan Tambahan Dialog Print Browser:
+              </span>{" "}
+              Margins: <b>None</b> | Scale: <b>100%</b> | Headers & Footers:{" "}
+              <b>Uncheck (Hilangkan centang)</b>.
             </div>
           </div>
         )}
