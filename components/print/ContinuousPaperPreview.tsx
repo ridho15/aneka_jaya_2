@@ -19,6 +19,30 @@ type Props = {
 
 type PaperColor = "white" | "pink" | "yellow";
 
+export interface PrintSettings {
+  maxItemsSingle: number;
+  maxItemsMulti: number;
+  fontSize: string;
+  lineHeight: string;
+  paddingTop: string;
+  paddingRight: string;
+  paddingBottom: string;
+  paddingLeft: string;
+}
+
+export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
+  maxItemsSingle: 14,
+  maxItemsMulti: 18,
+  fontSize: "13px",
+  lineHeight: "1.15",
+  paddingTop: "0.6cm",
+  paddingRight: "0.3cm",
+  paddingBottom: "0.2cm",
+  paddingLeft: "1.3cm",
+};
+
+const STORAGE_KEY = "slm_print_settings_lx310";
+
 export function ContinuousPaperPreview({
   kind,
   id,
@@ -31,13 +55,59 @@ export function ContinuousPaperPreview({
   const [itemLayout, setItemLayout] = useState<"single" | "double">("single");
   const [paperColor, setPaperColor] = useState<PaperColor>("white");
   const [showDriverHelp, setShowDriverHelp] = useState(false);
+  const [showTuning, setShowTuning] = useState(false);
+  const [settings, setSettings] = useState<PrintSettings>(DEFAULT_PRINT_SETTINGS);
   const printedRef = useRef(false);
+
+  // Load custom settings from localStorage on initial client mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setSettings((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  const updateSetting = <K extends keyof PrintSettings>(
+    key: K,
+    value: PrintSettings[K],
+  ) => {
+    setSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  };
+
+  const resetSettings = () => {
+    setSettings(DEFAULT_PRINT_SETTINGS);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
 
   useEffect(() => {
     let active = true;
     setLoading(true);
 
-    loadPrintPreviewText(kind, id, fetch, itemLayout)
+    loadPrintPreviewText(
+      kind,
+      id,
+      fetch,
+      itemLayout,
+      settings.maxItemsSingle,
+      settings.maxItemsMulti,
+    )
       .then((preview) => {
         if (active) setText(preview);
       })
@@ -51,7 +121,7 @@ export function ContinuousPaperPreview({
     return () => {
       active = false;
     };
-  }, [id, kind, itemLayout]);
+  }, [id, kind, itemLayout, settings.maxItemsSingle, settings.maxItemsMulti]);
 
   useEffect(() => {
     if (!autoPrint || printedRef.current || loading || error || !text) return;
@@ -93,15 +163,25 @@ export function ContinuousPaperPreview({
     yellow: "bg-amber-50/75 border-amber-200",
   }[paperColor];
 
+  const isCustomized =
+    settings.maxItemsSingle !== DEFAULT_PRINT_SETTINGS.maxItemsSingle ||
+    settings.maxItemsMulti !== DEFAULT_PRINT_SETTINGS.maxItemsMulti ||
+    settings.fontSize !== DEFAULT_PRINT_SETTINGS.fontSize ||
+    settings.lineHeight !== DEFAULT_PRINT_SETTINGS.lineHeight ||
+    settings.paddingLeft !== DEFAULT_PRINT_SETTINGS.paddingLeft ||
+    settings.paddingTop !== DEFAULT_PRINT_SETTINGS.paddingTop;
+
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 sm:px-6 print:bg-white print:p-0">
       <style>{`
         @media print {
           html, body {
-            background: #fff !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 12cm !important;
+            background: #fff !important;
           }
 
           .print-actions,
@@ -150,25 +230,20 @@ export function ContinuousPaperPreview({
             max-height: 14cm !important;
             min-height: 14cm !important;
             margin: 0 !important;
-            padding: 0.6cm 0.3cm 0.2cm 1.3cm !important;
+            padding: ${settings.paddingTop} ${settings.paddingRight} ${settings.paddingBottom} ${settings.paddingLeft} !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
 
-          .continuous-print-text {
-            font-size: 13px !important;
-            line-height: 1.12 !important;
+          .continuous-print-text,
+          .continuous-sheet pre {
+            font-size: ${settings.fontSize} !important;
+            line-height: ${settings.lineHeight} !important;
             font-weight: 700 !important;
             color: #000 !important;
             margin: 0 !important;
-          }
-
-          .print-sheet pre,
-          .continuous-sheet pre {
-            font-size: 13px !important;  /* atau 10.5px / 11.5px sesuai keinginan */
-            line-height: 1.15 !important;
           }
         }
       `}</style>
@@ -206,18 +281,6 @@ export function ContinuousPaperPreview({
               </span>
               <button
                 type="button"
-                onClick={() => setItemLayout("double")}
-                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                  itemLayout === "double"
-                    ? "bg-white text-emerald-800 shadow-xs border border-emerald-300 ring-1 ring-emerald-400/50"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-                title="Format 2 Baris: Kode & Harga terpisah (Standar)"
-              >
-                2 Baris (Standar)
-              </button>
-              <button
-                type="button"
                 onClick={() => setItemLayout("single")}
                 className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                   itemLayout === "single"
@@ -228,7 +291,38 @@ export function ContinuousPaperPreview({
               >
                 1 Baris (Ringkas)
               </button>
+              <button
+                type="button"
+                onClick={() => setItemLayout("double")}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                  itemLayout === "double"
+                    ? "bg-white text-emerald-800 shadow-xs border border-emerald-300 ring-1 ring-emerald-400/50"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="Format 2 Baris: Kode & Harga terpisah (Standar)"
+              >
+                2 Baris (Standar)
+              </button>
             </div>
+
+            {/* Tombol Buka Panel Tuning */}
+            <button
+              type="button"
+              onClick={() => setShowTuning((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                showTuning
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-400"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              ⚙️ Atur Layout Cetak
+              {isCustomized && (
+                <span
+                  className="h-2 w-2 rounded-full bg-emerald-600"
+                  title="Pengaturan kustom aktif"
+                />
+              )}
+            </button>
 
             <button
               type="button"
@@ -240,7 +334,14 @@ export function ContinuousPaperPreview({
             </button>
 
             <a
-              href={printPreviewEndpoint(kind, id, "prn", itemLayout)}
+              href={printPreviewEndpoint(
+                kind,
+                id,
+                "prn",
+                itemLayout,
+                settings.maxItemsSingle,
+                settings.maxItemsMulti,
+              )}
               download={`${kind}-${id}.prn`}
               className={`rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-100 ${loading || error ? "pointer-events-none opacity-50" : ""}`}
             >
@@ -300,6 +401,228 @@ export function ContinuousPaperPreview({
             </Link>
           </div>
         </div>
+
+        {/* Panel Live Tuning Kustomisasi Layout & Print */}
+        {showTuning && (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-xs text-slate-800 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between border-b border-emerald-200 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-emerald-950">
+                  🎛️ Live Tuning & Kustomisasi Cetak (Real-Time)
+                </span>
+                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                  Langsung Sinkron ke Hasil Print
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={resetSettings}
+                className="rounded-md border border-slate-300 bg-white px-2.5 py-1 font-semibold text-slate-700 shadow-2xs hover:bg-slate-100 active:scale-95"
+              >
+                ↺ Reset ke Default
+              </button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Kontrol 1: Items per Page (Single / 1 Lembar) */}
+              <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
+                <label className="block font-bold text-slate-900">
+                  Max Items 1 Lembar:{" "}
+                  <span className="text-emerald-700 font-mono text-sm font-extrabold">
+                    {settings.maxItemsSingle}
+                  </span>
+                </label>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Kapasitas barang jika transaksi 1 lembar utuh (+ Total & TTD)
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={10}
+                    max={16}
+                    step={1}
+                    value={settings.maxItemsSingle}
+                    onChange={(e) =>
+                      updateSetting("maxItemsSingle", Number(e.target.value))
+                    }
+                    className="w-full accent-emerald-600"
+                  />
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-slate-400 font-mono">
+                  <span>10 item</span>
+                  <span>14 (Default)</span>
+                  <span>16 item</span>
+                </div>
+              </div>
+
+              {/* Kontrol 2: Items per Page (Lembar 1 Multi-Halaman) */}
+              <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
+                <label className="block font-bold text-slate-900">
+                  Max Items Lembar 1:{" "}
+                  <span className="text-emerald-700 font-mono text-sm font-extrabold">
+                    {settings.maxItemsMulti}
+                  </span>
+                </label>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Kapasitas barang di lembar 1 jika transaksi multi-halaman
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={14}
+                    max={22}
+                    step={1}
+                    value={settings.maxItemsMulti}
+                    onChange={(e) =>
+                      updateSetting("maxItemsMulti", Number(e.target.value))
+                    }
+                    className="w-full accent-emerald-600"
+                  />
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-slate-400 font-mono">
+                  <span>14 item</span>
+                  <span>18 (Default)</span>
+                  <span>22 item</span>
+                </div>
+              </div>
+
+              {/* Kontrol 3: Font Size & Leading */}
+              <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
+                <label className="block font-bold text-slate-900">
+                  Ukuran Huruf & Spasi:
+                </label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-500">
+                      Font Size
+                    </span>
+                    <select
+                      value={settings.fontSize}
+                      onChange={(e) => updateSetting("fontSize", e.target.value)}
+                      className="mt-0.5 w-full rounded-md border border-slate-300 bg-white p-1 text-xs font-semibold text-slate-800"
+                    >
+                      <option value="11px">11px (Kecil)</option>
+                      <option value="12px">12px (Rapat)</option>
+                      <option value="13px">13px (Default)</option>
+                      <option value="13.5px">13.5px (Sedang)</option>
+                      <option value="14px">14px (Besar)</option>
+                      <option value="15px">15px (Ekstra)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-500">
+                      Line Height
+                    </span>
+                    <select
+                      value={settings.lineHeight}
+                      onChange={(e) => updateSetting("lineHeight", e.target.value)}
+                      className="mt-0.5 w-full rounded-md border border-slate-300 bg-white p-1 text-xs font-semibold text-slate-800"
+                    >
+                      <option value="1.05">1.05 (Sangat Rapat)</option>
+                      <option value="1.12">1.12 (Rapat)</option>
+                      <option value="1.15">1.15 (Default)</option>
+                      <option value="1.25">1.25 (Longgar)</option>
+                      <option value="1.5">1.50 (Lebar)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kontrol 4: Margin / Padding Kiri (Geser Traktor Kiri) */}
+              <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
+                <label className="block font-bold text-slate-900">
+                  Padding Kiri (Traktor):{" "}
+                  <span className="text-emerald-700 font-mono text-sm font-extrabold">
+                    {settings.paddingLeft}
+                  </span>
+                </label>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Geser teks menjauhi lubang gerigi sebelah kiri
+                </p>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <input
+                    type="range"
+                    min={0.6}
+                    max={2.0}
+                    step={0.1}
+                    value={parseFloat(settings.paddingLeft) || 1.3}
+                    onChange={(e) =>
+                      updateSetting(
+                        "paddingLeft",
+                        `${parseFloat(e.target.value).toFixed(1)}cm`,
+                      )
+                    }
+                    className="w-full accent-emerald-600"
+                  />
+                </div>
+                <div className="mt-1 flex items-center gap-1">
+                  {["0.8cm", "1.1cm", "1.3cm", "1.5cm"].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => updateSetting("paddingLeft", val)}
+                      className={`flex-1 rounded border py-0.5 text-[10px] font-mono font-semibold transition ${
+                        settings.paddingLeft === val
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100"
+                      }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Fine Padding Control Bar */}
+            <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-emerald-200 pt-2.5 text-[11px]">
+              <span className="font-bold text-slate-700">Padding Lainnya:</span>
+              <div className="flex items-center gap-1">
+                <span className="text-slate-500">Atas:</span>
+                <select
+                  value={settings.paddingTop}
+                  onChange={(e) => updateSetting("paddingTop", e.target.value)}
+                  className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs font-mono font-semibold"
+                >
+                  <option value="0.3cm">0.3cm</option>
+                  <option value="0.5cm">0.5cm</option>
+                  <option value="0.6cm">0.6cm (Default)</option>
+                  <option value="0.8cm">0.8cm</option>
+                  <option value="1.0cm">1.0cm</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-slate-500">Kanan:</span>
+                <select
+                  value={settings.paddingRight}
+                  onChange={(e) => updateSetting("paddingRight", e.target.value)}
+                  className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs font-mono font-semibold"
+                >
+                  <option value="0.1cm">0.1cm</option>
+                  <option value="0.2cm">0.2cm</option>
+                  <option value="0.3cm">0.3cm (Default)</option>
+                  <option value="0.5cm">0.5cm</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-slate-500">Bawah:</span>
+                <select
+                  value={settings.paddingBottom}
+                  onChange={(e) => updateSetting("paddingBottom", e.target.value)}
+                  className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs font-mono font-semibold"
+                >
+                  <option value="0.1cm">0.1cm</option>
+                  <option value="0.2cm">0.2cm (Default)</option>
+                  <option value="0.4cm">0.4cm</option>
+                  <option value="0.6cm">0.6cm</option>
+                </select>
+              </div>
+              <span className="ml-auto text-[11px] italic text-emerald-800">
+                ✨ Preferensi Anda otomatis tersimpan di browser ini.
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
           <div>
@@ -483,8 +806,22 @@ export function ContinuousPaperPreview({
                   </div>
 
                   {/* Area Badan Nota (Printable Area 12 cm x 14 cm) */}
-                  <div className="continuous-sheet relative w-[12.0cm] min-h-[14cm] max-h-[14cm] overflow-visible pl-[0.8cm] pt-[0.6cm] pr-[0.3cm] pb-[0.2cm]">
-                    <pre className="continuous-print-text m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13.5px] font-bold leading-[1.5] tracking-tight text-slate-950">
+                  <div
+                    className="continuous-sheet relative w-[12.0cm] min-h-[14cm] max-h-[14cm] overflow-visible"
+                    style={{
+                      paddingTop: settings.paddingTop,
+                      paddingRight: settings.paddingRight,
+                      paddingBottom: settings.paddingBottom,
+                      paddingLeft: settings.paddingLeft,
+                    }}
+                  >
+                    <pre
+                      className="continuous-print-text m-0 whitespace-pre font-['Courier_New',Courier,monospace] font-bold tracking-tight text-slate-950"
+                      style={{
+                        fontSize: settings.fontSize,
+                        lineHeight: settings.lineHeight,
+                      }}
+                    >
                       {page}
                     </pre>
                   </div>

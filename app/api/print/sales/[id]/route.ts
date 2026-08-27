@@ -31,9 +31,18 @@ export async function GET(
   const url = new URL(request.url);
   const layout =
     url.searchParams.get("layout") === "double" ? "double" : "single";
+  const maxSingle =
+    parseInt(url.searchParams.get("max_single") || "14", 10) || 14;
+  const maxMulti =
+    parseInt(url.searchParams.get("max_multi") || "18", 10) || 18;
   const text = formatSaleDotMatrix(
     { ...sale, rekeningNameSnapshot },
-    { showTransactionNumber: role === "OWNER", itemLayout: layout },
+    {
+      showTransactionNumber: role === "OWNER",
+      itemLayout: layout,
+      maxItemsSinglePage: maxSingle,
+      maxItemsMultiPage: maxMulti,
+    },
   );
   const isPrn = url.searchParams.get("format") === "prn";
   return new Response(isPrn ? toEscPosPrn(text) : text, {

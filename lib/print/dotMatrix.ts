@@ -207,45 +207,47 @@ function chunkItems<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-function paginateSaleItemsSingle<T>(items: T[]): T[][] {
+function paginateSaleItemsSingle<T>(
+  items: T[],
+  maxSingle = 14,
+  maxMulti = 18,
+): T[][] {
   const total = items.length;
 
-  // 1 sampai 12 item muat 1 halaman bersama Tanda Tangan
-  if (total <= 16) {
+  // 1 lembar utuh bersama Total & Tanda Tangan
+  if (total <= maxSingle) {
     return [items];
   }
 
-  // Jika 13 atau 14 item (Bagi 2 halaman seimbang agar halaman terakhir ada barangnya)
-  if (total === 13) {
-    return [items.slice(0, 11), items.slice(11)];
-  }
-  if (total === 14) {
-    return [items.slice(0, 12), items.slice(12)];
+  // Jika selisih 1-2 item di atas maxSingle, bagi seimbang agar lembar terakhir ada barangnya
+  if (total === maxSingle + 1 || total === maxSingle + 2) {
+    const half = Math.ceil(total / 2);
+    return [items.slice(0, half), items.slice(half)];
   }
 
   const pages: T[][] = [];
   let remaining = [...items];
 
   while (remaining.length > 0) {
-    if (remaining.length <= 16) {
+    // Lembar terakhir (muat bersama Total & Tanda Tangan)
+    if (remaining.length <= maxSingle) {
       pages.push(remaining);
       break;
     }
 
-    if (remaining.length === 13) {
-      pages.push(remaining.slice(0, 11));
-      remaining = remaining.slice(11);
+    if (
+      remaining.length === maxSingle + 1 ||
+      remaining.length === maxSingle + 2
+    ) {
+      const half = Math.ceil(remaining.length / 2);
+      pages.push(remaining.slice(0, half));
+      remaining = remaining.slice(half);
       continue;
     }
 
-    if (remaining.length === 14) {
-      pages.push(remaining.slice(0, 12));
-      remaining = remaining.slice(12);
-      continue;
-    }
-
-    pages.push(remaining.slice(0, 21));
-    remaining = remaining.slice(21);
+    // Lembar antara tanpa Total & TTD (muat padat)
+    pages.push(remaining.slice(0, maxMulti));
+    remaining = remaining.slice(maxMulti);
   }
 
   return pages;
@@ -310,12 +312,23 @@ export function formatSaleDotMatrix(
   options: {
     showTransactionNumber?: boolean;
     itemLayout?: DotMatrixItemLayout;
+    maxItemsSinglePage?: number;
+    maxItemsMultiPage?: number;
   } = {},
 ) {
-  const itemLayout = options.itemLayout || "single";
+  const itemLayout = options.itemLayout || "double";
+  const maxSingle =
+    options.maxItemsSinglePage && options.maxItemsSinglePage > 0
+      ? options.maxItemsSinglePage
+      : 14;
+  const maxMulti =
+    options.maxItemsMultiPage && options.maxItemsMultiPage > 0
+      ? options.maxItemsMultiPage
+      : 18;
+
   const pages =
     itemLayout === "single"
-      ? paginateSaleItemsSingle(sale.items)
+      ? paginateSaleItemsSingle(sale.items, maxSingle, maxMulti)
       : paginateSaleItems(sale.items);
 
   const pageContents = pages.map((pageItems, pageIndex) => {
