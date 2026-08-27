@@ -28,7 +28,7 @@ export function ContinuousPaperPreview({
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [itemLayout, setItemLayout] = useState<"single" | "double">("double");
+  const [itemLayout, setItemLayout] = useState<"single" | "double">("single");
   const [paperColor, setPaperColor] = useState<PaperColor>("white");
   const [showDriverHelp, setShowDriverHelp] = useState(false);
   const printedRef = useRef(false);
@@ -150,7 +150,7 @@ export function ContinuousPaperPreview({
             max-height: 14cm !important;
             min-height: 14cm !important;
             margin: 0 !important;
-            padding: 0.6cm 0.3cm 0.2cm 0.8cm !important;
+            padding: 0.6cm 0.3cm 0.2cm 1.3cm !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-inside: avoid !important;

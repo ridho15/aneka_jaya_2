@@ -211,7 +211,7 @@ function paginateSaleItemsSingle<T>(items: T[]): T[][] {
   const total = items.length;
 
   // 1 sampai 12 item muat 1 halaman bersama Tanda Tangan
-  if (total <= 12) {
+  if (total <= 15) {
     return [items];
   }
 
@@ -312,7 +312,7 @@ export function formatSaleDotMatrix(
     itemLayout?: DotMatrixItemLayout;
   } = {},
 ) {
-  const itemLayout = options.itemLayout || "double";
+  const itemLayout = options.itemLayout || "single";
   const pages =
     itemLayout === "single"
       ? paginateSaleItemsSingle(sale.items)

@@ -70,7 +70,7 @@ export function PrintPreviewPage({
   const sheetSize = "w-[12cm] min-h-[14cm]";
   const widthSize = "12cm";
   const heightSize = "14cm";
-  const paddingSize = "0.6cm 0.3cm 0.2cm 0.8cm";
+  const paddingSize = "0.6cm 0.3cm 0.2cm 1.3cm";
   const marginSize = "0";
 
   const pages = splitPrintPreviewPages(text);
