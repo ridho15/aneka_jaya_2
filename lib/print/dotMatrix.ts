@@ -88,6 +88,16 @@ export function signatureBlock(name?: string) {
   ];
 }
 
+export function tearLine(label = "✂ SOBEK") {
+  const centerText = `[ ${label} ]`;
+  const totalDashes = DOT_MATRIX_WIDTH - centerText.length;
+  const leftCount = Math.max(0, Math.floor(totalDashes / 2));
+  const rightCount = Math.max(0, totalDashes - leftCount);
+  const leftDashes = "- ".repeat(Math.floor(leftCount / 2)).padEnd(leftCount, "-");
+  const rightDashes = " -".repeat(Math.floor(rightCount / 2)).padStart(rightCount, "-");
+  return `${leftDashes}${centerText}${rightDashes}`.slice(0, DOT_MATRIX_WIDTH);
+}
+
 function layoutHeader(left: string[], right: string[]) {
   const rows: string[] = [];
   const length = Math.max(left.length, right.length);
@@ -393,10 +403,12 @@ export function formatSaleDotMatrix(
     maxItemsSinglePage?: number;
     maxItemsMultiPage?: number;
     unitFormat?: UnitFormat;
+    showTearLine?: boolean;
   } = {},
 ) {
   const itemLayout = options.itemLayout || "double";
   const unitFormat = options.unitFormat || "short";
+  const showTearLine = options.showTearLine !== false;
   const maxSingle =
     options.maxItemsSinglePage && options.maxItemsSinglePage > 0
       ? options.maxItemsSinglePage
@@ -507,25 +519,13 @@ export function formatSaleDotMatrix(
       );
     }
 
-    // /* Isi baris kosong sampai bagian bawah halaman */
-    // while (rows.length < PAGE_LINES - 1) {
-    //   rows.push("");
-    // }
-
-    // /* Nomor halaman saja, tanpa tulisan HALAMAN */
-    // rows.push(
-    //   column(
-    //     `${pageIndex + 1}/${pages.length}`,
-    //     DOT_MATRIX_WIDTH,
-    //     "right"
-    //   )
-    // );
-
-    // rows.push(
-    //   "",
-    //   column(`${pageIndex + 1}/${pages.length}`, DOT_MATRIX_WIDTH, "right"),
-    //   "",
-    // );
+    if (isLastPage && showTearLine) {
+      const targetLines = 27;
+      while (rows.length < targetLines) {
+        rows.push("");
+      }
+      rows.push(tearLine());
+    }
 
     return normalizeLines(rows);
   });

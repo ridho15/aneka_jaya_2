@@ -37,6 +37,7 @@ export async function GET(
     parseInt(url.searchParams.get("max_multi") || "18", 10) || 18;
   const unitFormat =
     url.searchParams.get("unit_format") === "full" ? "full" : "short";
+  const showTearLine = url.searchParams.get("tear_line") !== "0";
   const text = formatSaleDotMatrix(
     { ...sale, rekeningNameSnapshot },
     {
@@ -45,6 +46,7 @@ export async function GET(
       maxItemsSinglePage: maxSingle,
       maxItemsMultiPage: maxMulti,
       unitFormat,
+      showTearLine,
     },
   );
   const isPrn = url.searchParams.get("format") === "prn";

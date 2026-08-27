@@ -7,6 +7,7 @@ import {
   formatTempoPaymentDotMatrix,
   signatureBlock,
   summaryLine,
+  tearLine,
   toEscPosPrn,
   twoColumn
 } from "@/lib/print/dotMatrix";
@@ -44,6 +45,8 @@ describe("dot matrix print formatter", () => {
     expect(summaryLine("TOTAL", "Rp 63.270 jt")).toHaveLength(DOT_MATRIX_WIDTH);
     expect(signatureBlock("Ridho Al Amzah").every((line) => line.length <= DOT_MATRIX_WIDTH)).toBe(true);
     expect(signatureBlock("Ridho Al Amzah").join("\n")).toContain("_".repeat(24));
+    expect(tearLine()).toHaveLength(DOT_MATRIX_WIDTH);
+    expect(tearLine()).toContain("SOBEK");
   });
 
   it.each([1, 4, 6])("keeps %i sales items on one page without form feed", (itemCount) => {

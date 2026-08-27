@@ -10,6 +10,7 @@ export function printPreviewEndpoint(
   maxSingle?: number,
   maxMulti?: number,
   unitFormat?: "short" | "full",
+  showTearLine?: boolean,
 ) {
   const params = new URLSearchParams();
   if (format === "prn") params.set("format", "prn");
@@ -17,6 +18,8 @@ export function printPreviewEndpoint(
   if (maxSingle) params.set("max_single", String(maxSingle));
   if (maxMulti) params.set("max_multi", String(maxMulti));
   if (unitFormat) params.set("unit_format", unitFormat);
+  if (showTearLine !== undefined)
+    params.set("tear_line", showTearLine ? "1" : "0");
   const query = params.toString();
   const suffix = query ? `?${query}` : "";
   return `/api/print/${kind}/${encodeURIComponent(id)}${suffix}`;
@@ -48,6 +51,7 @@ export async function loadPrintPreviewText(
   maxSingle?: number,
   maxMulti?: number,
   unitFormat?: "short" | "full",
+  showTearLine?: boolean,
 ) {
   const response = await fetcher(
     printPreviewEndpoint(
@@ -58,6 +62,7 @@ export async function loadPrintPreviewText(
       maxSingle,
       maxMulti,
       unitFormat,
+      showTearLine,
     ),
     {
       cache: "no-store",

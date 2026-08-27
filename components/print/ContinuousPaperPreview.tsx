@@ -29,6 +29,7 @@ export interface PrintSettings {
   paddingBottom: string;
   paddingLeft: string;
   unitFormat: "short" | "full";
+  showTearLine: boolean;
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -41,6 +42,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   paddingBottom: "0.2cm",
   paddingLeft: "1.3cm",
   unitFormat: "short",
+  showTearLine: true,
 };
 
 const STORAGE_KEY = "slm_print_settings_lx310";
@@ -110,6 +112,7 @@ export function ContinuousPaperPreview({
       settings.maxItemsSingle,
       settings.maxItemsMulti,
       settings.unitFormat,
+      settings.showTearLine,
     )
       .then((preview) => {
         if (active) setText(preview);
@@ -131,6 +134,7 @@ export function ContinuousPaperPreview({
     settings.maxItemsSingle,
     settings.maxItemsMulti,
     settings.unitFormat,
+    settings.showTearLine,
   ]);
 
   useEffect(() => {
@@ -180,7 +184,8 @@ export function ContinuousPaperPreview({
     settings.lineHeight !== DEFAULT_PRINT_SETTINGS.lineHeight ||
     settings.paddingLeft !== DEFAULT_PRINT_SETTINGS.paddingLeft ||
     settings.paddingTop !== DEFAULT_PRINT_SETTINGS.paddingTop ||
-    settings.unitFormat !== DEFAULT_PRINT_SETTINGS.unitFormat;
+    settings.unitFormat !== DEFAULT_PRINT_SETTINGS.unitFormat ||
+    settings.showTearLine !== DEFAULT_PRINT_SETTINGS.showTearLine;
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 sm:px-6 print:bg-white print:p-0">
@@ -353,6 +358,7 @@ export function ContinuousPaperPreview({
                 settings.maxItemsSingle,
                 settings.maxItemsMulti,
                 settings.unitFormat,
+                settings.showTearLine,
               )}
               download={`${kind}-${id}.prn`}
               className={`rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-100 ${loading || error ? "pointer-events-none opacity-50" : ""}`}
@@ -622,8 +628,35 @@ export function ContinuousPaperPreview({
               </div>
             </div>
 
-            {/* Fine Padding Control Bar */}
+            {/* Fine Padding & Tear Line Control Bar */}
             <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-emerald-200 pt-2.5 text-[11px]">
+              {/* Toggle Garis Penanda Sobek */}
+              <div className="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2 py-1">
+                <span className="font-bold text-slate-700">✂ Garis Sobek:</span>
+                <button
+                  type="button"
+                  onClick={() => updateSetting("showTearLine", true)}
+                  className={`rounded px-2 py-0.5 font-semibold transition ${
+                    settings.showTearLine
+                      ? "bg-emerald-600 text-white shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Aktif
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSetting("showTearLine", false)}
+                  className={`rounded px-2 py-0.5 font-semibold transition ${
+                    !settings.showTearLine
+                      ? "bg-slate-700 text-white shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Nonaktif
+                </button>
+              </div>
+
               <span className="font-bold text-slate-700">Padding Lainnya:</span>
               <div className="flex items-center gap-1">
                 <span className="text-slate-500">Atas:</span>
