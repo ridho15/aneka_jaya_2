@@ -211,7 +211,7 @@ function paginateSaleItemsSingle<T>(items: T[]): T[][] {
   const total = items.length;
 
   // 1 sampai 12 item muat 1 halaman bersama Tanda Tangan
-  if (total <= 15) {
+  if (total <= 16) {
     return [items];
   }
 
@@ -227,7 +227,7 @@ function paginateSaleItemsSingle<T>(items: T[]): T[][] {
   let remaining = [...items];
 
   while (remaining.length > 0) {
-    if (remaining.length <= 12) {
+    if (remaining.length <= 16) {
       pages.push(remaining);
       break;
     }
@@ -244,8 +244,8 @@ function paginateSaleItemsSingle<T>(items: T[]): T[][] {
       continue;
     }
 
-    pages.push(remaining.slice(0, 16));
-    remaining = remaining.slice(16);
+    pages.push(remaining.slice(0, 21));
+    remaining = remaining.slice(21);
   }
 
   return pages;

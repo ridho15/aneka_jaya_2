@@ -484,7 +484,7 @@ export function ContinuousPaperPreview({
 
                   {/* Area Badan Nota (Printable Area 12 cm x 14 cm) */}
                   <div className="continuous-sheet relative w-[12.0cm] min-h-[14cm] max-h-[14cm] overflow-visible pl-[0.8cm] pt-[0.6cm] pr-[0.3cm] pb-[0.2cm]">
-                    <pre className="continuous-print-text m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13.5px] font-bold leading-[1.12] tracking-tight text-slate-950">
+                    <pre className="continuous-print-text m-0 whitespace-pre font-['Courier_New',Courier,monospace] text-[13.5px] font-bold leading-[1.5] tracking-tight text-slate-950">
                       {page}
                     </pre>
                   </div>
