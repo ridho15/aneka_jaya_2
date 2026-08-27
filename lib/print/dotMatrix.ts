@@ -131,6 +131,80 @@ function getProductCode(productRef: string) {
 // }
 
 export type DotMatrixItemLayout = "single" | "double";
+export type UnitFormat = "short" | "full";
+
+const UNIT_ABBREVIATIONS: Record<string, string> = {
+  lusin: "Lsn",
+  lsn: "Lsn",
+  ls: "Lsn",
+  gross: "Grs",
+  grs: "Grs",
+  meter: "Mtr",
+  mtr: "Mtr",
+  m: "M",
+  kotak: "Ktk",
+  ktk: "Ktk",
+  box: "Box",
+  botol: "Btl",
+  btl: "Btl",
+  lembar: "Lbr",
+  lbr: "Lbr",
+  pasang: "Psg",
+  psg: "Psg",
+  bungkus: "Bks",
+  bks: "Bks",
+  pack: "Pak",
+  pak: "Pak",
+  pk: "Pak",
+  roll: "Roll",
+  rol: "Roll",
+  rl: "Roll",
+  gulung: "Glg",
+  pcs: "Pcs",
+  pc: "Pcs",
+  buah: "Bh",
+  bh: "Bh",
+  unit: "Unit",
+  set: "Set",
+  keping: "Kpg",
+  kpg: "Kpg",
+  karton: "Krt",
+  dus: "Dus",
+  rim: "Rim",
+  karung: "Krg",
+  bal: "Bal",
+};
+
+export function formatUnit(
+  unit?: string | null,
+  format: UnitFormat = "short",
+): string {
+  if (!unit) return "";
+  const trimmed = unit.trim();
+  if (!trimmed) return "";
+
+  if (format === "full") {
+    return trimmed;
+  }
+
+  // Jika sudah 3-4 huruf dan all uppercase (seperti PCS, DUS, PAK, ROL), pertahankan
+  if (trimmed === trimmed.toUpperCase() && trimmed.length <= 4) {
+    return trimmed;
+  }
+
+  const lower = trimmed.toLowerCase();
+  if (UNIT_ABBREVIATIONS[lower]) {
+    return UNIT_ABBREVIATIONS[lower];
+  }
+
+  for (const [key, abbr] of Object.entries(UNIT_ABBREVIATIONS)) {
+    if (lower.startsWith(key)) {
+      return abbr;
+    }
+  }
+
+  return trimmed.length > 5 ? trimmed.slice(0, 4) : trimmed;
+}
 
 function itemLineSingle(
   index: number,
@@ -139,10 +213,12 @@ function itemLineSingle(
   unitPrice: number,
   discount = 0,
   unit?: string,
+  unitFormat: UnitFormat = "short",
 ) {
   const total = quantity * unitPrice - discount;
   const code = getProductCode(productRef);
-  const quantityWithUnit = [quantity, unit]
+  const formattedUnit = formatUnit(unit, unitFormat);
+  const quantityWithUnit = [quantity, formattedUnit]
     .filter((value) => value !== undefined && value !== null && value !== "")
     .join(" ");
 
@@ -163,10 +239,12 @@ function itemLines(
   unitPrice: number,
   discount = 0,
   unit?: string,
+  unitFormat: UnitFormat = "short",
 ) {
   const total = quantity * unitPrice - discount;
   const code = getProductCode(productRef);
-  const quantityWithUnit = [quantity, unit]
+  const formattedUnit = formatUnit(unit, unitFormat);
+  const quantityWithUnit = [quantity, formattedUnit]
     .filter((value) => value !== undefined && value !== null && value !== "")
     .join(" ");
   // Baris 1: NO (3) + KODE/NAMA (26) + QTY (15)
@@ -314,9 +392,11 @@ export function formatSaleDotMatrix(
     itemLayout?: DotMatrixItemLayout;
     maxItemsSinglePage?: number;
     maxItemsMultiPage?: number;
+    unitFormat?: UnitFormat;
   } = {},
 ) {
   const itemLayout = options.itemLayout || "double";
+  const unitFormat = options.unitFormat || "short";
   const maxSingle =
     options.maxItemsSinglePage && options.maxItemsSinglePage > 0
       ? options.maxItemsSinglePage
@@ -388,6 +468,7 @@ export function formatSaleDotMatrix(
               item.unitPrice,
               item.discount || 0,
               item.unitSnapshot,
+              unitFormat,
             ),
           ];
         }
@@ -399,6 +480,7 @@ export function formatSaleDotMatrix(
           item.unitPrice,
           item.discount || 0,
           item.unitSnapshot,
+          unitFormat,
         );
       }),
 

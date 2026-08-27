@@ -28,6 +28,7 @@ export interface PrintSettings {
   paddingRight: string;
   paddingBottom: string;
   paddingLeft: string;
+  unitFormat: "short" | "full";
 }
 
 export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
@@ -39,6 +40,7 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   paddingRight: "0.3cm",
   paddingBottom: "0.2cm",
   paddingLeft: "1.3cm",
+  unitFormat: "short",
 };
 
 const STORAGE_KEY = "slm_print_settings_lx310";
@@ -107,6 +109,7 @@ export function ContinuousPaperPreview({
       itemLayout,
       settings.maxItemsSingle,
       settings.maxItemsMulti,
+      settings.unitFormat,
     )
       .then((preview) => {
         if (active) setText(preview);
@@ -121,7 +124,14 @@ export function ContinuousPaperPreview({
     return () => {
       active = false;
     };
-  }, [id, kind, itemLayout, settings.maxItemsSingle, settings.maxItemsMulti]);
+  }, [
+    id,
+    kind,
+    itemLayout,
+    settings.maxItemsSingle,
+    settings.maxItemsMulti,
+    settings.unitFormat,
+  ]);
 
   useEffect(() => {
     if (!autoPrint || printedRef.current || loading || error || !text) return;
@@ -169,7 +179,8 @@ export function ContinuousPaperPreview({
     settings.fontSize !== DEFAULT_PRINT_SETTINGS.fontSize ||
     settings.lineHeight !== DEFAULT_PRINT_SETTINGS.lineHeight ||
     settings.paddingLeft !== DEFAULT_PRINT_SETTINGS.paddingLeft ||
-    settings.paddingTop !== DEFAULT_PRINT_SETTINGS.paddingTop;
+    settings.paddingTop !== DEFAULT_PRINT_SETTINGS.paddingTop ||
+    settings.unitFormat !== DEFAULT_PRINT_SETTINGS.unitFormat;
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 sm:px-6 print:bg-white print:p-0">
@@ -341,6 +352,7 @@ export function ContinuousPaperPreview({
                 itemLayout,
                 settings.maxItemsSingle,
                 settings.maxItemsMulti,
+                settings.unitFormat,
               )}
               download={`${kind}-${id}.prn`}
               className={`rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-100 ${loading || error ? "pointer-events-none opacity-50" : ""}`}
@@ -423,7 +435,7 @@ export function ContinuousPaperPreview({
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {/* Kontrol 1: Items per Page (Single / 1 Lembar) */}
               <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
                 <label className="block font-bold text-slate-900">
@@ -433,7 +445,7 @@ export function ContinuousPaperPreview({
                   </span>
                 </label>
                 <p className="mt-0.5 text-[11px] text-slate-500">
-                  Kapasitas barang jika transaksi 1 lembar utuh (+ Total & TTD)
+                  Kapasitas 1 lembar utuh (+ Total & TTD)
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                   <input
@@ -464,7 +476,7 @@ export function ContinuousPaperPreview({
                   </span>
                 </label>
                 <p className="mt-0.5 text-[11px] text-slate-500">
-                  Kapasitas barang di lembar 1 jika transaksi multi-halaman
+                  Kapasitas lembar 1 jika transaksi multi-halaman
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                   <input
@@ -486,7 +498,43 @@ export function ContinuousPaperPreview({
                 </div>
               </div>
 
-              {/* Kontrol 3: Font Size & Leading */}
+              {/* Kontrol 3: Format Satuan Barang (Singkat vs Asli) */}
+              <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
+                <label className="block font-bold text-slate-900">
+                  Format Satuan Barang:
+                </label>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {settings.unitFormat === "short"
+                    ? "Lsn, Grs, Mtr, Ktk, Btl (Muat rapi)"
+                    : "Lusin, Gross, Meter, Kotak (Asli)"}
+                </p>
+                <div className="mt-2 flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => updateSetting("unitFormat", "short")}
+                    className={`flex-1 rounded py-1 text-xs font-semibold transition ${
+                      settings.unitFormat === "short"
+                        ? "bg-white text-emerald-800 shadow-2xs border border-emerald-300 ring-1 ring-emerald-400/50"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Singkat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateSetting("unitFormat", "full")}
+                    className={`flex-1 rounded py-1 text-xs font-semibold transition ${
+                      settings.unitFormat === "full"
+                        ? "bg-white text-emerald-800 shadow-2xs border border-emerald-300 ring-1 ring-emerald-400/50"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Asli
+                  </button>
+                </div>
+              </div>
+
+              {/* Kontrol 4: Font Size & Leading */}
               <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
                 <label className="block font-bold text-slate-900">
                   Ukuran Huruf & Spasi:
@@ -528,7 +576,7 @@ export function ContinuousPaperPreview({
                 </div>
               </div>
 
-              {/* Kontrol 4: Margin / Padding Kiri (Geser Traktor Kiri) */}
+              {/* Kontrol 5: Margin / Padding Kiri (Geser Traktor Kiri) */}
               <div className="rounded-lg border border-emerald-200/80 bg-white p-3 shadow-2xs">
                 <label className="block font-bold text-slate-900">
                   Padding Kiri (Traktor):{" "}
