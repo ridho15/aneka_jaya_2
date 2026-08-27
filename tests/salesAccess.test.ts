@@ -41,7 +41,7 @@ describe("sales record access", () => {
   });
 
   it("scopes Admin lists to the authenticated identity without scoping Owner", () => {
-    expect(salesRecordScopeForUser({ id: "admin-1", name: "Admin", role: "ADMIN" })).toEqual({ createdByUserId: "admin-1", excludeSource: "MJ" });
+    expect(salesRecordScopeForUser({ id: "admin-1", name: "Admin", role: "ADMIN" })).toEqual({ createdByUserId: "admin-1", includeSources: ["MJ"] });
     expect(salesRecordScopeForUser({ id: "owner-1", name: "Owner", role: "OWNER" })).toBeUndefined();
   });
 
@@ -65,7 +65,7 @@ describe("sales record access", () => {
     expect(mocks.listSalesRecordsPage).toHaveBeenCalledWith({
       page: 1,
       filters: { keyword: "pelanggan" },
-      scope: { createdByUserId: "admin-1", excludeSource: "MJ" },
+      scope: { createdByUserId: "admin-1", includeSources: ["MJ"] },
     });
   });
 });

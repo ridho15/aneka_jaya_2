@@ -139,6 +139,7 @@ export type SalesRecordFilters = {
 export type SalesRecordScope = {
   createdByUserId?: string;
   excludeSource?: string;
+  includeSources?: string[];
 };
 export type PaginatedSalesRecords = {
   data: Sale[];
@@ -172,7 +173,18 @@ function appendSalesWhereAnd(where: Prisma.SalesRecordWhereInput, condition: Pri
 
 function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = {}): Prisma.SalesRecordWhereInput {
   const where: Prisma.SalesRecordWhereInput = {};
-  if (scope.createdByUserId) where.createdByUserId = scope.createdByUserId;
+  if (scope.createdByUserId) {
+    if (scope.includeSources && scope.includeSources.length > 0) {
+      appendSalesWhereAnd(where, {
+        OR: [
+          { createdByUserId: scope.createdByUserId },
+          { source: { in: scope.includeSources } },
+        ],
+      });
+    } else {
+      where.createdByUserId = scope.createdByUserId;
+    }
+  }
   if (scope.excludeSource) where.source = { not: scope.excludeSource };
   if (filters.from || filters.to) {
     where.saleDate = {};
@@ -211,7 +223,15 @@ function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = 
 export function filterSalesRecordsInMemory(sales: Sale[], filters: SalesRecordFilters, scope: SalesRecordScope = {}) {
   const keyword = filters.keyword?.trim().toLowerCase();
   return sales.filter((sale) => {
-    if (scope.createdByUserId && sale.createdByUserId !== scope.createdByUserId) return false;
+    if (scope.createdByUserId) {
+      const matchCreator = sale.createdByUserId === scope.createdByUserId;
+      const matchSource = Boolean(
+        scope.includeSources &&
+          sale.source &&
+          scope.includeSources.includes(sale.source),
+      );
+      if (!matchCreator && !matchSource) return false;
+    }
     if (scope.excludeSource && sale.source === scope.excludeSource) return false;
     if (filters.from && sale.saleDate < filters.from) return false;
     if (filters.to && sale.saleDate > filters.to) return false;

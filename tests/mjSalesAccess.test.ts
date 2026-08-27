@@ -6,18 +6,29 @@ vi.mock("@/lib/sales/store", () => ({ getSalesRecord: vi.fn(), listSalesRecordsP
 
 import { canViewSalesRecord, salesRecordScopeForUser } from "@/lib/sales/access";
 
-const mjSale = { id: "sale-mj", saleDate: "2026-08-11", customerName: "MJ Customer", paymentMethod: "Cash", total: 10_000, items: [], source: "MJ", createdByUserId: "integration:mj" } satisfies Sale;
+const mjSale = {
+  id: "sale-mj",
+  saleDate: "2026-08-11",
+  customerName: "MJ Customer",
+  paymentMethod: "Cash",
+  total: 10_000,
+  items: [],
+  source: "MJ",
+  createdByUserId: "integration:mj",
+} satisfies Sale;
 
 describe("MJ sales UI access", () => {
-  it("allows Owner and rejects every other role", () => {
+  it("allows Owner and Admin to view MJ sales, rejects unauthorized roles", () => {
     expect(canViewSalesRecord({ id: "owner", name: "Owner", role: "OWNER" }, mjSale)).toBe(true);
-    expect(canViewSalesRecord({ id: "admin", name: "Admin", role: "ADMIN" }, mjSale)).toBe(false);
+    expect(canViewSalesRecord({ id: "admin", name: "Admin", role: "ADMIN" }, mjSale)).toBe(true);
     expect(canViewSalesRecord({ id: "manager", name: "Manager", role: "MANAGER" }, mjSale)).toBe(false);
   });
 
-  it("adds a database source filter for non-Owners", () => {
+  it("includes MJ source in sales record scope for Admin", () => {
     expect(salesRecordScopeForUser({ id: "owner", name: "Owner", role: "OWNER" })).toBeUndefined();
-    expect(salesRecordScopeForUser({ id: "admin", name: "Admin", role: "ADMIN" })).toEqual({ createdByUserId: "admin", excludeSource: "MJ" });
-    expect(salesRecordScopeForUser({ id: "manager", name: "Manager", role: "MANAGER" })).toEqual({ excludeSource: "MJ" });
+    expect(salesRecordScopeForUser({ id: "admin", name: "Admin", role: "ADMIN" })).toEqual({
+      createdByUserId: "admin",
+      includeSources: ["MJ"],
+    });
   });
 });
