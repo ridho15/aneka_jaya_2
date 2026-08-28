@@ -60,7 +60,9 @@ export function ContinuousPaperPreview({
   const [paperColor, setPaperColor] = useState<PaperColor>("white");
   const [showDriverHelp, setShowDriverHelp] = useState(false);
   const [showTuning, setShowTuning] = useState(false);
-  const [settings, setSettings] = useState<PrintSettings>(DEFAULT_PRINT_SETTINGS);
+  const [settings, setSettings] = useState<PrintSettings>(
+    DEFAULT_PRINT_SETTINGS,
+  );
   const printedRef = useRef(false);
 
   // Load custom settings from localStorage on initial client mount
@@ -242,13 +244,13 @@ export function ContinuousPaperPreview({
             border: none !important;
             background: transparent !important;
             width: 12cm !important;
-            height: 14cm !important;
-            max-height: 14cm !important;
-            min-height: 14cm !important;
+            height: 13.6cm !important;
+            max-height: 13.6cm !important;
+            min-height: 13.6cm !important;
             margin: 0 !important;
             padding: ${settings.paddingTop} ${settings.paddingRight} ${settings.paddingBottom} ${settings.paddingLeft} !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
@@ -552,7 +554,9 @@ export function ContinuousPaperPreview({
                     </span>
                     <select
                       value={settings.fontSize}
-                      onChange={(e) => updateSetting("fontSize", e.target.value)}
+                      onChange={(e) =>
+                        updateSetting("fontSize", e.target.value)
+                      }
                       className="mt-0.5 w-full rounded-md border border-slate-300 bg-white p-1 text-xs font-semibold text-slate-800"
                     >
                       <option value="11px">11px (Kecil)</option>
@@ -569,7 +573,9 @@ export function ContinuousPaperPreview({
                     </span>
                     <select
                       value={settings.lineHeight}
-                      onChange={(e) => updateSetting("lineHeight", e.target.value)}
+                      onChange={(e) =>
+                        updateSetting("lineHeight", e.target.value)
+                      }
                       className="mt-0.5 w-full rounded-md border border-slate-300 bg-white p-1 text-xs font-semibold text-slate-800"
                     >
                       <option value="1.05">1.05 (Sangat Rapat)</option>
@@ -676,7 +682,9 @@ export function ContinuousPaperPreview({
                 <span className="text-slate-500">Kanan:</span>
                 <select
                   value={settings.paddingRight}
-                  onChange={(e) => updateSetting("paddingRight", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("paddingRight", e.target.value)
+                  }
                   className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs font-mono font-semibold"
                 >
                   <option value="0.1cm">0.1cm</option>
@@ -689,7 +697,9 @@ export function ContinuousPaperPreview({
                 <span className="text-slate-500">Bawah:</span>
                 <select
                   value={settings.paddingBottom}
-                  onChange={(e) => updateSetting("paddingBottom", e.target.value)}
+                  onChange={(e) =>
+                    updateSetting("paddingBottom", e.target.value)
+                  }
                   className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs font-mono font-semibold"
                 >
                   <option value="0.1cm">0.1cm</option>

@@ -93,8 +93,12 @@ export function tearLine(label = "✂ SOBEK") {
   const totalDashes = DOT_MATRIX_WIDTH - centerText.length;
   const leftCount = Math.max(0, Math.floor(totalDashes / 2));
   const rightCount = Math.max(0, totalDashes - leftCount);
-  const leftDashes = "- ".repeat(Math.floor(leftCount / 2)).padEnd(leftCount, "-");
-  const rightDashes = " -".repeat(Math.floor(rightCount / 2)).padStart(rightCount, "-");
+  const leftDashes = "- "
+    .repeat(Math.floor(leftCount / 2))
+    .padEnd(leftCount, "-");
+  const rightDashes = " -"
+    .repeat(Math.floor(rightCount / 2))
+    .padStart(rightCount, "-");
   return `${leftDashes}${centerText}${rightDashes}`.slice(0, DOT_MATRIX_WIDTH);
 }
 
@@ -520,7 +524,7 @@ export function formatSaleDotMatrix(
     }
 
     if (isLastPage && showTearLine) {
-      const targetLines = 27;
+      const targetLines = 25;
       while (rows.length < targetLines) {
         rows.push("");
       }
