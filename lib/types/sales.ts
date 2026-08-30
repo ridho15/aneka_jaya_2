@@ -49,7 +49,7 @@ export type Sale = {
   erpInvoiceNumber?: string;
   erpSyncHttpStatus?: number;
   erpSyncResponse?: unknown;
-  stockReleaseStatus?: "not_required" | "pending" | "released" | "reversed" | "failed";
+  stockReleaseStatus?: "not_required" | "pending" | "released" | "already_released" | "reversed" | "failed";
   stockReleaseError?: string;
   stockReleaseReference?: string;
   stockReleasedAt?: string;

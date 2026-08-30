@@ -5,6 +5,7 @@ import type { Role } from "@/lib/auth/roles";
 import type { Expense } from "@/lib/types/expenses";
 import type { PengeluaranInput } from "@/lib/validation/pengeluaranSchema";
 import { recordAudit } from "@/lib/audit/store";
+import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, rekeningForTipe } from "@/lib/business/masterData";
 import { jakartaDateKey } from "@/lib/date/jakarta";
 
@@ -225,9 +226,6 @@ export async function updateExpenseRecord(id: string, input: PengeluaranInput): 
     action: "update",
     beforeValue: before,
     afterValue: after,
-    userId: actor.id,
-    userNameSnapshot: actor.name,
-    userRoleSnapshot: actor.role,
     reason: "Edit transaksi pengeluaran"
   });
   return after;
@@ -239,7 +237,6 @@ export async function cancelExpenseRecord(id: string, reason: string): Promise<E
   const before = await getExpenseRecord(id);
   if (!before) throw new Error("Pengeluaran tidak ditemukan.");
   assertExpenseManageable(before);
-  const actor = await getCurrentUser().catch(() => ({ id: "system", name: "System", role: "OWNER" as const }));
   const row = await prisma.expenseRecord.update({
     where: { id },
     data: {
@@ -255,9 +252,6 @@ export async function cancelExpenseRecord(id: string, reason: string): Promise<E
     action: "cancel",
     beforeValue: before,
     afterValue: after,
-    userId: actor.id,
-    userNameSnapshot: actor.name,
-    userRoleSnapshot: actor.role,
     reason: cleanReason
   });
   return after;

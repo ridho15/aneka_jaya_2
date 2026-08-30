@@ -556,7 +556,7 @@ export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreat
             warehouseNameSnapshot: item.warehouseNameSnapshot || "Gudang Utama",
             rackId: item.rackId,
             rackNameSnapshot: item.rackNameSnapshot,
-            unitSnapshot: item.unitSnapshot || item.manualProduct?.unit || "Pcs",
+            unitSnapshot: item.unitSnapshot || "Pcs",
             uomIdSnapshot: item.uomIdSnapshot,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -711,7 +711,7 @@ function calculateItemDeltas(beforeItems: Sale["items"], newItems: PenjualanInpu
     }
   }
 
-  for (const [key, { item, totalQty }] of newMap.entries()) {
+  newMap.forEach(({ item, totalQty }, key) => {
     const oldQty = oldMap.get(key) || 0;
     if (totalQty > oldQty) {
       deltaItems.push({
@@ -721,7 +721,7 @@ function calculateItemDeltas(beforeItems: Sale["items"], newItems: PenjualanInpu
         discount: item.discount || 0
       } as Sale["items"][number]);
     }
-  }
+  });
 
   return deltaItems;
 }
@@ -811,7 +811,7 @@ async function updatePrismaSalesRecord(
             warehouseNameSnapshot: item.warehouseNameSnapshot || "Gudang Utama",
             rackId: item.rackId,
             rackNameSnapshot: item.rackNameSnapshot,
-            unitSnapshot: item.unitSnapshot || item.manualProduct?.unit || "Pcs",
+            unitSnapshot: item.unitSnapshot || "Pcs",
             uomIdSnapshot: item.uomIdSnapshot,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -886,9 +886,6 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
       action: "update",
       beforeValue: before,
       afterValue: after,
-      userId: currentUser.id,
-      userNameSnapshot: currentUser.name,
-      userRoleSnapshot: currentUser.role,
       reason: "Edit transaksi penjualan"
     });
     return after;
@@ -904,9 +901,6 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
       action: "update",
       beforeValue: before,
       afterValue: after,
-      userId: currentUser.id,
-      userNameSnapshot: currentUser.name,
-      userRoleSnapshot: currentUser.role,
       reason: "Edit transaksi penjualan"
     });
     return after;
@@ -947,9 +941,6 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     action: "update",
     beforeValue: before,
     afterValue: after,
-    userId: currentUser.id,
-    userNameSnapshot: currentUser.name,
-    userRoleSnapshot: currentUser.role,
     reason: "Edit transaksi penjualan"
   });
   return after;
