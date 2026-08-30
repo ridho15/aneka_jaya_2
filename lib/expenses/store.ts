@@ -185,9 +185,6 @@ export async function updateExpenseApprovalStatus(id: string, status: NonNullabl
 
 function assertExpenseManageable(expense: Expense) {
   if (expense.approvalStatus === "cancelled") throw new Error("Pengeluaran sudah dibatalkan.");
-  if (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced") {
-    throw new Error("Pengeluaran AJ yang sudah tersinkron ERP tidak bisa diubah langsung. Buat koreksi melalui ERP atau mekanisme koreksi resmi.");
-  }
 }
 
 export async function updateExpenseRecord(id: string, input: PengeluaranInput): Promise<Expense> {
@@ -197,6 +194,7 @@ export async function updateExpenseRecord(id: string, input: PengeluaranInput): 
   const tipe = await findTipe(input.tipeId || before.tipeId);
   const rekening = (await rekeningForTipe(tipe.id)).find((item) => item.id === input.rekeningId);
   if (!rekening) throw new Error("Rekening pengeluaran tidak tersedia untuk tipe transaksi ini.");
+  const actor = await getCurrentUser().catch(() => ({ id: "system", name: "System", role: "OWNER" as const }));
   const row = await prisma.expenseRecord.update({
     where: { id },
     data: {
@@ -221,7 +219,17 @@ export async function updateExpenseRecord(id: string, input: PengeluaranInput): 
     }
   });
   const after = toExpense(row);
-  await recordAudit({ entityType: "expense", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.erpSyncTarget === "erp" ? "Edit pengeluaran ERP belum synced • masuk antrian sync ulang" : "Edit pengeluaran lokal" });
+  await recordAudit({
+    entityType: "expense",
+    entityId: id,
+    action: "update",
+    beforeValue: before,
+    afterValue: after,
+    userId: actor.id,
+    userNameSnapshot: actor.name,
+    userRoleSnapshot: actor.role,
+    reason: "Edit transaksi pengeluaran"
+  });
   return after;
 }
 
@@ -231,6 +239,7 @@ export async function cancelExpenseRecord(id: string, reason: string): Promise<E
   const before = await getExpenseRecord(id);
   if (!before) throw new Error("Pengeluaran tidak ditemukan.");
   assertExpenseManageable(before);
+  const actor = await getCurrentUser().catch(() => ({ id: "system", name: "System", role: "OWNER" as const }));
   const row = await prisma.expenseRecord.update({
     where: { id },
     data: {
@@ -240,6 +249,16 @@ export async function cancelExpenseRecord(id: string, reason: string): Promise<E
     }
   });
   const after = toExpense(row);
-  await recordAudit({ entityType: "expense", entityId: id, action: "cancel", beforeValue: before, afterValue: after, reason: cleanReason });
+  await recordAudit({
+    entityType: "expense",
+    entityId: id,
+    action: "cancel",
+    beforeValue: before,
+    afterValue: after,
+    userId: actor.id,
+    userNameSnapshot: actor.name,
+    userRoleSnapshot: actor.role,
+    reason: cleanReason
+  });
   return after;
 }

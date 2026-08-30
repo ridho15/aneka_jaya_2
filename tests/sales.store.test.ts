@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   },
   user: { id: "owner-1", name: "Owner", role: "OWNER" },
   cancelErpSales: vi.fn(),
+  releaseSaleStock: vi.fn(async () => ({ success: true, data: { status: "released" } })),
+  cancelStockRelease: vi.fn(async () => ({ success: true, data: { status: "reversed" } })),
+  nextRevisionReference: vi.fn((ref) => `${ref || "SLM-STOCK"}-REV1`),
   recordAudit: vi.fn(),
   findTipe: vi.fn(),
   listAllRekeningAccounts: vi.fn(),
@@ -29,6 +32,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn(async () => mocks.user) }));
 vi.mock("@/lib/api/salesCancellations", () => ({ cancelErpSales: mocks.cancelErpSales }));
+vi.mock("@/lib/api/stockReleases", () => ({
+  releaseSaleStock: mocks.releaseSaleStock,
+  cancelStockRelease: mocks.cancelStockRelease,
+  nextRevisionReference: mocks.nextRevisionReference
+}));
 vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 vi.mock("@/lib/business/masterData", () => ({ findTipe: mocks.findTipe, listAllRekeningAccounts: mocks.listAllRekeningAccounts, resolveSalesRekening: mocks.resolveSalesRekening }));
 
@@ -360,17 +368,10 @@ describe("sales store normalized persistence", () => {
     expect(updateData).not.toHaveProperty("transactionDateKey");
   });
 
-  it("blocks editing synced ERP sales after stock release or payment settlement", async () => {
+  it("blocks editing when the sale is already cancelled", async () => {
     mocks.prisma.salesRecord.findUnique.mockResolvedValue({
       ...dbSale,
-      syncTarget: "erp",
-      syncStatus: "synced",
-      erpReference: "SLM-INV-1",
-      erpInvoiceNumber: "SLM-INV-1",
-      stockReleaseReference: "SLM-STOCK-1",
-      erpPaymentReference: "SLM-PAY-1",
-      stockReleaseStatus: "released",
-      erpPaymentStatus: "paid"
+      approvalStatus: "cancelled"
     });
 
     await expect(updateSalesRecord("S-1", {
@@ -382,7 +383,7 @@ describe("sales store normalized persistence", () => {
       paymentMethod: "Cash",
       rekeningId: "cash-w",
       items: [{ productRef: "P-1", quantity: 3, unitPrice: 10000, discount: 0 }]
-    })).rejects.toThrow("ERP menolak update transaksi karena transaksi sudah masuk proses lanjutan. Batalkan transaksi lama di ERP lalu buat transaksi koreksi baru dengan ERP reference baru.");
+    })).rejects.toThrow("Transaksi sudah dibatalkan.");
 
     expect(mocks.prisma.salesRecord.update).not.toHaveBeenCalled();
   });

@@ -47,7 +47,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
         <div className="flex flex-wrap gap-2">
           <Link href="/pengeluaran" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
           <Link href={`/print/expenses/${expense.id}`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Cetak</Link>
-          {canManage && expense.approvalStatus !== "cancelled" && !(expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced") && <Link href={`/pengeluaran/${expense.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
+          {canManage && expense.approvalStatus !== "cancelled" && <Link href={`/pengeluaran/${expense.id}/edit`} className="rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-50">Edit</Link>}
         </div>
       </div>
 
@@ -76,8 +76,8 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
             <TransactionCancelButton
               id={expense.id}
               kind="expenses"
-              disabled={expense.approvalStatus === "cancelled" || (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced")}
-              disabledReason={expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced" ? "Pengeluaran AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Pengeluaran sudah dibatalkan."}
+              disabled={expense.approvalStatus === "cancelled"}
+              disabledReason="Pengeluaran sudah dibatalkan."
             />
           </div>
         )}

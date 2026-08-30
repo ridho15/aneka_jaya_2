@@ -23,7 +23,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   OWNER: [...ALL_PERMISSIONS],
-  ADMIN: ["penjualan.create"],
+  ADMIN: ["penjualan.create", "penjualan.manage"],
   FINANCE: ["pengeluaran.view", "pengeluaran.create", "tempo.view", "tempo.mark_paid", "reports.finance_view", "master_data.view", "guide.view"],
   MANAGER: ["pengeluaran.view", "approval.view", "approval.approve", "tempo.view", "reports.finance_view", "audit.view", "master_data.view", "guide.view"],
   VIEWER: []

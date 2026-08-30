@@ -53,7 +53,7 @@ describe("SalesHistoryList", () => {
     const ownerHtml = renderToStaticMarkup(<SalesHistoryList sales={[]} canManage={false} canViewTransactionNumber />);
     const otherHtml = renderToStaticMarkup(<SalesHistoryList sales={[]} canManage={false} canViewTransactionNumber={false} />);
 
-    expect(ownerHtml).toContain('colSpan="13"');
-    expect(otherHtml).toContain('colSpan="12"');
+    expect(ownerHtml).toContain('colSpan="11"');
+    expect(otherHtml).toContain('colSpan="10"');
   });
 });

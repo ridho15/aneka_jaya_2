@@ -13,15 +13,24 @@ export default async function EditPengeluaranPage({ params }: { params: Promise<
   const { id } = await params;
   const [expense, tipes, rekenings] = await Promise.all([getExpenseRecord(id), listBookkeepingTypes(), listRekeningAccounts()]);
   if (!expense) notFound();
-  const blocked = expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced";
+  const isCancelled = expense.approvalStatus === "cancelled";
+
   return (
     <AppShell>
       <div className="mb-7">
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-neutral-500">Keuangan</p>
         <h2 className="aj-page-title text-3xl font-bold">Edit Pengeluaran</h2>
-        <p className="mt-2 text-sm text-slate-600">Edit hanya dibuka untuk pengeluaran yang belum final/synced ke ERP.</p>
+        <p className="mt-2 text-sm text-slate-600">
+          {isCancelled
+            ? "Pengeluaran ini sudah dibatalkan dan tidak dapat diedit."
+            : "Edit transaksi pengeluaran yang tersimpan."}
+        </p>
       </div>
-      {blocked ? <ErrorState message="Pengeluaran AJ sudah tersinkron ke Aneka Jaya ERP. Edit langsung diblokir sampai tersedia mekanisme koreksi resmi." /> : <PengeluaranForm expense={expense} tipes={tipes} rekenings={rekenings} />}
+      {isCancelled ? (
+        <ErrorState message="Pengeluaran yang sudah dibatalkan tidak dapat diedit." />
+      ) : (
+        <PengeluaranForm expense={expense} tipes={tipes} rekenings={rekenings} />
+      )}
     </AppShell>
   );
 }

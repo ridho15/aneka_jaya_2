@@ -11,8 +11,10 @@ describe("Super Admin permission contract", () => {
     for (const permission of ALL_PERMISSIONS) expect(can("OWNER", permission)).toBe(true);
   });
 
-  it("keeps new transaction and stock management permissions Super Admin only", () => {
-    for (const permission of ["penjualan.manage", "pengeluaran.manage", "stock.manage", "stock.adjust"] as const) {
+  it("allows Admin to manage sales while keeping expense and stock management Super Admin only", () => {
+    expect(can("OWNER", "penjualan.manage")).toBe(true);
+    expect(can("ADMIN", "penjualan.manage")).toBe(true);
+    for (const permission of ["pengeluaran.manage", "stock.manage", "stock.adjust"] as const) {
       expect(can("OWNER", permission)).toBe(true);
       expect(can("ADMIN", permission)).toBe(false);
       expect(can("FINANCE", permission)).toBe(false);
@@ -21,8 +23,8 @@ describe("Super Admin permission contract", () => {
     }
   });
 
-  it("keeps Admin limited to sales creation while preserving other operational roles", () => {
-    expect(ROLE_PERMISSIONS.ADMIN).toEqual(["penjualan.create"]);
+  it("keeps Admin focused on sales creation and management while preserving other operational roles", () => {
+    expect(ROLE_PERMISSIONS.ADMIN).toEqual(["penjualan.create", "penjualan.manage"]);
     for (const permission of ["pengeluaran.view", "pengeluaran.create", "stock.view", "stock.create", "master_data.view", "guide.view"] as const) {
       expect(can("ADMIN", permission)).toBe(false);
     }

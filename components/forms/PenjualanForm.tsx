@@ -270,11 +270,11 @@ export function PenjualanForm({
           productInputMode:
             item.productInputMode || (item.manualProduct ? "manual" : "erp"),
           manualProduct: item.manualProduct,
-          warehouseId: item.warehouseId,
-          warehouseNameSnapshot: item.warehouseNameSnapshot,
+          warehouseId: item.warehouseId || "1",
+          warehouseNameSnapshot: item.warehouseNameSnapshot || "Gudang Utama",
           rackId: item.rackId,
           rackNameSnapshot: item.rackNameSnapshot,
-          unitSnapshot: item.unitSnapshot,
+          unitSnapshot: item.unitSnapshot || "Pcs",
           uomIdSnapshot: item.uomIdSnapshot,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -1354,32 +1354,34 @@ export function PenjualanForm({
                                 option.product.productId || option.product.id,
                                 { shouldDirty: true, shouldValidate: true },
                               );
+                              const effectiveWarehouseId = option.stockRows[0]?.warehouseId ? String(option.stockRows[0].warehouseId) : "1";
+                              const effectiveWarehouseName = option.stockRows[0]?.warehouse || "Gudang Utama";
+                              const effectiveRackId = option.stockRows[0]?.rackId ? String(option.stockRows[0].rackId) : undefined;
+                              const effectiveRackName = option.stockRows[0]?.rack || undefined;
+                              const effectiveUnit = option.unit || option.product.unit || option.stockRows.find((stock) => Boolean(stock.unit))?.unit || "Pcs";
+
                               setValue(
                                 `items.${index}.warehouseId`,
-                                undefined,
+                                effectiveWarehouseId,
                                 { shouldDirty: true, shouldValidate: true },
                               );
                               setValue(
                                 `items.${index}.warehouseNameSnapshot`,
-                                undefined,
+                                effectiveWarehouseName,
                                 { shouldDirty: true, shouldValidate: true },
                               );
-                              setValue(`items.${index}.rackId`, undefined, {
+                              setValue(`items.${index}.rackId`, effectiveRackId, {
                                 shouldDirty: true,
                                 shouldValidate: true,
                               });
                               setValue(
                                 `items.${index}.rackNameSnapshot`,
-                                undefined,
+                                effectiveRackName,
                                 { shouldDirty: true, shouldValidate: true },
                               );
                               setValue(
                                 `items.${index}.unitSnapshot`,
-                                option.unit ||
-                                option.stockRows.find((stock) =>
-                                  Boolean(stock.unit),
-                                )?.unit ||
-                                undefined,
+                                effectiveUnit,
                                 { shouldDirty: true, shouldValidate: true },
                               );
                               setValue(

@@ -76,8 +76,8 @@ describe("pending ERP contract guards", () => {
     });
   });
 
-  it("rejects non-owner roles before revealing pending contract details", async () => {
-    mocks.role = "ADMIN";
+  it("rejects unauthorized roles before revealing pending contract details", async () => {
+    mocks.role = "VIEWER";
 
     await expect(adjustStock(new Request("http://local/api/stocks/adjust", { method: "POST", body: "{}" }))).resolves.toMatchObject({ status: 403 });
     await expect(correctSalesErp()).resolves.toMatchObject({ status: 403 });

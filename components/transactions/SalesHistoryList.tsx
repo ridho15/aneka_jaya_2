@@ -73,13 +73,18 @@ function statusTone(value?: string) {
   return "slate";
 }
 
-function needsCancelAndRecreate(sale: Sale) {
-  return (
-    sale.syncTarget === "erp" &&
-    (sale.stockReleaseStatus === "released" ||
-      sale.erpPaymentStatus === "paid" ||
-      sale.erpPaymentStatus === "partial")
-  );
+export function stockReleaseBadge(sale: Sale) {
+  const status = sale.stockReleaseStatus;
+  if (status === "released" || status === "already_released") {
+    return <Badge value="Stok Released" tone="green" />;
+  }
+  if (status === "pending") {
+    return <Badge value="Stok Pending" tone="amber" />;
+  }
+  if (status === "failed") {
+    return <Badge value="Stok Gagal" tone="red" />;
+  }
+  return <Badge value="Non-Stok" tone="slate" />;
 }
 
 function ExpandButton({
@@ -134,8 +139,7 @@ function MoreActionsMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const canEdit =
     sale.source !== "MJ" &&
-    sale.approvalStatus !== "cancelled" &&
-    !needsCancelAndRecreate(sale);
+    sale.approvalStatus !== "cancelled";
 
   useEffect(() => {
     if (!open) return;
@@ -196,11 +200,6 @@ function MoreActionsMenu({
             >
               Edit transaksi
             </Link>
-          )}
-          {sale.source !== "MJ" && needsCancelAndRecreate(sale) && (
-            <p className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800">
-              Transaksi ERP harus menggunakan cancel lalu dibuat kembali.
-            </p>
           )}
           {sale.source !== "MJ" && (
             <div className="border-t border-slate-100 px-4 py-2">
@@ -294,7 +293,7 @@ export function SalesHistoryList({
   canViewTransactionNumber,
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
-  const columnCount = canViewTransactionNumber ? 13 : 12;
+  const columnCount = canViewTransactionNumber ? 11 : 10;
   const toggle = (id: string) =>
     setExpandedSaleId((current) => nextExpandedSaleId(current, id));
 
@@ -351,22 +350,7 @@ export function SalesHistoryList({
                   value={sale.approvalStatus || "approved"}
                   tone={statusTone(sale.approvalStatus || "approved")}
                 />
-                <Badge
-                  value={`Invoice ${sale.syncStatus || "local"}`}
-                  tone={statusTone(sale.syncStatus || "local")}
-                />
-                {sale.syncTarget === "erp" && (
-                  <Badge
-                    value={`Stok ${sale.stockReleaseStatus || "not_required"}`}
-                    tone={statusTone(sale.stockReleaseStatus || "not_required")}
-                  />
-                )}
-                {sale.syncTarget === "erp" && (
-                  <Badge
-                    value={`Payment ${sale.erpPaymentStatus || "not_required"}`}
-                    tone={statusTone(sale.erpPaymentStatus || "not_required")}
-                  />
-                )}
+                {stockReleaseBadge(sale)}
               </div>
               <dl className="mt-3 grid gap-2 text-sm text-slate-600">
                 {canViewTransactionNumber && (
@@ -402,12 +386,6 @@ export function SalesHistoryList({
                 />
               </div>
               {expanded && <SalesItemsDetail sale={sale} className="mt-3" />}
-              {canManage && needsCancelAndRecreate(sale) && (
-                <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                  Transaksi ERP harus dibatalkan lalu dibuat kembali untuk
-                  melakukan koreksi.
-                </p>
-              )}
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <Link
                   className="rounded-md bg-emerald-600 px-2.5 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700"
@@ -459,9 +437,7 @@ export function SalesHistoryList({
               <th className="px-5 py-3">Pembayaran</th>
               <th className="px-5 py-3 text-right">Total</th>
               <th className="px-5 py-3">Approval</th>
-              <th className="px-5 py-3">Invoice ERP</th>
-              <th className="px-5 py-3">Release Stok</th>
-              <th className="px-5 py-3">Payment ERP</th>
+              <th className="px-5 py-3">Stok Gudang AJ</th>
               <th className="px-5 py-3">Pembuat</th>
             </tr>
           </thead>
@@ -561,34 +537,7 @@ export function SalesHistoryList({
                       />
                     </td>
                     <td className="px-5 py-4">
-                      <Badge
-                        value={sale.syncStatus || "local"}
-                        tone={statusTone(sale.syncStatus || "local")}
-                      />
-                    </td>
-                    <td className="px-5 py-4">
-                      {sale.syncTarget === "erp" ? (
-                        <Badge
-                          value={sale.stockReleaseStatus || "not_required"}
-                          tone={statusTone(
-                            sale.stockReleaseStatus || "not_required",
-                          )}
-                        />
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      {sale.syncTarget === "erp" ? (
-                        <Badge
-                          value={sale.erpPaymentStatus || "not_required"}
-                          tone={statusTone(
-                            sale.erpPaymentStatus || "not_required",
-                          )}
-                        />
-                      ) : (
-                        "—"
-                      )}
+                      {stockReleaseBadge(sale)}
                     </td>
                     <td className="px-5 py-4 text-slate-600">
                       {sale.createdByNameSnapshot || "—"}

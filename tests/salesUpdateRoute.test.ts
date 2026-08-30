@@ -86,6 +86,31 @@ describe("sales update route ERP auto sync", () => {
     expect(await response.json()).toMatchObject({ code: "DATABASE_MIGRATION_REQUIRED", message: expect.stringContaining("migration") });
   });
 
+  it("allows ADMIN role to update sales transactions", async () => {
+    mocks.role = "ADMIN";
+    mocks.updateSalesRecord.mockResolvedValue({ id: "S-1", syncTarget: "local", syncStatus: "local" });
+
+    const response = await PUT(new Request("http://local/api/sales/S-1", {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }), { params: Promise.resolve({ id: "S-1" }) });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ success: true, data: { id: "S-1" } });
+  });
+
+  it("rejects unauthorized role from updating sales transactions", async () => {
+    mocks.role = "VIEWER";
+
+    const response = await PUT(new Request("http://local/api/sales/S-1", {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }), { params: Promise.resolve({ id: "S-1" }) });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ success: false, message: expect.stringContaining("akses") });
+  });
+
   it("does not expose unexpected Prisma errors as business validation", async () => {
     mocks.updateSalesRecord.mockRejectedValue(Object.assign(new Error("connection details"), { code: "P1001", name: "PrismaClientKnownRequestError" }));
     const response = await PUT(new Request("http://local/api/sales/S-1", { method: "PUT", body: JSON.stringify(payload) }), { params: Promise.resolve({ id: "S-1" }) });

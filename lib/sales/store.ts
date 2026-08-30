@@ -9,6 +9,7 @@ import { recordAudit } from "@/lib/audit/store";
 import { findTipe, listAllRekeningAccounts, resolveSalesRekening, type BookkeepingType, type RekeningAccount } from "@/lib/business/masterData";
 import { getCurrentUser } from "@/lib/auth/session";
 import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCancellations";
+import { cancelStockRelease, nextRevisionReference, releaseSaleStock } from "@/lib/api/stockReleases";
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
 import { createTempoReceivableInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
 
@@ -551,11 +552,11 @@ export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreat
             productRef: item.productRef,
             productId: item.productId,
             manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
-            warehouseId: item.warehouseId,
-            warehouseNameSnapshot: item.warehouseNameSnapshot,
+            warehouseId: item.warehouseId || "1",
+            warehouseNameSnapshot: item.warehouseNameSnapshot || "Gudang Utama",
             rackId: item.rackId,
             rackNameSnapshot: item.rackNameSnapshot,
-            unitSnapshot: item.unitSnapshot,
+            unitSnapshot: item.unitSnapshot || item.manualProduct?.unit || "Pcs",
             uomIdSnapshot: item.uomIdSnapshot,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -647,7 +648,7 @@ async function cancelPrismaSaleAtomically(id: string, before: Sale, cleanReason:
         approvalStatus: "cancelled",
         syncStatus: requiresErpCancellation ? "synced" : before.syncTarget === "erp" ? "failed" : before.syncStatus || "local",
         syncError: requiresErpCancellation ? "Transaksi dibatalkan dan sudah dibatalkan di ERP." : before.syncTarget === "erp" ? "Transaksi dibatalkan sebelum berhasil tersinkron ERP." : before.syncError,
-        stockReleaseStatus: erpCancellation?.stockReversalStatus === "reversed" ? "reversed" : before.stockReleaseStatus,
+        stockReleaseStatus: erpCancellation?.stockReversalStatus === "reversed" || (before.stockReleaseStatus === "released" || before.stockReleaseStatus === "already_released") ? "reversed" : before.stockReleaseStatus,
         erpPaymentStatus: erpCancellation?.paymentReversalStatus === "reversed" ? "reversed" : erpCancellation?.paymentReversalStatus === "not_found" ? "not_required" : before.erpPaymentStatus,
         erpPaymentError: erpCancellation?.paymentReversalStatus === "not_found" ? null : before.erpPaymentError
       },
@@ -688,6 +689,43 @@ function saleTotal(input: Pick<Sale, "items">) {
   return input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
 }
 
+const rupiah = (val: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(val || 0);
+
+function calculateItemDeltas(beforeItems: Sale["items"], newItems: PenjualanInput["items"]) {
+  const oldMap = new Map<string, number>();
+  for (const item of beforeItems) {
+    const key = `${item.productRef}::${item.warehouseId || "1"}`;
+    oldMap.set(key, (oldMap.get(key) || 0) + Number(item.quantity || 0));
+  }
+
+  const deltaItems: Sale["items"] = [];
+  const newMap = new Map<string, { item: PenjualanInput["items"][number]; totalQty: number }>();
+
+  for (const item of newItems) {
+    const key = `${item.productRef}::${item.warehouseId || "1"}`;
+    const existing = newMap.get(key);
+    if (existing) {
+      existing.totalQty += Number(item.quantity || 0);
+    } else {
+      newMap.set(key, { item, totalQty: Number(item.quantity || 0) });
+    }
+  }
+
+  for (const [key, { item, totalQty }] of newMap.entries()) {
+    const oldQty = oldMap.get(key) || 0;
+    if (totalQty > oldQty) {
+      deltaItems.push({
+        ...item,
+        quantity: totalQty - oldQty,
+        unitPrice: item.unitPrice,
+        discount: item.discount || 0
+      } as Sale["items"][number]);
+    }
+  }
+
+  return deltaItems;
+}
+
 async function updatePrismaSalesRecord(
   id: string,
   input: PenjualanInput,
@@ -700,6 +738,33 @@ async function updatePrismaSalesRecord(
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const row = await prisma.$transaction(async (tx) => {
     await tx.salesRecordItem.deleteMany({ where: { salesRecordId: id } });
+
+    if (input.paymentMethod === "Tempo") {
+      const existingTempo = await tx.tempoReceivable.findUnique({ where: { salesId: id } });
+      if (existingTempo) {
+        const paidAmount = Number(existingTempo.paidAmount || 0);
+        if (total < paidAmount) {
+          throw new Error(`Total nota baru (${rupiah(total)}) tidak boleh lebih kecil dari pembayaran yang sudah diterima (${rupiah(paidAmount)}).`);
+        }
+        const remainingAmount = Math.max(0, total - paidAmount);
+        const status = remainingAmount === 0 ? "paid" : paidAmount > 0 ? "partial_paid" : "open";
+        await tx.tempoReceivable.update({
+          where: { salesId: id },
+          data: {
+            originalAmount: total,
+            remainingAmount,
+            status,
+            customerName: input.customerName,
+            tipeId: tipe.id,
+            tipeCodeSnapshot: tipe.code,
+            tipeNameSnapshot: tipe.name,
+            dueDate: input.dueDate ? new Date(input.dueDate) : existingTempo.dueDate,
+            updatedAt: new Date()
+          }
+        });
+      }
+    }
+
     return tx.salesRecord.update({
       where: { id },
       data: {
@@ -725,12 +790,12 @@ async function updatePrismaSalesRecord(
         erpReference: before.erpReference || null,
         erpSyncHttpStatus: before.syncTarget === "erp" ? null : before.erpSyncHttpStatus,
         erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse === undefined ? undefined : serializeJson(before.erpSyncResponse),
-        stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required",
-        stockReleaseError: before.syncTarget === "erp" ? "Menunggu update invoice ERP berhasil sebelum release stok ulang." : before.stockReleaseError || null,
-        stockReleaseReference: before.syncTarget === "erp" ? null : before.stockReleaseReference || null,
-        stockReleasedAt: before.syncTarget === "erp" ? null : before.stockReleasedAt ? new Date(before.stockReleasedAt) : null,
-        stockReleaseHttpStatus: before.syncTarget === "erp" ? null : before.stockReleaseHttpStatus,
-        stockReleaseResponse: before.syncTarget === "erp" ? undefined : before.stockReleaseResponse === undefined ? undefined : serializeJson(before.stockReleaseResponse),
+        stockReleaseStatus: before.stockReleaseStatus || "released",
+        stockReleaseError: null,
+        stockReleaseReference: before.stockReleaseReference || null,
+        stockReleasedAt: before.stockReleasedAt ? new Date(before.stockReleasedAt) : null,
+        stockReleaseHttpStatus: before.stockReleaseHttpStatus,
+        stockReleaseResponse: before.stockReleaseResponse === undefined ? undefined : serializeJson(before.stockReleaseResponse),
         erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required",
         erpPaymentError: before.syncTarget === "erp" ? "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP." : before.erpPaymentError || null,
         erpPaymentReference: before.syncTarget === "erp" ? null : before.erpPaymentReference || null,
@@ -742,11 +807,11 @@ async function updatePrismaSalesRecord(
             productRef: item.productRef,
             productId: item.productId,
             manualProduct: item.manualProduct ? serializeJson(item.manualProduct) : undefined,
-            warehouseId: item.warehouseId,
-            warehouseNameSnapshot: item.warehouseNameSnapshot,
+            warehouseId: item.warehouseId || "1",
+            warehouseNameSnapshot: item.warehouseNameSnapshot || "Gudang Utama",
             rackId: item.rackId,
             rackNameSnapshot: item.rackNameSnapshot,
-            unitSnapshot: item.unitSnapshot,
+            unitSnapshot: item.unitSnapshot || item.manualProduct?.unit || "Pcs",
             uomIdSnapshot: item.uomIdSnapshot,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -766,13 +831,17 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   if (!before) throw Object.assign(new Error("Transaksi penjualan tidak ditemukan."), { code: "SALES_NOT_FOUND" });
   if (before.source === "MJ") throw Object.assign(new Error("Invoice MJ hanya dapat diubah melalui API integrasi MJ."), { code: "INVOICE_LOCKED" });
   assertSaleManageable(before);
-  assertSalesEditable(before);
+  if (before.approvalStatus === "cancelled") {
+    throw Object.assign(new Error("Transaksi yang sudah dibatalkan tidak dapat diedit."), { code: "TRANSACTION_CANCELLED" });
+  }
+
   if (
     Number(input.initialPaymentAmount || 0) !== Number(before.initialPaymentAmount || 0) ||
     (input.initialPaymentMethod || undefined) !== (before.initialPaymentMethod || undefined) ||
     (input.initialPaymentRekeningId || undefined) !== (before.initialPaymentRekeningId || undefined) ||
     (input.initialPaymentNotes || undefined) !== (before.initialPaymentNotes || undefined)
   ) throw new Error("Pembayaran awal/DP tidak dapat diedit. Gunakan cancel/koreksi lalu buat transaksi baru.");
+
   const transactionAt = input.transactionAt ? jakartaTimestampFromLocal(input.transactionAt) : before.transactionAt;
   const deliveryAt = input.deliveryAt === undefined ? before.deliveryAt : input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
   if (deliveryAt && transactionAt && deliveryAt < transactionAt) throw new Error("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi.");
@@ -782,22 +851,107 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const rekening = await resolveRekeningForUpdate(before, normalizedInput, tipe);
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
+
+  // Alur 2: Storno & Re-release untuk Edit Transaksi Kasir
+  let newStockReference = before.stockReleaseReference || `SLM-STOCK-${before.erpReference || id}`;
+  if (before.stockReleaseReference && (before.stockReleaseStatus === "released" || before.stockReleaseStatus === "already_released")) {
+    const cancelRes = await cancelStockRelease({
+      reference: before.stockReleaseReference,
+      reason: "Edit transaksi kasir SLM"
+    });
+    if (!cancelRes.success) {
+      throw new Error(cancelRes.message || "Gagal membatalkan stok lama di ERP untuk revisi transaksi.");
+    }
+    newStockReference = nextRevisionReference(before.stockReleaseReference, `SLM-STOCK-${before.erpReference || id}`);
+  }
+
+  const stockResponse = await releaseSaleStock({
+    saleId: id,
+    saleDate: normalizedInput.saleDate,
+    erpReference: newStockReference,
+    sourceNumber: before.erpReference || `SLM-${id}`,
+    items: normalizedInput.items,
+  });
+  if (!stockResponse.success) {
+    throw new Error(stockResponse.message || "Stok di gudang tidak mencukupi untuk item transaksi hasil edit.");
+  }
+
+  const currentUser = await getCurrentUser().catch(() => ({ id: "system", name: "System", role: "OWNER" as Role }));
+
   if (isProductionMode()) {
     const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus);
-    await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
+    await recordAudit({
+      entityType: "sales",
+      entityId: id,
+      action: "update",
+      beforeValue: before,
+      afterValue: after,
+      userId: currentUser.id,
+      userNameSnapshot: currentUser.name,
+      userRoleSnapshot: currentUser.role,
+      reason: "Edit transaksi penjualan"
+    });
     return after;
   }
+
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) {
     const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus);
-    await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
+    await recordAudit({
+      entityType: "sales",
+      entityId: id,
+      action: "update",
+      beforeValue: before,
+      afterValue: after,
+      userId: currentUser.id,
+      userNameSnapshot: currentUser.name,
+      userRoleSnapshot: currentUser.role,
+      reason: "Edit transaksi penjualan"
+    });
     return after;
   }
-  const after: Sale = { ...before, ...normalizedInput, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name, rekeningId: rekening?.id, rekeningNameSnapshot, total, syncStatus: nextSyncStatus, syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined, syncedAt: before.syncTarget === "erp" ? undefined : before.syncedAt, erpReference: before.erpReference, erpSyncHttpStatus: before.syncTarget === "erp" ? undefined : before.erpSyncHttpStatus, erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse, stockReleaseStatus: before.syncTarget === "erp" ? "pending" : before.stockReleaseStatus || "not_required", stockReleaseError: before.syncTarget === "erp" ? "Menunggu update invoice ERP berhasil sebelum release stok ulang." : before.stockReleaseError, stockReleaseReference: before.syncTarget === "erp" ? undefined : before.stockReleaseReference, stockReleasedAt: before.syncTarget === "erp" ? undefined : before.stockReleasedAt, stockReleaseHttpStatus: before.syncTarget === "erp" ? undefined : before.stockReleaseHttpStatus, stockReleaseResponse: before.syncTarget === "erp" ? undefined : before.stockReleaseResponse, erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required", erpPaymentError: before.syncTarget === "erp" ? "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP." : before.erpPaymentError, erpPaymentReference: before.syncTarget === "erp" ? undefined : before.erpPaymentReference, erpPaymentSyncedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentSyncedAt, erpPaymentAttemptedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentAttemptedAt };
+
+  const after: Sale = {
+    ...before,
+    ...normalizedInput,
+    tipeId: tipe.id,
+    tipeCodeSnapshot: tipe.code,
+    tipeNameSnapshot: tipe.name,
+    rekeningId: rekening?.id,
+    rekeningNameSnapshot,
+    total,
+    syncStatus: nextSyncStatus,
+    syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined,
+    syncedAt: before.syncTarget === "erp" ? undefined : before.syncedAt,
+    erpReference: before.erpReference,
+    erpSyncHttpStatus: before.syncTarget === "erp" ? undefined : before.erpSyncHttpStatus,
+    erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse,
+    stockReleaseStatus: stockResponse.data?.status || "released",
+    stockReleaseError: undefined,
+    stockReleaseReference: newStockReference,
+    stockReleasedAt: new Date().toISOString(),
+    stockReleaseHttpStatus: before.stockReleaseHttpStatus,
+    stockReleaseResponse: before.stockReleaseResponse,
+    erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required",
+    erpPaymentError: before.syncTarget === "erp" ? "Menunggu update invoice ERP dan release stok ulang sebelum payment ERP." : before.erpPaymentError,
+    erpPaymentReference: before.syncTarget === "erp" ? undefined : before.erpPaymentReference,
+    erpPaymentSyncedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentSyncedAt,
+    erpPaymentAttemptedAt: before.syncTarget === "erp" ? undefined : before.erpPaymentAttemptedAt
+  };
   rows[index] = after;
   await writeJsonArray(fileName, rows);
-  await recordAudit({ entityType: "sales", entityId: id, action: "update", beforeValue: before, afterValue: after, reason: before.syncTarget === "erp" ? "Edit transaksi ERP belum synced • masuk antrian sync ulang" : "Edit transaksi lokal" });
+  await recordAudit({
+    entityType: "sales",
+    entityId: id,
+    action: "update",
+    beforeValue: before,
+    afterValue: after,
+    userId: currentUser.id,
+    userNameSnapshot: currentUser.name,
+    userRoleSnapshot: currentUser.role,
+    reason: "Edit transaksi penjualan"
+  });
   return after;
 }
 
@@ -833,6 +987,12 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
       throw new Error(response.message || "Cancel transaksi ERP gagal.");
     }
     erpCancellation = response.data;
+  } else if (before.stockReleaseReference && (before.stockReleaseStatus === "released" || before.stockReleaseStatus === "already_released")) {
+    // Alur 3: Batalkan rilis stok di AJ jika transaksi kasir dibatalkan/void
+    await cancelStockRelease({
+      reference: before.stockReleaseReference,
+      reason: cleanReason
+    });
   }
   if (isProductionMode()) {
     return cancelPrismaSaleAtomically(id, before, cleanReason, actor, requiresErpCancellation, erpCancellation);
