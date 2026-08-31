@@ -74,6 +74,7 @@ export function PerformanceChart({ data }: Props) {
       : "";
 
   const activeItem = activeIdx !== null ? data[activeIdx] : null;
+  const activeXPercent = activeIdx !== null ? (x(activeIdx) / 500) * 100 : 50;
 
   return (
     <section
@@ -93,7 +94,7 @@ export function PerformanceChart({ data }: Props) {
           <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Penjualan & Pengeluaran</h2>
         </div>
 
-        {/* Legend */}
+        {/* Legend & Toggle */}
         <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
           <span className="flex items-center gap-1.5 text-slate-700">
             <span className="h-3 w-3 rounded-full bg-blue-600 shadow-xs" />
@@ -162,56 +163,60 @@ export function PerformanceChart({ data }: Props) {
         </div>
       </div>
 
-      {/* Interactive Inspector Popover (Active Point Details) */}
-      {activeItem && (
-        <div className="mx-4 mt-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-emerald-50/90 p-3 sm:mx-6 shadow-xs animate-in fade-in duration-150">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="rounded-md bg-blue-600 px-2 py-0.5 text-xs font-bold text-white shadow-2xs">
-                📅 {activeItem.label} ({activeItem.key})
-              </span>
-              <span className="text-xs text-slate-500">Detail Finansial Bulan Ini:</span>
+      {/* SVG Canvas & Zero-Layout-Shift Floating Tooltip Container */}
+      <div
+        className="relative px-3 pb-4 pt-3 sm:px-6"
+        onMouseLeave={() => setActiveIdx(null)}
+      >
+        {/* Floating Absolute Tooltip (Zero Layout Shift, pointer-events-none) */}
+        {activeItem && (
+          <div
+            className="pointer-events-none absolute z-20 hidden sm:block transition-all duration-100 ease-out"
+            style={{
+              top: "14px",
+              left: `clamp(180px, ${activeXPercent}%, calc(100% - 180px))`,
+              transform: "translateX(-50%)"
+            }}
+          >
+            <div className="rounded-xl border border-slate-800/90 bg-slate-900/95 px-3.5 py-2.5 text-white shadow-xl backdrop-blur-xs min-w-[220px]">
+              <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5 mb-1.5">
+                <span className="font-bold text-xs text-emerald-400">
+                  📅 {activeItem.label} ({activeItem.key})
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                    activeItem.sales >= activeItem.expenses ? "bg-emerald-900/80 text-emerald-300" : "bg-rose-900/80 text-rose-300"
+                  }`}
+                >
+                  {activeItem.sales >= activeItem.expenses ? "Surplus" : "Defisit"}
+                </span>
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-400">📈 Penjualan:</span>
+                  <b className="text-blue-300 font-extrabold">{rupiah(activeItem.sales || 0)}</b>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-400">📉 Pengeluaran:</span>
+                  <b className="text-orange-300 font-extrabold">{rupiah(activeItem.expenses || 0)}</b>
+                </div>
+                <div className="flex justify-between gap-3 border-t border-slate-800 pt-1">
+                  <span className="text-slate-400">💰 Selisih Net:</span>
+                  <b
+                    className={`font-extrabold ${
+                      activeItem.sales >= activeItem.expenses ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {activeItem.sales >= activeItem.expenses
+                      ? `+${rupiah(activeItem.sales - activeItem.expenses)}`
+                      : rupiah(activeItem.sales - activeItem.expenses)}
+                  </b>
+                </div>
+              </div>
             </div>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                activeItem.sales >= activeItem.expenses
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-rose-100 text-rose-800"
-              }`}
-            >
-              Net:{" "}
-              {activeItem.sales >= activeItem.expenses
-                ? `+${rupiah(activeItem.sales - activeItem.expenses)}`
-                : rupiah(activeItem.sales - activeItem.expenses)}
-            </span>
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-            <div className="rounded-lg bg-white/90 p-2 border border-blue-100">
-              <span className="text-slate-500 block text-[11px]">📈 Penjualan (Omset):</span>
-              <b className="text-blue-900 text-sm font-extrabold">{rupiah(activeItem.sales || 0)}</b>
-            </div>
-            <div className="rounded-lg bg-white/90 p-2 border border-orange-100">
-              <span className="text-slate-500 block text-[11px]">📉 Pengeluaran (Beban):</span>
-              <b className="text-orange-900 text-sm font-extrabold">{rupiah(activeItem.expenses || 0)}</b>
-            </div>
-            <div className="col-span-2 sm:col-span-1 rounded-lg bg-white/90 p-2 border border-slate-200">
-              <span className="text-slate-500 block text-[11px]">⚖️ Margin Laba:</span>
-              <b
-                className={`text-sm font-extrabold ${
-                  activeItem.sales >= activeItem.expenses ? "text-emerald-700" : "text-rose-700"
-                }`}
-              >
-                {activeItem.sales > 0
-                  ? `${(((activeItem.sales - activeItem.expenses) / activeItem.sales) * 100).toFixed(1)}%`
-                  : "0%"}
-              </b>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* SVG Canvas */}
-      <div className="px-3 pb-4 pt-3 sm:px-6">
         {rawMax === 0 ? (
           <div className="grid h-64 place-items-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 text-sm text-slate-500">
             <div className="text-center">
@@ -223,7 +228,7 @@ export function PerformanceChart({ data }: Props) {
             </div>
           </div>
         ) : (
-          <div className="relative">
+          <div>
             <svg
               viewBox="0 0 500 230"
               className="h-64 sm:h-72 w-full select-none"
@@ -282,7 +287,7 @@ export function PerformanceChart({ data }: Props) {
                     height={Math.max(0, barH)}
                     rx="4"
                     fill="url(#expenseBarGradient)"
-                    opacity={activeIdx !== null && !isActive ? 0.45 : 0.95}
+                    opacity={activeIdx !== null && !isActive ? 0.4 : 0.95}
                     className="transition-all duration-150"
                   />
                 );
@@ -358,7 +363,7 @@ export function PerformanceChart({ data }: Props) {
                 );
               })}
 
-              {/* Transparent Column Overlays for Interactive Hover */}
+              {/* Transparent Column Overlays for Interactive Hover with Full Hit-Testing */}
               {data.map((item, index) => (
                 <rect
                   key={`hover-overlay-${item.key}`}
@@ -366,18 +371,41 @@ export function PerformanceChart({ data }: Props) {
                   y={chartTop - 10}
                   width={columnWidth}
                   height={chartHeight + 35}
-                  fill="transparent"
+                  fill="#ffffff"
+                  fillOpacity="0.001"
+                  style={{ pointerEvents: "all" }}
                   className="cursor-pointer"
                   onMouseEnter={() => setActiveIdx(index)}
-                  onMouseLeave={() => setActiveIdx(null)}
                   onClick={() => setActiveIdx(activeIdx === index ? null : index)}
                 />
               ))}
             </svg>
 
+            {/* Mobile Fallback Inspection Banner (When tapped on mobile screens) */}
+            {activeItem && (
+              <div className="mt-2 block sm:hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <b className="text-slate-900">📅 {activeItem.label} ({activeItem.key})</b>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      activeItem.sales >= activeItem.expenses
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    Net: {rupiah(activeItem.sales - activeItem.expenses)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Omset: <b className="text-blue-700">{rupiah(activeItem.sales || 0)}</b></span>
+                  <span>Beban: <b className="text-orange-700">{rupiah(activeItem.expenses || 0)}</b></span>
+                </div>
+              </div>
+            )}
+
             {/* Instruction Tip */}
             <p className="mt-1 text-center text-[11px] text-slate-400">
-              💡 Arahkan atau klik pada titik bulan untuk melihat rincian detail omset & beban.
+              💡 Arahkan atau sentuh titik bulan untuk melihat rincian omset & beban.
             </p>
           </div>
         )}
@@ -413,7 +441,6 @@ export function PerformanceChart({ data }: Props) {
                     <tr
                       key={item.key}
                       onMouseEnter={() => setActiveIdx(idx)}
-                      onMouseLeave={() => setActiveIdx(null)}
                       className={`transition-colors cursor-pointer ${
                         isHovered ? "bg-blue-50/60 font-semibold" : "hover:bg-slate-50"
                       }`}
