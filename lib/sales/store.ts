@@ -11,7 +11,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCancellations";
 import { cancelStockRelease, nextRevisionReference, releaseSaleStock } from "@/lib/api/stockReleases";
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
-import { createTempoReceivableInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
+import { createTempoReceivableInTransaction, syncTempoReceivableOnSalesEdit, syncTempoReceivableOnSalesEditInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -733,37 +733,34 @@ async function updatePrismaSalesRecord(
   total: number,
   tipe: BookkeepingType,
   rekening: RekeningAccount | undefined,
-  nextSyncStatus: Sale["syncStatus"]
+  nextSyncStatus: Sale["syncStatus"],
+  currentUser: { id: string; name: string; role: Role }
 ) {
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const row = await prisma.$transaction(async (tx) => {
     await tx.salesRecordItem.deleteMany({ where: { salesRecordId: id } });
 
-    if (input.paymentMethod === "Tempo") {
-      const existingTempo = await tx.tempoReceivable.findUnique({ where: { salesId: id } });
-      if (existingTempo) {
-        const paidAmount = Number(existingTempo.paidAmount || 0);
-        if (total < paidAmount) {
-          throw new Error(`Total nota baru (${rupiah(total)}) tidak boleh lebih kecil dari pembayaran yang sudah diterima (${rupiah(paidAmount)}).`);
-        }
-        const remainingAmount = Math.max(0, total - paidAmount);
-        const status = remainingAmount === 0 ? "paid" : paidAmount > 0 ? "partial_paid" : "open";
-        await tx.tempoReceivable.update({
-          where: { salesId: id },
-          data: {
-            originalAmount: total,
-            remainingAmount,
-            status,
-            customerName: input.customerName,
-            tipeId: tipe.id,
-            tipeCodeSnapshot: tipe.code,
-            tipeNameSnapshot: tipe.name,
-            dueDate: input.dueDate ? new Date(input.dueDate) : existingTempo.dueDate,
-            updatedAt: new Date()
-          }
-        });
-      }
-    }
+    await syncTempoReceivableOnSalesEditInTransaction(
+      tx,
+      {
+        salesId: id,
+        tipeId: tipe.id,
+        tipeCodeSnapshot: tipe.code,
+        tipeNameSnapshot: tipe.name,
+        customerName: input.customerName,
+        total,
+        saleDate: input.saleDate,
+        dueDate: input.dueDate,
+        paymentMethod: input.paymentMethod,
+        initialPaymentAmount: input.initialPaymentAmount !== undefined ? input.initialPaymentAmount : before.initialPaymentAmount,
+        initialPaymentMethod: input.initialPaymentMethod !== undefined ? input.initialPaymentMethod : before.initialPaymentMethod,
+        initialPaymentRekeningId: input.initialPaymentRekeningId !== undefined ? input.initialPaymentRekeningId : before.initialPaymentRekeningId,
+        initialPaymentRekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot !== undefined ? input.initialPaymentRekeningNameSnapshot : before.initialPaymentRekeningNameSnapshot,
+        initialPaymentNotes: input.initialPaymentNotes !== undefined ? input.initialPaymentNotes : before.initialPaymentNotes,
+        syncTarget: before.syncTarget
+      },
+      currentUser
+    );
 
     return tx.salesRecord.update({
       where: { id },
@@ -779,6 +776,11 @@ async function updatePrismaSalesRecord(
         shippingMethod: input.shippingMethod,
         paymentMethod: input.paymentMethod,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        initialPaymentAmount: input.initialPaymentAmount !== undefined ? Number(input.initialPaymentAmount || 0) : before.initialPaymentAmount,
+        initialPaymentMethod: input.initialPaymentMethod !== undefined ? input.initialPaymentMethod : before.initialPaymentMethod,
+        initialPaymentRekeningId: input.initialPaymentRekeningId !== undefined ? input.initialPaymentRekeningId : before.initialPaymentRekeningId,
+        initialPaymentRekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot !== undefined ? input.initialPaymentRekeningNameSnapshot : before.initialPaymentRekeningNameSnapshot,
+        initialPaymentNotes: input.initialPaymentNotes !== undefined ? input.initialPaymentNotes : before.initialPaymentNotes,
         rekeningId: rekening?.id,
         rekeningNameSnapshot,
         transferAccount: input.transferAccount,
@@ -835,13 +837,6 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     throw Object.assign(new Error("Transaksi yang sudah dibatalkan tidak dapat diedit."), { code: "TRANSACTION_CANCELLED" });
   }
 
-  if (
-    Number(input.initialPaymentAmount || 0) !== Number(before.initialPaymentAmount || 0) ||
-    (input.initialPaymentMethod || undefined) !== (before.initialPaymentMethod || undefined) ||
-    (input.initialPaymentRekeningId || undefined) !== (before.initialPaymentRekeningId || undefined) ||
-    (input.initialPaymentNotes || undefined) !== (before.initialPaymentNotes || undefined)
-  ) throw new Error("Pembayaran awal/DP tidak dapat diedit. Gunakan cancel/koreksi lalu buat transaksi baru.");
-
   const transactionAt = input.transactionAt ? jakartaTimestampFromLocal(input.transactionAt) : before.transactionAt;
   const deliveryAt = input.deliveryAt === undefined ? before.deliveryAt : input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
   if (deliveryAt && transactionAt && deliveryAt < transactionAt) throw new Error("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi.");
@@ -879,7 +874,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const currentUser = await getCurrentUser().catch(() => ({ id: "system", name: "System", role: "OWNER" as Role }));
 
   if (isProductionMode()) {
-    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus);
+    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser);
     await recordAudit({
       entityType: "sales",
       entityId: id,
@@ -894,7 +889,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) {
-    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus);
+    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser);
     await recordAudit({
       entityType: "sales",
       entityId: id,
@@ -905,6 +900,27 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     });
     return after;
   }
+
+  await syncTempoReceivableOnSalesEdit(
+    {
+      salesId: id,
+      tipeId: tipe.id,
+      tipeCodeSnapshot: tipe.code,
+      tipeNameSnapshot: tipe.name,
+      customerName: normalizedInput.customerName,
+      total,
+      saleDate: normalizedInput.saleDate,
+      dueDate: normalizedInput.dueDate,
+      paymentMethod: normalizedInput.paymentMethod,
+      initialPaymentAmount: normalizedInput.initialPaymentAmount !== undefined ? normalizedInput.initialPaymentAmount : before.initialPaymentAmount,
+      initialPaymentMethod: normalizedInput.initialPaymentMethod !== undefined ? normalizedInput.initialPaymentMethod : before.initialPaymentMethod,
+      initialPaymentRekeningId: normalizedInput.initialPaymentRekeningId !== undefined ? normalizedInput.initialPaymentRekeningId : before.initialPaymentRekeningId,
+      initialPaymentRekeningNameSnapshot: normalizedInput.initialPaymentRekeningNameSnapshot !== undefined ? normalizedInput.initialPaymentRekeningNameSnapshot : before.initialPaymentRekeningNameSnapshot,
+      initialPaymentNotes: normalizedInput.initialPaymentNotes !== undefined ? normalizedInput.initialPaymentNotes : before.initialPaymentNotes,
+      syncTarget: before.syncTarget
+    },
+    currentUser
+  );
 
   const after: Sale = {
     ...before,

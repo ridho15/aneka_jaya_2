@@ -1,0 +1,20 @@
+[
+  {
+    "id": "TMP-1788164126749",
+    "paidAmount": 50000,
+    "remainingAmount": 70000,
+    "status": "partial_paid",
+    "createdByUserId": "anika:1",
+    "createdByNameSnapshot": "Ridho Al Amzah",
+    "createdAt": "2026-08-31T08:15:26.749Z",
+    "updatedAt": "2026-08-31T09:04:15.449Z",
+    "salesId": "S-1788164125631-c0af2db1",
+    "tipeId": "W",
+    "tipeCodeSnapshot": "W",
+    "tipeNameSnapshot": "Walk In",
+    "customerName": "Toko UAT Tempo",
+    "originalAmount": 120000,
+    "transactionDate": "2026-08-31",
+    "dueDate": "2026-09-30"
+  }
+]

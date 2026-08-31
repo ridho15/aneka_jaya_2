@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
       create: vi.fn(),
       update: vi.fn()
     },
-    tempoReceivable: { findUnique: vi.fn(), update: vi.fn() },
+    tempoReceivable: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
+    tempoPayment: { upsert: vi.fn(), deleteMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     tempoPaymentReversal: { upsert: vi.fn() },
     auditLog: { create: vi.fn() }
   },
@@ -476,5 +477,80 @@ describe("sales store normalized persistence", () => {
     await expect(cancelSalesRecord("S-1", "Customer batal")).rejects.toThrow("Invoice ERP tidak bisa dibatalkan.");
 
     expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ syncError: expect.stringContaining("perlu rekonsiliasi") }) }));
+  });
+
+  it("updates sales record with modified DP and synchronizes tempo receivable and initial payment", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue(dbSale);
+    mocks.prisma.tempoReceivable.findUnique.mockResolvedValue({
+      id: "TMP-1",
+      salesId: "S-1",
+      customerName: "Budi",
+      originalAmount: 20000,
+      paidAmount: 5000,
+      remainingAmount: 15000,
+      status: "partial_paid",
+      dueDate: new Date("2026-07-27"),
+      payments: [
+        { id: "TPY-INITIAL-S-1", amountPaid: 5000, paymentMethod: "Cash" }
+      ]
+    });
+    mocks.prisma.tempoReceivable.update.mockResolvedValue({});
+    mocks.prisma.tempoPayment.upsert.mockResolvedValue({
+      id: "TPY-INITIAL-S-1",
+      tempoReceivableId: "TMP-1",
+      paymentDate: new Date("2026-06-27"),
+      amountPaid: 10000,
+      paymentMethod: "TF",
+      rekeningId: "cash-w",
+      rekeningNameSnapshot: "Kas Walk In",
+      notes: "DP diupdate via TF",
+      erpPaymentStatus: "not_required",
+      createdByUserId: "owner-1",
+      createdByNameSnapshot: "Owner",
+      createdAt: new Date()
+    });
+
+    const result = await updateSalesRecord("S-1", {
+      saleDate: "2026-06-27",
+      tipeId: "W",
+      customerName: "Budi",
+      customerLocation: "Toko",
+      shippingMethod: "di Tempat",
+      paymentMethod: "Tempo",
+      dueDate: "2026-07-27",
+      initialPaymentAmount: 10000,
+      initialPaymentMethod: "TF",
+      initialPaymentRekeningId: "cash-w",
+      initialPaymentNotes: "DP diupdate via TF",
+      items: [{ productRef: "P-1", quantity: 2, unitPrice: 10000, discount: 0 }]
+    });
+
+    expect(result).toBeDefined();
+    expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        initialPaymentAmount: 10000,
+        initialPaymentMethod: "TF",
+        initialPaymentNotes: "DP diupdate via TF"
+      })
+    }));
+    expect(mocks.prisma.tempoReceivable.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "TMP-1" },
+      data: expect.objectContaining({
+        paidAmount: 10000,
+        remainingAmount: 10000,
+        status: "partial_paid"
+      })
+    }));
+    expect(mocks.prisma.tempoPayment.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "TPY-INITIAL-S-1" },
+      create: expect.objectContaining({
+        amountPaid: 10000,
+        paymentMethod: "TF"
+      }),
+      update: expect.objectContaining({
+        amountPaid: 10000,
+        paymentMethod: "TF"
+      })
+    }));
   });
 });

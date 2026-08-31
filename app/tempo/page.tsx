@@ -51,10 +51,11 @@ function activeFilterLabels(params: SearchParams) {
 }
 
 function statusBadgeClass(status: string) {
-  if (status === "overdue") return "bg-red-50 text-red-700";
-  if (status === "paid") return "bg-emerald-50 text-emerald-700";
-  if (["cancelled", "written_off"].includes(status)) return "bg-slate-100 text-slate-600";
-  return "bg-blue-50 text-blue-700";
+  if (status === "overdue") return "bg-rose-50 text-rose-700 border border-rose-200";
+  if (status === "paid") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+  if (status === "partial_paid") return "bg-amber-50 text-amber-700 border border-amber-200";
+  if (["cancelled", "written_off"].includes(status)) return "bg-slate-100 text-slate-600 border border-slate-200";
+  return "bg-blue-50 text-blue-700 border border-blue-200";
 }
 
 export default async function TempoPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
@@ -96,13 +97,13 @@ export default async function TempoPage({ searchParams }: { searchParams?: Promi
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} tempo.</div>
         <div className="space-y-3 p-4 md:hidden">
           {paged.map((row) => (
-            <article key={row.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+            <article key={row.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-slate-900">{row.customerName}</p>
+                  <p className="truncate font-bold text-slate-900">{row.customerName}</p>
                   <p className="mt-1 font-mono text-xs text-slate-500">{row.id}</p>
                 </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>{row.status}</span>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${statusBadgeClass(row.status)}`}>{row.status}</span>
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Remaining</dt><dd className="mt-0.5 font-bold text-slate-900">{rupiah(row.remainingAmount)}</dd></div>
@@ -110,18 +111,22 @@ export default async function TempoPage({ searchParams }: { searchParams?: Promi
                 <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Original</dt><dd className="mt-0.5 text-slate-700">{rupiah(row.originalAmount)}</dd></div>
                 <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Paid</dt><dd className="mt-0.5 text-slate-700">{rupiah(row.paidAmount)}</dd></div>
               </dl>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Link href={`/tempo/${row.id}`} className="rounded-sm bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700">Detail</Link>
-                <Link href={`/print/tempo/${row.id}`} className="rounded-sm border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50">Cetak</Link>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {!["paid", "cancelled", "written_off"].includes(row.status) ? (
+                  <Link href={`/tempo/${row.id}`} className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors">💰 Bayar</Link>
+                ) : (
+                  <Link href={`/tempo/${row.id}`} className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">Detail</Link>
+                )}
+                <Link href={`/print/tempo/${row.id}`} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">Cetak</Link>
               </div>
             </article>
           ))}
           {paged.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Tidak ada Tempo sesuai filter.</p>}
         </div>
         <div className="hidden overflow-x-auto md:block">
-          <table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Original</th><th className="px-5 py-3">Paid</th><th className="px-5 py-3">Remaining</th><th className="px-5 py-3">Jatuh Tempo</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Action</th></tr></thead><tbody>{paged.map((row) => <tr key={row.id} className="border-b border-slate-100"><td className="px-5 py-4"><b>{row.customerName}</b><p className="mt-0.5 font-mono text-xs text-slate-500">{row.id}</p></td><td className="px-5 py-4">{row.tipeCodeSnapshot}</td><td className="px-5 py-4">{rupiah(row.originalAmount)}</td><td className="px-5 py-4">{rupiah(row.paidAmount)}</td><td className="px-5 py-4">{rupiah(row.remainingAmount)}</td><td className="px-5 py-4">{new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta" }).format(new Date(row.dueDate))}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(row.status)}`}>{row.status}</span></td><td className="px-5 py-4"><div className="flex gap-3"><Link href={`/tempo/${row.id}`} className="font-semibold text-emerald-700 hover:text-emerald-800">Detail</Link><Link href={`/print/tempo/${row.id}`} className="font-semibold text-emerald-700 hover:text-emerald-800">Cetak</Link></div></td></tr>)}{paged.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-500">Tidak ada Tempo sesuai filter.</td></tr>}</tbody></table>
+          <table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Original</th><th className="px-5 py-3">Paid</th><th className="px-5 py-3">Remaining</th><th className="px-5 py-3">Jatuh Tempo</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Action</th></tr></thead><tbody>{paged.map((row) => <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50/70 transition-colors"><td className="px-5 py-4"><b>{row.customerName}</b><p className="mt-0.5 font-mono text-xs text-slate-500">{row.id}</p></td><td className="px-5 py-4"><span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{row.tipeCodeSnapshot}</span></td><td className="px-5 py-4 font-medium">{rupiah(row.originalAmount)}</td><td className="px-5 py-4 font-medium text-emerald-700">{rupiah(row.paidAmount)}</td><td className="px-5 py-4 font-bold text-slate-900">{rupiah(row.remainingAmount)}</td><td className="px-5 py-4 text-slate-600">{new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta" }).format(new Date(row.dueDate))}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusBadgeClass(row.status)}`}>{row.status}</span></td><td className="px-5 py-4"><div className="flex items-center gap-2">{!["paid", "cancelled", "written_off"].includes(row.status) ? (<Link href={`/tempo/${row.id}`} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"><span>💰</span> Bayar</Link>) : (<Link href={`/tempo/${row.id}`} className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">Detail</Link>)}<Link href={`/print/tempo/${row.id}`} className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">Cetak</Link></div></td></tr>)}{paged.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-500">Tidak ada Tempo sesuai filter.</td></tr>}</tbody></table>
         </div>
-        <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm"><span className="text-slate-500">Halaman {page} dari {totalPages}</span><div className="flex gap-2">{page > 1 && <Link className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={pageHref(params, page - 1)}>Sebelumnya</Link>}{page < totalPages && <Link className="rounded-sm border border-slate-300 px-3 py-1.5 font-semibold text-slate-700 hover:bg-slate-50" href={pageHref(params, page + 1)}>Berikutnya</Link>}</div></div>
+        <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm"><span className="text-slate-500">Halaman {page} dari {totalPages}</span><div className="flex gap-2">{page > 1 && <Link className="rounded-lg border border-slate-300 px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50" href={pageHref(params, page - 1)}>Sebelumnya</Link>}{page < totalPages && <Link className="rounded-lg border border-slate-300 px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50" href={pageHref(params, page + 1)}>Berikutnya</Link>}</div></div>
       </section>
     </AppShell>
   );

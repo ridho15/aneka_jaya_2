@@ -186,16 +186,16 @@ function toTempoReceivable(row: Awaited<ReturnType<typeof prisma.tempoReceivable
     tipeCodeSnapshot: row.tipeCodeSnapshot,
     tipeNameSnapshot: row.tipeNameSnapshot,
     customerName: row.customerName,
-    originalAmount: Number(row.originalAmount),
-    paidAmount: Number(row.paidAmount),
-    remainingAmount: Number(row.remainingAmount),
-    transactionDate: jakartaDateKey(row.transactionDate),
-    dueDate: jakartaDateKey(row.dueDate),
-    status: row.status as TempoStatus,
-    createdByUserId: row.createdByUserId,
-    createdByNameSnapshot: row.createdByNameSnapshot,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString()
+    originalAmount: Number(row.originalAmount || 0),
+    paidAmount: Number(row.paidAmount || 0),
+    remainingAmount: Number(row.remainingAmount || 0),
+    transactionDate: row.transactionDate ? jakartaDateKey(row.transactionDate) : jakartaDateKey(new Date()),
+    dueDate: row.dueDate ? jakartaDateKey(row.dueDate) : jakartaDateKey(new Date()),
+    status: (row.status || "open") as TempoStatus,
+    createdByUserId: row.createdByUserId || "",
+    createdByNameSnapshot: row.createdByNameSnapshot || "",
+    createdAt: row.createdAt ? (row.createdAt instanceof Date ? row.createdAt.toISOString() : new Date(row.createdAt).toISOString()) : new Date().toISOString(),
+    updatedAt: row.updatedAt ? (row.updatedAt instanceof Date ? row.updatedAt.toISOString() : new Date(row.updatedAt).toISOString()) : new Date().toISOString()
   };
 }
 
@@ -203,9 +203,9 @@ function toTempoPayment(row: Awaited<ReturnType<typeof prisma.tempoPayment.findM
   return {
     id: row.id,
     tempoReceivableId: row.tempoReceivableId,
-    paymentDate: jakartaDateKey(row.paymentDate),
-    amountPaid: Number(row.amountPaid),
-    paymentMethod: row.paymentMethod as TempoPayment["paymentMethod"],
+    paymentDate: row.paymentDate ? jakartaDateKey(row.paymentDate) : jakartaDateKey(new Date()),
+    amountPaid: Number(row.amountPaid || 0),
+    paymentMethod: (row.paymentMethod || "Cash") as TempoPayment["paymentMethod"],
     rekeningId: row.rekeningId,
     rekeningNameSnapshot: row.rekeningNameSnapshot,
     attachmentUrl: row.attachmentUrl || undefined,
@@ -213,11 +213,11 @@ function toTempoPayment(row: Awaited<ReturnType<typeof prisma.tempoPayment.findM
     erpPaymentStatus: row.erpPaymentStatus as TempoPayment["erpPaymentStatus"],
     erpPaymentError: row.erpPaymentError || undefined,
     erpPaymentReference: row.erpPaymentReference || undefined,
-    erpPaymentSyncedAt: row.erpPaymentSyncedAt?.toISOString(),
-    erpPaymentAttemptedAt: row.erpPaymentAttemptedAt?.toISOString(),
-    createdByUserId: row.createdByUserId,
-    createdByNameSnapshot: row.createdByNameSnapshot,
-    createdAt: row.createdAt.toISOString()
+    erpPaymentSyncedAt: row.erpPaymentSyncedAt ? (row.erpPaymentSyncedAt instanceof Date ? row.erpPaymentSyncedAt.toISOString() : new Date(row.erpPaymentSyncedAt).toISOString()) : undefined,
+    erpPaymentAttemptedAt: row.erpPaymentAttemptedAt ? (row.erpPaymentAttemptedAt instanceof Date ? row.erpPaymentAttemptedAt.toISOString() : new Date(row.erpPaymentAttemptedAt).toISOString()) : undefined,
+    createdByUserId: row.createdByUserId || "",
+    createdByNameSnapshot: row.createdByNameSnapshot || "",
+    createdAt: row.createdAt ? (row.createdAt instanceof Date ? row.createdAt.toISOString() : new Date(row.createdAt).toISOString()) : new Date().toISOString()
   };
 }
 
@@ -411,6 +411,266 @@ export async function createTempoReceivable(input: TempoCreationInput): Promise<
   }
   await recordAudit({ entityType: "tempo", entityId: receivable.id, action: initialAmount > 0 ? "partial_paid" : "create", afterValue: receivable, reason: initialAmount > 0 ? "Tempo dan pembayaran awal dibuat dari Input Penjualan" : "Tempo dibuat dari Input Penjualan" });
   return receivable;
+}
+
+export type TempoSalesEditSyncInput = {
+  salesId: string;
+  tipeId: string;
+  tipeCodeSnapshot: string;
+  tipeNameSnapshot: string;
+  customerName: string;
+  total: number;
+  saleDate: string;
+  dueDate?: string | null;
+  paymentMethod: string;
+  initialPaymentAmount?: number | null;
+  initialPaymentMethod?: TempoPayment["paymentMethod"];
+  initialPaymentRekeningId?: string | null;
+  initialPaymentRekeningNameSnapshot?: string | null;
+  initialPaymentNotes?: string | null;
+  syncTarget?: string;
+};
+
+export async function syncTempoReceivableOnSalesEditInTransaction(
+  tx: Prisma.TransactionClient,
+  input: TempoSalesEditSyncInput,
+  user: { id: string; name: string; role: Role }
+): Promise<{ receivable?: TempoReceivable; payment?: TempoPayment }> {
+  const existing = await tx.tempoReceivable.findUnique({
+    where: { salesId: input.salesId },
+    include: { payments: true }
+  });
+
+  if (input.paymentMethod !== "Tempo") {
+    if (existing && !finalStatuses.includes(existing.status as TempoStatus)) {
+      await tx.tempoReceivable.update({
+        where: { id: existing.id },
+        data: { status: "cancelled", updatedAt: new Date() }
+      });
+      await tx.auditLog.create({
+        data: {
+          id: crypto.randomUUID(),
+          entityType: "tempo",
+          entityId: existing.id,
+          action: "cancel",
+          beforeValue: serializeJson(existing),
+          afterValue: serializeJson({ status: "cancelled" }),
+          userId: user.id,
+          userNameSnapshot: user.name,
+          userRoleSnapshot: user.role,
+          reason: "Metode pembayaran diubah dari Tempo ke tunai/transfer pada edit penjualan"
+        }
+      });
+    }
+    return {};
+  }
+
+  const initialAmount = Math.max(0, Number(input.initialPaymentAmount || 0));
+  const now = new Date();
+
+  if (!existing) {
+    return createTempoReceivableInTransaction(
+      tx,
+      {
+        salesId: input.salesId,
+        tipeId: input.tipeId,
+        tipeCodeSnapshot: input.tipeCodeSnapshot,
+        tipeNameSnapshot: input.tipeNameSnapshot,
+        customerName: input.customerName,
+        originalAmount: input.total,
+        transactionDate: input.saleDate,
+        dueDate: input.dueDate || input.saleDate,
+        initialPayment: initialAmount > 0 && input.initialPaymentMethod && input.initialPaymentRekeningId ? {
+          amount: initialAmount,
+          method: input.initialPaymentMethod,
+          rekeningId: input.initialPaymentRekeningId,
+          rekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot || input.initialPaymentRekeningId,
+          notes: input.initialPaymentNotes || undefined
+        } : undefined
+      },
+      user
+    );
+  }
+
+  const initialPaymentId = `TPY-INITIAL-${input.salesId}`;
+  const otherPayments = (existing.payments || []).filter((p) => p.id !== initialPaymentId);
+  const otherPaid = otherPayments.reduce((sum, p) => sum + Number(p.amountPaid), 0);
+  const totalPaid = initialAmount + otherPaid;
+  const remainingAmount = Math.max(0, input.total - totalPaid);
+  const nextStatus: TempoStatus = remainingAmount <= 0 ? "paid" : totalPaid > 0 ? "partial_paid" : "open";
+
+  const updatedReceivableRow = await tx.tempoReceivable.update({
+    where: { id: existing.id },
+    data: {
+      customerName: input.customerName,
+      originalAmount: input.total,
+      paidAmount: totalPaid,
+      remainingAmount,
+      dueDate: input.dueDate ? new Date(input.dueDate) : existing.dueDate,
+      status: nextStatus,
+      updatedAt: now
+    }
+  });
+
+  let payment: TempoPayment | undefined;
+  if (initialAmount > 0 && input.initialPaymentMethod && input.initialPaymentRekeningId) {
+    const sale = await tx.salesRecord.findUnique({ where: { id: input.salesId }, select: { syncTarget: true } });
+    const initialErpStatus = sale?.syncTarget === "erp" ? "pending" : "not_required";
+    const paymentRow = await tx.tempoPayment.upsert({
+      where: { id: initialPaymentId },
+      create: {
+        id: initialPaymentId,
+        tempoReceivableId: existing.id,
+        paymentDate: new Date(input.saleDate),
+        amountPaid: initialAmount,
+        paymentMethod: input.initialPaymentMethod,
+        rekeningId: input.initialPaymentRekeningId,
+        rekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot || input.initialPaymentRekeningId,
+        notes: input.initialPaymentNotes || undefined,
+        erpPaymentStatus: initialErpStatus,
+        createdByUserId: user.id,
+        createdByNameSnapshot: user.name,
+        createdAt: now
+      },
+      update: {
+        paymentDate: new Date(input.saleDate),
+        amountPaid: initialAmount,
+        paymentMethod: input.initialPaymentMethod,
+        rekeningId: input.initialPaymentRekeningId,
+        rekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot || input.initialPaymentRekeningId,
+        notes: input.initialPaymentNotes || undefined,
+        erpPaymentStatus: initialErpStatus
+      }
+    });
+    payment = toTempoPayment(paymentRow);
+  } else {
+    await tx.tempoPayment.deleteMany({ where: { id: initialPaymentId } });
+  }
+
+  const receivable = toTempoReceivable(updatedReceivableRow);
+  await tx.auditLog.create({
+    data: {
+      id: crypto.randomUUID(),
+      entityType: "tempo",
+      entityId: existing.id,
+      action: "update",
+      beforeValue: serializeJson(existing),
+      afterValue: serializeJson({ receivable, payment }),
+      userId: user.id,
+      userNameSnapshot: user.name,
+      userRoleSnapshot: user.role,
+      reason: "Pembayaran awal / data Tempo diperbarui dari Edit Penjualan"
+    }
+  });
+
+  return { receivable, payment };
+}
+
+export async function syncTempoReceivableOnSalesEdit(
+  input: TempoSalesEditSyncInput,
+  user: { id: string; name: string; role: Role }
+): Promise<{ receivable?: TempoReceivable; payment?: TempoPayment }> {
+  if (isProductionMode()) {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) =>
+      syncTempoReceivableOnSalesEditInTransaction(tx, input, user)
+    );
+  }
+
+  const rows = await readJsonArray<TempoReceivable>(receivableFile);
+  const index = rows.findIndex((r) => r.salesId === input.salesId);
+  const initialAmount = Math.max(0, Number(input.initialPaymentAmount || 0));
+  const now = new Date().toISOString();
+  const initialPaymentId = `TPY-INITIAL-${input.salesId}`;
+
+  if (input.paymentMethod !== "Tempo") {
+    if (index >= 0 && !finalStatuses.includes(rows[index].status)) {
+      const before = rows[index];
+      rows[index] = { ...before, status: "cancelled", updatedAt: now };
+      await writeJsonArray(receivableFile, rows);
+      await recordAudit({
+        entityType: "tempo",
+        entityId: before.id,
+        action: "cancel",
+        beforeValue: before,
+        afterValue: rows[index],
+        reason: "Metode pembayaran diubah dari Tempo ke tunai/transfer pada edit penjualan"
+      });
+    }
+    return {};
+  }
+
+  if (index < 0) {
+    const created = await createTempoReceivable({
+      salesId: input.salesId,
+      tipeId: input.tipeId,
+      tipeCodeSnapshot: input.tipeCodeSnapshot,
+      tipeNameSnapshot: input.tipeNameSnapshot,
+      customerName: input.customerName,
+      originalAmount: input.total,
+      transactionDate: input.saleDate,
+      dueDate: input.dueDate || input.saleDate,
+      initialPayment: initialAmount > 0 && input.initialPaymentMethod && input.initialPaymentRekeningId ? {
+        amount: initialAmount,
+        method: input.initialPaymentMethod,
+        rekeningId: input.initialPaymentRekeningId,
+        rekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot || input.initialPaymentRekeningId,
+        notes: input.initialPaymentNotes || undefined
+      } : undefined
+    });
+    return { receivable: created };
+  }
+
+  const before = rows[index];
+  const payments = await readJsonArray<TempoPayment>(paymentFile);
+  const otherPayments = payments.filter((p) => p.tempoReceivableId === before.id && p.id !== initialPaymentId);
+  const otherPaid = otherPayments.reduce((sum, p) => sum + Number(p.amountPaid), 0);
+  const totalPaid = initialAmount + otherPaid;
+  const remainingAmount = Math.max(0, input.total - totalPaid);
+  const nextStatus: TempoStatus = remainingAmount <= 0 ? "paid" : totalPaid > 0 ? "partial_paid" : "open";
+
+  const after: TempoReceivable = {
+    ...before,
+    customerName: input.customerName,
+    originalAmount: input.total,
+    paidAmount: totalPaid,
+    remainingAmount,
+    dueDate: input.dueDate || before.dueDate,
+    status: nextStatus,
+    updatedAt: now
+  };
+  rows[index] = after;
+  await writeJsonArray(receivableFile, rows);
+
+  let payment: TempoPayment | undefined;
+  const remainingPayments = payments.filter((p) => p.id !== initialPaymentId);
+  if (initialAmount > 0 && input.initialPaymentMethod && input.initialPaymentRekeningId) {
+    payment = {
+      id: initialPaymentId,
+      tempoReceivableId: before.id,
+      paymentDate: input.saleDate,
+      amountPaid: initialAmount,
+      paymentMethod: input.initialPaymentMethod,
+      rekeningId: input.initialPaymentRekeningId,
+      rekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot || input.initialPaymentRekeningId,
+      notes: input.initialPaymentNotes || undefined,
+      erpPaymentStatus: "not_required",
+      createdByUserId: user.id,
+      createdByNameSnapshot: user.name,
+      createdAt: now
+    };
+    remainingPayments.unshift(payment);
+  }
+  await writeJsonArray(paymentFile, remainingPayments);
+  await recordAudit({
+    entityType: "tempo",
+    entityId: before.id,
+    action: "update",
+    beforeValue: before,
+    afterValue: { receivable: after, payment },
+    reason: "Pembayaran awal / data Tempo diperbarui dari Edit Penjualan"
+  });
+
+  return { receivable: after, payment };
 }
 
 export async function listTempoReceivables(): Promise<TempoReceivable[]> {

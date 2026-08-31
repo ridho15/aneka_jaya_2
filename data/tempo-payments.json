@@ -1,0 +1,16 @@
+[
+  {
+    "id": "TPY-INITIAL-S-1788164125631-c0af2db1",
+    "tempoReceivableId": "TMP-1788164126749",
+    "paymentDate": "2026-08-31",
+    "amountPaid": 50000,
+    "paymentMethod": "TF",
+    "rekeningId": "cash-w",
+    "rekeningNameSnapshot": "Kas Walk In",
+    "notes": "DP Transfer BCA",
+    "erpPaymentStatus": "not_required",
+    "createdByUserId": "anika:1",
+    "createdByNameSnapshot": "Ridho Al Amzah",
+    "createdAt": "2026-08-31T09:04:15.449Z"
+  }
+]
