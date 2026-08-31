@@ -314,4 +314,48 @@ describe("ERP sync retry service", () => {
       body: expect.stringContaining("\"customer_id\":123")
     }));
   });
+
+  it("directly retries payment when stock is already_released without calling stock release again", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue({
+      ...row,
+      syncStatus: "synced",
+      stockReleaseStatus: "already_released",
+      erpPaymentStatus: "failed",
+      erpReference: "INV-100"
+    });
+    mocks.anikaRequest.mockResolvedValue({
+      success: true,
+      data: { data: { id: 10, status: "Paid", payment_reference: "PAY-1" } }
+    });
+    mocks.prisma.salesRecord.update
+      .mockResolvedValueOnce({ ...row, erpPaymentStatus: "pending" })
+      .mockResolvedValueOnce({
+        ...row,
+        syncStatus: "synced",
+        stockReleaseStatus: "already_released",
+        erpPaymentStatus: "paid",
+        erpPaymentReference: "PAY-1"
+      });
+
+    const result = await retrySalesErpSync("S-ERP-1");
+    expect(result.success).toBe(true);
+    expect(mocks.anikaRequest).toHaveBeenCalledWith(
+      expect.stringContaining("/invoices/payment-status")
+    );
+    expect(mocks.anikaRequest).not.toHaveBeenCalledWith(
+      expect.stringContaining("/inventory/stock-releases"),
+      expect.anything()
+    );
+  });
+
+  it("rejects retry when sale has approvalStatus cancelled", async () => {
+    mocks.prisma.salesRecord.findUnique.mockResolvedValue({
+      ...row,
+      approvalStatus: "cancelled"
+    });
+
+    const result = await retrySalesErpSync("S-ERP-1");
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("sudah dibatalkan");
+  });
 });

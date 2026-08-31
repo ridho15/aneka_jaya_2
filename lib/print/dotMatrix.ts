@@ -483,7 +483,7 @@ export function formatSaleDotMatrix(
               item.quantity,
               item.unitPrice,
               item.discount || 0,
-              item.unitSnapshot,
+              item.unitSnapshot || "Pcs",
               unitFormat,
             ),
           ];
@@ -495,7 +495,7 @@ export function formatSaleDotMatrix(
           item.quantity,
           item.unitPrice,
           item.discount || 0,
-          item.unitSnapshot,
+          item.unitSnapshot || "Pcs",
           unitFormat,
         );
       }),

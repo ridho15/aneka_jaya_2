@@ -25,6 +25,7 @@ const ajItemSchema = z.object({
   external_product_id: positiveId,
   product_name: z.string().min(1).max(200).optional(),
   sku: z.string().min(1).max(100).optional(),
+  unit: z.string().min(1).max(50).optional(),
   warehouse_id: positiveId,
   warehouse_name: z.string().min(1).max(200).optional(),
   rack_id: positiveId.optional(),

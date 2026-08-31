@@ -154,14 +154,18 @@ async function createLocalInvoice(input: MjInvoiceInput, principal: MjIntegratio
           }
           const sku = "sku" in item && typeof item.sku === "string" ? item.sku : String(item.external_product_id);
           const extId = String(item.external_product_id);
-          const wId = String(item.warehouse_id);
-          const wName = "warehouse_name" in item && typeof item.warehouse_name === "string" ? item.warehouse_name : null;
+          const prodName = "product_name" in item && typeof item.product_name === "string" ? item.product_name : sku;
+          const wId = String(item.warehouse_id || "1");
+          const wName = "warehouse_name" in item && typeof item.warehouse_name === "string" ? item.warehouse_name : "Gudang Utama";
           const rId = "rack_id" in item && item.rack_id ? String(item.rack_id) : null;
           const rName = "rack_name" in item && typeof item.rack_name === "string" ? item.rack_name : null;
+          const unit = "unit" in item && typeof item.unit === "string" ? item.unit : "Pcs";
           return {
             id: crypto.randomUUID(), productRef: sku, productId: extId,
+            manualProduct: json({ sku, name: prodName }),
             warehouseId: wId, warehouseNameSnapshot: wName,
             rackId: rId, rackNameSnapshot: rName,
+            unitSnapshot: unit,
             quantity: item.quantity, unitPrice: item.unit_price, discount: item.discount, sortOrder: index
           };
         }) }

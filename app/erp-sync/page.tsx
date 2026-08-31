@@ -256,11 +256,28 @@ export default async function ErpSyncPage({
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-slate-900">
-                    {item.customerName}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={
+                        item.source === "MJ"
+                          ? "rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700"
+                          : "rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
+                      }
+                    >
+                      {item.source || "SLM"}
+                    </span>
+                    <a
+                      href={`/penjualan/${item.id}`}
+                      className="font-semibold text-slate-900 hover:text-sky-600 hover:underline"
+                    >
+                      {item.customerName}
+                    </a>
+                  </div>
                   <p className="mt-1 text-xs text-slate-500">
                     {item.saleDate} • {item.tipeCode}
+                    {(item.externalReference || item.transactionNumber) && (
+                      <span> • {item.externalReference || item.transactionNumber}</span>
+                    )}
                   </p>
                 </div>
                 <p className="font-bold text-slate-900">{rupiah(item.total)}</p>
@@ -282,7 +299,7 @@ export default async function ErpSyncPage({
                     className={
                       item.stockReleaseStatus === "failed"
                         ? "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700"
-                        : item.stockReleaseStatus === "released"
+                        : ["released", "already_released"].includes(item.stockReleaseStatus)
                           ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
                           : "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"
                     }
@@ -358,7 +375,30 @@ export default async function ErpSyncPage({
                 <tr key={item.id} className="border-b border-slate-100">
                   <td className="px-5 py-4 text-slate-600">{item.saleDate}</td>
                   <td className="px-5 py-4 font-semibold">{item.tipeCode}</td>
-                  <td className="px-5 py-4">{item.customerName}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={
+                          item.source === "MJ"
+                            ? "rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700"
+                            : "rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
+                        }
+                      >
+                        {item.source || "SLM"}
+                      </span>
+                      <a
+                        href={`/penjualan/${item.id}`}
+                        className="font-medium text-slate-900 hover:text-sky-600 hover:underline"
+                      >
+                        {item.customerName}
+                      </a>
+                    </div>
+                    {(item.externalReference || item.transactionNumber) && (
+                      <span className="block text-xs text-slate-500">
+                        {item.externalReference || item.transactionNumber}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-4 text-right">{rupiah(item.total)}</td>
                   <td className="px-5 py-4">
                     <span
@@ -372,6 +412,11 @@ export default async function ErpSyncPage({
                     >
                       {item.syncStatus}
                     </span>
+                    {(item.erpInvoiceNumber || item.erpReference) && (
+                      <span className="block text-[11px] text-slate-500 font-mono mt-0.5">
+                        {item.erpInvoiceNumber || item.erpReference}
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     {item.stockReleaseStatus ? (
@@ -379,7 +424,7 @@ export default async function ErpSyncPage({
                         className={
                           item.stockReleaseStatus === "failed"
                             ? "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700"
-                            : item.stockReleaseStatus === "released"
+                            : ["released", "already_released"].includes(item.stockReleaseStatus)
                               ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
                               : "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700"
                         }
@@ -471,9 +516,12 @@ export default async function ErpSyncPage({
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-slate-900">
+                  <a
+                    href={`/pengeluaran/${item.id}`}
+                    className="font-semibold text-slate-900 hover:text-sky-600 hover:underline"
+                  >
                     {item.vendorName}
-                  </p>
+                  </a>
                   <p className="mt-1 text-xs text-slate-500">
                     {item.expenseDate} • {item.tipeCode}
                   </p>
@@ -552,7 +600,14 @@ export default async function ErpSyncPage({
                   <td className="px-5 py-4">
                     {item.coaName} / {item.category}
                   </td>
-                  <td className="px-5 py-4">{item.vendorName}</td>
+                  <td className="px-5 py-4">
+                    <a
+                      href={`/pengeluaran/${item.id}`}
+                      className="font-medium text-slate-900 hover:text-sky-600 hover:underline"
+                    >
+                      {item.vendorName}
+                    </a>
+                  </td>
                   <td className="px-5 py-4 text-right">
                     {rupiah(item.amount)}
                   </td>

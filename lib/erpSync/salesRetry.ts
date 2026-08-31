@@ -34,6 +34,10 @@ function jsonValue(value: unknown): Prisma.InputJsonValue | undefined {
 
 export type ErpSyncSaleItem = {
   id: string;
+  source: string;
+  externalReference?: string;
+  transactionNumber?: string;
+  erpInvoiceNumber?: string;
   saleDate: string;
   tipeCode: string;
   customerName: string;
@@ -105,6 +109,10 @@ function salesDelegate() {
 function toSyncItem(row: SalesRow): ErpSyncSaleItem {
   return {
     id: row.id,
+    source: row.source || "SLM",
+    externalReference: row.externalReference || undefined,
+    transactionNumber: row.transactionNumber || undefined,
+    erpInvoiceNumber: row.erpInvoiceNumber || undefined,
     saleDate: jakartaDateKey(row.saleDate),
     tipeCode: row.tipeCodeSnapshot,
     customerName: row.customerName,
@@ -125,9 +133,10 @@ function toSyncItem(row: SalesRow): ErpSyncSaleItem {
     erpPaymentSyncedAt: row.erpPaymentSyncedAt?.toISOString(),
     erpPaymentAttemptedAt: row.erpPaymentAttemptedAt?.toISOString(),
     retryable:
-      ["pending", "failed"].includes(row.syncStatus) ||
-      ["pending", "failed"].includes(row.stockReleaseStatus) ||
-      ["pending", "failed"].includes(row.erpPaymentStatus),
+      row.approvalStatus !== "cancelled" &&
+      (["pending", "failed"].includes(row.syncStatus) ||
+        ["pending", "failed"].includes(row.stockReleaseStatus) ||
+        ["pending", "failed"].includes(row.erpPaymentStatus)),
   };
 }
 
@@ -427,10 +436,17 @@ export async function getErpSyncOverview(
       warning: PRISMA_SYNC_WARNING,
     };
   const [pending, failed, synced, items] = await Promise.all([
-    delegate.count({ where: { syncTarget: "erp", syncStatus: "pending" } }),
     delegate.count({
       where: {
         syncTarget: "erp",
+        approvalStatus: { not: "cancelled" },
+        syncStatus: "pending",
+      },
+    }),
+    delegate.count({
+      where: {
+        syncTarget: "erp",
+        approvalStatus: { not: "cancelled" },
         OR: [
           { syncStatus: "failed" },
           {
@@ -439,16 +455,23 @@ export async function getErpSyncOverview(
           },
           {
             syncStatus: "synced",
-            stockReleaseStatus: "released",
+            stockReleaseStatus: { in: ["released", "already_released"] },
             erpPaymentStatus: { in: ["pending", "failed"] },
           },
         ],
       },
     }),
-    delegate.count({ where: { syncTarget: "erp", syncStatus: "synced" } }),
+    delegate.count({
+      where: {
+        syncTarget: "erp",
+        approvalStatus: { not: "cancelled" },
+        syncStatus: "synced",
+      },
+    }),
     delegate.findMany({
       where: {
         syncTarget: "erp",
+        approvalStatus: { not: "cancelled" },
         OR: [
           { syncStatus: { in: ["pending", "failed"] } },
           {
@@ -457,7 +480,7 @@ export async function getErpSyncOverview(
           },
           {
             syncStatus: "synced",
-            stockReleaseStatus: "released",
+            stockReleaseStatus: { in: ["released", "already_released"] },
             erpPaymentStatus: { in: ["pending", "failed"] },
           },
         ],
@@ -493,9 +516,14 @@ export async function retrySalesErpSync(
   });
   if (!row || row.syncTarget !== "erp")
     return { success: false, message: "Transaksi ERP tidak ditemukan." };
+  if (row.approvalStatus === "cancelled")
+    return { success: false, message: "Transaksi sudah dibatalkan, tidak bisa disinkronisasi ke ERP." };
+
+  const isStockSafe = ["released", "already_released"].includes(row.stockReleaseStatus);
+
   if (
     row.syncStatus === "synced" &&
-    row.stockReleaseStatus === "released" &&
+    isStockSafe &&
     !["pending", "failed"].includes(row.erpPaymentStatus)
   )
     return {
@@ -504,7 +532,7 @@ export async function retrySalesErpSync(
       message: "Transaksi, release stok, dan payment sudah tersinkron.",
     };
 
-  if (row.syncStatus === "synced" && row.stockReleaseStatus !== "released") {
+  if (row.syncStatus === "synced" && !isStockSafe) {
     const attemptedAt = new Date();
     await delegate.update({
       where: { id },
@@ -572,7 +600,7 @@ export async function retrySalesErpSync(
 
   if (
     row.syncStatus === "synced" &&
-    row.stockReleaseStatus === "released" &&
+    isStockSafe &&
     ["pending", "failed"].includes(row.erpPaymentStatus)
   ) {
     return row.paymentMethod === "Tempo"
