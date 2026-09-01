@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProductList } from "@/components/products/ProductList";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -25,5 +26,24 @@ export default async function BarangPage({ searchParams }: { searchParams: Searc
     productIds: response.data.data.map((product) => product.productId || product.id).filter(Boolean),
     skus: response.data.data.map((product) => product.code).filter(Boolean)
   }) : null;
-  return <AppShell><div className="mb-7"><h2 className="aj-page-title text-3xl font-bold">Stock Barang</h2><p className="mt-2 text-sm text-slate-600">Data barang dan quantity terbaru ditarik dari ERP setiap 30 detik. Minimum stock akan memicu alert WhatsApp hanya bila qty dan minimum valid.</p></div>{response.success ? <ProductList products={response.data.data} productMeta={response.data.meta} initialKeyword={params.keyword || ""} stocks={stocks?.success ? stocks.data : []} initialStockError={stocks?.success ? null : stocks?.message ?? null} canManage={can(role, "stock.manage")} /> : <ErrorState message={response.message} />}</AppShell>;
+  return (
+    <AppShell>
+      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h2 className="aj-page-title text-3xl font-bold">Stock Barang</h2>
+          <p className="mt-2 text-sm text-slate-600">Data barang dan quantity terbaru ditarik dari ERP setiap 30 detik. Minimum stock akan memicu alert WhatsApp hanya bila qty dan minimum valid.</p>
+        </div>
+        <div>
+          <Link
+            href="/stok-barang/ai-forecast"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
+          >
+            <span>⚡</span>
+            <span>AI Prediksi Stok & Dead Stock</span>
+          </Link>
+        </div>
+      </div>
+      {response.success ? <ProductList products={response.data.data} productMeta={response.data.meta} initialKeyword={params.keyword || ""} stocks={stocks?.success ? stocks.data : []} initialStockError={stocks?.success ? null : stocks?.message ?? null} canManage={can(role, "stock.manage")} /> : <ErrorState message={response.message} />}
+    </AppShell>
+  );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -28,5 +29,26 @@ export default async function StokBarangPage({ searchParams }: { searchParams: S
   });
   const filters = { keyword: params.keyword || "", productId: params.productId || "", sku: params.sku || "", warehouse: params.warehouse || "" };
   const listKey = JSON.stringify([response.success ? response.data.meta.page : params.page || "1", params.pageSize || "10", ...Object.values(filters)]);
-  return <AppShell><div className="mb-7"><p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Stock</p><h2 className="aj-page-title text-3xl font-bold">Stok Barang</h2><p className="mt-2 text-sm text-slate-600">Tampilan stok ERP per gudang/rak. Gunakan filter produk agar tidak mengambil seluruh data stok.</p></div>{response.success ? <StockList key={listKey} initialStocks={response.data.data} initialMeta={response.data.meta} initialFilters={filters} /> : <ErrorState message={response.message} />}</AppShell>;
+  return (
+    <AppShell>
+      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Stock</p>
+          <h2 className="aj-page-title text-3xl font-bold">Stok Barang</h2>
+          <p className="mt-2 text-sm text-slate-600">Tampilan stok ERP per gudang/rak. Gunakan filter produk agar tidak mengambil seluruh data stok.</p>
+        </div>
+        <div>
+          <Link
+            href="/stok-barang/ai-forecast"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
+          >
+            <span>⚡</span>
+            <span>AI Prediksi Stok & Dead Stock</span>
+          </Link>
+        </div>
+      </div>
+      {response.success ? <StockList key={listKey} initialStocks={response.data.data} initialMeta={response.data.meta} initialFilters={filters} /> : <ErrorState message={response.message} />}
+    </AppShell>
+  );
 }
+

@@ -1007,7 +1007,33 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "502":
-          $ref: "#/components/responses/BadGateway"
+  /api/ai/inventory-forecast:
+    get:
+      summary: Prediksi kebutuhan stok & optimasi dead stock berbasis Gemini AI.
+      description: Permission stock.view atau reports.view. Menghasilkan analisis demand forecasting, reorder urgency, saran bundling, dan draf PO supplier.
+      parameters:
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Force refresh melewati cache in-memory.
+      responses:
+        "200":
+          description: Hasil analisis AI inventaris.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/stocks:
     get:
       summary: Daftar stok ERP.
