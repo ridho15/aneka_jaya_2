@@ -199,7 +199,7 @@ ${JSON.stringify(fastMovingItems, null, 2)}
 
 Instruksi Output JSON (Wajib format JSON valid tanpa format markdown):
 {
-  "executiveSummary": "Narasi ringkas bahasa Indonesia 2-3 kalimat mengenai kesehatan stok, jumlah item kritis yang butuh restock, dan total modal tertahan di barang mati.",
+  "executiveSummary": "Narasi ringkas bahasa Indonesia 1-2 kalimat mengenai kesehatan stok dan jumlah item kritis.",
   "reorderRecommendations": [
     {
       "productId": "ID produk",
@@ -215,7 +215,7 @@ Instruksi Output JSON (Wajib format JSON valid tanpa format markdown):
       "urgency": "CRITICAL" | "WARNING" | "SAFE",
       "recommendedReorderQty": 0,
       "estimatedReorderCost": 0,
-      "reasoning": "Penjelasan singkat alasan reorder dan estimasi kebutuhan 14 hari ke depan"
+      "reasoning": "Penjelasan singkat 1 kalimat alasan reorder."
     }
   ],
   "deadStockOptimizations": [
@@ -233,16 +233,15 @@ Instruksi Output JSON (Wajib format JSON valid tanpa format markdown):
       "suggestedBundlingWith": {
         "fastMovingSku": "SKU produk laris",
         "fastMovingName": "Nama produk laris",
-        "bundleStrategy": "Contoh: Beli 2 Produk Laris Gratis 1 Produk Deadstock atau Paket Diskon Hemat 15%"
+        "bundleStrategy": "Beli [Produk Laris] Diskon [X]% [Produk Deadstock]"
       },
-      "actionStrategy": "Strategi pencairan modal barang mati"
+      "actionStrategy": "Diskon X% & Bundling"
     }
   ],
-  "supplierPoDraft": "Teks format pemesanan barang (Purchase Order) formal siap kirim via WhatsApp ke supplier untuk barang dengan status CRITICAL dan WARNING."
+  "supplierPoDraft": "Teks pesan WhatsApp ringkas pemesanan barang restock."
 }
 `;
 
-  // Call Gemini API
   const geminiResponse = await generateGeminiJson<any>(prompt, {
     model: "gemini-2.5-flash",
     temperature: 0.2
@@ -260,14 +259,14 @@ Instruksi Output JSON (Wajib format JSON valid tanpa format markdown):
           warehouse: r.warehouse || "",
           currentStock: Number(r.currentStock) || 0,
           minStock: Number(r.minStock) || 0,
-          unit: r.unit || "Pcs",
+          unit: r.unit || "unit",
           costPrice: Number(r.costPrice) || 0,
           dailyVelocity: Number(r.dailyVelocity) || 0,
           daysUntilStockout: Number(r.daysUntilStockout) || 0,
-          urgency: (r.urgency === "CRITICAL" || r.urgency === "WARNING" ? r.urgency : "SAFE") as ReorderUrgency,
+          urgency: r.urgency === "CRITICAL" || r.urgency === "WARNING" ? r.urgency : "SAFE",
           recommendedReorderQty: Number(r.recommendedReorderQty) || 0,
-          estimatedReorderCost: Number(r.estimatedReorderCost) || (Number(r.recommendedReorderQty) || 0) * (Number(r.costPrice) || 0),
-          reasoning: r.reasoning || "Rekomendasi otomatis berbasis laju penjualan harian."
+          estimatedReorderCost: Number(r.estimatedReorderCost) || 0,
+          reasoning: String(r.reasoning || "")
         }))
       : [];
 
@@ -278,13 +277,19 @@ Instruksi Output JSON (Wajib format JSON valid tanpa format markdown):
           productName: d.productName || "",
           warehouse: d.warehouse || "",
           currentStock: Number(d.currentStock) || 0,
-          unit: d.unit || "Pcs",
+          unit: d.unit || "unit",
           costPrice: Number(d.costPrice) || 0,
-          tiedUpCapital: Number(d.tiedUpCapital) || (Number(d.currentStock) || 0) * (Number(d.costPrice) || 0),
-          daysWithoutSale: Number(d.daysWithoutSale) || 30,
+          tiedUpCapital: Number(d.tiedUpCapital) || 0,
+          daysWithoutSale: Number(d.daysWithoutSale) || 0,
           discountRecommendationPercent: Number(d.discountRecommendationPercent) || 10,
-          suggestedBundlingWith: d.suggestedBundlingWith || undefined,
-          actionStrategy: d.actionStrategy || "Jalankan promosi diskon cuci gudang bertahap."
+          suggestedBundlingWith: d.suggestedBundlingWith
+            ? {
+                fastMovingSku: d.suggestedBundlingWith.fastMovingSku || "",
+                fastMovingName: d.suggestedBundlingWith.fastMovingName || "",
+                bundleStrategy: d.suggestedBundlingWith.bundleStrategy || ""
+              }
+            : undefined,
+          actionStrategy: String(d.actionStrategy || "Diskon & Bundling")
         }))
       : [];
 
@@ -304,15 +309,12 @@ Instruksi Output JSON (Wajib format JSON valid tanpa format markdown):
         totalTiedUpCapital,
         estimatedRestockBudget
       },
-      executiveSummary:
-        ai.executiveSummary ||
-        `Hasil analisis inventaris mendeteksi ${criticalCount} item kritis yang perlu segera di-restock dan ${deadStocks.length} item barang lambat bergerak dengan estimasi modal tertahan sebesar Rp ${totalTiedUpCapital.toLocaleString("id-ID")}.`,
+      executiveSummary: String(ai.executiveSummary || ""),
       reorderRecommendations: reorders,
       deadStockOptimizations: deadStocks,
-      supplierPoDraft: ai.supplierPoDraft || generateFallbackPoDraft(reorders)
+      supplierPoDraft: String(ai.supplierPoDraft || generateFallbackPoDraft(reorders))
     };
   } else {
-    // Fallback deterministic computation if API key is not ready or offline
     resultData = computeDeterministicFallbackForecast(aggregatedItems, fastMovingItems);
   }
 
@@ -326,25 +328,24 @@ Instruksi Output JSON (Wajib format JSON valid tanpa format markdown):
 
 function generateFallbackPoDraft(reorders: ReorderRecommendation[]) {
   const criticalItems = reorders.filter((r) => r.urgency === "CRITICAL" || r.urgency === "WARNING");
-  if (criticalItems.length === 0) return "Semua persediaan stok dalam kondisi aman. Tidak ada pesanan darurat.";
+  if (criticalItems.length === 0) return "Semua persediaan stok aman. Tidak ada pesanan darurat.";
 
   const lines = [
-    `*PURCHASE ORDER RESTOCK GUDANG*`,
-    `Tanggal: ${new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }).format(new Date())}`,
-    `Kepada: Rekan Supplier / Bagian Pembelian`,
+    `*SURAT PESANAN RESTOCK BARANG (PO)*`,
+    `Tanggal: ${new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" }).format(new Date())}`,
     "",
-    "Mohon bantuan untuk pengiriman restock barang darurat berikut:",
-    ""
+    "Daftar Barang yang Dipesan:"
   ];
 
+  let totalEst = 0;
   criticalItems.forEach((it, idx) => {
-    lines.push(`${idx + 1}. [${it.sku}] ${it.productName}`);
-    lines.push(`   - Jumlah Pesanan: *${it.recommendedReorderQty} ${it.unit}*`);
-    lines.push(`   - Lokasi Tujuan: Gudang ${it.warehouse}`);
-    lines.push("");
+    totalEst += it.estimatedReorderCost;
+    lines.push(`${idx + 1}. ${it.productName} - Qty: +${it.recommendedReorderQty} ${it.unit} (Gudang: ${it.warehouse || "-"})`);
   });
 
-  lines.push("Mohon konfirmasi ketersediaan dan estimasi pengiriman. Terima kasih.");
+  lines.push("");
+  lines.push(`Total Estimasi Anggaran: Rp ${totalEst.toLocaleString("id-ID")}`);
+  lines.push("Mohon konfirmasi ketersediaan & jadwal pengiriman. Terima kasih.");
   return lines.join("\n");
 }
 

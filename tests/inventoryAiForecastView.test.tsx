@@ -51,14 +51,15 @@ const mockData: InventoryAiForecastResult = {
       discountRecommendationPercent: 20,
       actionStrategy: "Beri diskon 20% dan bundling.",
       suggestedBundlingWith: {
-        fastMovingProductId: "p1",
+        fastMovingSku: "BRS-001",
         fastMovingName: "Beras Premium 5kg",
         bundleStrategy: "Beli Beras 5kg gratis Kecap diskon 20%"
       }
     }
   ],
-  supplierPoDraft: "PO RESTOCK DARURAT\n1. Beras Premium 5kg: 50 sak\n2. Minyak Goreng 2L: 30 pcs",
+  supplierPoDraft: "*SURAT PESANAN RESTOCK BARANG (PO)*\n1. Beras Premium 5kg - Qty: +50 sak\n2. Minyak Goreng 2L - Qty: +30 pcs",
   summary: {
+    totalItemsAnalyzed: 3,
     criticalReorderCount: 1,
     warningReorderCount: 1,
     estimatedRestockBudget: 4400000,
@@ -78,7 +79,7 @@ describe("AiInventoryForecastView Component", () => {
 
   it("renders search input, warehouse filter, and pagination controls", () => {
     const html = renderToStaticMarkup(<AiInventoryForecastView initialData={mockData} />);
-    expect(html).toContain("Cari nama barang, SKU, gudang...");
+    expect(html).toContain("Cari nama barang atau kode SKU...");
     expect(html).toContain("Semua Lokasi Gudang");
     expect(html).toContain("Gudang: Gudang Utama");
     expect(html).toContain("Gudang: Gudang Cabang");

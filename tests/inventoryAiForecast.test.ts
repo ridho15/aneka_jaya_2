@@ -91,7 +91,7 @@ describe("AI Inventory & Demand Forecasting", () => {
     expect(deadItem?.tiedUpCapital).toBe(2000000);
     expect(deadItem?.discountRecommendationPercent).toBeGreaterThan(0);
 
-    expect(result.supplierPoDraft).toContain("PURCHASE ORDER");
+    expect(result.supplierPoDraft).toContain("PO");
     expect(result.executiveSummary).toBeTruthy();
   });
 });
