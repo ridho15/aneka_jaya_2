@@ -135,10 +135,18 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     if (filters.to && expense.expenseDate > filters.to) return false;
     return true;
   });
-  const operationalProfit = canViewOperationalProfit
-    ? buildOperationalProfitSummary(allSales, allExpenses, todayStr, monthStr, (await getOperationalProfitSetting()).grossProfitPercent, products.success ? products.data : [])
+  const profitSetting = canViewOperationalProfit ? await getOperationalProfitSetting() : null;
+  const operationalProfit = canViewOperationalProfit && profitSetting
+    ? buildOperationalProfitSummary(allSales, allExpenses, todayStr, monthStr, profitSetting.grossProfitPercent, products.success ? products.data : [])
     : null;
-  const performance = buildMonthlyPerformance(filteredSales, filteredExpenses, new Date(), { from: filters.from, to: filters.to });
+  const performance = buildMonthlyPerformance(
+    filteredSales,
+    filteredExpenses,
+    new Date(),
+    { from: filters.from, to: filters.to },
+    profitSetting?.grossProfitPercent ?? 0,
+    products.success ? products.data : []
+  );
   const paymentSales = paymentPeriod.error ? [] : filterDashboardSales(allSales, { from: paymentPeriod.from, to: paymentPeriod.to });
   const paymentTempo = paymentPeriod.error ? [] : allTempoPayments.filter((payment) => payment.paymentDate >= paymentPeriod.from && payment.paymentDate <= paymentPeriod.to);
   const paymentReversals = paymentPeriod.error ? [] : allTempoReversals.filter((reversal) => reversal.reversalDate >= paymentPeriod.from && reversal.reversalDate <= paymentPeriod.to);

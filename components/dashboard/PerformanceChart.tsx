@@ -13,9 +13,21 @@ export function PerformanceChart({ data }: Props) {
 
   // Financial aggregates for the period
   const totalSales = useMemo(() => data.reduce((sum, item) => sum + (item.sales || 0), 0), [data]);
+  const totalCogs = useMemo(() => data.reduce((sum, item) => sum + (item.cogs || 0), 0), [data]);
+  const totalGrossProfit = useMemo(
+    () =>
+      data.reduce(
+        (sum, item) =>
+          sum + (item.grossProfit !== undefined ? item.grossProfit : (item.sales || 0) - (item.cogs || 0)),
+        0
+      ),
+    [data]
+  );
   const totalExpenses = useMemo(() => data.reduce((sum, item) => sum + (item.expenses || 0), 0), [data]);
-  const netProfit = totalSales - totalExpenses;
-  const netMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+  const totalNettProfit = totalGrossProfit - totalExpenses;
+
+  const grossMargin = totalSales > 0 ? (totalGrossProfit / totalSales) * 100 : 0;
+  const nettMargin = totalSales > 0 ? (totalNettProfit / totalSales) * 100 : 0;
   const avgMonthlySales = data.length > 0 ? totalSales / data.length : 0;
 
   // Chart coordinate calculations
@@ -114,60 +126,61 @@ export function PerformanceChart({ data }: Props) {
         </div>
       </div>
 
-      {/* Financial Summary Metric Strip */}
+      {/* Financial Summary Metric Strip (4 Pillars: Omset, Gross Profit, Expenses, Nett Profit) */}
       <div className="grid grid-cols-2 gap-3 border-b border-slate-100 bg-slate-50/50 p-4 sm:grid-cols-4 sm:px-6">
+        {/* Omset */}
         <div className="rounded-xl border border-blue-100 bg-white p-3 shadow-2xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Total Penjualan</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Total Omset</p>
           <p className="mt-0.5 text-base font-extrabold text-blue-950 sm:text-lg">{rupiah(totalSales)}</p>
           <p className="text-[11px] text-slate-500">Rerata {rupiahCompact(avgMonthlySales)}/bln</p>
         </div>
 
+        {/* Gross Profit */}
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-3 shadow-2xs">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Gross Profit (Kotor)</p>
+          <p className="mt-0.5 text-base font-extrabold text-emerald-950 sm:text-lg">{rupiah(totalGrossProfit)}</p>
+          <p className="text-[11px] text-emerald-700/80 font-medium">
+            Margin Kotor {grossMargin.toFixed(1)}% (Omset - Modal)
+          </p>
+        </div>
+
+        {/* Beban Pengeluaran */}
         <div className="rounded-xl border border-orange-100 bg-white p-3 shadow-2xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-orange-600">Total Pengeluaran</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-orange-600">Beban Pengeluaran</p>
           <p className="mt-0.5 text-base font-extrabold text-orange-950 sm:text-lg">{rupiah(totalExpenses)}</p>
           <p className="text-[11px] text-slate-500">
             {totalSales > 0 ? `${((totalExpenses / totalSales) * 100).toFixed(1)}% dari omset` : "Beban operasional"}
           </p>
         </div>
 
+        {/* Nett Profit */}
         <div
           className={`rounded-xl border p-3 shadow-2xs ${
-            netProfit >= 0 ? "border-emerald-100 bg-emerald-50/40" : "border-rose-100 bg-rose-50/40"
+            totalNettProfit >= 0 ? "border-emerald-200 bg-emerald-100/40" : "border-rose-200 bg-rose-100/40"
           }`}
         >
           <p
             className={`text-[11px] font-bold uppercase tracking-wider ${
-              netProfit >= 0 ? "text-emerald-700" : "text-rose-700"
+              totalNettProfit >= 0 ? "text-emerald-800" : "text-rose-800"
             }`}
           >
-            Selisih Bersih (Net)
+            Nett Profit (Bersih)
           </p>
           <p
             className={`mt-0.5 text-base font-extrabold sm:text-lg ${
-              netProfit >= 0 ? "text-emerald-950" : "text-rose-950"
+              totalNettProfit >= 0 ? "text-emerald-950" : "text-rose-950"
             }`}
           >
-            {netProfit >= 0 ? `+${rupiah(netProfit)}` : rupiah(netProfit)}
+            {totalNettProfit >= 0 ? `+${rupiah(totalNettProfit)}` : rupiah(totalNettProfit)}
           </p>
-          <p className="text-[11px] text-slate-500 font-medium">
-            {netProfit >= 0 ? `Surplus (${netMargin.toFixed(1)}%)` : `Defisit (${netMargin.toFixed(1)}%)`}
+          <p className="text-[11px] text-slate-600 font-medium">
+            {totalNettProfit >= 0 ? `Laba Bersih ${nettMargin.toFixed(1)}%` : `Rugi Bersih ${nettMargin.toFixed(1)}%`}
           </p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Rasio Efisiensi</p>
-          <p className="mt-0.5 text-base font-extrabold text-slate-900 sm:text-lg">
-            {totalExpenses > 0 ? (totalSales / totalExpenses).toFixed(2) : "∞"}x
-          </p>
-          <p className="text-[11px] text-slate-500">Revenue to cost ratio</p>
         </div>
       </div>
 
       {/* SVG Canvas & Zero-Layout-Shift Floating Tooltip Container */}
-      <div
-        className="relative px-3 pb-4 pt-3 sm:px-6"
-        onMouseLeave={() => setActiveIdx(null)}
-      >
+      <div className="relative px-3 pb-4 pt-3 sm:px-6" onMouseLeave={() => setActiveIdx(null)}>
         {/* Floating Absolute Tooltip (Zero Layout Shift, pointer-events-none) */}
         {activeItem && (
           <div
@@ -178,38 +191,50 @@ export function PerformanceChart({ data }: Props) {
               transform: "translateX(-50%)"
             }}
           >
-            <div className="rounded-xl border border-slate-800/90 bg-slate-900/95 px-3.5 py-2.5 text-white shadow-xl backdrop-blur-xs min-w-[220px]">
+            <div className="rounded-xl border border-slate-800/90 bg-slate-900/95 px-3.5 py-2.5 text-white shadow-xl backdrop-blur-xs min-w-[260px]">
               <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5 mb-1.5">
                 <span className="font-bold text-xs text-emerald-400">
                   📅 {activeItem.label} ({activeItem.key})
                 </span>
                 <span
                   className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                    activeItem.sales >= activeItem.expenses ? "bg-emerald-900/80 text-emerald-300" : "bg-rose-900/80 text-rose-300"
+                    (activeItem.nettProfit ?? 0) >= 0
+                      ? "bg-emerald-900/80 text-emerald-300"
+                      : "bg-rose-900/80 text-rose-300"
                   }`}
                 >
-                  {activeItem.sales >= activeItem.expenses ? "Surplus" : "Defisit"}
+                  {(activeItem.nettProfit ?? 0) >= 0 ? "Surplus" : "Defisit"}
                 </span>
               </div>
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400">📈 Penjualan:</span>
+                  <span className="text-slate-400">📈 Omset Penjualan:</span>
                   <b className="text-blue-300 font-extrabold">{rupiah(activeItem.sales || 0)}</b>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400">📉 Pengeluaran:</span>
+                  <span className="text-slate-400">📦 Modal Barang (HPP):</span>
+                  <b className="text-slate-300 font-semibold">{rupiah(activeItem.cogs || 0)}</b>
+                </div>
+                <div className="flex justify-between gap-3 border-t border-slate-800/80 pt-1">
+                  <span className="text-emerald-400 font-semibold">🟩 Gross Profit:</span>
+                  <b className="text-emerald-300 font-extrabold">
+                    {rupiah(activeItem.grossProfit ?? (activeItem.sales || 0) - (activeItem.cogs || 0))}
+                  </b>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-slate-400">📉 Beban Operasional:</span>
                   <b className="text-orange-300 font-extrabold">{rupiah(activeItem.expenses || 0)}</b>
                 </div>
-                <div className="flex justify-between gap-3 border-t border-slate-800 pt-1">
-                  <span className="text-slate-400">💰 Selisih Net:</span>
+                <div className="flex justify-between gap-3 border-t border-slate-700 pt-1">
+                  <span className="text-amber-300 font-bold">💰 Nett Profit (Bersih):</span>
                   <b
                     className={`font-extrabold ${
-                      activeItem.sales >= activeItem.expenses ? "text-emerald-400" : "text-rose-400"
+                      (activeItem.nettProfit ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"
                     }`}
                   >
-                    {activeItem.sales >= activeItem.expenses
-                      ? `+${rupiah(activeItem.sales - activeItem.expenses)}`
-                      : rupiah(activeItem.sales - activeItem.expenses)}
+                    {(activeItem.nettProfit ?? 0) >= 0
+                      ? `+${rupiah(activeItem.nettProfit || 0)}`
+                      : rupiah(activeItem.nettProfit || 0)}
                   </b>
                 </div>
               </div>
@@ -383,29 +408,33 @@ export function PerformanceChart({ data }: Props) {
 
             {/* Mobile Fallback Inspection Banner (When tapped on mobile screens) */}
             {activeItem && (
-              <div className="mt-2 block sm:hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <div className="flex items-center justify-between mb-1.5">
-                  <b className="text-slate-900">📅 {activeItem.label} ({activeItem.key})</b>
+              <div className="mt-2 block sm:hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-1">
+                  <b className="text-slate-900">
+                    📅 {activeItem.label} ({activeItem.key})
+                  </b>
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      activeItem.sales >= activeItem.expenses
+                      (activeItem.nettProfit ?? 0) >= 0
                         ? "bg-emerald-100 text-emerald-800"
                         : "bg-rose-100 text-rose-800"
                     }`}
                   >
-                    Net: {rupiah(activeItem.sales - activeItem.expenses)}
+                    Nett: {rupiah(activeItem.nettProfit || 0)}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="grid grid-cols-2 gap-1 text-slate-600 text-[11px]">
                   <span>Omset: <b className="text-blue-700">{rupiah(activeItem.sales || 0)}</b></span>
-                  <span>Beban: <b className="text-orange-700">{rupiah(activeItem.expenses || 0)}</b></span>
+                  <span>HPP Modal: <b className="text-slate-700">{rupiah(activeItem.cogs || 0)}</b></span>
+                  <span>Gross Profit: <b className="text-emerald-700">{rupiah(activeItem.grossProfit || 0)}</b></span>
+                  <span>Beban Operasional: <b className="text-orange-700">{rupiah(activeItem.expenses || 0)}</b></span>
                 </div>
               </div>
             )}
 
             {/* Instruction Tip */}
             <p className="mt-1 text-center text-[11px] text-slate-400">
-              💡 Arahkan atau sentuh titik bulan untuk melihat rincian omset & beban.
+              💡 Arahkan atau sentuh titik bulan untuk melihat rincian omset, modal, gross profit, & nett profit.
             </p>
           </div>
         )}
@@ -416,7 +445,7 @@ export function PerformanceChart({ data }: Props) {
         <div className="border-t border-slate-200 bg-slate-50/60 p-4 sm:p-6 animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              📋 Rincian Lengkap Angka Keuangan per Periode
+              📋 Rincian Lengkap Laba Rugi per Periode
             </h4>
             <span className="text-xs text-slate-500">{data.length} periode tercatat</span>
           </div>
@@ -425,17 +454,20 @@ export function PerformanceChart({ data }: Props) {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-200 bg-slate-100/80 font-bold text-slate-700">
                 <tr>
-                  <th className="px-4 py-3">Periode</th>
-                  <th className="px-4 py-3 text-right">Penjualan (Omset)</th>
-                  <th className="px-4 py-3 text-right">Pengeluaran (Beban)</th>
-                  <th className="px-4 py-3 text-right">Selisih Bersih (Net)</th>
-                  <th className="px-4 py-3 text-center">Margin / Status</th>
+                  <th className="px-3.5 py-3">Periode</th>
+                  <th className="px-3.5 py-3 text-right">Omset Penjualan</th>
+                  <th className="px-3.5 py-3 text-right">Modal (HPP)</th>
+                  <th className="px-3.5 py-3 text-right text-emerald-800">Gross Profit</th>
+                  <th className="px-3.5 py-3 text-right text-orange-800">Beban Operasional</th>
+                  <th className="px-3.5 py-3 text-right">Nett Profit (Bersih)</th>
+                  <th className="px-3.5 py-3 text-center">Margin Bersih</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {data.map((item, idx) => {
-                  const net = (item.sales || 0) - (item.expenses || 0);
-                  const marginPct = (item.sales || 0) > 0 ? (net / item.sales) * 100 : 0;
+                  const gross = item.grossProfit !== undefined ? item.grossProfit : (item.sales || 0) - (item.cogs || 0);
+                  const nett = item.nettProfit !== undefined ? item.nettProfit : gross - (item.expenses || 0);
+                  const nettMarginPct = (item.sales || 0) > 0 ? (nett / item.sales) * 100 : 0;
                   const isHovered = activeIdx === idx;
                   return (
                     <tr
@@ -445,30 +477,36 @@ export function PerformanceChart({ data }: Props) {
                         isHovered ? "bg-blue-50/60 font-semibold" : "hover:bg-slate-50"
                       }`}
                     >
-                      <td className="px-4 py-2.5 font-medium text-slate-900">
+                      <td className="px-3.5 py-2.5 font-medium text-slate-900">
                         <span className="font-bold">{item.label}</span>
                         <span className="text-[11px] text-slate-400 ml-1.5">({item.key})</span>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-blue-700">
+                      <td className="px-3.5 py-2.5 text-right font-semibold text-blue-700">
                         {rupiah(item.sales || 0)}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-orange-700">
+                      <td className="px-3.5 py-2.5 text-right text-slate-600">
+                        {rupiah(item.cogs || 0)}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right font-semibold text-emerald-700">
+                        {rupiah(gross)}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-right font-semibold text-orange-700">
                         {rupiah(item.expenses || 0)}
                       </td>
                       <td
-                        className={`px-4 py-2.5 text-right font-bold ${
-                          net >= 0 ? "text-emerald-700" : "text-rose-700"
+                        className={`px-3.5 py-2.5 text-right font-bold ${
+                          nett >= 0 ? "text-emerald-700" : "text-rose-700"
                         }`}
                       >
-                        {net >= 0 ? `+${rupiah(net)}` : rupiah(net)}
+                        {nett >= 0 ? `+${rupiah(nett)}` : rupiah(nett)}
                       </td>
-                      <td className="px-4 py-2.5 text-center">
+                      <td className="px-3.5 py-2.5 text-center">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            net >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                            nett >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
                           }`}
                         >
-                          {net >= 0 ? `Surplus ${marginPct.toFixed(0)}%` : `Defisit ${marginPct.toFixed(0)}%`}
+                          {nett >= 0 ? `+${nettMarginPct.toFixed(0)}%` : `${nettMarginPct.toFixed(0)}%`}
                         </span>
                       </td>
                     </tr>
@@ -477,23 +515,25 @@ export function PerformanceChart({ data }: Props) {
               </tbody>
               <tfoot className="border-t-2 border-slate-300 bg-slate-100/90 font-extrabold text-slate-900">
                 <tr>
-                  <td className="px-4 py-3">TOTAL KESELURUHAN</td>
-                  <td className="px-4 py-3 text-right text-blue-950">{rupiah(totalSales)}</td>
-                  <td className="px-4 py-3 text-right text-orange-950">{rupiah(totalExpenses)}</td>
+                  <td className="px-3.5 py-3">TOTAL KESELURUHAN</td>
+                  <td className="px-3.5 py-3 text-right text-blue-950">{rupiah(totalSales)}</td>
+                  <td className="px-3.5 py-3 text-right text-slate-700">{rupiah(totalCogs)}</td>
+                  <td className="px-3.5 py-3 text-right text-emerald-950">{rupiah(totalGrossProfit)}</td>
+                  <td className="px-3.5 py-3 text-right text-orange-950">{rupiah(totalExpenses)}</td>
                   <td
-                    className={`px-4 py-3 text-right ${
-                      netProfit >= 0 ? "text-emerald-950" : "text-rose-950"
+                    className={`px-3.5 py-3 text-right ${
+                      totalNettProfit >= 0 ? "text-emerald-950" : "text-rose-950"
                     }`}
                   >
-                    {netProfit >= 0 ? `+${rupiah(netProfit)}` : rupiah(netProfit)}
+                    {totalNettProfit >= 0 ? `+${rupiah(totalNettProfit)}` : rupiah(totalNettProfit)}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3.5 py-3 text-center">
                     <span
                       className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        netProfit >= 0 ? "bg-emerald-200 text-emerald-900" : "bg-rose-200 text-rose-900"
+                        totalNettProfit >= 0 ? "bg-emerald-200 text-emerald-900" : "bg-rose-200 text-rose-900"
                       }`}
                     >
-                      {netMargin.toFixed(1)}% Margin
+                      {nettMargin.toFixed(1)}% Nett
                     </span>
                   </td>
                 </tr>

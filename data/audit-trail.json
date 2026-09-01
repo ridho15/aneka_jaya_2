@@ -1,5 +1,62 @@
 [
   {
+    "id": "9f2b8ea5-5d48-4fb5-a29c-52cc0825d256",
+    "createdAt": "2026-09-01T02:38:46.723Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "981facc5-8ff1-495c-abd5-a08195a4189b",
+    "createdAt": "2026-09-01T02:37:00.445Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "70098a6a-eaaf-4725-8657-00cfcafc3cd8",
+    "createdAt": "2026-08-31T21:33:50.005Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1788212029941",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1788212029941",
+      "productId": "15",
+      "productCodeSnapshot": "SKU-026",
+      "productNameSnapshot": "Produk dignissimos 26",
+      "currentStock": 14,
+      "minimumStock": 18,
+      "warehouseSnapshot": "Gudang eum",
+      "rackSnapshot": "delectus suscipit",
+      "status": "failed",
+      "createdAt": "2026-08-31T21:33:49.941Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
     "id": "bfc8ede4-b586-4867-8b0a-f03c0a0da5f7",
     "createdAt": "2026-08-31T21:25:35.434Z",
     "userId": "unauthenticated",

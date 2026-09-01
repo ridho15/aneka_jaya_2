@@ -8,7 +8,12 @@ export type MonthlyPerformance = {
   key: string;
   label: string;
   sales: number;
+  cogs?: number;
+  grossProfit?: number;
   expenses: number;
+  nettProfit?: number;
+  grossMarginPercent?: number;
+  nettMarginPercent?: number;
 };
 
 export type CategorySummary = {
@@ -91,7 +96,12 @@ function monthsBetween(start: Date, end: Date) {
       key: monthKey(cursor) as string,
       label: new Intl.DateTimeFormat("id-ID", { month: "short", timeZone: "Asia/Jakarta" }).format(cursor),
       sales: 0,
-      expenses: 0
+      cogs: 0,
+      grossProfit: 0,
+      expenses: 0,
+      nettProfit: 0,
+      grossMarginPercent: 0,
+      nettMarginPercent: 0
     });
   }
   return months;
@@ -299,17 +309,34 @@ export function buildPaymentBreakdown(sales: Sale[], rekeningLabels: Record<stri
   };
 }
 
-export function buildMonthlyPerformance(sales: Sale[], expenses: Expense[], now = new Date(), range: { from?: string; to?: string } = {}): MonthlyPerformance[] {
+export function buildMonthlyPerformance(
+  sales: Sale[],
+  expenses: Expense[],
+  now = new Date(),
+  range: { from?: string; to?: string } = {},
+  grossProfitPercent = 0,
+  products: Product[] = []
+): MonthlyPerformance[] {
   const end = range.to ? monthStart(range.to) : new Date(now.getFullYear(), now.getMonth(), 1);
   const start = range.from ? monthStart(range.from) : end ? addMonths(end, -5) : new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const months = start && end && start <= end ? monthsBetween(start, end) : monthsBetween(new Date(now.getFullYear(), now.getMonth() - 5, 1), new Date(now.getFullYear(), now.getMonth(), 1));
   const byMonth = new Map(months.map((month) => [month.key, month]));
+  const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
+  const productCostMap = buildProductCostMap(products);
 
   for (const sale of sales) {
     if (sale.approvalStatus !== "approved") continue;
     const month = byMonth.get(monthKey(sale.saleDate) || "");
-    if (month) month.sales += Number(sale.total) || 0;
+    if (month) {
+      const saleAmount = Number(sale.total) || 0;
+      const saleGross = calculateSaleGrossProfit(sale, percent, productCostMap);
+      const saleCogs = Math.max(0, saleAmount - saleGross);
+      month.sales += saleAmount;
+      month.grossProfit = (month.grossProfit || 0) + saleGross;
+      month.cogs = (month.cogs || 0) + saleCogs;
+    }
   }
+
   for (const expense of expenses) {
     if (expense.approvalStatus !== "approved") continue;
     const amount = Number(expense.amount);
@@ -317,6 +344,15 @@ export function buildMonthlyPerformance(sales: Sale[], expenses: Expense[], now 
     const month = byMonth.get(monthKey(expense.expenseDate) || "");
     if (month) month.expenses += amount;
   }
+
+  for (const month of months) {
+    const gross = month.grossProfit || 0;
+    const exp = month.expenses || 0;
+    month.nettProfit = gross - exp;
+    month.grossMarginPercent = month.sales > 0 ? (gross / month.sales) * 100 : 0;
+    month.nettMarginPercent = month.sales > 0 ? (month.nettProfit / month.sales) * 100 : 0;
+  }
+
   return months;
 }
 
