@@ -2,7 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Sale } from "@/lib/types/sales";
 
-vi.mock("@/components/transactions/TransactionCancelButton", () => ({ TransactionCancelButton: () => null }));
+vi.mock("@/components/transactions/TransactionCancelButton", () => ({
+  TransactionCancelButton: ({ triggerLabel }: { triggerLabel?: string }) => <button>{triggerLabel || "Cancel"}</button>
+}));
 
 const { SalesHistoryList, SalesItemsDetail, nextExpandedSaleId, salesItemSubtotal } = await import("@/components/transactions/SalesHistoryList");
 
@@ -55,5 +57,16 @@ describe("SalesHistoryList", () => {
 
     expect(ownerHtml).toContain('colSpan="11"');
     expect(otherHtml).toContain('colSpan="10"');
+  });
+
+  it("renders direct Detail, Cetak, Edit, and Batal buttons without Lainnya dropdown menu", () => {
+    const html = renderToStaticMarkup(<SalesHistoryList sales={[sale]} canManage={true} canViewTransactionNumber />);
+    expect(html).toContain("Detail");
+    expect(html).toContain("Cetak");
+    expect(html).toContain("Edit");
+    expect(html).toContain("Batal");
+    expect(html).not.toContain("LX-310");
+    expect(html).not.toContain("Lainnya");
+    expect(html).not.toContain("Preview Cetak");
   });
 });

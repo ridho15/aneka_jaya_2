@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   OWNER
+  SUPERVISOR
   ADMIN
   FINANCE
   MANAGER

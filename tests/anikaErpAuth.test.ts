@@ -109,4 +109,30 @@ describe("Anika ERP authentication", () => {
     expect(mocks.prisma.user.create).not.toHaveBeenCalled();
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
+
+  it("authenticates supervisor role from ERP, maps to SUPERVISOR, and redirects to /dashboard", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      message: "Autentikasi berhasil.",
+      user: {
+        id: 21,
+        name: "Supervisor Operasional",
+        email: "supervisor@example.test",
+        username: "supervisor_user",
+        roles: ["Supervisor"],
+        allowed_apps: ["slm"]
+      },
+      token: "supervisor-token",
+      expires_in_minutes: 720
+    }), { status: 200 }));
+
+    await expect(loginWithAnikaErp({ identifier: "supervisor@example.test", password: "secret" })).resolves.toMatchObject({
+      user: { id: "anika:21", name: "Supervisor Operasional", role: "SUPERVISOR" },
+      redirectTo: "/dashboard"
+    });
+
+    expect(mocks.prisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ externalId: "anika:21", email: "supervisor@example.test", role: "SUPERVISOR" })
+    });
+  });
 });

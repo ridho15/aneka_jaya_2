@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 
-export function TransactionCancelButton({ id, kind, disabled, disabledReason, triggerClassName, transactionLabel }: { id: string; kind: "sales" | "expenses"; disabled?: boolean; disabledReason?: string; triggerClassName?: string; transactionLabel?: string }) {
+export function TransactionCancelButton({ id, kind, disabled, disabledReason, triggerClassName, transactionLabel, triggerLabel }: { id: string; kind: "sales" | "expenses"; disabled?: boolean; disabledReason?: string; triggerClassName?: string; transactionLabel?: string; triggerLabel?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +49,7 @@ export function TransactionCancelButton({ id, kind, disabled, disabledReason, tr
   };
 
   return (
-    <span className="inline-flex flex-col items-start gap-1">
+    <span className="inline-flex w-full flex-col items-start gap-1">
       <button
         type="button"
         onClick={openDialog}
@@ -57,7 +57,7 @@ export function TransactionCancelButton({ id, kind, disabled, disabledReason, tr
         title={disabled ? disabledReason : undefined}
         className={triggerClassName || "font-semibold text-red-700 hover:text-red-800 disabled:cursor-not-allowed disabled:text-slate-400"}
       >
-        Cancel
+        {triggerLabel || "Cancel"}
       </button>
       {open && createPortal(
         <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/45 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); else event.stopPropagation(); }}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import type { Sale } from "@/lib/types/sales";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
@@ -48,7 +48,7 @@ function Badge({
     slate: "bg-slate-100 text-slate-600",
     green: "bg-emerald-50 text-emerald-700",
     amber: "bg-amber-50 text-amber-700",
-    red: "bg-red-50 text-red-700",
+    red: "bg-rose-50 text-rose-700",
     blue: "bg-blue-50 text-blue-700",
   }[tone];
   return (
@@ -125,97 +125,6 @@ function ExpandButton({
       {!compact &&
         (expanded ? "Tutup item" : `Lihat item (${sale.items.length})`)}
     </button>
-  );
-}
-
-function MoreActionsMenu({
-  sale,
-  mobile = false,
-}: {
-  sale: Sale;
-  mobile?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canEdit =
-    sale.source !== "MJ" &&
-    sale.approvalStatus !== "cancelled";
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutside = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", closeOnOutside);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutside);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [open]);
-
-  return (
-    <div ref={containerRef} className={`relative ${mobile ? "w-full" : ""}`}>
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className={
-          mobile
-            ? "w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            : "inline-flex h-9 items-center gap-1 rounded-md border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        }
-      >
-        Lainnya <span aria-hidden="true">⋮</span>
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className={`absolute z-30 mt-1 min-w-52 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-xl ${mobile ? "right-0 w-full" : "left-0"}`}
-        >
-          <Link
-            role="menuitem"
-            className="block px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
-            href={`/print/sales/${sale.id}?auto=1`}
-            target="_blank"
-          >
-            Cetak Langsung
-          </Link>
-          <Link
-            role="menuitem"
-            className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            href={`/print/sales/${sale.id}`}
-          >
-            Preview Cetak
-          </Link>
-          {canEdit && (
-            <Link
-              role="menuitem"
-              className="block px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
-              href={`/penjualan/${sale.id}/edit`}
-            >
-              Edit transaksi
-            </Link>
-          )}
-          {sale.source !== "MJ" && (
-            <div className="border-t border-slate-100 px-4 py-2">
-              <TransactionCancelButton
-                id={sale.id}
-                kind="sales"
-                disabled={sale.approvalStatus === "cancelled"}
-                disabledReason="Transaksi sudah dibatalkan."
-                transactionLabel={sale.transactionNumber || sale.customerName}
-                triggerClassName="w-full text-left text-sm font-semibold text-red-700 hover:text-red-800 disabled:cursor-not-allowed disabled:text-slate-400"
-              />
-            </div>
-          )}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -386,28 +295,39 @@ export function SalesHistoryList({
                 />
               </div>
               {expanded && <SalesItemsDetail sale={sale} className="mt-3" />}
-              <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Link
-                  className="rounded-md bg-emerald-600 px-2.5 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700"
+                  className="rounded-md bg-emerald-600 px-2.5 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
                   href={`/penjualan/${sale.id}`}
                 >
                   Detail
                 </Link>
                 <Link
-                  className="rounded-md border border-sky-300 bg-sky-50 px-2.5 py-2 text-center text-xs font-bold text-sky-800 hover:bg-sky-100"
+                  className="rounded-md border border-sky-300 bg-sky-50 px-2.5 py-2 text-center text-xs font-bold text-sky-800 hover:bg-sky-100 shadow-xs"
                   href={`/print/sales/${sale.id}/continuous`}
                 >
-                  LX-310
+                  Cetak
                 </Link>
-                {canManage ? (
-                  <MoreActionsMenu sale={sale} mobile />
-                ) : (
+                {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
                   <Link
-                    className="rounded-md border border-slate-300 px-2.5 py-2 text-center text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    href={`/print/sales/${sale.id}`}
+                    className="rounded-md border border-blue-300 bg-blue-50 px-2.5 py-2 text-center text-xs font-bold text-blue-800 hover:bg-blue-100 shadow-xs"
+                    href={`/penjualan/${sale.id}/edit`}
                   >
-                    Cetak
+                    Edit
                   </Link>
+                ) : (
+                  <span className="grid place-items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-center text-xs text-slate-300">—</span>
+                )}
+                {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
+                  <TransactionCancelButton
+                    id={sale.id}
+                    kind="sales"
+                    transactionLabel={sale.transactionNumber || sale.customerName}
+                    triggerLabel="Batal"
+                    triggerClassName="w-full rounded-md border border-rose-300 bg-rose-50 px-2.5 py-2 text-center text-xs font-bold text-rose-700 hover:bg-rose-100 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  />
+                ) : (
+                  <span className="grid place-items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-center text-xs text-slate-300">—</span>
                 )}
               </div>
             </article>
@@ -461,30 +381,45 @@ export function SalesHistoryList({
                       />
                     </td>
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Link
-                          className="whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
-                          href={`/penjualan/${sale.id}`}
-                        >
-                          Detail
-                        </Link>
-                        <Link
-                          className="whitespace-nowrap rounded-md border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100 shadow-xs"
-                          href={`/print/sales/${sale.id}/continuous`}
-                          title="Cetak Continuous Form Epson LX-310 (12 x 14 cm)"
-                        >
-                          LX-310
-                        </Link>
-                        {canManage ? (
-                          <MoreActionsMenu sale={sale} />
-                        ) : (
+                      <div className="flex flex-col gap-1.5 min-w-[135px]">
+                        <div className="flex items-center gap-1.5">
                           <Link
-                            className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                            href={`/print/sales/${sale.id}`}
+                            className="flex-1 whitespace-nowrap rounded-md bg-emerald-600 px-2.5 py-1 text-center text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
+                            href={`/penjualan/${sale.id}`}
+                          >
+                            Detail
+                          </Link>
+                          <Link
+                            className="flex-1 whitespace-nowrap rounded-md border border-sky-300 bg-sky-50 px-2.5 py-1 text-center text-xs font-bold text-sky-800 hover:bg-sky-100 shadow-xs"
+                            href={`/print/sales/${sale.id}/continuous`}
+                            title="Cetak Nota Continuous Form"
                           >
                             Cetak
                           </Link>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
+                            <Link
+                              className="flex-1 whitespace-nowrap rounded-md border border-blue-300 bg-blue-50 px-2.5 py-1 text-center text-xs font-bold text-blue-800 hover:bg-blue-100 shadow-xs"
+                              href={`/penjualan/${sale.id}/edit`}
+                            >
+                              Edit
+                            </Link>
+                          ) : (
+                            <span className="flex-1 text-center text-xs text-slate-300">—</span>
+                          )}
+                          {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
+                            <TransactionCancelButton
+                              id={sale.id}
+                              kind="sales"
+                              transactionLabel={sale.transactionNumber || sale.customerName}
+                              triggerLabel="Batal"
+                              triggerClassName="w-full whitespace-nowrap rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-center text-xs font-bold text-rose-700 hover:bg-rose-100 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            />
+                          ) : (
+                            <span className="flex-1 text-center text-xs text-slate-300">—</span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-5 py-4 text-slate-600">

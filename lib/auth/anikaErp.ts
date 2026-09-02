@@ -33,6 +33,7 @@ type AnikaVerifyUserResponse = {
 function roleFromAnika(value: unknown): Role {
   const roles = Array.isArray(value) ? value.map((role) => String(role).trim().toLowerCase()) : [];
   if (roles.includes("super admin") || roles.includes("owner")) return "OWNER";
+  if (roles.includes("supervisor")) return "SUPERVISOR";
   if (roles.includes("admin")) return "ADMIN";
   if (roles.includes("finance")) return "FINANCE";
   if (roles.includes("manager")) return "MANAGER";

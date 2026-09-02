@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db/prisma";
 import { verifyPassword } from "./password";
 import { setLocalSessionCookie } from "./localSession";
-import { landingPageForRole } from "./roles";
+import { landingPageForRole, type Role } from "./roles";
 
 const MAX_FAILED_LOGIN = 5;
 const LOCK_MINUTES = 15;
@@ -16,7 +16,7 @@ function normalizePassword(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-async function recordLoginAudit(user: { externalId: string; name: string; role: "OWNER" | "ADMIN" | "FINANCE" | "MANAGER" | "VIEWER" }) {
+async function recordLoginAudit(user: { externalId: string; name: string; role: Role }) {
   await prisma.auditLog.create({
     data: {
       id: crypto.randomUUID(),

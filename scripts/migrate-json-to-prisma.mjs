@@ -37,7 +37,7 @@ async function readJsonArray(fileName) {
 }
 
 const toDate = (value) => value ? new Date(value) : undefined;
-const toRole = (value) => ["OWNER", "ADMIN", "FINANCE", "MANAGER", "VIEWER"].includes(value) ? value : "VIEWER";
+const toRole = (value) => ["OWNER", "SUPERVISOR", "ADMIN", "FINANCE", "MANAGER", "VIEWER"].includes(value) ? value : "VIEWER";
 
 async function migrateAuditLogs() {
   const rows = await readJsonArray("audit-trail.json");

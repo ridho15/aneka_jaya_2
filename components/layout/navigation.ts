@@ -70,6 +70,13 @@ export const NAV_LINKS: NavLink[] = [
     category: "OPERASIONAL & TRANSAKSI",
   },
   {
+    href: "/stok-barang/ai-forecast",
+    label: "AI Prediksi Stok",
+    icon: "⚡",
+    permission: "stock.view",
+    category: "OPERASIONAL & TRANSAKSI",
+  },
+  {
     href: "/tempo",
     label: "Tempo & Piutang",
     icon: "◷",
@@ -103,14 +110,7 @@ export const NAV_LINKS: NavLink[] = [
     href: "/reports/stocks",
     label: "Laporan Stok",
     icon: "📦",
-    permission: "stock.view",
-    category: "PUSAT LAPORAN",
-  },
-  {
-    href: "/stok-barang/ai-forecast",
-    label: "AI Prediksi Stok",
-    icon: "⚡",
-    permission: "stock.view",
+    permission: "reports.view",
     category: "PUSAT LAPORAN",
   },
   {

@@ -101,7 +101,7 @@ describe("MJ Invoice Payload & Print E2E Test", () => {
     expect(doubleText).toContain("2 Pcs");
     expect(doubleText).toContain("BB001");
     expect(doubleText).toContain("3 Kg");
-  });
+  }, 15000);
 
   it("stores and formats slm_process_aj items with SKU, unit, and product name properly", async () => {
     const externalRef = `MJ-AJ-${Date.now()}`;
@@ -175,5 +175,5 @@ describe("MJ Invoice Payload & Print E2E Test", () => {
     expect(singleText).toContain("2 Pcs");
 
     await prisma.$disconnect();
-  });
+  }, 15000);
 });

@@ -22,6 +22,8 @@ import type { Sale } from "@/lib/types/sales";
 import { listRekeningAccounts, type RekeningAccount } from "@/lib/business/masterData";
 import { getOperationalProfitSetting } from "@/lib/settings/profit";
 import { listTempoPaymentReversals, listTempoPayments } from "@/lib/tempo/store";
+import { getStockInventoryReport } from "@/lib/reports/stockReports";
+import { SupervisorStockDashboard } from "@/components/dashboard/SupervisorStockDashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +112,20 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   const role = await getCurrentRole();
   if (!can(role, "dashboard.view")) redirect("/no-access");
   const user = await getCurrentUser();
+
+  if (role === "SUPERVISOR") {
+    const stockReport = await getStockInventoryReport();
+    return (
+      <AppShell>
+        <SupervisorStockDashboard
+          userName={user.name}
+          stockItems={stockReport.items}
+          warehouses={stockReport.warehouses}
+        />
+      </AppShell>
+    );
+  }
+
   const params = await searchParams || {};
   const filters = dashboardFilters(params);
   const products = await listProducts();
