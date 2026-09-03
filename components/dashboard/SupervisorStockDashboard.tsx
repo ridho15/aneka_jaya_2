@@ -109,7 +109,7 @@ export function SupervisorStockDashboard({
               href="/barang"
               className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer sm:text-sm"
             >
-              📦 Buka Master Stok Barang
+              Buka Master Stok Barang
             </Link>
           </div>
         </div>
@@ -121,44 +121,40 @@ export function SupervisorStockDashboard({
           href="/penjualan/input"
           className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-400 hover:shadow-sm"
         >
-          <div className="text-xl">🛒</div>
-          <div className="mt-2 font-bold text-slate-900 text-sm group-hover:text-emerald-700">
+          <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700">
             Input Penjualan
           </div>
-          <p className="text-[11px] text-slate-500">Catat transaksi kasir</p>
+          <p className="mt-1 text-[11px] text-slate-500">Catat transaksi kasir</p>
         </Link>
 
         <Link
           href="/pengeluaran/input"
           className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-400 hover:shadow-sm"
         >
-          <div className="text-xl">💳</div>
-          <div className="mt-2 font-bold text-slate-900 text-sm group-hover:text-emerald-700">
+          <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700">
             Input Pengeluaran
           </div>
-          <p className="text-[11px] text-slate-500">Catat biaya operasional</p>
+          <p className="mt-1 text-[11px] text-slate-500">Catat biaya operasional</p>
         </Link>
 
         <Link
           href="/tempo"
           className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-400 hover:shadow-sm"
         >
-          <div className="text-xl">⏱️</div>
-          <div className="mt-2 font-bold text-slate-900 text-sm group-hover:text-emerald-700">
+          <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700">
             Tempo & Piutang
           </div>
-          <p className="text-[11px] text-slate-500">Pantau jatuh tempo</p>
+          <p className="mt-1 text-[11px] text-slate-500">Pantau jatuh tempo</p>
         </Link>
 
         <Link
           href="/approval"
           className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-400 hover:shadow-sm"
         >
-          <div className="text-xl">✓</div>
-          <div className="mt-2 font-bold text-slate-900 text-sm group-hover:text-emerald-700">
+          <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700">
             Approval Transaksi
           </div>
-          <p className="text-[11px] text-slate-500">Persetujuan transaksi</p>
+          <p className="mt-1 text-[11px] text-slate-500">Persetujuan transaksi</p>
         </Link>
       </div>
 
@@ -166,7 +162,7 @@ export function SupervisorStockDashboard({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-5 shadow-xs">
           <p className="text-[11px] font-bold uppercase tracking-wider text-rose-700">
-            🔴 Stok Habis (0 Unit)
+            Stok Habis (0 Unit)
           </p>
           <p className="mt-1 text-2xl font-black text-rose-950 sm:text-3xl">
             {outOfStockList.length} Item
@@ -178,7 +174,7 @@ export function SupervisorStockDashboard({
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 shadow-xs">
           <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
-            🟡 Stok Menipis (Warning)
+            Stok Menipis (Warning)
           </p>
           <p className="mt-1 text-2xl font-black text-amber-950 sm:text-3xl">
             {lowStockList.length} Item
@@ -190,7 +186,7 @@ export function SupervisorStockDashboard({
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            📦 Total Item Dipantau
+            Total Item Dipantau
           </p>
           <p className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">
             {stockItems.length} Produk
@@ -202,7 +198,7 @@ export function SupervisorStockDashboard({
 
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-xs">
           <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
-            💰 Valuasi Barang Kritis
+            Valuasi Barang Kritis
           </p>
           <p className="mt-1 text-2xl font-black text-emerald-950 sm:text-3xl">
             {rupiah(totalCriticalValuation)}
@@ -219,7 +215,7 @@ export function SupervisorStockDashboard({
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <h2 className="text-base font-bold text-slate-900 sm:text-lg">
-                🚨 Daftar Produk Stok Habis & Menipis
+                Daftar Produk Stok Habis & Menipis
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Segera koordinasikan dengan tim pembelian atau gudang untuk barang yang berstatus darurat.
@@ -308,7 +304,7 @@ export function SupervisorStockDashboard({
                   : "bg-rose-50 text-rose-700 hover:bg-rose-100"
               }`}
             >
-              🔴 Habis Total ({outOfStockList.length})
+              Habis Total ({outOfStockList.length})
             </button>
             <button
               type="button"
@@ -322,7 +318,7 @@ export function SupervisorStockDashboard({
                   : "bg-amber-50 text-amber-700 hover:bg-amber-100"
               }`}
             >
-              🟡 Stok Menipis ({lowStockList.length})
+              Stok Menipis ({lowStockList.length})
             </button>
           </div>
         </div>
@@ -387,7 +383,7 @@ export function SupervisorStockDashboard({
                             : "bg-amber-100 text-amber-800"
                         }`}
                       >
-                        {isOutOfStock ? "⛔ Habis" : "⚠️ Menipis"}
+                        {isOutOfStock ? "Habis" : "Menipis"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-slate-900">
@@ -411,7 +407,7 @@ export function SupervisorStockDashboard({
                     colSpan={8}
                     className="px-4 py-12 text-center text-slate-500"
                   >
-                    🎉 Tidak ada barang yang berstatus habis atau menipis dengan kriteria yang dipilih.
+                    Tidak ada barang yang berstatus habis atau menipis dengan kriteria yang dipilih.
                   </td>
                 </tr>
               )}

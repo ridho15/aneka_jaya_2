@@ -29,7 +29,7 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
             href={`/api/reports/finance?month=${encodeURIComponent(month)}&format=excel`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 shadow-xs transition hover:bg-emerald-100 sm:text-sm"
           >
-            📊 Unduh Excel
+            Unduh Excel
           </a>
           <a
             href={`/reports/finance/print?month=${encodeURIComponent(month)}`}
@@ -37,7 +37,7 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 sm:text-sm"
           >
-            🖨️ Cetak / PDF
+            Cetak / PDF
           </a>
         </div>
       </div>

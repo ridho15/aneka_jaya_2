@@ -39,7 +39,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
             href={`/api/reports/daily?date=${encodeURIComponent(selectedDate)}&format=excel`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 shadow-xs transition hover:bg-emerald-100 sm:text-sm"
           >
-            📊 Unduh Excel
+            Unduh Excel
           </a>
           <a
             href={`/reports/print?date=${encodeURIComponent(selectedDate)}`}
@@ -47,7 +47,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 sm:text-sm"
           >
-            🖨️ Cetak / PDF
+            Cetak / PDF
           </a>
         </div>
       </div>

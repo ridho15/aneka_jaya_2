@@ -69,10 +69,10 @@ const mockData: InventoryAiForecastResult = {
 };
 
 describe("AiInventoryForecastView Component", () => {
-  it("renders the AI Intelligence header without third-party provider names", () => {
+  it("renders the intelligence header without third-party provider names", () => {
     const html = renderToStaticMarkup(<AiInventoryForecastView initialData={mockData} />);
-    expect(html).toContain("AI Intelligence Engine");
-    expect(html).toContain("AI Inventory &amp; Supply Chain Intelligence");
+    expect(html).toContain("Intelligence Engine");
+    expect(html).toContain("Prediksi &amp; Analisis Persediaan");
     expect(html).not.toContain("Gemini");
     expect(html).not.toContain("Google");
   });

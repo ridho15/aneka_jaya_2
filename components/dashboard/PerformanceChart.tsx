@@ -121,7 +121,7 @@ export function PerformanceChart({ data }: Props) {
             onClick={() => setShowTable(!showTable)}
             className="ml-auto inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
-            {showTable ? "📊 Sembunyikan Tabel" : "📋 Lihat Rincian Angka"}
+            {showTable ? "Sembunyikan Tabel" : "Lihat Rincian Angka"}
           </button>
         </div>
       </div>
@@ -194,7 +194,7 @@ export function PerformanceChart({ data }: Props) {
             <div className="rounded-xl border border-slate-800/90 bg-slate-900/95 px-3.5 py-2.5 text-white shadow-xl backdrop-blur-xs min-w-[260px]">
               <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5 mb-1.5">
                 <span className="font-bold text-xs text-emerald-400">
-                  📅 {activeItem.label} ({activeItem.key})
+                  {activeItem.label} ({activeItem.key})
                 </span>
                 <span
                   className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
@@ -208,25 +208,25 @@ export function PerformanceChart({ data }: Props) {
               </div>
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400">📈 Omset Penjualan:</span>
+                  <span className="text-slate-400">Omset Penjualan:</span>
                   <b className="text-blue-300 font-extrabold">{rupiah(activeItem.sales || 0)}</b>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400">📦 Modal Barang (HPP):</span>
+                  <span className="text-slate-400">Modal Barang (HPP):</span>
                   <b className="text-slate-300 font-semibold">{rupiah(activeItem.cogs || 0)}</b>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-slate-800/80 pt-1">
-                  <span className="text-emerald-400 font-semibold">🟩 Gross Profit:</span>
+                  <span className="text-emerald-400 font-semibold">Gross Profit:</span>
                   <b className="text-emerald-300 font-extrabold">
                     {rupiah(activeItem.grossProfit ?? (activeItem.sales || 0) - (activeItem.cogs || 0))}
                   </b>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-slate-400">📉 Beban Operasional:</span>
+                  <span className="text-slate-400">Beban Operasional:</span>
                   <b className="text-orange-300 font-extrabold">{rupiah(activeItem.expenses || 0)}</b>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-slate-700 pt-1">
-                  <span className="text-amber-300 font-bold">💰 Nett Profit (Bersih):</span>
+                  <span className="text-amber-300 font-bold">Nett Profit (Bersih):</span>
                   <b
                     className={`font-extrabold ${
                       (activeItem.nettProfit ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"
@@ -245,7 +245,6 @@ export function PerformanceChart({ data }: Props) {
         {rawMax === 0 ? (
           <div className="grid h-64 place-items-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 text-sm text-slate-500">
             <div className="text-center">
-              <p className="text-2xl mb-1">📊</p>
               <p className="font-semibold text-slate-700">Belum ada data transaksi pada periode dashboard.</p>
               <p className="text-xs text-slate-400 mt-1">
                 Data grafik akan otomatis muncul saat ada transaksi penjualan atau pengeluaran.
@@ -411,7 +410,7 @@ export function PerformanceChart({ data }: Props) {
               <div className="mt-2 block sm:hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
                   <b className="text-slate-900">
-                    📅 {activeItem.label} ({activeItem.key})
+                    {activeItem.label} ({activeItem.key})
                   </b>
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -434,7 +433,7 @@ export function PerformanceChart({ data }: Props) {
 
             {/* Instruction Tip */}
             <p className="mt-1 text-center text-[11px] text-slate-400">
-              💡 Arahkan atau sentuh titik bulan untuk melihat rincian omset, modal, gross profit, & nett profit.
+              Arahkan atau sentuh titik bulan untuk melihat rincian omset, modal, gross profit, & nett profit.
             </p>
           </div>
         )}
@@ -445,7 +444,7 @@ export function PerformanceChart({ data }: Props) {
         <div className="border-t border-slate-200 bg-slate-50/60 p-4 sm:p-6 animate-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              📋 Rincian Lengkap Laba Rugi per Periode
+              Rincian Lengkap Laba Rugi per Periode
             </h4>
             <span className="text-xs text-slate-500">{data.length} periode tercatat</span>
           </div>

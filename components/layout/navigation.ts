@@ -72,7 +72,7 @@ export const NAV_LINKS: NavLink[] = [
   {
     href: "/stok-barang/ai-forecast",
     label: "AI Prediksi Stok",
-    icon: "⚡",
+    icon: "◈",
     permission: "stock.view",
     category: "OPERASIONAL & TRANSAKSI",
   },
@@ -102,14 +102,14 @@ export const NAV_LINKS: NavLink[] = [
   {
     href: "/reports/products",
     label: "Laporan Produk",
-    icon: "📊",
+    icon: "▥",
     permission: "reports.view",
     category: "PUSAT LAPORAN",
   },
   {
     href: "/reports/stocks",
     label: "Laporan Stok",
-    icon: "📦",
+    icon: "▦",
     permission: "reports.view",
     category: "PUSAT LAPORAN",
   },

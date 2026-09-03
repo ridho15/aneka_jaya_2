@@ -64,7 +64,7 @@ export function TempoActionForm({ tempoId, action }: Props) {
             : "border-slate-200 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800"
         }`}
       >
-        {isCancel ? "⚠️ Batalkan Tagihan Tempo..." : "🗑️ Hapus Tagihan (Write-off)..."}
+        {isCancel ? "Batalkan Tagihan Tempo..." : "Hapus Tagihan (Write-off)..."}
       </button>
     );
   }

@@ -33,13 +33,13 @@ function statusTone(value?: string) {
 
 function stockReleaseBadge(status?: string) {
   if (status === "released" || status === "already_released") {
-    return <Badge value="🟢 Terpotong (Released)" tone="green" />;
+    return <Badge value="Terpotong (Released)" tone="green" />;
   }
   if (status === "pending") {
-    return <Badge value="🟡 Pending Rilis" tone="amber" />;
+    return <Badge value="Pending Rilis" tone="amber" />;
   }
   if (status === "failed") {
-    return <Badge value="🔴 Gagal Rilis" tone="red" />;
+    return <Badge value="Gagal Rilis" tone="red" />;
   }
   return <Badge value="Non-Stok" tone="slate" />;
 }
@@ -78,7 +78,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         {/* Card 1: Informasi Transaksi & Pelanggan */}
         <section className="aj-surface p-5">
           <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
-            🏢 Informasi Transaksi & Pelanggan
+            Informasi Transaksi & Pelanggan
           </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <Info label="Tanggal Transaksi" value={sale.transactionAt ? formatJakartaDateTime(sale.transactionAt) : sale.saleDate} />
@@ -105,7 +105,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status Cetak Struk</p>
               <div className="mt-1">
                 {sale.isPrinted ? (
-                  <Badge value={`🖨️ Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}`} tone="green" />
+                  <Badge value={`Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}`} tone="green" />
                 ) : (
                   <Badge value="Belum Dicetak" tone="slate" />
                 )}
@@ -122,7 +122,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         <section className="aj-surface p-5 flex flex-col justify-between">
           <div>
             <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
-              💰 Pembayaran & Pembukuan Kasir
+              Pembayaran & Pembukuan Kasir
             </h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <Info label="Tipe Penjualan" value={sale.tipeNameSnapshot ? `${sale.tipeNameSnapshot} (${sale.tipeCodeSnapshot || sale.tipeId})` : (sale.tipeCodeSnapshot || sale.tipeId || "—")} />
@@ -160,7 +160,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
       {/* Card 3: Integrasi Stok Gudang Aneka Jaya (AJ ERP) */}
       <section className="aj-surface mb-5 p-5 border-l-4 border-emerald-500">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-900">
-          📦 Integrasi Gudang Aneka Jaya (AJ ERP)
+          Integrasi Gudang Aneka Jaya (AJ ERP)
         </h3>
         <p className="mb-4 text-xs text-slate-500">
           Transaksi kasir memotong stok fisik secara langsung di gudang pusat Aneka Jaya dan mencatat kartu stok otomatis.

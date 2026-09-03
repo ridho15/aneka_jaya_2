@@ -49,9 +49,6 @@ export function ErpSyncSettingsForm({ initialSetting }: { initialSetting: ErpSyn
         }`}
       >
         <div className="flex items-start gap-3">
-          <span className="text-2xl">
-            {erpTransactionSyncEnabled ? "🔄" : "📦"}
-          </span>
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider">
               {erpTransactionSyncEnabled
@@ -126,7 +123,7 @@ export function ErpSyncSettingsForm({ initialSetting }: { initialSetting: ErpSyn
             />
             <div>
               <span className="block text-sm font-bold text-slate-900">
-                🔴 Dinonaktifkan (Tolak Transaksi Masuk)
+                Dinonaktifkan (Tolak Transaksi Masuk)
               </span>
               <span className="block text-xs text-slate-500 mt-0.5">
                 SLM akan menolak seluruh request pembuatan transaksi baru dari MJ dengan error 503 (Service Unavailable).
@@ -147,7 +144,7 @@ export function ErpSyncSettingsForm({ initialSetting }: { initialSetting: ErpSyn
             />
             <div>
               <span className="block text-sm font-bold text-slate-900">
-                🟡 Catat Lokal Saja (Record Only)
+                Catat Lokal Saja (Record Only)
               </span>
               <span className="block text-xs text-slate-500 mt-0.5">
                 Transaksi dari MJ tetap diterima dan disimpan di database SLM, namun <b>tidak diproses</b> ke Aneka Jaya ERP.
@@ -168,7 +165,7 @@ export function ErpSyncSettingsForm({ initialSetting }: { initialSetting: ErpSyn
             />
             <div>
               <span className="block text-sm font-bold text-slate-900">
-                🟢 Proses Penuh ke Aneka Jaya ERP (Process AJ)
+                Proses Penuh ke Aneka Jaya ERP (Process AJ)
               </span>
               <span className="block text-xs text-slate-500 mt-0.5">
                 Transaksi dari MJ diproses otomatis untuk membuat invoice, pembayaran, dan release stok di Aneka Jaya ERP (memerlukan sinkronisasi transaksi aktif).
@@ -216,7 +213,7 @@ export function ErpSyncSettingsForm({ initialSetting }: { initialSetting: ErpSyn
           disabled={saving}
           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm"
         >
-          {saving ? "Menyimpan..." : "💾 Simpan Konfigurasi Integrasi"}
+          {saving ? "Menyimpan..." : "Simpan Konfigurasi Integrasi"}
         </Button>
       </div>
     </div>

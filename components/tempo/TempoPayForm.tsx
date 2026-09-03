@@ -116,7 +116,7 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
 
       <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-3">
         <div>
-          <h3 className="text-base font-bold text-slate-900">💳 Form Pembayaran Tempo</h3>
+          <h3 className="text-base font-bold text-slate-900">Form Pembayaran Tempo</h3>
           <p className="text-xs text-slate-500">Catat penerimaan cicilan atau pelunasan sisa tagihan</p>
         </div>
         {isFullPayment ? (
@@ -174,7 +174,7 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              ⚡ Lunas ({rupiah(remainingAmount)})
+              Lunas ({rupiah(remainingAmount)})
             </button>
             {remainingAmount >= 20000 && (
               <button
@@ -196,7 +196,6 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
           <div className="grid grid-cols-3 gap-2">
             {(["TF", "Cash", "Other"] as const).map((method) => {
               const active = paymentMethod === method;
-              const icons = { TF: "🏦", Cash: "💵", Other: "⚙️" };
               const labels = { TF: "Transfer (TF)", Cash: "Tunai (Cash)", Other: "Lainnya" };
               return (
                 <button
@@ -209,8 +208,7 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                   }`}
                 >
-                  <span className="text-base mb-0.5">{icons[method]}</span>
-                  <span className="text-xs">{labels[method]}</span>
+                  <span className="text-xs font-bold">{labels[method]}</span>
                 </button>
               );
             })}
@@ -238,8 +236,8 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
             {availableRekenings.map((r) => {
               const isCash = isCashRekening(r);
               const label = isCash
-                ? `💵 ${r.name}`
-                : `🏦 ${r.bank ? `[${r.bank}] ` : ""}${r.name}${r.accountNumber && r.accountNumber !== "-" ? ` • ${r.accountNumber}` : ""}`;
+                ? r.name
+                : `${r.bank ? `[${r.bank}] ` : ""}${r.name}${r.accountNumber && r.accountNumber !== "-" ? ` • ${r.accountNumber}` : ""}`;
               return (
                 <option key={r.id} value={r.id}>
                   {label}
@@ -280,7 +278,7 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
               <span>Memproses Pembayaran...</span>
             </>
           ) : (
-            <span>💰 Simpan Pembayaran {amountPaid > 0 ? `(${rupiah(amountPaid)})` : ""}</span>
+            <span>Simpan Pembayaran {amountPaid > 0 ? `(${rupiah(amountPaid)})` : ""}</span>
           )}
         </button>
       </div>

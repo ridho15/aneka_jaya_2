@@ -22,7 +22,7 @@ export function PrintToolbar({ title, subtitle }: PrintToolbarProps) {
           onClick={() => window.print()}
           className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
         >
-          🖨️ Cetak / Simpan PDF
+          Cetak / Simpan PDF
         </button>
         <button
           type="button"

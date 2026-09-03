@@ -13,12 +13,12 @@ export const dynamic = "force-dynamic";
 
 function statusBadge(status: string) {
   const configs: Record<string, { label: string; bg: string; text: string; border: string }> = {
-    paid: { label: "✅ Lunas (Paid)", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-    partial_paid: { label: "🟡 Sebagian (Partial)", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
-    overdue: { label: "🔴 Jatuh Tempo (Overdue)", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
-    open: { label: "🔵 Belum Dibayar (Open)", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-    cancelled: { label: "⚪ Dibatalkan", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
-    written_off: { label: "⚫ Dihapus (Write-off)", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" }
+    paid: { label: "Lunas (Paid)", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+    partial_paid: { label: "Sebagian (Partial)", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+    overdue: { label: "Jatuh Tempo (Overdue)", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
+    open: { label: "Belum Dibayar (Open)", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+    cancelled: { label: "Dibatalkan", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
+    written_off: { label: "Dihapus (Write-off)", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" }
   };
   const config = configs[status] || { label: status, bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-200" };
   return (
@@ -29,8 +29,8 @@ function statusBadge(status: string) {
 }
 
 function methodBadge(method: string) {
-  if (method === "TF") return <span className="rounded-md bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700 border border-sky-200">🏦 TF</span>;
-  if (method === "Cash") return <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">💵 Cash</span>;
+  if (method === "TF") return <span className="rounded-md bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700 border border-sky-200">Transfer</span>;
+  if (method === "Cash") return <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">Tunai</span>;
   return <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700 border border-slate-200">{method}</span>;
 }
 
@@ -80,14 +80,14 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
               href={`/penjualan/${tempo.salesId}`}
               className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
             >
-              📄 Nota Penjualan
+              Nota Penjualan
             </Link>
           )}
           <Link
             href={`/print/tempo/${tempo.id}`}
             className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
           >
-            🖨️ Cetak Nota
+            Cetak Nota
           </Link>
         </div>
       </div>
@@ -145,7 +145,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
           {/* Card 1: Informasi Detail Tempo */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
             <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <span>🏢</span> Informasi Piutang & Transaksi
+              Informasi Piutang & Transaksi
             </h3>
             <dl className="grid gap-4 sm:grid-cols-2 text-sm">
               <Info label="Customer" value={tempo.customerName} />
@@ -179,7 +179,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
             <section className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                  <span>📦</span> Rincian Barang yang Di-Tempo
+                  Rincian Barang yang Di-Tempo
                 </h3>
                 <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
                   {sale.items.length} Macam Barang ({totalItemQty} Pcs)
@@ -238,7 +238,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
             <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                <span>📜</span> Riwayat Pembayaran & Cicilan
+                Riwayat Pembayaran & Cicilan
               </h3>
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
                 {payments.length} Transaksi
@@ -315,8 +315,10 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
             </>
           ) : isPaid ? (
             <div className="rounded-2xl border border-emerald-200 bg-linear-to-b from-white to-emerald-50/50 p-6 text-center shadow-xs">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl">
-                ✅
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </div>
               <h3 className="text-lg font-extrabold text-emerald-900">Tagihan Sudah Lunas!</h3>
               <p className="mt-1 text-xs text-slate-600">
@@ -326,7 +328,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
                 href={`/print/tempo/${tempo.id}`}
                 className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
               >
-                🖨️ Cetak Bukti Pelunasan
+                Cetak Bukti Pelunasan
               </Link>
             </div>
           ) : (

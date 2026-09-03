@@ -193,14 +193,14 @@ export function AiInventoryForecastView({ initialData }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 border border-emerald-200">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              AI Intelligence Engine
+              Intelligence Engine
             </span>
             <span className="text-xs text-slate-500">
               • Diperbarui {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(data.generatedAt))}
             </span>
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            AI Inventory & Supply Chain Intelligence
+            Prediksi & Analisis Persediaan
           </h1>
           <p className="mt-1 max-w-2xl text-xs text-slate-600 sm:text-sm">
             Prediksi kebutuhan restock barang, deteksi barang macet (*dead stock*), dan pembuatan draf pesanan supplier otomatis.
@@ -214,8 +214,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
             disabled={loading}
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 disabled:opacity-50 cursor-pointer sm:text-sm"
           >
-            <span className={loading ? "animate-spin" : ""}>🔄</span>
-            {loading ? "Menganalisis..." : "Perbarui Analisis AI"}
+            {loading ? "Menganalisis..." : "Perbarui Analisis"}
           </button>
 
           <Link
@@ -231,15 +230,14 @@ export function AiInventoryForecastView({ initialData }: Props) {
       <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/40 p-5 shadow-xs">
         <div className="flex items-center justify-between border-b border-emerald-200/70 pb-3 mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-xl">🤖</span>
-            <h3 className="font-bold text-emerald-950 text-sm sm:text-base">Ringkasan Eksekutif Inventaris AI</h3>
+            <h3 className="font-bold text-emerald-950 text-sm sm:text-base">Ringkasan Eksekutif Persediaan</h3>
           </div>
           <button
             type="button"
             onClick={handleCopyExecutiveSummary}
             className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 cursor-pointer"
           >
-            {copied ? "✅ Tersalin!" : "📋 Salin Ringkasan"}
+            {copied ? "Tersalin!" : "Salin Ringkasan"}
           </button>
         </div>
         <p className="text-xs text-slate-700 sm:text-sm leading-relaxed font-medium">
@@ -261,7 +259,6 @@ export function AiInventoryForecastView({ initialData }: Props) {
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >
-          <span>🚨</span>
           <span>Prediksi Restock ({data.summary.criticalReorderCount + data.summary.warningReorderCount})</span>
         </button>
 
@@ -277,7 +274,6 @@ export function AiInventoryForecastView({ initialData }: Props) {
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >
-          <span>📦</span>
           <span>Dead Stock & Bundling ({data.summary.deadStockItemCount})</span>
         </button>
 
@@ -293,7 +289,6 @@ export function AiInventoryForecastView({ initialData }: Props) {
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >
-          <span>📝</span>
           <span>Draf PO Supplier ({allPoItems.length})</span>
         </button>
       </div>
@@ -421,7 +416,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
                       : "bg-rose-50 text-rose-700 hover:bg-rose-100"
                   }`}
                 >
-                  🔴 Kritis ({data.summary.criticalReorderCount})
+                  Kritis ({data.summary.criticalReorderCount})
                 </button>
                 <button
                   type="button"
@@ -435,7 +430,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
                       : "bg-amber-50 text-amber-700 hover:bg-amber-100"
                   }`}
                 >
-                  🟡 Waspada ({data.summary.warningReorderCount})
+                  Waspada ({data.summary.warningReorderCount})
                 </button>
               </div>
 
@@ -451,7 +446,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
                   }}
                   className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer"
                 >
-                  📄 Lihat Draf PO Supplier →
+                  Lihat Draf PO Supplier →
                 </button>
               </div>
             </div>
@@ -504,7 +499,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
                           }`}
                         >
                           {item.daysUntilStockout <= 0
-                            ? "⛔ Habis"
+                            ? "Habis"
                             : `${item.daysUntilStockout} Hari`}
                         </span>
                       </td>
@@ -793,18 +788,18 @@ export function AiInventoryForecastView({ initialData }: Props) {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
-                          ⏱️ {item.daysWithoutSale} Hari
+                          {item.daysWithoutSale} Hari
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-extrabold text-amber-800 border border-amber-200">
-                          🏷️ Diskon {item.discountRecommendationPercent}%
+                          Diskon {item.discountRecommendationPercent}%
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {item.suggestedBundlingWith ? (
                           <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs text-emerald-900 border border-emerald-200/80">
-                            <span>💡 Pasangkan dg:</span>
+                            <span>Pasangkan dg:</span>
                             <b className="font-bold text-emerald-950">{item.suggestedBundlingWith.fastMovingName}</b>
                           </div>
                         ) : (
@@ -971,7 +966,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
           {/* 1. Visual Table of PO Items with Pagination */}
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-5 py-3.5">
-              <h3 className="font-bold text-slate-900 text-sm">📋 Daftar Barang dalam Purchase Order (PO)</h3>
+              <h3 className="font-bold text-slate-900 text-sm">Daftar Barang dalam Purchase Order (PO)</h3>
               <span className="text-xs text-slate-500 font-medium">
                 Ditemukan: <b>{filteredPoItems.length}</b> barang
               </span>
@@ -1025,7 +1020,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
                               : "bg-amber-100 text-amber-800"
                           }`}
                         >
-                          {item.urgency === "CRITICAL" ? "🔴 Kritis" : "🟡 Waspada"}
+                          {item.urgency === "CRITICAL" ? "Kritis" : "Waspada"}
                         </span>
                       </td>
                     </tr>
@@ -1114,7 +1109,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
           <div className="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-xs space-y-4">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm sm:text-base">📲 Pratinjau Pesan WhatsApp Supplier</h3>
+                <h3 className="font-bold text-slate-900 text-sm sm:text-base">Pratinjau Pesan WhatsApp Supplier</h3>
                 <p className="text-xs text-slate-500">
                   Format teks ringkas siap kirim langsung ke WhatsApp supplier atau agen distributor.
                 </p>
@@ -1126,7 +1121,7 @@ export function AiInventoryForecastView({ initialData }: Props) {
                   onClick={handleCopyPo}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
                 >
-                  {copiedPo ? "✅ Tersalin!" : "📋 Salin Teks"}
+                  {copiedPo ? "Tersalin!" : "Salin Teks"}
                 </button>
 
                 <a
@@ -1135,7 +1130,6 @@ export function AiInventoryForecastView({ initialData }: Props) {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
                 >
-                  <span>📲</span>
                   <span>Buka WhatsApp</span>
                 </a>
               </div>

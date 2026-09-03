@@ -42,8 +42,7 @@ export default async function StokBarangPage({ searchParams }: { searchParams: S
             href="/stok-barang/ai-forecast"
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
           >
-            <span>⚡</span>
-            <span>AI Prediksi Stok & Dead Stock</span>
+            <span>Prediksi Stok & Dead Stock</span>
           </Link>
         </div>
       </div>

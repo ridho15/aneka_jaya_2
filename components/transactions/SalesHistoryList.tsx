@@ -249,7 +249,7 @@ export function SalesHistoryList({
                 )}
                 {sale.isPrinted ? (
                   <Badge
-                    value={`🖨️ Tercetak${sale.printCount && sale.printCount > 1 ? ` (${sale.printCount}x)` : ""}`}
+                    value={`Tercetak${sale.printCount && sale.printCount > 1 ? ` (${sale.printCount}x)` : ""}`}
                     tone="green"
                   />
                 ) : sale.source === "MJ" ? (
@@ -443,7 +443,7 @@ export function SalesHistoryList({
                             title={`Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}${sale.printedAt ? ` pada ${sale.printedAt}` : ""}`}
                             className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 shadow-xs"
                           >
-                            🖨️ Cetak
+                            Cetak
                           </span>
                         ) : isMj ? (
                           <span
