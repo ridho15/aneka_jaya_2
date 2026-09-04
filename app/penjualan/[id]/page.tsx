@@ -65,9 +65,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
-          <Link href={`/print/sales/${sale.id}?auto=1`} target="_blank" className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-xs">Cetak Langsung</Link>
-          <Link href={`/print/sales/${sale.id}/continuous`} className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs">Cetak LX-310</Link>
-          <Link href={`/print/sales/${sale.id}`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Preview Cetak</Link>
+          <Link href={`/print/sales/${sale.id}/continuous`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors">Cetak Nota</Link>
           {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && (
             <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Edit</Link>
           )}
