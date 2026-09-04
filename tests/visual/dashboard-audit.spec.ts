@@ -72,7 +72,7 @@ test("dashboard rendered values match read-only audit report", async ({ page }) 
   await expect(page.getByTestId("dashboard-kpi-operational-today-revenue")).toContainText(expected.operationalProfit.formatted.todayRevenue);
   await expect(page.getByTestId("dashboard-kpi-operational-today-expenses")).toContainText(expected.operationalProfit.formatted.todayExpenses);
   await expect(page.getByTestId("dashboard-kpi-operational-gross-profit")).toContainText(expected.operationalProfit.formatted.grossProfit);
-  await expect(page.getByTestId("dashboard-kpi-operational-gross-profit")).toContainText(`Gross Profit ${expected.operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`);
+  await expect(page.getByTestId("dashboard-kpi-operational-gross-profit")).toContainText(`Modal Riil + Estimasi ${expected.operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`);
   await expect(page.getByTestId("dashboard-kpi-operational-nett-profit")).toContainText(expected.operationalProfit.formatted.nettProfit);
 
   const actualPaymentRows = await page.getByTestId("dashboard-payment-breakdown-row").evaluateAll((rows) => rows.map((row) => ({

@@ -197,7 +197,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
           <KpiCard testId="dashboard-kpi-operational-month-expenses" label="Pengeluaran operasional bulan ini" value={formatDashboardMoney(operationalProfit.monthlyExpenses)} change="Expense approved operasional" tone="orange" />
           <KpiCard testId="dashboard-kpi-operational-today-revenue" label="Omset operasional hari ini" value={formatDashboardMoney(operationalProfit.todayRevenue)} change={`${operationalProfit.todaySalesCount} transaksi hari ini`} tone="violet" />
           <KpiCard testId="dashboard-kpi-operational-today-expenses" label="Pengeluaran operasional hari ini" value={formatDashboardMoney(operationalProfit.todayExpenses)} change="Expense approved hari ini" tone="orange" />
-          <KpiCard testId="dashboard-kpi-operational-gross-profit" label="Gross Profit Operasional" value={formatDashboardMoney(operationalProfit.grossProfit)} change={`Gross Profit ${operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`} tone="green" />
+          <KpiCard testId="dashboard-kpi-operational-gross-profit" label="Gross Profit Operasional" value={formatDashboardMoney(operationalProfit.grossProfit)} change={`Modal Riil + Estimasi ${operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`} tone="green" />
           <KpiCard testId="dashboard-kpi-operational-nett-profit" label="Nett Profit Operasional" value={formatDashboardMoney(operationalProfit.nettProfit)} change="Gross Profit - pengeluaran bulanan" tone={operationalProfit.nettProfit >= 0 ? "green" : "orange"} />
         </div>
       </section>}
