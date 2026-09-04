@@ -1,5 +1,30 @@
 [
   {
+    "id": "SAL-1788549504152",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "failed",
+    "createdAt": "2026-09-04T19:18:24.152Z"
+  },
+  {
+    "id": "SAL-1788545358775",
+    "productId": "32",
+    "productCodeSnapshot": "SKU-011",
+    "productNameSnapshot": "Produk fugit 11",
+    "currentStock": 13,
+    "minimumStock": 19,
+    "warehouseSnapshot": "Gudang non",
+    "rackSnapshot": "aut dolores",
+    "status": "resolved",
+    "createdAt": "2026-09-04T18:09:18.775Z",
+    "resolvedAt": "2026-09-04T18:09:18.861Z"
+  },
+  {
     "id": "SAL-1788212029941",
     "productId": "15",
     "productCodeSnapshot": "SKU-026",
@@ -59,8 +84,9 @@
     "minimumStock": 8,
     "warehouseSnapshot": "Gudang Utama",
     "rackSnapshot": "Rak A1",
-    "status": "failed",
-    "createdAt": "2026-08-31T09:03:30.848Z"
+    "status": "resolved",
+    "createdAt": "2026-08-31T09:03:30.848Z",
+    "resolvedAt": "2026-09-04T19:18:24.248Z"
   },
   {
     "id": "SAL-1788166322773",

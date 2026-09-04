@@ -18,10 +18,11 @@ describe("global navigation", () => {
     expect(ownerLinks.some((link) => link.href.startsWith("/pembelian"))).toBe(false);
   });
 
-  it("shows exactly the two sales menus to Admin", () => {
+  it("shows exactly the sales menus to Admin", () => {
     expect(visibleNavLinks("ADMIN").map((link) => [link.href, link.label])).toEqual([
       ["/penjualan/input", "Input Penjualan"],
       ["/penjualan", "Riwayat Penjualan"],
+      ["/penjualan/draft", "Draft Penjualan"],
     ]);
   });
 

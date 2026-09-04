@@ -22,12 +22,24 @@ export default async function EditPenjualanPage({ params }: { params: Promise<{ 
   return (
     <AppShell>
       <div className="mb-7">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Transaksi</p>
-        <h2 className="aj-page-title text-3xl font-bold">Edit Penjualan</h2>
+        <div className="mb-2 flex items-center gap-2">
+          {sale.approvalStatus === "draft" ? (
+            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+              Draft Penjualan
+            </span>
+          ) : (
+            <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Transaksi</p>
+          )}
+        </div>
+        <h2 className="aj-page-title text-3xl font-bold">
+          {sale.approvalStatus === "draft" ? "Lanjutkan Draft Penjualan" : "Edit Penjualan"}
+        </h2>
         <p className="mt-2 text-sm text-slate-600">
           {isCancelled
             ? "Transaksi ini sudah dibatalkan dan tidak dapat diubah."
-            : "Edit transaksi penjualan yang tersimpan."}
+            : sale.approvalStatus === "draft"
+              ? "Perbarui data pesanan atau klik 'Finalkan & Simpan Penjualan' untuk memotong stok gudang Aneka Jaya."
+              : "Edit transaksi penjualan yang tersimpan."}
         </p>
       </div>
       {isCancelled ? (

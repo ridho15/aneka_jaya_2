@@ -67,7 +67,7 @@ function statusTone(value?: string) {
     value === "partial"
   )
     return "green";
-  if (value === "pending_approval" || value === "pending") return "amber";
+  if (value === "draft" || value === "pending_approval" || value === "pending") return "amber";
   if (value === "rejected" || value === "failed" || value === "cancelled")
     return "red";
   return "slate";

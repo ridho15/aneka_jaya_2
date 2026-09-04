@@ -35,6 +35,7 @@ export const penjualanSchema = z.object({
   transferAccount: z.string().trim().max(150).optional(),
   notes: z.string().trim().max(1000).optional(),
   isTestTransaction: z.boolean().optional(),
+  isDraft: z.boolean().optional(),
   items: z.array(z.object({
     productRef: z.string().trim().min(1, "Kode atau nama barang wajib diisi").max(150),
     productId: z.string().trim().max(50).optional(),
@@ -63,17 +64,17 @@ export const penjualanSchema = z.object({
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal dan jam kirim tidak valid", path: ["deliveryAt"] });
     }
   }
-  if (data.paymentMethod === "TF" && !data.rekeningId && !data.transferAccount) {
+  if (!data.isDraft && data.paymentMethod === "TF" && !data.rekeningId && !data.transferAccount) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih rekening penerima untuk TF", path: ["rekeningId"] });
   }
-  if (data.paymentMethod === "Tempo") {
+  if (!data.isDraft && data.paymentMethod === "Tempo") {
     if (!data.dueDate || Number.isNaN(Date.parse(data.dueDate))) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal jatuh tempo wajib diisi untuk Tempo", path: ["dueDate"] });
     if (!data.customerName || data.customerName === "Walk In") ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Nama customer wajib untuk Tempo", path: ["customerName"] });
     const total = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice - item.discount, 0);
     if (data.initialPaymentAmount >= total && total > 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pembayaran awal harus lebih kecil dari total. Gunakan Cash atau TF jika langsung lunas.", path: ["initialPaymentAmount"] });
     if (data.initialPaymentAmount > 0 && !data.initialPaymentMethod) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih metode pembayaran awal", path: ["initialPaymentMethod"] });
     if (data.initialPaymentAmount > 0 && !data.initialPaymentRekeningId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih rekening penerima pembayaran awal", path: ["initialPaymentRekeningId"] });
-  } else if (data.initialPaymentAmount > 0) {
+  } else if (!data.isDraft && data.initialPaymentAmount > 0) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pembayaran awal hanya tersedia untuk transaksi Tempo", path: ["initialPaymentAmount"] });
   }
 });

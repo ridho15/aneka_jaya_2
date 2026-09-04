@@ -399,7 +399,7 @@ function legacyToSale(row: LegacySalesRow, items: LegacySalesItemRow[]): Sale {
 }
 
 async function listLegacySalesRecords(): Promise<Sale[]> {
-  const rows = await prisma.$queryRaw<LegacySalesRow[]>`SELECT "id", "saleDate", "tipeId", "tipeCodeSnapshot", "tipeNameSnapshot", "customerName", "customerLocation", "shippingMethod", "paymentMethod", "dueDate", "rekeningId", "transferAccount", "notes", "total", "approvalStatus", "syncTarget", "syncStatus", "syncError", "syncAttemptedAt", "syncedAt", "erpReference", "stockReleaseStatus", "stockReleaseError", "stockReleaseReference", "stockReleasedAt", "testReference", "isTestTransaction", "createdByUserId", "createdByNameSnapshot", "createdByRoleSnapshot", "createdAt" FROM "SalesRecord" ORDER BY "createdAt" DESC`;
+  const rows = await prisma.$queryRaw<LegacySalesRow[]>`SELECT "id", "saleDate", "tipeId", "tipeCodeSnapshot", "tipeNameSnapshot", "customerName", "customerLocation", "shippingMethod", "paymentMethod", "dueDate", "rekeningId", "transferAccount", "notes", "total", "approvalStatus", "syncTarget", "syncStatus", "syncError", "syncAttemptedAt", "syncedAt", "erpReference", "stockReleaseStatus", "stockReleaseError", "stockReleaseReference", "stockReleasedAt", "testReference", "isTestTransaction", "createdByUserId", "createdByNameSnapshot", "createdByRoleSnapshot", "createdAt" FROM "SalesRecord" ORDER BY "saleDate" DESC, "createdAt" DESC`;
   const itemRows = await prisma.$queryRaw<LegacySalesItemRow[]>`SELECT "salesRecordId", "productRef", "productId", "manualProduct", "warehouseId", "warehouseNameSnapshot", "rackId", "rackNameSnapshot", "unitSnapshot", "uomIdSnapshot", "quantity", "unitPrice", "discount", "sortOrder" FROM "SalesRecordItem"`;
   const itemsBySale = new Map<string, LegacySalesItemRow[]>();
   for (const item of itemRows) itemsBySale.set(item.salesRecordId, [...(itemsBySale.get(item.salesRecordId) || []), item]);
@@ -408,7 +408,10 @@ async function listLegacySalesRecords(): Promise<Sale[]> {
 
 async function listPrismaSalesRecordsSafe(): Promise<Sale[]> {
   try {
-    const rows = await prisma.salesRecord.findMany({ include: salesInclude, orderBy: { createdAt: "desc" } });
+    const rows = await prisma.salesRecord.findMany({
+      include: salesInclude,
+      orderBy: [{ saleDate: "desc" }, { transactionAt: "desc" }, { createdAt: "desc" }]
+    });
     return rows.map(toSale);
   } catch (error) {
     if (isMissingColumnError(error)) return listLegacySalesRecords().catch(() => []);
@@ -428,12 +431,20 @@ async function getPrismaSalesRecordSafe(id: string): Promise<Sale | undefined> {
 function mergeSalesRecords(primary: Sale[], secondary: Sale[]) {
   const byId = new Map<string, Sale>();
   for (const sale of [...secondary, ...primary]) byId.set(sale.id, sale);
-  return Array.from(byId.values()).sort((a, b) => new Date(b.createdAt || b.saleDate).getTime() - new Date(a.createdAt || a.saleDate).getTime());
+  return Array.from(byId.values()).sort((a, b) => {
+    const timeA = new Date(a.transactionAt || `${a.saleDate}T00:00:00+07:00`).getTime();
+    const timeB = new Date(b.transactionAt || `${b.saleDate}T00:00:00+07:00`).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
 }
 
 export async function listSalesRecords(): Promise<Sale[]> {
   if (isProductionMode()) {
-    const rows = await prisma.salesRecord.findMany({ include: salesInclude, orderBy: { createdAt: "desc" } }).catch((error) => {
+    const rows = await prisma.salesRecord.findMany({
+      include: salesInclude,
+      orderBy: [{ saleDate: "desc" }, { transactionAt: "desc" }, { createdAt: "desc" }]
+    }).catch((error) => {
       if (isMissingColumnError(error)) return undefined;
       throw error;
     });
@@ -454,7 +465,7 @@ export async function listSalesRecordsPage(input: { page?: number; pageSize?: nu
       prisma.salesRecord.findMany({
         where,
         include: salesInclude,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ saleDate: "desc" }, { transactionAt: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize
       })
@@ -734,33 +745,41 @@ async function updatePrismaSalesRecord(
   tipe: BookkeepingType,
   rekening: RekeningAccount | undefined,
   nextSyncStatus: Sale["syncStatus"],
-  currentUser: { id: string; name: string; role: Role }
+  currentUser: { id: string; name: string; role: Role },
+  stockOptions?: {
+    approvalStatus?: Sale["approvalStatus"];
+    stockReleaseStatus?: Sale["stockReleaseStatus"];
+    stockReleaseReference?: string | null;
+    stockReleasedAt?: Date | null;
+  }
 ) {
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const row = await prisma.$transaction(async (tx) => {
     await tx.salesRecordItem.deleteMany({ where: { salesRecordId: id } });
 
-    await syncTempoReceivableOnSalesEditInTransaction(
-      tx,
-      {
-        salesId: id,
-        tipeId: tipe.id,
-        tipeCodeSnapshot: tipe.code,
-        tipeNameSnapshot: tipe.name,
-        customerName: input.customerName,
-        total,
-        saleDate: input.saleDate,
-        dueDate: input.dueDate,
-        paymentMethod: input.paymentMethod,
-        initialPaymentAmount: input.initialPaymentAmount !== undefined ? input.initialPaymentAmount : before.initialPaymentAmount,
-        initialPaymentMethod: input.initialPaymentMethod !== undefined ? input.initialPaymentMethod : before.initialPaymentMethod,
-        initialPaymentRekeningId: input.initialPaymentRekeningId !== undefined ? input.initialPaymentRekeningId : before.initialPaymentRekeningId,
-        initialPaymentRekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot !== undefined ? input.initialPaymentRekeningNameSnapshot : before.initialPaymentRekeningNameSnapshot,
-        initialPaymentNotes: input.initialPaymentNotes !== undefined ? input.initialPaymentNotes : before.initialPaymentNotes,
-        syncTarget: before.syncTarget
-      },
-      currentUser
-    );
+    if (stockOptions?.approvalStatus !== "draft") {
+      await syncTempoReceivableOnSalesEditInTransaction(
+        tx,
+        {
+          salesId: id,
+          tipeId: tipe.id,
+          tipeCodeSnapshot: tipe.code,
+          tipeNameSnapshot: tipe.name,
+          customerName: input.customerName,
+          total,
+          saleDate: input.saleDate,
+          dueDate: input.dueDate,
+          paymentMethod: input.paymentMethod,
+          initialPaymentAmount: input.initialPaymentAmount !== undefined ? input.initialPaymentAmount : before.initialPaymentAmount,
+          initialPaymentMethod: input.initialPaymentMethod !== undefined ? input.initialPaymentMethod : before.initialPaymentMethod,
+          initialPaymentRekeningId: input.initialPaymentRekeningId !== undefined ? input.initialPaymentRekeningId : before.initialPaymentRekeningId,
+          initialPaymentRekeningNameSnapshot: input.initialPaymentRekeningNameSnapshot !== undefined ? input.initialPaymentRekeningNameSnapshot : before.initialPaymentRekeningNameSnapshot,
+          initialPaymentNotes: input.initialPaymentNotes !== undefined ? input.initialPaymentNotes : before.initialPaymentNotes,
+          syncTarget: before.syncTarget
+        },
+        currentUser
+      );
+    }
 
     return tx.salesRecord.update({
       where: { id },
@@ -786,16 +805,17 @@ async function updatePrismaSalesRecord(
         transferAccount: input.transferAccount,
         notes: input.notes,
         total,
+        approvalStatus: stockOptions?.approvalStatus || before.approvalStatus || "approved",
         syncStatus: nextSyncStatus,
         syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : null,
         syncedAt: before.syncTarget === "erp" ? null : before.syncedAt ? new Date(before.syncedAt) : null,
         erpReference: before.erpReference || null,
         erpSyncHttpStatus: before.syncTarget === "erp" ? null : before.erpSyncHttpStatus,
         erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse === undefined ? undefined : serializeJson(before.erpSyncResponse),
-        stockReleaseStatus: before.stockReleaseStatus || "released",
+        stockReleaseStatus: stockOptions?.stockReleaseStatus || before.stockReleaseStatus || "released",
         stockReleaseError: null,
-        stockReleaseReference: before.stockReleaseReference || null,
-        stockReleasedAt: before.stockReleasedAt ? new Date(before.stockReleasedAt) : null,
+        stockReleaseReference: stockOptions?.stockReleaseReference !== undefined ? stockOptions.stockReleaseReference : (before.stockReleaseReference || null),
+        stockReleasedAt: stockOptions?.stockReleasedAt !== undefined ? stockOptions.stockReleasedAt : (before.stockReleasedAt ? new Date(before.stockReleasedAt) : null),
         stockReleaseHttpStatus: before.stockReleaseHttpStatus,
         stockReleaseResponse: before.stockReleaseResponse === undefined ? undefined : serializeJson(before.stockReleaseResponse),
         erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required",
@@ -847,41 +867,70 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
 
-  // Alur 2: Storno & Re-release untuk Edit Transaksi Kasir
-  let newStockReference = before.stockReleaseReference || `SLM-STOCK-${before.erpReference || id}`;
-  if (before.stockReleaseReference && (before.stockReleaseStatus === "released" || before.stockReleaseStatus === "already_released")) {
-    const cancelRes = await cancelStockRelease({
-      reference: before.stockReleaseReference,
-      reason: "Edit transaksi kasir SLM"
-    });
-    if (!cancelRes.success) {
-      throw new Error(cancelRes.message || "Gagal membatalkan stok lama di ERP untuk revisi transaksi.");
-    }
-    newStockReference = nextRevisionReference(before.stockReleaseReference, `SLM-STOCK-${before.erpReference || id}`);
-  }
+  const isDraft = input.isDraft === true;
+  const isKeepingDraft = before.approvalStatus === "draft" && isDraft;
 
-  const stockResponse = await releaseSaleStock({
-    saleId: id,
-    saleDate: normalizedInput.saleDate,
-    erpReference: newStockReference,
-    sourceNumber: before.erpReference || `SLM-${id}`,
-    items: normalizedInput.items,
-  });
-  if (!stockResponse.success) {
-    throw new Error(stockResponse.message || "Stok di gudang tidak mencukupi untuk item transaksi hasil edit.");
+  let newStockReference: string | null = before.stockReleaseReference || `SLM-STOCK-${before.erpReference || id}`;
+  let stockReleaseStatus: Sale["stockReleaseStatus"] = before.stockReleaseStatus || "not_required";
+  let stockReleasedAt: Date | null = before.stockReleasedAt ? new Date(before.stockReleasedAt) : null;
+  const nextApprovalStatus: Sale["approvalStatus"] = isKeepingDraft ? "draft" : "approved";
+
+  if (!isKeepingDraft) {
+    if (before.stockReleaseReference && (before.stockReleaseStatus === "released" || before.stockReleaseStatus === "already_released")) {
+      const cancelRes = await cancelStockRelease({
+        reference: before.stockReleaseReference,
+        reason: "Edit transaksi kasir SLM"
+      });
+      if (!cancelRes.success) {
+        throw new Error(cancelRes.message || "Gagal membatalkan stok lama di ERP untuk revisi transaksi.");
+      }
+      newStockReference = nextRevisionReference(before.stockReleaseReference, `SLM-STOCK-${before.erpReference || id}`);
+    }
+
+    const stockResponse = await releaseSaleStock({
+      saleId: id,
+      saleDate: normalizedInput.saleDate,
+      erpReference: newStockReference,
+      sourceNumber: before.erpReference || `SLM-${id}`,
+      items: normalizedInput.items,
+    });
+    if (!stockResponse.success) {
+      throw new Error(stockResponse.message || "Stok di gudang tidak mencukupi untuk item transaksi hasil edit.");
+    }
+    stockReleaseStatus = before.syncTarget === "erp" && before.stockReleaseStatus === "pending"
+      ? "pending"
+      : stockResponse.data?.status === "already_released" ? "already_released" : "released";
+    newStockReference = stockResponse.data?.releaseReference || newStockReference;
+    stockReleasedAt = stockReleaseStatus === "pending" ? (before.stockReleasedAt ? new Date(before.stockReleasedAt) : null) : new Date();
+  } else {
+    stockReleaseStatus = "not_required";
+    newStockReference = null;
+    stockReleasedAt = null;
   }
 
   const currentUser = await getCurrentUser().catch(() => ({ id: "system", name: "System", role: "OWNER" as Role }));
+  const stockOptions = {
+    approvalStatus: nextApprovalStatus,
+    stockReleaseStatus,
+    stockReleaseReference: newStockReference,
+    stockReleasedAt
+  };
+
+  const auditReason = isKeepingDraft
+    ? "Perbarui draft penjualan SLM"
+    : before.approvalStatus === "draft"
+    ? `Finalisasi draft penjualan SLM • Stok AJ terpotong (${newStockReference})`
+    : "Edit transaksi penjualan";
 
   if (isProductionMode()) {
-    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser);
+    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser, stockOptions);
     await recordAudit({
       entityType: "sales",
       entityId: id,
       action: "update",
       beforeValue: before,
       afterValue: after,
-      reason: "Edit transaksi penjualan"
+      reason: auditReason
     });
     return after;
   }
@@ -889,38 +938,40 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) {
-    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser);
+    const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser, stockOptions);
     await recordAudit({
       entityType: "sales",
       entityId: id,
       action: "update",
       beforeValue: before,
       afterValue: after,
-      reason: "Edit transaksi penjualan"
+      reason: auditReason
     });
     return after;
   }
 
-  await syncTempoReceivableOnSalesEdit(
-    {
-      salesId: id,
-      tipeId: tipe.id,
-      tipeCodeSnapshot: tipe.code,
-      tipeNameSnapshot: tipe.name,
-      customerName: normalizedInput.customerName,
-      total,
-      saleDate: normalizedInput.saleDate,
-      dueDate: normalizedInput.dueDate,
-      paymentMethod: normalizedInput.paymentMethod,
-      initialPaymentAmount: normalizedInput.initialPaymentAmount !== undefined ? normalizedInput.initialPaymentAmount : before.initialPaymentAmount,
-      initialPaymentMethod: normalizedInput.initialPaymentMethod !== undefined ? normalizedInput.initialPaymentMethod : before.initialPaymentMethod,
-      initialPaymentRekeningId: normalizedInput.initialPaymentRekeningId !== undefined ? normalizedInput.initialPaymentRekeningId : before.initialPaymentRekeningId,
-      initialPaymentRekeningNameSnapshot: normalizedInput.initialPaymentRekeningNameSnapshot !== undefined ? normalizedInput.initialPaymentRekeningNameSnapshot : before.initialPaymentRekeningNameSnapshot,
-      initialPaymentNotes: normalizedInput.initialPaymentNotes !== undefined ? normalizedInput.initialPaymentNotes : before.initialPaymentNotes,
-      syncTarget: before.syncTarget
-    },
-    currentUser
-  );
+  if (nextApprovalStatus !== "draft") {
+    await syncTempoReceivableOnSalesEdit(
+      {
+        salesId: id,
+        tipeId: tipe.id,
+        tipeCodeSnapshot: tipe.code,
+        tipeNameSnapshot: tipe.name,
+        customerName: normalizedInput.customerName,
+        total,
+        saleDate: normalizedInput.saleDate,
+        dueDate: normalizedInput.dueDate,
+        paymentMethod: normalizedInput.paymentMethod,
+        initialPaymentAmount: normalizedInput.initialPaymentAmount !== undefined ? normalizedInput.initialPaymentAmount : before.initialPaymentAmount,
+        initialPaymentMethod: normalizedInput.initialPaymentMethod !== undefined ? normalizedInput.initialPaymentMethod : before.initialPaymentMethod,
+        initialPaymentRekeningId: normalizedInput.initialPaymentRekeningId !== undefined ? normalizedInput.initialPaymentRekeningId : before.initialPaymentRekeningId,
+        initialPaymentRekeningNameSnapshot: normalizedInput.initialPaymentRekeningNameSnapshot !== undefined ? normalizedInput.initialPaymentRekeningNameSnapshot : before.initialPaymentRekeningNameSnapshot,
+        initialPaymentNotes: normalizedInput.initialPaymentNotes !== undefined ? normalizedInput.initialPaymentNotes : before.initialPaymentNotes,
+        syncTarget: before.syncTarget
+      },
+      currentUser
+    );
+  }
 
   const after: Sale = {
     ...before,
@@ -931,16 +982,17 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     rekeningId: rekening?.id,
     rekeningNameSnapshot,
     total,
+    approvalStatus: nextApprovalStatus,
     syncStatus: nextSyncStatus,
     syncError: before.syncTarget === "erp" ? "Transaksi diubah dan menunggu sinkronisasi ulang." : undefined,
     syncedAt: before.syncTarget === "erp" ? undefined : before.syncedAt,
     erpReference: before.erpReference,
     erpSyncHttpStatus: before.syncTarget === "erp" ? undefined : before.erpSyncHttpStatus,
     erpSyncResponse: before.syncTarget === "erp" ? undefined : before.erpSyncResponse,
-    stockReleaseStatus: stockResponse.data?.status || "released",
+    stockReleaseStatus,
     stockReleaseError: undefined,
-    stockReleaseReference: newStockReference,
-    stockReleasedAt: new Date().toISOString(),
+    stockReleaseReference: newStockReference || undefined,
+    stockReleasedAt: stockReleasedAt ? stockReleasedAt.toISOString() : undefined,
     stockReleaseHttpStatus: before.stockReleaseHttpStatus,
     stockReleaseResponse: before.stockReleaseResponse,
     erpPaymentStatus: before.syncTarget === "erp" ? "pending" : before.erpPaymentStatus || "not_required",
@@ -957,7 +1009,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     action: "update",
     beforeValue: before,
     afterValue: after,
-    reason: "Edit transaksi penjualan"
+    reason: auditReason
   });
   return after;
 }

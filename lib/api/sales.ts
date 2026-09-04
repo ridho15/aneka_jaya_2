@@ -743,7 +743,8 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const initialRekening = input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0 && input.initialPaymentMethod
     ? await resolveSalesRekening(input.initialPaymentMethod, tipe.id, input.initialPaymentRekeningId)
     : undefined;
-  const approvalStatus: NonNullable<Sale["approvalStatus"]> = "approved";
+  const isDraft = input.isDraft === true;
+  const approvalStatus: NonNullable<Sale["approvalStatus"]> = isDraft ? "draft" : "approved";
   const isSyncEnabled = await isErpTransactionSyncEnabled();
   const target = salesTargetForTypeCode(tipe.code, process.env, isSyncEnabled);
   const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
@@ -763,26 +764,32 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
   const saleId = `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
   const erpReference = `SLM-${saleId}`;
 
-  // Eksekusi pelepasan/pengurangan stok fisik ke Aneka Jaya (AJ)
-  const stockResponse = await releaseSaleStock({
-    saleId,
-    saleDate,
-    erpReference,
-    sourceNumber: erpReference,
-    items: effectiveInput.items
-  });
+  let stockReleasedAt: string | undefined = undefined;
+  let stockReleaseStatus: Sale["stockReleaseStatus"] = "not_required";
+  let stockReleaseReference: string | undefined = undefined;
 
-  if (!stockResponse.success) {
-    return failure(
-      stockResponse.message || "Pengurangan stok di Aneka Jaya gagal.",
-      stockResponse.code || "ERP_STOCK_RELEASE_FAILED",
-      stockResponse.details
-    );
+  // Eksekusi pelepasan/pengurangan stok fisik ke Aneka Jaya (AJ) HANYA jika bukan draft
+  if (!isDraft) {
+    const stockResponse = await releaseSaleStock({
+      saleId,
+      saleDate,
+      erpReference,
+      sourceNumber: erpReference,
+      items: effectiveInput.items
+    });
+
+    if (!stockResponse.success) {
+      return failure(
+        stockResponse.message || "Pengurangan stok di Aneka Jaya gagal.",
+        stockResponse.code || "ERP_STOCK_RELEASE_FAILED",
+        stockResponse.details
+      );
+    }
+
+    stockReleasedAt = new Date().toISOString();
+    stockReleaseStatus = stockResponse.data.status === "already_released" ? "already_released" : "released";
+    stockReleaseReference = stockResponse.data.releaseReference;
   }
-
-  const stockReleasedAt = new Date().toISOString();
-  const stockReleaseStatus: Sale["stockReleaseStatus"] = stockResponse.data.status === "already_released" ? "already_released" : "released";
-  const stockReleaseReference = stockResponse.data.releaseReference;
 
   const sale: Sale = {
     id: saleId,
@@ -806,7 +813,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     createdAt: new Date().toISOString()
   };
 
-  const tempoInput = approvalStatus === "approved" && input.paymentMethod === "Tempo"
+  const tempoInput = !isDraft && approvalStatus === "approved" && input.paymentMethod === "Tempo"
     ? {
         salesId: sale.id,
         tipeId: tipe.id,
@@ -828,8 +835,8 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
 
   if (tempoInput) await saveSalesRecord(sale, { tempo: tempoInput });
   else await saveSalesRecord(sale);
-  if (process.env.NEXT_PUBLIC_APP_MODE !== "production" && tempoInput) await createTempoReceivable(tempoInput);
-  if (approvalStatus === "approved" && input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0) {
+  if (!isDraft && process.env.NEXT_PUBLIC_APP_MODE !== "production" && tempoInput) await createTempoReceivable(tempoInput);
+  if (!isDraft && approvalStatus === "approved" && input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0) {
     await syncInitialTempoPaymentForSale(sale.id);
   }
   await recordAudit({
@@ -837,7 +844,9 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     entityId: sale.id,
     action: "create",
     afterValue: sale,
-    reason: `Invoice Penjualan SLM • Stok AJ terpotong (${stockReleaseReference}) • ${approvalStatus} • ${input.paymentMethod}`
+    reason: isDraft
+      ? "Draft Penjualan SLM disimpan (belum potong stok AJ)"
+      : `Invoice Penjualan SLM • Stok AJ terpotong (${stockReleaseReference}) • ${approvalStatus} • ${input.paymentMethod}`
   });
 
   return { success: true, data: { ...sale, target: "local" } };

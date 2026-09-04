@@ -48,6 +48,13 @@ export const NAV_LINKS: NavLink[] = [
     category: "OPERASIONAL & TRANSAKSI",
   },
   {
+    href: "/penjualan/draft",
+    label: "Draft Penjualan",
+    icon: "✎",
+    permission: "penjualan.create",
+    category: "OPERASIONAL & TRANSAKSI",
+  },
+  {
     href: "/pengeluaran/input",
     label: "Input Pengeluaran",
     icon: "▣",

@@ -230,6 +230,7 @@ export function PenjualanForm({
   const productSearchControllerRef = useRef<AbortController>();
   const productSearchRequestRef = useRef(0);
   const defaultDateTimes = initialSaleDateTimes(sale);
+  const [submitMode, setSubmitMode] = useState<"final" | "draft">(sale?.approvalStatus === "draft" ? "draft" : "final");
   const {
     register,
     control,
@@ -242,6 +243,7 @@ export function PenjualanForm({
   } = useForm<PenjualanInput>({
     resolver: zodResolver(penjualanSchema),
     defaultValues: {
+      isDraft: sale?.approvalStatus === "draft",
       saleDate: sale?.saleDate || today,
       transactionAt: defaultDateTimes.transactionAt,
       deliveryAt: defaultDateTimes.deliveryAt,
@@ -700,8 +702,10 @@ export function PenjualanForm({
     //   });
     //   return;
     // }
+    const isDraft = submitMode === "draft" || Boolean(data.isDraft);
     const payload: PenjualanInput = {
       ...data,
+      isDraft,
       saleDate: data.transactionAt?.slice(0, 10) || data.saleDate,
       items: data.items.map((item) => ({
         ...item,
@@ -720,26 +724,36 @@ export function PenjualanForm({
     );
     const result = await response.json();
     if (!response.ok || !result.success) {
-      if (!isEdit) localStorage.setItem(draftKey, JSON.stringify(data));
+      if (!isEdit && !isDraft) localStorage.setItem(draftKey, JSON.stringify(data));
       setNotice({
         type: "error",
         message:
           result.message ||
           (isEdit
             ? "Data gagal diperbarui."
-            : "Data gagal dikirim ke ERP. Draf disimpan di perangkat ini."),
+            : "Data gagal diproses."),
       });
       return;
     }
     if (isEdit) {
       setNotice({
         type: "success",
-        message: "Transaksi penjualan berhasil diperbarui.",
+        message: isDraft
+          ? "Draft penjualan berhasil diperbarui."
+          : "Transaksi penjualan berhasil difinalisasi & stok telah dipotong.",
       });
-      setTimeout(() => router.push("/penjualan"), 700);
+      setTimeout(() => router.push(isDraft ? "/penjualan/draft" : "/penjualan"), 700);
       return;
     }
     localStorage.removeItem(draftKey);
+    if (isDraft) {
+      setNotice({
+        type: "success",
+        message: "Draft penjualan berhasil disimpan. Stok gudang belum dipotong.",
+      });
+      setTimeout(() => router.push("/penjualan/draft"), 800);
+      return;
+    }
     if (result.data?.id)
       setCreatedSale({
         id: String(result.data.id),
@@ -1605,19 +1619,37 @@ export function PenjualanForm({
                 </dd>
               </div>
             </dl>
-            <div className="sticky bottom-3 z-20 mt-6 rounded-md border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">
+            <div className="sticky bottom-3 z-20 mt-6 space-y-2 rounded-md border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">
               <Button
                 type="submit"
-                className="w-full"
-                // disabled={
-                //   isSubmitting || !dependenciesReady || !selectedProductsReady
-                // }
+                onClick={() => {
+                  setValue("isDraft", false);
+                  setSubmitMode("final");
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               >
-                {isSubmitting
-                  ? "Menyimpan..."
-                  : isEdit
-                    ? "Simpan Perubahan"
-                    : "Simpan Penjualan"}
+                {isSubmitting && submitMode === "final"
+                  ? "Menyimpan & Memotong Stok..."
+                  : isEdit && sale?.approvalStatus === "draft"
+                    ? "✓ Finalkan & Simpan Penjualan"
+                    : isEdit
+                      ? "Simpan Perubahan"
+                      : "Simpan Penjualan (Potong Stok)"}
+              </Button>
+              <Button
+                type="submit"
+                variant="secondary"
+                onClick={() => {
+                  setValue("isDraft", true);
+                  setSubmitMode("draft");
+                }}
+                className="w-full border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold"
+              >
+                {isSubmitting && submitMode === "draft"
+                  ? "Menyimpan Draft..."
+                  : isEdit && sale?.approvalStatus === "draft"
+                    ? "Perbarui Draft"
+                    : "✎ Simpan Draft (Tanpa Potong Stok)"}
               </Button>
             </div>
             {!dependenciesReady && (

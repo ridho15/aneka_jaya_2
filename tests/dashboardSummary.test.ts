@@ -300,4 +300,53 @@ describe("dashboard summaries", () => {
     expect(result.grossProfit).toBe(152_000);
     expect(result.monthlyRevenue).toBe(500_000);
   });
+
+  it("treats ERP products with costPrice <= 1000 (e.g. placeholder 500) as unknown cost with fallback margin", () => {
+    const products: Product[] = [
+      { id: "prod-placeholder", code: "BRG-500", name: "Produk Placeholder 500", costPrice: 500 } as Product
+    ];
+
+    const saleWithPlaceholderCost: Sale = {
+      ...sale,
+      id: "sale-placeholder-cost",
+      tipeId: "SLM",
+      tipeCodeSnapshot: "SLM",
+      saleDate: "2026-07-08",
+      total: 100_000,
+      items: [
+        // Item: Cost is 500 (<= 1000), should fall back to 10% margin -> Profit = 10,000 (not 100,000 - 500 = 99,500)
+        { productRef: "BRG-500", productId: "prod-placeholder", quantity: 1, unitPrice: 100_000 }
+      ]
+    };
+
+    const result = buildOperationalProfitSummary([saleWithPlaceholderCost], [], "2026-07-08", "2026-07", 10, products);
+    expect(result.grossProfit).toBe(10_000);
+    expect(result.monthlyRevenue).toBe(100_000);
+  });
+
+  it("calculates SLM gross profit on MJ transactions by deducting 10% MJ markup", () => {
+    const products: Product[] = [
+      { id: "prod-aj-cost", code: "BRG-AJ", name: "Barang Dari AJ", costPrice: 40_000 } as Product
+    ];
+
+    const mjSale: Sale = {
+      ...sale,
+      id: "sale-mj-source",
+      source: "MJ",
+      tipeId: "SLM",
+      tipeCodeSnapshot: "SLM",
+      saleDate: "2026-07-08",
+      total: 110_000,
+      items: [
+        // MJ Selling Price = 110,000 (which is 100,000 SLM base + 10% MJ markup = 10,000)
+        // Real cost from AJ = 40,000
+        // SLM Base = 110,000 / 1.10 = 100,000
+        // SLM Gross Profit = 100,000 - 40,000 = 60,000 (MJ takes the 10,000 markup)
+        { productRef: "BRG-AJ", productId: "prod-aj-cost", quantity: 1, unitPrice: 110_000 }
+      ]
+    };
+
+    const result = buildOperationalProfitSummary([mjSale], [], "2026-07-08", "2026-07", 10, products);
+    expect(result.grossProfit).toBe(60_000);
+  });
 });

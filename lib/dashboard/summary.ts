@@ -72,29 +72,37 @@ export type PaymentBreakdown = {
   transfers: PaymentBreakdownEntry[];
 };
 
-function monthKey(value: string | Date) {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+// ============================================================================
+// 1. FUNGSI PEMBANTU PENANGGALAN & WAKTU
+// ============================================================================
+
+/** Mengubah tanggal menjadi format string bulan "YYYY-MM" */
+function kunciBulan(nilai: string | Date): string | null {
+  const tanggal = nilai instanceof Date ? nilai : new Date(nilai);
+  if (Number.isNaN(tanggal.getTime())) return null;
+  return `${tanggal.getFullYear()}-${String(tanggal.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function addMonths(date: Date, months: number) {
-  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+/** Menambahkan jumlah bulan ke tanggal tertentu */
+function tambahBulan(tanggal: Date, jumlahBulan: number): Date {
+  return new Date(tanggal.getFullYear(), tanggal.getMonth() + jumlahBulan, 1);
 }
 
-function monthStart(value: string | Date) {
-  const key = monthKey(value);
-  if (!key) return null;
-  const [year, month] = key.split("-").map(Number);
-  return new Date(year, month - 1, 1);
+/** Mendapatkan tanggal hari pertama pada bulan tersebut */
+function awalBulan(nilai: string | Date): Date | null {
+  const kunci = kunciBulan(nilai);
+  if (!kunci) return null;
+  const [tahun, bulan] = kunci.split("-").map(Number);
+  return new Date(tahun, bulan - 1, 1);
 }
 
-function monthsBetween(start: Date, end: Date) {
-  const months: MonthlyPerformance[] = [];
-  for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
-    months.push({
-      key: monthKey(cursor) as string,
-      label: new Intl.DateTimeFormat("id-ID", { month: "short", timeZone: "Asia/Jakarta" }).format(cursor),
+/** Membuat daftar bulan berurutan antara tanggal awal dan tanggal akhir */
+function rentangBulan(awal: Date, akhir: Date): MonthlyPerformance[] {
+  const daftarBulan: MonthlyPerformance[] = [];
+  for (let kursor = new Date(awal.getFullYear(), awal.getMonth(), 1); kursor <= akhir; kursor = tambahBulan(kursor, 1)) {
+    daftarBulan.push({
+      key: kunciBulan(kursor) as string,
+      label: new Intl.DateTimeFormat("id-ID", { month: "short", timeZone: "Asia/Jakarta" }).format(kursor),
       sales: 0,
       cogs: 0,
       grossProfit: 0,
@@ -104,286 +112,437 @@ function monthsBetween(start: Date, end: Date) {
       nettMarginPercent: 0
     });
   }
-  return months;
+  return daftarBulan;
 }
 
-export function formatDashboardMoney(value: number) {
-  const amount = Number.isFinite(value) ? value : 0;
-  if (Math.abs(amount) >= 1_000_000) return `Rp ${Math.round(amount / 1_000).toLocaleString("id-ID")} jt`;
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+// ============================================================================
+// 2. FORMAT RUPIAH DASHBOARD
+// ============================================================================
+
+/** Memformat angka menjadi format rupiah ringkas (contoh: "Rp 100.000" atau "Rp 42.030 jt") */
+export function formatDashboardMoney(nilai: number): string {
+  const nominal = Number.isFinite(nilai) ? nilai : 0;
+  if (Math.abs(nominal) >= 1_000_000) {
+    return `Rp ${Math.round(nominal / 1_000).toLocaleString("id-ID")} jt`;
+  }
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(nominal);
 }
 
-export function buildDashboardSalesMetrics(sales: Sale[], todayKey: string, monthKeyValue: string): DashboardSalesMetrics {
-  const paidSales = sales.filter((sale) => sale.approvalStatus === "approved");
-  const salesThisMonth = paidSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
-  const salesToday = paidSales.filter((sale) => sale.saleDate === todayKey);
-  const receivedThisMonth = salesThisMonth.filter((sale) => sale.paymentMethod === "Cash" || sale.paymentMethod === "TF");
-  const receivedToday = salesToday.filter((sale) => sale.paymentMethod === "Cash" || sale.paymentMethod === "TF");
+// ============================================================================
+// 3. METRIK PENJUALAN DASHBOARD
+// ============================================================================
+
+export function buildDashboardSalesMetrics(
+  daftarPenjualan: Sale[],
+  kunciHariIni: string,
+  kunciBulanIni: string
+): DashboardSalesMetrics {
+  const penjualanApproved = daftarPenjualan.filter((penjualan) => penjualan.approvalStatus === "approved");
+  const penjualanBulanIni = penjualanApproved.filter((penjualan) => penjualan.saleDate?.startsWith(kunciBulanIni));
+  const penjualanHariIni = penjualanApproved.filter((penjualan) => penjualan.saleDate === kunciHariIni);
+  const pembayaranDiterimaBulanIni = penjualanBulanIni.filter((penjualan) => penjualan.paymentMethod === "Cash" || penjualan.paymentMethod === "TF");
+  const pembayaranDiterimaHariIni = penjualanHariIni.filter((penjualan) => penjualan.paymentMethod === "Cash" || penjualan.paymentMethod === "TF");
+
   return {
-    paidSales,
-    salesThisMonth,
-    salesToday,
-    receivedThisMonth,
-    receivedToday,
-    totalThisMonth: salesThisMonth.reduce((sum, sale) => sum + (sale.total || 0), 0),
-    totalToday: salesToday.reduce((sum, sale) => sum + (sale.total || 0), 0),
-    totalReceivedThisMonth: receivedThisMonth.reduce((sum, sale) => sum + (sale.total || 0), 0),
-    totalReceivedToday: receivedToday.reduce((sum, sale) => sum + (sale.total || 0), 0)
+    paidSales: penjualanApproved,
+    salesThisMonth: penjualanBulanIni,
+    salesToday: penjualanHariIni,
+    receivedThisMonth: pembayaranDiterimaBulanIni,
+    receivedToday: pembayaranDiterimaHariIni,
+    totalThisMonth: penjualanBulanIni.reduce((total, penjualan) => total + (penjualan.total || 0), 0),
+    totalToday: penjualanHariIni.reduce((total, penjualan) => total + (penjualan.total || 0), 0),
+    totalReceivedThisMonth: pembayaranDiterimaBulanIni.reduce((total, penjualan) => total + (penjualan.total || 0), 0),
+    totalReceivedToday: pembayaranDiterimaHariIni.reduce((total, penjualan) => total + (penjualan.total || 0), 0)
   };
 }
 
-function typeCode(row: { tipeId?: string; tipeCodeSnapshot?: string }) {
-  return (row.tipeCodeSnapshot || row.tipeId || "").trim().toUpperCase();
+// ============================================================================
+// 4. PENENTUAN ENTITAS OPERASIONAL (NON-AJ)
+// ============================================================================
+
+function kodeTipe(baris: { tipeId?: string; tipeCodeSnapshot?: string }): string {
+  return (baris.tipeCodeSnapshot || baris.tipeId || "").trim().toUpperCase();
 }
 
-function isOperationalSale(row: Pick<Sale, "tipeId" | "tipeCodeSnapshot" | "syncTarget">) {
-  return typeCode(row) !== "AJ";
+/** Menentukan apakah transaksi adalah penjualan operasional SLM (bukan konsinyasi/internal AJ) */
+function apakahPenjualanOperasional(baris: Pick<Sale, "tipeId" | "tipeCodeSnapshot" | "syncTarget">): boolean {
+  return kodeTipe(baris) !== "AJ";
 }
 
-function isOperationalExpense(row: Pick<Expense, "tipeId" | "tipeCodeSnapshot">) {
-  return typeCode(row) !== "AJ";
+/** Menentukan apakah pengeluaran adalah pengeluaran operasional SLM (bukan AJ) */
+function apakahPengeluaranOperasional(baris: Pick<Expense, "tipeId" | "tipeCodeSnapshot">): boolean {
+  return kodeTipe(baris) !== "AJ";
 }
 
-function buildProductCostMap(products: Product[] = []) {
-  const costMap = new Map<string, number>();
-  for (const product of products) {
-    const cost = Number(product.costPrice);
-    if (!Number.isFinite(cost) || cost <= 0) continue;
-    if (product.id) costMap.set(product.id.trim().toLowerCase(), cost);
-    if (product.code) costMap.set(product.code.trim().toLowerCase(), cost);
-    if (product.name) costMap.set(product.name.trim().toLowerCase(), cost);
+// ============================================================================
+// 5. PEMBUATAN PETA HARGA MODAL DARI MASTER PRODUK ERP
+// ============================================================================
+
+export const MINIMUM_REAL_COST_THRESHOLD = 1000;
+
+/**
+ * Menyusun Map harga modal (cost price) dari master produk ERP.
+ * Diindeks berdasarkan ID, SKU/kode, dan nama produk agar pencarian cepat.
+ * Harga modal <= 1.000 (misal placeholder Rp 500 atau 0) diabaikan dan dianggap belum memiliki modal riil.
+ */
+function buatPetaHargaModal(daftarProduk: Product[] = []): Map<string, number> {
+  const petaHarga = new Map<string, number>();
+  for (const produk of daftarProduk) {
+    const hargaModal = Number(produk.costPrice);
+    if (!Number.isFinite(hargaModal) || hargaModal <= MINIMUM_REAL_COST_THRESHOLD) continue;
+    if (produk.id) petaHarga.set(produk.id.trim().toLowerCase(), hargaModal);
+    if (produk.code) petaHarga.set(produk.code.trim().toLowerCase(), hargaModal);
+    if (produk.name) petaHarga.set(produk.name.trim().toLowerCase(), hargaModal);
   }
-  return costMap;
+  return petaHarga;
 }
 
-function calculateSaleGrossProfit(sale: Sale, grossProfitPercent: number, productCostMap: Map<string, number>): number {
-  const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
-  const saleTotal = Number(sale.total) || 0;
+// ============================================================================
+// 6. KALKULASI GROSS PROFIT PER NOTA PENJUALAN
+// ============================================================================
 
-  if (!Array.isArray(sale.items) || sale.items.length === 0) {
-    return (saleTotal * percent) / 100;
+/**
+ * Menghitung gross profit untuk satu nota penjualan:
+ * - Barang dengan harga modal riil (> Rp 1.000): Profit = Omset Item - (Qty * Modal Riil).
+ * - Barang tanpa modal (atau modal <= Rp 1.000): Profit = Omset Item * Persentase Estimasi Fallback (misal 10%).
+ * - Khusus transaksi sumber MJ (source = 'MJ'):
+ *   MJ mengambil markup 10% dari harga dasar SLM (Omset SLM = Omset MJ / 1.10).
+ *   Profit SLM dihitung dari Omset SLM dikurangi Modal Riil AJ, atau 10% dari Omset SLM jika modal belum ada.
+ * - Sisa omset pembulatan nota: Profit = Sisa Omset Dasar * Persentase Estimasi Fallback.
+ */
+function hitungGrossProfitPenjualan(
+  penjualan: Sale,
+  persenEstimasiFallback: number,
+  petaHargaModal: Map<string, number>
+): number {
+  const persen = Number.isFinite(persenEstimasiFallback) ? Math.min(100, Math.max(0, persenEstimasiFallback)) : 0;
+  const totalOmsetNota = Number(penjualan.total) || 0;
+  const isMj = penjualan.source === "MJ" || penjualan.createdByUserId === "integration:mj";
+
+  // Jika nota tidak memiliki rincian item, hitung seluruh omset dengan persentase estimasi
+  if (!Array.isArray(penjualan.items) || penjualan.items.length === 0) {
+    const omsetDasarNota = isMj ? Math.round(totalOmsetNota / 1.10) : totalOmsetNota;
+    return Math.round((omsetDasarNota * persen) / 100);
   }
 
-  const resolvedItems = sale.items.map((item) => {
-    const qty = Number(item.quantity) || 0;
-    const unitPrice = Number(item.unitPrice) || 0;
-    const discount = Number(item.discount) || 0;
-    const itemRevenue = Math.max(0, qty * unitPrice - discount);
+  // Uraikan setiap item barang di dalam nota
+  const daftarItemTerurai = penjualan.items.map((item) => {
+    const jumlah = Number(item.quantity) || 0;
+    const hargaSatuan = Number(item.unitPrice) || 0;
+    const diskon = Number(item.discount) || 0;
+    const omsetPerItem = Math.max(0, jumlah * hargaSatuan - diskon);
 
-    let effectiveCost: number | null = null;
-    const manualCost = Number(item.manualProduct?.costPrice);
-    if (Number.isFinite(manualCost) && manualCost > 0) {
-      effectiveCost = manualCost;
+    // Prioritas 1: Cari modal dari input barang manual (hanya jika > Rp 1.000)
+    let modalAktif: number | null = null;
+    const modalManual = Number(item.manualProduct?.costPrice);
+    if (Number.isFinite(modalManual) && modalManual > MINIMUM_REAL_COST_THRESHOLD) {
+      modalAktif = modalManual;
     } else {
-      const productIdKey = item.productId ? item.productId.trim().toLowerCase() : "";
-      const productRefKey = item.productRef ? item.productRef.trim().toLowerCase() : "";
-      if (productIdKey && productCostMap.has(productIdKey)) {
-        effectiveCost = productCostMap.get(productIdKey)!;
-      } else if (productRefKey && productCostMap.has(productRefKey)) {
-        effectiveCost = productCostMap.get(productRefKey)!;
+      // Prioritas 2: Cari modal dari master produk ERP berdasarkan ID atau SKU (hanya jika > Rp 1.000)
+      const kunciIdProduk = item.productId ? item.productId.trim().toLowerCase() : "";
+      const kunciRefProduk = item.productRef ? item.productRef.trim().toLowerCase() : "";
+      if (kunciIdProduk && petaHargaModal.has(kunciIdProduk)) {
+        modalAktif = petaHargaModal.get(kunciIdProduk)!;
+      } else if (kunciRefProduk && petaHargaModal.has(kunciRefProduk)) {
+        modalAktif = petaHargaModal.get(kunciRefProduk)!;
       }
     }
 
     return {
-      qty,
-      itemRevenue,
-      effectiveCost: effectiveCost !== null && effectiveCost > 0 ? effectiveCost : null
+      jumlah,
+      omsetPerItem,
+      modalAktif: modalAktif !== null && modalAktif > MINIMUM_REAL_COST_THRESHOLD ? modalAktif : null
     };
   });
 
-  const hasRealCost = resolvedItems.some((item) => item.effectiveCost !== null);
-  if (!hasRealCost) {
-    return (saleTotal * percent) / 100;
+  // Jika sama sekali tidak ada item yang bermodal riil, gunakan estimasi fallback untuk seluruh nota
+  const adaModalRiil = daftarItemTerurai.some((item) => item.modalAktif !== null);
+  if (!adaModalRiil) {
+    const omsetDasarNota = isMj ? Math.round(totalOmsetNota / 1.10) : totalOmsetNota;
+    return Math.round((omsetDasarNota * persen) / 100);
   }
 
   let totalProfit = 0;
-  let accountedRevenue = 0;
+  let omsetTerhitung = 0;
 
-  for (const item of resolvedItems) {
-    accountedRevenue += item.itemRevenue;
-    if (item.effectiveCost !== null) {
-      const itemCost = item.qty * item.effectiveCost;
-      totalProfit += item.itemRevenue - itemCost;
+  // Akumulasikan profit per item
+  for (const item of daftarItemTerurai) {
+    omsetTerhitung += item.omsetPerItem;
+    // Khusus transaksi MJ: Omset dasar SLM = Omset Item / 1.10 (markup 10% adalah hak MJ)
+    const omsetDasarItem = isMj ? Math.round(item.omsetPerItem / 1.10) : item.omsetPerItem;
+
+    if (item.modalAktif !== null) {
+      // Ada modal riil: Omset dasar dikurangi modal asli AJ
+      const totalBiayaModalItem = item.jumlah * item.modalAktif;
+      totalProfit += omsetDasarItem - totalBiayaModalItem;
     } else {
-      totalProfit += (item.itemRevenue * percent) / 100;
+      // Tidak ada modal riil: Gunakan persentase estimasi fallback (misal 10%) dari omset dasar
+      totalProfit += (omsetDasarItem * persen) / 100;
     }
   }
 
-  const unallocatedRevenue = Math.max(0, saleTotal - accountedRevenue);
-  if (unallocatedRevenue > 0) {
-    totalProfit += (unallocatedRevenue * percent) / 100;
+  // Jika ada sisa omset nota di luar item (misal pembulatan atau biaya nota tambahan)
+  const omsetSisaTanpaItem = Math.max(0, totalOmsetNota - omsetTerhitung);
+  if (omsetSisaTanpaItem > 0) {
+    const sisaDasar = isMj ? Math.round(omsetSisaTanpaItem / 1.10) : omsetSisaTanpaItem;
+    totalProfit += (sisaDasar * persen) / 100;
   }
 
-  return totalProfit;
+  return Math.round(totalProfit);
 }
 
-export function buildOperationalProfitSummary(sales: Sale[], expenses: Expense[], todayKey: string, monthKeyValue: string, grossProfitPercent = 0, products: Product[] = []): DashboardOperationalProfitSummary {
-  const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
-  const productCostMap = buildProductCostMap(products);
-  const approvedOperationalSales = sales.filter((sale) => sale.approvalStatus === "approved" && isOperationalSale(sale));
-  const approvedOperationalExpenses = expenses.filter((expense) => expense.approvalStatus === "approved" && isOperationalExpense(expense));
-  const monthlySales = approvedOperationalSales.filter((sale) => sale.saleDate?.startsWith(monthKeyValue));
-  const todaySales = approvedOperationalSales.filter((sale) => sale.saleDate === todayKey);
-  const monthlyExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate?.startsWith(monthKeyValue));
-  const todayExpenses = approvedOperationalExpenses.filter((expense) => expense.expenseDate === todayKey);
-  const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0);
-  const monthlyExpenseTotal = monthlyExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
-  const grossProfit = monthlySales.reduce((sum, sale) => sum + calculateSaleGrossProfit(sale, percent, productCostMap), 0);
+// ============================================================================
+// 7. RINGKASAN PROFIT OPERASIONAL DASHBOARD
+// ============================================================================
+
+export function buildOperationalProfitSummary(
+  daftarPenjualan: Sale[],
+  daftarPengeluaran: Expense[],
+  kunciHariIni: string,
+  kunciBulanIni: string,
+  persenEstimasiFallback = 0,
+  daftarProduk: Product[] = []
+): DashboardOperationalProfitSummary {
+  const persen = Number.isFinite(persenEstimasiFallback) ? Math.min(100, Math.max(0, persenEstimasiFallback)) : 0;
+  const petaHargaModal = buatPetaHargaModal(daftarProduk);
+
+  // Filter hanya transaksi operasional yang berstatus approved
+  const penjualanOperasionalApproved = daftarPenjualan.filter((penjualan) => penjualan.approvalStatus === "approved" && apakahPenjualanOperasional(penjualan));
+  const pengeluaranOperasionalApproved = daftarPengeluaran.filter((pengeluaran) => pengeluaran.approvalStatus === "approved" && apakahPengeluaranOperasional(pengeluaran));
+
+  // Pisahkan transaksi bulan ini dan hari ini
+  const penjualanBulanIni = penjualanOperasionalApproved.filter((penjualan) => penjualan.saleDate?.startsWith(kunciBulanIni));
+  const penjualanHariIni = penjualanOperasionalApproved.filter((penjualan) => penjualan.saleDate === kunciHariIni);
+  const pengeluaranBulanIni = pengeluaranOperasionalApproved.filter((pengeluaran) => pengeluaran.expenseDate?.startsWith(kunciBulanIni));
+  const pengeluaranHariIni = pengeluaranOperasionalApproved.filter((pengeluaran) => pengeluaran.expenseDate === kunciHariIni);
+
+  // Hitung total omset dan pengeluaran
+  const omsetBulanIni = penjualanBulanIni.reduce((total, penjualan) => total + (Number(penjualan.total) || 0), 0);
+  const omsetHariIni = penjualanHariIni.reduce((total, penjualan) => total + (Number(penjualan.total) || 0), 0);
+  const totalPengeluaranBulanIni = pengeluaranBulanIni.reduce((total, pengeluaran) => total + (Number(pengeluaran.amount) || 0), 0);
+  const totalPengeluaranHariIni = pengeluaranHariIni.reduce((total, pengeluaran) => total + (Number(pengeluaran.amount) || 0), 0);
+
+  // Akumulasikan gross profit bulan ini
+  const totalGrossProfit = penjualanBulanIni.reduce((total, penjualan) => total + hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal), 0);
+
   return {
-    grossProfitPercent: percent,
-    monthlyRevenue,
-    monthlyExpenses: monthlyExpenseTotal,
-    todayRevenue: todaySales.reduce((sum, sale) => sum + (Number(sale.total) || 0), 0),
-    todayExpenses: todayExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0),
-    grossProfit,
-    nettProfit: grossProfit - monthlyExpenseTotal,
-    monthlySalesCount: monthlySales.length,
-    todaySalesCount: todaySales.length
+    grossProfitPercent: persen,
+    monthlyRevenue: omsetBulanIni,
+    monthlyExpenses: totalPengeluaranBulanIni,
+    todayRevenue: omsetHariIni,
+    todayExpenses: totalPengeluaranHariIni,
+    grossProfit: totalGrossProfit,
+    nettProfit: totalGrossProfit - totalPengeluaranBulanIni,
+    monthlySalesCount: penjualanBulanIni.length,
+    todaySalesCount: penjualanHariIni.length
   };
 }
+
+// ============================================================================
+// 8. PEMBERITAHUAN SUMBER DATA & KPI PRODUK
+// ============================================================================
 
 export function dashboardDataSourceNotice(appMode = process.env.NEXT_PUBLIC_APP_MODE) {
   return appMode === "production" ? undefined : "Mode development: dashboard dapat membaca gabungan DB dan JSON lokal.";
 }
 
-export function productKpi(success: boolean, count: number, message?: string): DashboardProductKpi {
-  if (!success) return { value: "Tidak tersedia", change: message || "Produk ERP belum tersedia" };
-  return { value: `${count} item`, change: "Semua gudang terpantau" };
+export function productKpi(sukses: boolean, jumlahItem: number, pesanError?: string): DashboardProductKpi {
+  if (!sukses) return { value: "Tidak tersedia", change: pesanError || "Produk ERP belum tersedia" };
+  return { value: `${jumlahItem} item`, change: "Semua gudang terpantau" };
 }
 
-export function filterDashboardSales(sales: Sale[], filters: DashboardSalesFilters): Sale[] {
-  return sales.filter((sale) => {
-    if (filters.from && sale.saleDate < filters.from) return false;
-    if (filters.to && sale.saleDate > filters.to) return false;
-    if (filters.paymentMethod && sale.paymentMethod !== filters.paymentMethod) return false;
-    if (filters.rekening && (sale.rekeningId || sale.rekeningNameSnapshot || "") !== filters.rekening) return false;
+// ============================================================================
+// 9. FILTER PENJUALAN DASHBOARD
+// ============================================================================
+
+export function filterDashboardSales(daftarPenjualan: Sale[], filter: DashboardSalesFilters): Sale[] {
+  return daftarPenjualan.filter((penjualan) => {
+    if (filter.from && penjualan.saleDate < filter.from) return false;
+    if (filter.to && penjualan.saleDate > filter.to) return false;
+    if (filter.paymentMethod && penjualan.paymentMethod !== filter.paymentMethod) return false;
+    if (filter.rekening && (penjualan.rekeningId || penjualan.rekeningNameSnapshot || "") !== filter.rekening) return false;
     return true;
   });
 }
 
-function paymentPercentage(value: number, total: number) {
-  return total > 0 ? (value / total) * 100 : 0;
+// ============================================================================
+// 10. PEMBAGIAN PEMBAYARAN (CASH & TRANSFER BANK)
+// ============================================================================
+
+function hitungPersentasePembayaran(nilai: number, total: number): number {
+  return total > 0 ? (nilai / total) * 100 : 0;
 }
 
-export function buildPaymentBreakdown(sales: Sale[], rekeningLabels: Record<string, string> = {}, tempoPayments: TempoPayment[] = [], tempoReversals: TempoPaymentReversal[] = []): PaymentBreakdown {
-  const paidSales = sales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF"));
-  const paymentById = new Map(tempoPayments.map((payment) => [payment.id, payment]));
-  const cashReversal = tempoReversals.filter((reversal) => paymentById.get(reversal.tempoPaymentId)?.paymentMethod === "Cash").reduce((sum, reversal) => sum + reversal.amount, 0);
-  const cashValue = paidSales.filter((sale) => sale.paymentMethod === "Cash").reduce((sum, sale) => sum + (Number(sale.total) || 0), 0) + tempoPayments.filter((payment) => payment.paymentMethod === "Cash").reduce((sum, payment) => sum + payment.amountPaid, 0) - cashReversal;
-  const transferTotals = new Map<string, { label: string; rekeningId?: string; value: number }>();
+export function buildPaymentBreakdown(
+  daftarPenjualan: Sale[],
+  labelRekening: Record<string, string> = {},
+  pembayaranTempo: TempoPayment[] = [],
+  reversalTempo: TempoPaymentReversal[] = []
+): PaymentBreakdown {
+  const penjualanLunas = daftarPenjualan.filter((penjualan) => penjualan.approvalStatus === "approved" && (penjualan.paymentMethod === "Cash" || penjualan.paymentMethod === "TF"));
+  const petaPembayaranById = new Map(pembayaranTempo.map((pembayaran) => [pembayaran.id, pembayaran]));
 
-  for (const sale of paidSales) {
-    if (sale.paymentMethod !== "TF") continue;
-    const label = (sale.rekeningId && rekeningLabels[sale.rekeningId]) || sale.rekeningNameSnapshot || sale.transferAccount || "TF tanpa rekening";
-    const key = sale.rekeningId || sale.rekeningNameSnapshot || sale.transferAccount || label;
-    const existing = transferTotals.get(key);
-    transferTotals.set(key, {
+  // Hitung pembatalan uang kas dari tempo
+  const reversalTunai = reversalTempo
+    .filter((reversal) => petaPembayaranById.get(reversal.tempoPaymentId)?.paymentMethod === "Cash")
+    .reduce((total, reversal) => total + reversal.amount, 0);
+
+  // Hitung total uang tunai masuk (penjualan cash + pelunasan tempo cash - reversal)
+  const totalTunai = penjualanLunas
+    .filter((penjualan) => penjualan.paymentMethod === "Cash")
+    .reduce((total, penjualan) => total + (Number(penjualan.total) || 0), 0)
+    + pembayaranTempo.filter((pembayaran) => pembayaran.paymentMethod === "Cash").reduce((total, pembayaran) => total + pembayaran.amountPaid, 0)
+    - reversalTunai;
+
+  // Kelompokkan transfer bank berdasarkan rekening tujuan
+  const totalTransferPerRekening = new Map<string, { label: string; rekeningId?: string; value: number }>();
+
+  for (const penjualan of penjualanLunas) {
+    if (penjualan.paymentMethod !== "TF") continue;
+    const label = (penjualan.rekeningId && labelRekening[penjualan.rekeningId]) || penjualan.rekeningNameSnapshot || penjualan.transferAccount || "TF tanpa rekening";
+    const kunci = penjualan.rekeningId || penjualan.rekeningNameSnapshot || penjualan.transferAccount || label;
+    const dataLama = totalTransferPerRekening.get(kunci);
+    totalTransferPerRekening.set(kunci, {
       label,
-      rekeningId: sale.rekeningId || sale.rekeningNameSnapshot || sale.transferAccount,
-      value: (existing?.value || 0) + (Number(sale.total) || 0)
+      rekeningId: penjualan.rekeningId || penjualan.rekeningNameSnapshot || penjualan.transferAccount,
+      value: (dataLama?.value || 0) + (Number(penjualan.total) || 0)
     });
   }
-  for (const payment of tempoPayments) {
-    if (payment.paymentMethod !== "TF") continue;
-    const label = rekeningLabels[payment.rekeningId] || payment.rekeningNameSnapshot || "TF tanpa rekening";
-    const key = payment.rekeningId || label;
-    const existing = transferTotals.get(key);
-    transferTotals.set(key, { label, rekeningId: payment.rekeningId, value: (existing?.value || 0) + payment.amountPaid });
-  }
-  for (const reversal of tempoReversals) {
-    const payment = paymentById.get(reversal.tempoPaymentId);
-    if (!payment || payment.paymentMethod !== "TF") continue;
-    const label = rekeningLabels[payment.rekeningId] || payment.rekeningNameSnapshot || "TF tanpa rekening";
-    const key = payment.rekeningId || label;
-    const existing = transferTotals.get(key);
-    transferTotals.set(key, { label, rekeningId: payment.rekeningId, value: (existing?.value || 0) - reversal.amount });
+
+  for (const pembayaran of pembayaranTempo) {
+    if (pembayaran.paymentMethod !== "TF") continue;
+    const label = labelRekening[pembayaran.rekeningId] || pembayaran.rekeningNameSnapshot || "TF tanpa rekening";
+    const kunci = pembayaran.rekeningId || label;
+    const dataLama = totalTransferPerRekening.get(kunci);
+    totalTransferPerRekening.set(kunci, { label, rekeningId: pembayaran.rekeningId, value: (dataLama?.value || 0) + pembayaran.amountPaid });
   }
 
-  const total = cashValue + Array.from(transferTotals.values()).reduce((sum, row) => sum + row.value, 0);
+  for (const reversal of reversalTempo) {
+    const pembayaran = petaPembayaranById.get(reversal.tempoPaymentId);
+    if (!pembayaran || pembayaran.paymentMethod !== "TF") continue;
+    const label = labelRekening[pembayaran.rekeningId] || pembayaran.rekeningNameSnapshot || "TF tanpa rekening";
+    const kunci = pembayaran.rekeningId || label;
+    const dataLama = totalTransferPerRekening.get(kunci);
+    totalTransferPerRekening.set(kunci, { label, rekeningId: pembayaran.rekeningId, value: (dataLama?.value || 0) - reversal.amount });
+  }
+
+  const totalPembayaranSemua = totalTunai + Array.from(totalTransferPerRekening.values()).reduce((total, baris) => total + baris.value, 0);
+
   return {
-    total,
-    cash: { label: "Cash", value: cashValue, percentage: paymentPercentage(cashValue, total), rekeningId: "cash", paymentMethod: "Cash" },
-    transfers: Array.from(transferTotals.values())
-      .map((row) => ({ label: row.label, value: row.value, percentage: paymentPercentage(row.value, total), rekeningId: row.rekeningId, paymentMethod: "TF" as const }))
+    total: totalPembayaranSemua,
+    cash: {
+      label: "Cash",
+      value: totalTunai,
+      percentage: hitungPersentasePembayaran(totalTunai, totalPembayaranSemua),
+      rekeningId: "cash",
+      paymentMethod: "Cash"
+    },
+    transfers: Array.from(totalTransferPerRekening.values())
+      .map((baris) => ({
+        label: baris.label,
+        value: baris.value,
+        percentage: hitungPersentasePembayaran(baris.value, totalPembayaranSemua),
+        rekeningId: baris.rekeningId,
+        paymentMethod: "TF" as const
+      }))
       .sort((a, b) => b.value - a.value)
   };
 }
 
-export function buildMonthlyPerformance(
-  sales: Sale[],
-  expenses: Expense[],
-  now = new Date(),
-  range: { from?: string; to?: string } = {},
-  grossProfitPercent = 0,
-  products: Product[] = []
-): MonthlyPerformance[] {
-  const end = range.to ? monthStart(range.to) : new Date(now.getFullYear(), now.getMonth(), 1);
-  const start = range.from ? monthStart(range.from) : end ? addMonths(end, -5) : new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  const months = start && end && start <= end ? monthsBetween(start, end) : monthsBetween(new Date(now.getFullYear(), now.getMonth() - 5, 1), new Date(now.getFullYear(), now.getMonth(), 1));
-  const byMonth = new Map(months.map((month) => [month.key, month]));
-  const percent = Number.isFinite(grossProfitPercent) ? Math.min(100, Math.max(0, grossProfitPercent)) : 0;
-  const productCostMap = buildProductCostMap(products);
+// ============================================================================
+// 11. PERFORMA TREN BULANAN (GRAFIK & TABEL 6 BULAN)
+// ============================================================================
 
-  for (const sale of sales) {
-    if (sale.approvalStatus !== "approved") continue;
-    const month = byMonth.get(monthKey(sale.saleDate) || "");
-    if (month) {
-      const saleAmount = Number(sale.total) || 0;
-      const saleGross = calculateSaleGrossProfit(sale, percent, productCostMap);
-      const saleCogs = Math.max(0, saleAmount - saleGross);
-      month.sales += saleAmount;
-      month.grossProfit = (month.grossProfit || 0) + saleGross;
-      month.cogs = (month.cogs || 0) + saleCogs;
+export function buildMonthlyPerformance(
+  daftarPenjualan: Sale[],
+  daftarPengeluaran: Expense[],
+  sekarang = new Date(),
+  rentangFilter: { from?: string; to?: string } = {},
+  persenEstimasiFallback = 0,
+  daftarProduk: Product[] = []
+): MonthlyPerformance[] {
+  const akhirRentang = rentangFilter.to ? awalBulan(rentangFilter.to) : new Date(sekarang.getFullYear(), sekarang.getMonth(), 1);
+  const awalRentang = rentangFilter.from ? awalBulan(rentangFilter.from) : akhirRentang ? tambahBulan(akhirRentang, -5) : new Date(sekarang.getFullYear(), sekarang.getMonth() - 5, 1);
+  const daftarBulan = awalRentang && akhirRentang && awalRentang <= akhirRentang
+    ? rentangBulan(awalRentang, akhirRentang)
+    : rentangBulan(new Date(sekarang.getFullYear(), sekarang.getMonth() - 5, 1), new Date(sekarang.getFullYear(), sekarang.getMonth(), 1));
+
+  const petaBulan = new Map(daftarBulan.map((bulan) => [bulan.key, bulan]));
+  const persen = Number.isFinite(persenEstimasiFallback) ? Math.min(100, Math.max(0, persenEstimasiFallback)) : 0;
+  const petaHargaModal = buatPetaHargaModal(daftarProduk);
+
+  // Akumulasikan penjualan per bulan
+  for (const penjualan of daftarPenjualan) {
+    if (penjualan.approvalStatus !== "approved") continue;
+    const bulan = petaBulan.get(kunciBulan(penjualan.saleDate) || "");
+    if (bulan) {
+      const omsetNota = Number(penjualan.total) || 0;
+      const grossNota = hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal);
+      const hppNota = Math.max(0, omsetNota - grossNota);
+      bulan.sales += omsetNota;
+      bulan.grossProfit = (bulan.grossProfit || 0) + grossNota;
+      bulan.cogs = (bulan.cogs || 0) + hppNota;
     }
   }
 
-  for (const expense of expenses) {
-    if (expense.approvalStatus !== "approved") continue;
-    const amount = Number(expense.amount);
-    if (!Number.isFinite(amount) || amount <= 0) continue;
-    const month = byMonth.get(monthKey(expense.expenseDate) || "");
-    if (month) month.expenses += amount;
+  // Akumulasikan pengeluaran per bulan
+  for (const pengeluaran of daftarPengeluaran) {
+    if (pengeluaran.approvalStatus !== "approved") continue;
+    const nominal = Number(pengeluaran.amount);
+    if (!Number.isFinite(nominal) || nominal <= 0) continue;
+    const bulan = petaBulan.get(kunciBulan(pengeluaran.expenseDate) || "");
+    if (bulan) bulan.expenses += nominal;
   }
 
-  for (const month of months) {
-    const gross = month.grossProfit || 0;
-    const exp = month.expenses || 0;
-    month.nettProfit = gross - exp;
-    month.grossMarginPercent = month.sales > 0 ? (gross / month.sales) * 100 : 0;
-    month.nettMarginPercent = month.sales > 0 ? (month.nettProfit / month.sales) * 100 : 0;
+  // Hitung margin dan profit bersih per bulan
+  for (const bulan of daftarBulan) {
+    const gross = bulan.grossProfit || 0;
+    const beban = bulan.expenses || 0;
+    bulan.nettProfit = gross - beban;
+    bulan.grossMarginPercent = bulan.sales > 0 ? (gross / bulan.sales) * 100 : 0;
+    bulan.nettMarginPercent = bulan.sales > 0 ? (bulan.nettProfit / bulan.sales) * 100 : 0;
   }
 
-  return months;
+  return daftarBulan;
 }
 
-export function buildCategorySummary(sales: Sale[], products: Product[]): CategorySummary[] {
-  const productCategories = new Map<string, string>();
-  for (const product of products) {
-    for (const reference of [product.id, product.code, product.name]) {
-      if (reference) productCategories.set(reference.trim().toLowerCase(), product.category || "Tanpa kategori");
+// ============================================================================
+// 12. RINGKASAN KATEGORI PRODUK
+// ============================================================================
+
+export function buildCategorySummary(daftarPenjualan: Sale[], daftarProduk: Product[]): CategorySummary[] {
+  const petaKategoriProduk = new Map<string, string>();
+  for (const produk of daftarProduk) {
+    for (const referensi of [produk.id, produk.code, produk.name]) {
+      if (referensi) petaKategoriProduk.set(referensi.trim().toLowerCase(), produk.category || "Tanpa kategori");
     }
   }
 
-  const totals = new Map<string, number>();
-  for (const sale of sales) {
-    if (sale.approvalStatus !== "approved") continue;
-    for (const item of sale.items) {
-      const category = productCategories.get(item.productRef.trim().toLowerCase()) || "Tanpa kategori";
-      const amount = Math.max(0, item.quantity * item.unitPrice - (item.discount || 0));
-      totals.set(category, (totals.get(category) || 0) + amount);
+  const totalPerKategori = new Map<string, number>();
+  for (const penjualan of daftarPenjualan) {
+    if (penjualan.approvalStatus !== "approved") continue;
+    for (const item of penjualan.items) {
+      const kategori = petaKategoriProduk.get(item.productRef.trim().toLowerCase()) || "Tanpa kategori";
+      const omset = Math.max(0, item.quantity * item.unitPrice - (item.discount || 0));
+      totalPerKategori.set(kategori, (totalPerKategori.get(kategori) || 0) + omset);
     }
   }
-  const entries = Array.from(totals.entries());
-  const grandTotal = entries.reduce((sum, [, value]) => sum + value, 0);
-  if (grandTotal <= 0) return [];
-  return entries
-    .map(([label, value]) => ({ label, value, percentage: (value / grandTotal) * 100 }))
+
+  const barisKategori = Array.from(totalPerKategori.entries());
+  const totalSemuaKategori = barisKategori.reduce((total, [, nilai]) => total + nilai, 0);
+  if (totalSemuaKategori <= 0) return [];
+  return barisKategori
+    .map(([label, nilai]) => ({ label, value: nilai, percentage: (nilai / totalSemuaKategori) * 100 }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 }
 
-export function activityText(entry: AuditLog) {
-  const entityLabels: Partial<Record<AuditLog["entityType"], string>> = {
+// ============================================================================
+// 13. LOG AKTIVITAS TERBARU
+// ============================================================================
+
+export function activityText(log: AuditLog) {
+  const labelEntitas: Partial<Record<AuditLog["entityType"], string>> = {
     sales: "Penjualan",
     expense: "Pengeluaran",
     product: "Barang",
@@ -391,13 +550,24 @@ export function activityText(entry: AuditLog) {
     tempo: "Tempo",
     whatsapp_report: "WhatsApp"
   };
-  const entity = entityLabels[entry.entityType] || entry.entityType;
-  return `${entity} ${entry.action.replaceAll("_", " ")} oleh ${entry.userNameSnapshot}`;
+  const entitas = labelEntitas[log.entityType] || log.entityType;
+  return `${entitas} ${log.action.replaceAll("_", " ")} oleh ${log.userNameSnapshot}`;
 }
 
-export function activityStatusText(entry: AuditLog) {
-  if (entry.action === "cancel") return "Dibatalkan";
-  if (entry.action === "reject") return "Ditolak";
-  if (["create", "update", "mark_paid", "retry_sync"].includes(entry.action)) return "Tercatat";
+export function activityStatusText(log: AuditLog) {
+  if (log.action === "cancel") return "Dibatalkan";
+  if (log.action === "reject") return "Ditolak";
+  if (["create", "update", "mark_paid", "retry_sync"].includes(log.action)) return "Tercatat";
   return "Audit";
 }
+
+// ============================================================================
+// 14. ALIAS EKSPOR BAHASA INDONESIA (MEMPERMUDAH PEMAHAMAN)
+// ============================================================================
+
+export const buatRingkasanProfitOperasional = buildOperationalProfitSummary;
+export const hitungGrossProfit = hitungGrossProfitPenjualan;
+export const buatPerformaBulanan = buildMonthlyPerformance;
+export const buatRincianPembayaran = buildPaymentBreakdown;
+export const filterPenjualan = filterDashboardSales;
+export const formatUang = formatDashboardMoney;

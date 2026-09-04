@@ -152,15 +152,16 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     return true;
   });
   const profitSetting = canViewOperationalProfit ? await getOperationalProfitSetting() : null;
+  const effectiveGrossProfitPercent = (profitSetting && profitSetting.grossProfitPercent > 0) ? profitSetting.grossProfitPercent : 10;
   const operationalProfit = canViewOperationalProfit && profitSetting
-    ? buildOperationalProfitSummary(allSales, allExpenses, todayStr, monthStr, profitSetting.grossProfitPercent, products.success ? products.data : [])
+    ? buildOperationalProfitSummary(allSales, allExpenses, todayStr, monthStr, effectiveGrossProfitPercent, products.success ? products.data : [])
     : null;
   const performance = buildMonthlyPerformance(
     filteredSales,
     filteredExpenses,
     new Date(),
     { from: filters.from, to: filters.to },
-    profitSetting?.grossProfitPercent ?? 0,
+    effectiveGrossProfitPercent,
     products.success ? products.data : []
   );
   const paymentSales = paymentPeriod.error ? [] : filterDashboardSales(allSales, { from: paymentPeriod.from, to: paymentPeriod.to });

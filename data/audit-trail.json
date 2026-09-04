@@ -1,5 +1,119 @@
 [
   {
+    "id": "384751df-d96d-4c52-a864-29d0e9f59a89",
+    "createdAt": "2026-09-04T19:18:24.162Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1788549504152",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1788549504152",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
+      "status": "failed",
+      "createdAt": "2026-09-04T19:18:24.152Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "ada9d54e-d278-451f-82dc-624ae5b4e34f",
+    "createdAt": "2026-09-04T18:09:18.792Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "stock_alert",
+    "entityId": "SAL-1788545358775",
+    "action": "send_whatsapp",
+    "afterValue": {
+      "id": "SAL-1788545358775",
+      "productId": "32",
+      "productCodeSnapshot": "SKU-011",
+      "productNameSnapshot": "Produk fugit 11",
+      "currentStock": 13,
+      "minimumStock": 19,
+      "warehouseSnapshot": "Gudang non",
+      "rackSnapshot": "aut dolores",
+      "status": "failed",
+      "createdAt": "2026-09-04T18:09:18.775Z"
+    },
+    "reason": "Stock sudah mencapai minimum"
+  },
+  {
+    "id": "2ba26263-5021-4e6c-af28-b1580506c8dd",
+    "createdAt": "2026-09-04T17:52:50.440Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "eb2fef80-ef5f-4ab7-a7c6-a5c139ea5f1e",
+    "createdAt": "2026-09-04T17:46:28.961Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "3759ce69-91c5-4f87-8056-b39fbfc10fae",
+    "createdAt": "2026-09-04T17:46:11.452Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "39d81be4-7d06-4ac7-9390-abf041d7a32d",
+    "createdAt": "2026-09-04T17:40:52.751Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
     "id": "6c0127dc-d807-4f81-9c9a-ec84b74e173a",
     "createdAt": "2026-09-03T04:55:12.682Z",
     "userId": "unauthenticated",
