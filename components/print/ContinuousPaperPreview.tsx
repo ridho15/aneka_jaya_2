@@ -363,7 +363,7 @@ export function ContinuousPaperPreview({
                 settings.showTearLine,
               )}
               download={`${kind}-${id}.prn`}
-              className={`rounded-lg border border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-100 ${loading || error ? "pointer-events-none opacity-50" : ""}`}
+              className={`rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 ${loading || error ? "pointer-events-none opacity-50" : ""}`}
             >
               Download .prn (Raw)
             </a>
@@ -748,7 +748,7 @@ export function ContinuousPaperPreview({
                 <a
                   href="/scripts/setup_kertas_windows.bat"
                   download="setup_kertas_windows.bat"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white shadow-xs transition hover:bg-blue-700 active:scale-95"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white shadow-xs transition hover:bg-slate-900 active:scale-95"
                 >
                   <svg
                     className="h-3.5 w-3.5"

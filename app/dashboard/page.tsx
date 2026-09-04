@@ -231,7 +231,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
             {activities.map((activity) => (
               <div key={activity.id} className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
                 <div className="flex items-center gap-3">
-                  <span className={`grid h-9 w-9 place-items-center rounded-xl text-sm ${activity.entityType === "sales" ? "bg-blue-100 text-blue-700" : activity.entityType === "expense" ? "bg-orange-100 text-orange-700" : "bg-violet-100 text-violet-700"}`}>{activity.entityType === "sales" ? "↗" : activity.entityType === "expense" ? "−" : "◇"}</span>
+                  <span className={`grid h-9 w-9 place-items-center rounded-xl text-sm ${activity.entityType === "sales" ? "bg-emerald-50 text-emerald-700" : activity.entityType === "expense" ? "bg-slate-100 text-slate-700" : "bg-slate-100 text-slate-600"}`}>{activity.entityType === "sales" ? "↗" : activity.entityType === "expense" ? "−" : "◇"}</span>
                   <div><p className="font-semibold text-slate-800">{activityText(activity)}</p><time className="text-xs text-slate-500">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(new Date(activity.createdAt))}</time></div>
                 </div>
                 <span className="text-xs font-semibold text-emerald-600">{activityStatusText(activity)}</span>

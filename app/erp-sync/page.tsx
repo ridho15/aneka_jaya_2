@@ -260,7 +260,7 @@ export default async function ErpSyncPage({
                     <span
                       className={
                         item.source === "MJ"
-                          ? "rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700"
+                          ? "rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
                           : "rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
                       }
                     >
@@ -268,7 +268,7 @@ export default async function ErpSyncPage({
                     </span>
                     <a
                       href={`/penjualan/${item.id}`}
-                      className="font-semibold text-slate-900 hover:text-sky-600 hover:underline"
+                      className="font-semibold text-slate-900 hover:text-emerald-700 hover:underline"
                     >
                       {item.customerName}
                     </a>
@@ -380,7 +380,7 @@ export default async function ErpSyncPage({
                       <span
                         className={
                           item.source === "MJ"
-                            ? "rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700"
+                            ? "rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
                             : "rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700"
                         }
                       >
@@ -388,7 +388,7 @@ export default async function ErpSyncPage({
                       </span>
                       <a
                         href={`/penjualan/${item.id}`}
-                        className="font-medium text-slate-900 hover:text-sky-600 hover:underline"
+                        className="font-medium text-slate-900 hover:text-emerald-700 hover:underline"
                       >
                         {item.customerName}
                       </a>
@@ -518,7 +518,7 @@ export default async function ErpSyncPage({
                 <div>
                   <a
                     href={`/pengeluaran/${item.id}`}
-                    className="font-semibold text-slate-900 hover:text-sky-600 hover:underline"
+                    className="font-semibold text-slate-900 hover:text-emerald-700 hover:underline"
                   >
                     {item.vendorName}
                   </a>
@@ -603,7 +603,7 @@ export default async function ErpSyncPage({
                   <td className="px-5 py-4">
                     <a
                       href={`/pengeluaran/${item.id}`}
-                      className="font-medium text-slate-900 hover:text-sky-600 hover:underline"
+                      className="font-medium text-slate-900 hover:text-emerald-700 hover:underline"
                     >
                       {item.vendorName}
                     </a>

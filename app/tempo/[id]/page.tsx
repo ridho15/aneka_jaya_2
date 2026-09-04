@@ -16,7 +16,7 @@ function statusBadge(status: string) {
     paid: { label: "Lunas (Paid)", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
     partial_paid: { label: "Sebagian (Partial)", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
     overdue: { label: "Jatuh Tempo (Overdue)", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
-    open: { label: "Belum Dibayar (Open)", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+    open: { label: "Belum Dibayar (Open)", bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-200" },
     cancelled: { label: "Dibatalkan", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
     written_off: { label: "Dihapus (Write-off)", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" }
   };
@@ -29,7 +29,7 @@ function statusBadge(status: string) {
 }
 
 function methodBadge(method: string) {
-  if (method === "TF") return <span className="rounded-md bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700 border border-sky-200">Transfer</span>;
+  if (method === "TF") return <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700 border border-slate-200">Transfer</span>;
   if (method === "Cash") return <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">Tunai</span>;
   return <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700 border border-slate-200">{method}</span>;
 }

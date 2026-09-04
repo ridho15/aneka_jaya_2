@@ -129,7 +129,7 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
           </div>
         </div>
       )}
-      <p className="rounded-lg border border-orange-100 bg-orange-50 px-4 py-3 text-sm text-orange-800">Pengeluaran AJ disinkronkan ke ERP sebagai <b>command Kas & Bank</b>. Status sukses hanya diberikan jika ERP merespons berhasil.</p>
+      <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">Pengeluaran AJ disinkronkan ke ERP sebagai <b>command Kas & Bank</b>. Status sukses hanya diberikan jika ERP merespons berhasil.</p>
       <section className="aj-surface p-5 sm:p-6">
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="Tanggal pengeluaran" error={errors.expenseDate?.message}><Input type="date" {...register("expenseDate")} /></Field>

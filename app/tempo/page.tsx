@@ -55,7 +55,7 @@ function statusBadgeClass(status: string) {
   if (status === "paid") return "bg-emerald-50 text-emerald-700 border border-emerald-200";
   if (status === "partial_paid") return "bg-amber-50 text-amber-700 border border-amber-200";
   if (["cancelled", "written_off"].includes(status)) return "bg-slate-100 text-slate-600 border border-slate-200";
-  return "bg-blue-50 text-blue-700 border border-blue-200";
+  return "bg-slate-100 text-slate-700 border border-slate-200";
 }
 
 export default async function TempoPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {

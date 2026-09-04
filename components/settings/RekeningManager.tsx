@@ -108,7 +108,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                     {statusBadge(rek.isActive !== false)}
                   </div>
                   <dl className="space-y-3 text-sm">
-                    <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">ID Rekening SLM</dt><dd className="mt-1 font-mono text-xs font-semibold text-sky-700">{rek.id}</dd></div>
+                    <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">ID Rekening SLM</dt><dd className="mt-1 font-mono text-xs font-semibold text-emerald-700">{rek.id}</dd></div>
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Nomor rekening</dt><dd className="mt-1 font-mono text-slate-700">{rek.accountNumber}</dd></div>
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">COA/Alias ERP</dt><dd className="mt-1 text-slate-700">{rek.erpCoaId ? `${rek.erpCoaId}${rek.erpCoaNameSnapshot ? ` - ${rek.erpCoaNameSnapshot}` : ""}` : "Belum diatur"}</dd></div>
                     <div><dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tipe yang diassign</dt><dd className="mt-1 flex flex-wrap gap-1">{assignedTipes(rek.tipeIds)}</dd></div>
@@ -157,7 +157,7 @@ export function RekeningManager({ types, rekenings: initial }: Props) {
                   <>
                     <td className="px-5 py-4">
                       <div className="font-semibold text-slate-900">{rek.name}</div>
-                      <div className="mt-0.5 font-mono text-xs font-medium text-sky-700">{rek.id}</div>
+                      <div className="mt-0.5 font-mono text-xs font-medium text-emerald-700">{rek.id}</div>
                     </td>
                     <td className="px-5 py-4">{rek.bank}</td>
                     <td className="px-5 py-4 font-mono text-slate-600">{rek.accountNumber}</td>

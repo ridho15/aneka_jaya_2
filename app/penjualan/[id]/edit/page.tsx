@@ -22,7 +22,7 @@ export default async function EditPenjualanPage({ params }: { params: Promise<{ 
   return (
     <AppShell>
       <div className="mb-7">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-neutral-500">Transaksi</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Transaksi</p>
         <h2 className="aj-page-title text-3xl font-bold">Edit Penjualan</h2>
         <p className="mt-2 text-sm text-slate-600">
           {isCancelled

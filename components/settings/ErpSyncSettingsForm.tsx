@@ -45,7 +45,7 @@ export function ErpSyncSettingsForm({ initialSetting }: { initialSetting: ErpSyn
         className={`rounded-xl border p-4.5 ${
           erpTransactionSyncEnabled
             ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-            : "border-blue-200 bg-blue-50 text-blue-950"
+            : "border-slate-200 bg-slate-50 text-slate-800"
         }`}
       >
         <div className="flex items-start gap-3">
@@ -89,7 +89,7 @@ export function ErpSyncSettingsForm({ initialSetting }: { initialSetting: ErpSyn
             </span>
             <span className="mt-1 block text-xs text-slate-500">
               Status saat ini:{" "}
-              <b className={current.erpTransactionSyncEnabled ? "text-emerald-700" : "text-blue-700"}>
+              <b className={current.erpTransactionSyncEnabled ? "text-emerald-700" : "text-slate-600"}>
                 {current.erpTransactionSyncEnabled ? "Aktif (Full Sync)" : "Nonaktif (Mode Stok Saja)"}
               </b>
             </span>

@@ -5,7 +5,7 @@ import { formatDashboardMoney, type PaymentBreakdown } from "@/lib/dashboard/sum
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 
-const colors = ["#10b981", "#2563eb", "#06b6d4", "#f59e0b", "#ec4899"];
+const colors = ["#059669", "#047857", "#10b981", "#334155", "#64748b"];
 type LinkFilters = { from?: string; to?: string };
 export type PaymentPeriod = {
   mode: "day" | "day-range";

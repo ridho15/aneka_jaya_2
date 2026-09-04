@@ -109,11 +109,11 @@ export function PerformanceChart({ data }: Props) {
         {/* Legend & Toggle */}
         <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
           <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="h-3 w-3 rounded-full bg-blue-600 shadow-xs" />
+            <span className="h-3 w-3 rounded-full bg-emerald-600 shadow-xs" />
             Penjualan (Omset)
           </span>
           <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="h-3 w-3 rounded-sm bg-orange-400 shadow-xs" />
+            <span className="h-3 w-3 rounded-sm bg-slate-600 shadow-xs" />
             Pengeluaran (Beban)
           </span>
           <button
@@ -129,9 +129,9 @@ export function PerformanceChart({ data }: Props) {
       {/* Financial Summary Metric Strip (4 Pillars: Omset, Gross Profit, Expenses, Nett Profit) */}
       <div className="grid grid-cols-2 gap-3 border-b border-slate-100 bg-slate-50/50 p-4 sm:grid-cols-4 sm:px-6">
         {/* Omset */}
-        <div className="rounded-xl border border-blue-100 bg-white p-3 shadow-2xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Total Omset</p>
-          <p className="mt-0.5 text-base font-extrabold text-blue-950 sm:text-lg">{rupiah(totalSales)}</p>
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-3 shadow-2xs">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Total Omset</p>
+          <p className="mt-0.5 text-base font-extrabold text-emerald-950 sm:text-lg">{rupiah(totalSales)}</p>
           <p className="text-[11px] text-slate-500">Rerata {rupiahCompact(avgMonthlySales)}/bln</p>
         </div>
 
@@ -145,9 +145,9 @@ export function PerformanceChart({ data }: Props) {
         </div>
 
         {/* Beban Pengeluaran */}
-        <div className="rounded-xl border border-orange-100 bg-white p-3 shadow-2xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-orange-600">Beban Pengeluaran</p>
-          <p className="mt-0.5 text-base font-extrabold text-orange-950 sm:text-lg">{rupiah(totalExpenses)}</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Beban Pengeluaran</p>
+          <p className="mt-0.5 text-base font-extrabold text-slate-950 sm:text-lg">{rupiah(totalExpenses)}</p>
           <p className="text-[11px] text-slate-500">
             {totalSales > 0 ? `${((totalExpenses / totalSales) * 100).toFixed(1)}% dari omset` : "Beban operasional"}
           </p>
@@ -209,7 +209,7 @@ export function PerformanceChart({ data }: Props) {
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between gap-3">
                   <span className="text-slate-400">Omset Penjualan:</span>
-                  <b className="text-blue-300 font-extrabold">{rupiah(activeItem.sales || 0)}</b>
+                  <b className="text-emerald-300 font-extrabold">{rupiah(activeItem.sales || 0)}</b>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-slate-400">Modal Barang (HPP):</span>
@@ -223,7 +223,7 @@ export function PerformanceChart({ data }: Props) {
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-slate-400">Beban Operasional:</span>
-                  <b className="text-orange-300 font-extrabold">{rupiah(activeItem.expenses || 0)}</b>
+                  <b className="text-slate-300 font-extrabold">{rupiah(activeItem.expenses || 0)}</b>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-slate-700 pt-1">
                   <span className="text-amber-300 font-bold">Nett Profit (Bersih):</span>
@@ -262,14 +262,14 @@ export function PerformanceChart({ data }: Props) {
               <defs>
                 {/* Gradient for area fill under sales curve */}
                 <linearGradient id="salesAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563eb" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#2563eb" stopOpacity="0.01" />
+                  <stop offset="0%" stopColor="#059669" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#059669" stopOpacity="0.01" />
                 </linearGradient>
 
                 {/* Gradient for expense bars */}
                 <linearGradient id="expenseBarGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#fb923c" stopOpacity="0.95" />
-                  <stop offset="100%" stopColor="#ea580c" stopOpacity="0.85" />
+                  <stop offset="0%" stopColor="#64748b" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#475569" stopOpacity="0.85" />
                 </linearGradient>
               </defs>
 
@@ -324,7 +324,7 @@ export function PerformanceChart({ data }: Props) {
               <polyline
                 points={salesPoints}
                 fill="none"
-                stroke="#2563eb"
+                stroke="#059669"
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -337,7 +337,7 @@ export function PerformanceChart({ data }: Props) {
                   x2={x(activeIdx)}
                   y1={chartTop}
                   y2={chartBottom}
-                  stroke="#3b82f6"
+                  stroke="#10b981"
                   strokeDasharray="3 3"
                   strokeWidth="1.5"
                   opacity="0.8"
@@ -353,14 +353,14 @@ export function PerformanceChart({ data }: Props) {
                   <g key={`sale-pt-${item.key}`}>
                     {/* Outer pulse circle when active */}
                     {isActive && (
-                      <circle cx={cx} cy={cy} r="9" fill="#93c5fd" opacity="0.5" className="animate-pulse" />
+                      <circle cx={cx} cy={cy} r="9" fill="#a7f3d0" opacity="0.5" className="animate-pulse" />
                     )}
                     <circle
                       cx={cx}
                       cy={cy}
                       r={isActive ? "6" : "4.5"}
                       fill="#ffffff"
-                      stroke="#2563eb"
+                      stroke="#059669"
                       strokeWidth={isActive ? "3.5" : "2.5"}
                       className="transition-all duration-150"
                     />
@@ -423,10 +423,10 @@ export function PerformanceChart({ data }: Props) {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-1 text-slate-600 text-[11px]">
-                  <span>Omset: <b className="text-blue-700">{rupiah(activeItem.sales || 0)}</b></span>
+                  <span>Omset: <b className="text-emerald-700">{rupiah(activeItem.sales || 0)}</b></span>
                   <span>HPP Modal: <b className="text-slate-700">{rupiah(activeItem.cogs || 0)}</b></span>
                   <span>Gross Profit: <b className="text-emerald-700">{rupiah(activeItem.grossProfit || 0)}</b></span>
-                  <span>Beban Operasional: <b className="text-orange-700">{rupiah(activeItem.expenses || 0)}</b></span>
+                  <span>Beban Operasional: <b className="text-slate-700">{rupiah(activeItem.expenses || 0)}</b></span>
                 </div>
               </div>
             )}
@@ -457,7 +457,7 @@ export function PerformanceChart({ data }: Props) {
                   <th className="px-3.5 py-3 text-right">Omset Penjualan</th>
                   <th className="px-3.5 py-3 text-right">Modal (HPP)</th>
                   <th className="px-3.5 py-3 text-right text-emerald-800">Gross Profit</th>
-                  <th className="px-3.5 py-3 text-right text-orange-800">Beban Operasional</th>
+                  <th className="px-3.5 py-3 text-right text-slate-700">Beban Operasional</th>
                   <th className="px-3.5 py-3 text-right">Nett Profit (Bersih)</th>
                   <th className="px-3.5 py-3 text-center">Margin Bersih</th>
                 </tr>
@@ -473,14 +473,14 @@ export function PerformanceChart({ data }: Props) {
                       key={item.key}
                       onMouseEnter={() => setActiveIdx(idx)}
                       className={`transition-colors cursor-pointer ${
-                        isHovered ? "bg-blue-50/60 font-semibold" : "hover:bg-slate-50"
+                        isHovered ? "bg-emerald-50/50 font-semibold" : "hover:bg-slate-50"
                       }`}
                     >
                       <td className="px-3.5 py-2.5 font-medium text-slate-900">
                         <span className="font-bold">{item.label}</span>
                         <span className="text-[11px] text-slate-400 ml-1.5">({item.key})</span>
                       </td>
-                      <td className="px-3.5 py-2.5 text-right font-semibold text-blue-700">
+                      <td className="px-3.5 py-2.5 text-right font-semibold text-emerald-700">
                         {rupiah(item.sales || 0)}
                       </td>
                       <td className="px-3.5 py-2.5 text-right text-slate-600">
@@ -489,7 +489,7 @@ export function PerformanceChart({ data }: Props) {
                       <td className="px-3.5 py-2.5 text-right font-semibold text-emerald-700">
                         {rupiah(gross)}
                       </td>
-                      <td className="px-3.5 py-2.5 text-right font-semibold text-orange-700">
+                      <td className="px-3.5 py-2.5 text-right font-semibold text-slate-700">
                         {rupiah(item.expenses || 0)}
                       </td>
                       <td
@@ -515,10 +515,10 @@ export function PerformanceChart({ data }: Props) {
               <tfoot className="border-t-2 border-slate-300 bg-slate-100/90 font-extrabold text-slate-900">
                 <tr>
                   <td className="px-3.5 py-3">TOTAL KESELURUHAN</td>
-                  <td className="px-3.5 py-3 text-right text-blue-950">{rupiah(totalSales)}</td>
+                  <td className="px-3.5 py-3 text-right text-emerald-950">{rupiah(totalSales)}</td>
                   <td className="px-3.5 py-3 text-right text-slate-700">{rupiah(totalCogs)}</td>
                   <td className="px-3.5 py-3 text-right text-emerald-950">{rupiah(totalGrossProfit)}</td>
-                  <td className="px-3.5 py-3 text-right text-orange-950">{rupiah(totalExpenses)}</td>
+                  <td className="px-3.5 py-3 text-right text-slate-950">{rupiah(totalExpenses)}</td>
                   <td
                     className={`px-3.5 py-3 text-right ${
                       totalNettProfit >= 0 ? "text-emerald-950" : "text-rose-950"

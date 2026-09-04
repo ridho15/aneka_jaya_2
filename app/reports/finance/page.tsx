@@ -81,7 +81,7 @@ export default async function FinanceReportsPage({ searchParams }: { searchParam
                   <p className="font-semibold text-slate-900">{row.customerName}</p>
                   <p className="mt-1 text-xs text-slate-500">{row.tipeCodeSnapshot} • jatuh tempo {row.dueDate}</p>
                 </div>
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{row.status}</span>
+                <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{row.status}</span>
               </div>
               <p className="mt-3 text-lg font-bold text-slate-900">{rupiah(row.remainingAmount)}</p>
             </article>

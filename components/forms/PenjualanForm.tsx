@@ -1037,7 +1037,7 @@ export function PenjualanForm({
                 </Field>
               )}
               {paymentMethod === "Tempo" && (
-                <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4 sm:col-span-2 lg:col-span-4">
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-4 sm:col-span-2 lg:col-span-4">
                   <div className="mb-4"><p className="text-sm font-bold text-slate-900">Pembayaran awal / DP</p><p className="mt-1 text-xs text-slate-600">Opsional. Sisa pembayaran otomatis dicatat sebagai piutang Tempo.</p></div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Field label="Nominal DP" error={errors.initialPaymentAmount?.message}>
@@ -1076,7 +1076,7 @@ export function PenjualanForm({
                       </Field>
                     )}
                   </div>
-                  <div className="mt-4 grid grid-cols-3 gap-3 border-t border-blue-100 pt-3 text-sm"><div><p className="text-xs text-slate-500">Total</p><b>{rupiah(total)}</b></div><div><p className="text-xs text-slate-500">Dibayar sekarang</p><b className="text-blue-700">{rupiah(initialPaymentAmount)}</b></div><div><p className="text-xs text-slate-500">Sisa Tempo</p><b className="text-amber-700">{rupiah(Math.max(0, total - initialPaymentAmount))}</b></div></div>
+                  <div className="mt-4 grid grid-cols-3 gap-3 border-t border-emerald-100 pt-3 text-sm"><div><p className="text-xs text-slate-500">Total</p><b>{rupiah(total)}</b></div><div><p className="text-xs text-slate-500">Dibayar sekarang</p><b className="text-emerald-700">{rupiah(initialPaymentAmount)}</b></div><div><p className="text-xs text-slate-500">Sisa Tempo</p><b className="text-amber-700">{rupiah(Math.max(0, total - initialPaymentAmount))}</b></div></div>
                 </div>
               )}
               <Field label="Tanggal & jam kirim" error={errors.deliveryAt?.message}>
@@ -1827,7 +1827,7 @@ function StockDependencyState({ state }: { state: StockState }) {
     );
   if (state.status === "success")
     return (
-      <p className="border-b border-blue-100 bg-blue-50 px-5 py-2 text-xs text-blue-800 sm:px-6">
+      <p className="border-b border-emerald-100 bg-emerald-50 px-5 py-2 text-xs text-emerald-800 sm:px-6">
         Stok ERP berhasil dimuat · terakhir {state.updatedAt}
       </p>
     );

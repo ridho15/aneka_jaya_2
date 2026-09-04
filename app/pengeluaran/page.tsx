@@ -133,7 +133,7 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
                   <Link className="rounded-md bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700" href={`/pengeluaran/${expense.id}`}>Detail</Link>
                   <Link className="rounded-md border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/print/expenses/${expense.id}`}>Cetak</Link>
                   {expense.attachmentUrl && <a className="rounded-md border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={expense.attachmentUrl} target="_blank" rel="noreferrer">Lampiran</a>}
-                  {canManage && expense.approvalStatus !== "cancelled" && <Link className="rounded-md border border-blue-200 px-3 py-2 text-center text-sm font-semibold text-blue-700 hover:bg-blue-50" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
+                  {canManage && expense.approvalStatus !== "cancelled" && <Link className="rounded-md border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
                   {canManage && <TransactionCancelButton id={expense.id} kind="expenses" disabled={expense.approvalStatus === "cancelled" || (expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced")} disabledReason={expense.erpSyncTarget === "erp" && expense.erpSyncStatus === "synced" ? "Pengeluaran AJ sudah synced ke ERP dan perlu mekanisme koreksi resmi." : "Pengeluaran sudah dibatalkan."} />}
                 </div>
               </article>
@@ -168,7 +168,7 @@ export default async function PengeluaranHistoryPage({ searchParams }: { searchP
                         <Link className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" href={`/print/expenses/${expense.id}`}>Cetak</Link>
                         {canManage && (
                           <>
-                            {expense.approvalStatus !== "cancelled" && <Link className="whitespace-nowrap rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
+                            {expense.approvalStatus !== "cancelled" && <Link className="whitespace-nowrap rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" href={`/pengeluaran/${expense.id}/edit`}>Edit</Link>}
                             <TransactionCancelButton
                               id={expense.id}
                               kind="expenses"

@@ -1,6 +1,6 @@
 import type { CategorySummary } from "@/lib/dashboard/summary";
 
-const colors = ["#8b5cf6", "#06b6d4", "#fbbf24", "#fb7185", "#10b981"];
+const colors = ["#059669", "#047857", "#10b981", "#334155", "#64748b"];
 
 export function CategoryChart({ data }: { data: CategorySummary[] }) {
   const gradient = data.map((item, index) => {

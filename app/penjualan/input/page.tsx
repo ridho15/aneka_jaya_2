@@ -20,7 +20,7 @@ export default async function InputPenjualanPage() {
   return (
     <AppShell>
       <div className="mb-7">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-neutral-500">
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">
           Transaksi
         </p>
         <h2 className="aj-page-title text-3xl font-bold">Input Penjualan</h2>

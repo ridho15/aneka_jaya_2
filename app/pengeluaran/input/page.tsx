@@ -11,7 +11,7 @@ export default async function InputPengeluaranPage() {
   return (
     <AppShell>
       <div className="mb-7">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-neutral-500">Keuangan</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Keuangan</p>
         <h2 className="aj-page-title text-3xl font-bold">Input Pengeluaran</h2>
         <p className="mt-2 text-sm text-slate-600">Catat pengeluaran perusahaan beserta bukti pembayarannya.</p>
       </div>

@@ -303,14 +303,14 @@ export function SalesHistoryList({
                   Detail
                 </Link>
                 <Link
-                  className="rounded-md border border-sky-300 bg-sky-50 px-2.5 py-2 text-center text-xs font-bold text-sky-800 hover:bg-sky-100 shadow-xs"
+                  className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-center text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs"
                   href={`/print/sales/${sale.id}/continuous`}
                 >
                   Cetak
                 </Link>
                 {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
                   <Link
-                    className="rounded-md border border-blue-300 bg-blue-50 px-2.5 py-2 text-center text-xs font-bold text-blue-800 hover:bg-blue-100 shadow-xs"
+                    className="rounded-md border border-slate-300 bg-white px-2.5 py-2 text-center text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs"
                     href={`/penjualan/${sale.id}/edit`}
                   >
                     Edit
@@ -390,7 +390,7 @@ export function SalesHistoryList({
                             Detail
                           </Link>
                           <Link
-                            className="flex-1 whitespace-nowrap rounded-md border border-sky-300 bg-sky-50 px-2.5 py-1 text-center text-xs font-bold text-sky-800 hover:bg-sky-100 shadow-xs"
+                            className="flex-1 whitespace-nowrap rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-center text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs"
                             href={`/print/sales/${sale.id}/continuous`}
                             title="Cetak Nota Continuous Form"
                           >
@@ -400,7 +400,7 @@ export function SalesHistoryList({
                         <div className="flex items-center gap-1.5">
                           {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
                             <Link
-                              className="flex-1 whitespace-nowrap rounded-md border border-blue-300 bg-blue-50 px-2.5 py-1 text-center text-xs font-bold text-blue-800 hover:bg-blue-100 shadow-xs"
+                              className="flex-1 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 py-1 text-center text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs"
                               href={`/penjualan/${sale.id}/edit`}
                             >
                               Edit
