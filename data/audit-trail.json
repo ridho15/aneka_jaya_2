@@ -1,5 +1,64 @@
 [
   {
+    "id": "ccd44dce-d04e-43fb-bf16-6af7b3af2740",
+    "createdAt": "2026-09-07T03:10:07.748Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "delivery_order",
+    "entityId": "cmtq0wxfz0006ko7phq5dndqw",
+    "action": "update",
+    "afterValue": {
+      "status": "selesai",
+      "packingStatus": "sudah",
+      "shippingStatus": "sudah",
+      "shippedCount": 1,
+      "totalItems": 1,
+      "trackingNumber": "as***sdf"
+    },
+    "reason": "Pengiriman DO diproses: Selesai (Semua Barang) oleh Ridho Al Amzah"
+  },
+  {
+    "id": "648c0df1-1262-4d04-962e-3db7d7687aa8",
+    "createdAt": "2026-09-07T03:10:03.182Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "delivery_order",
+    "entityId": "cmtq0wxfz0006ko7phq5dndqw",
+    "action": "update",
+    "afterValue": {
+      "status": "selesai",
+      "packingStatus": "sudah",
+      "shippingStatus": "sudah",
+      "shippedCount": 1,
+      "totalItems": 1,
+      "trackingNumber": "as***sdf"
+    },
+    "reason": "Pengiriman DO diproses: Selesai (Semua Barang) oleh Ridho Al Amzah"
+  },
+  {
+    "id": "ac02cd47-8142-43c5-beba-4d4aadb53a1e",
+    "createdAt": "2026-09-07T03:09:56.620Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "delivery_order",
+    "entityId": "cmtq0wxfz0006ko7phq5dndqw",
+    "action": "update",
+    "afterValue": {
+      "assignedUserId": "driver-uat-01",
+      "assignedUserName": "Budi (Petugas DO)"
+    },
+    "reason": "Petugas DO ditugaskan ke: Budi (Petugas DO)"
+  },
+  {
     "id": "4b49ee03-8c1e-4a65-817c-3d9624200059",
     "createdAt": "2026-09-07T02:19:33.481Z",
     "userId": "anika:1",

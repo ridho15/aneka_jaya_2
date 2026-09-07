@@ -29,9 +29,7 @@ export function DeliveryOrderDetailView({
 }: Props) {
   const router = useRouter();
   const [detail, setDetail] = useState<DeliveryOrderData>(initialDetail);
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(() =>
-    initialDetail.items.map((i) => i.id)
-  );
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string>(
     initialDetail.receiptPhotoUrl || ""
   );

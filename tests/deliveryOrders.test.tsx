@@ -3,7 +3,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Sale } from "@/lib/types/sales";
 import { DeliveryOrderBadges, DeliveryStatusBadge } from "@/components/transactions/SalesHistoryList";
 import { DeliveryOrderQueueTable } from "@/components/deliveryOrders/DeliveryOrderQueueTable";
+import { DeliveryOrderDetailView } from "@/components/deliveryOrders/DeliveryOrderDetailView";
 import type { DeliveryOrderQueueItem } from "@/lib/deliveryOrders/types";
+import type { DeliveryOrderData } from "@/lib/deliveryOrders/types";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() })
+}));
 
 vi.mock("@/lib/db/prisma", () => {
   const mockTx = {
@@ -348,5 +354,74 @@ describe("DeliveryOrderQueueTable UI", () => {
     expect(html).toContain("Kurir Toko");
     expect(html).toContain("Proses DO");
     expect(html).toContain('href="/delivery-orders/do-1"');
+  });
+});
+
+describe("DeliveryOrderDetailView UI", () => {
+  const sampleOfficers = [
+    { id: "officer-1", name: "Pak Budi", role: "DELIVERY_DRIVER" }
+  ];
+
+  const sampleDetail: DeliveryOrderData = {
+    id: "do-100",
+    doNumber: "DO-2026-100",
+    salesRecordId: "sale-100",
+    status: "belum_selesai",
+    packingStatus: "belum",
+    shippingStatus: "belum",
+    sale: {
+      id: "sale-100",
+      customerName: "Toko Berkah",
+      customerLocation: "Jakarta",
+      shippingMethod: "Kurir Toko",
+      saleDate: "2026-09-07"
+    },
+    items: [
+      {
+        id: "item-1",
+        deliveryOrderId: "do-100",
+        salesRecordItemId: "sri-1",
+        productRef: "SKU-01",
+        productNameSnapshot: "Semen Portland",
+        quantity: 10,
+        unitSnapshot: "Sak",
+        isShipped: false,
+        shippedQuantity: 0
+      },
+      {
+        id: "item-2",
+        deliveryOrderId: "do-100",
+        salesRecordItemId: "sri-2",
+        productRef: "SKU-02",
+        productNameSnapshot: "Besi Beton",
+        quantity: 5,
+        unitSnapshot: "Batang",
+        isShipped: false,
+        shippedQuantity: 0
+      }
+    ],
+    createdAt: "2026-09-07T08:00:00Z",
+    updatedAt: "2026-09-07T08:00:00Z"
+  };
+
+  it("does not auto-check item checkboxes by default on initial render", () => {
+    const html = renderToStaticMarkup(
+      <DeliveryOrderDetailView
+        initialDetail={sampleDetail}
+        officers={sampleOfficers}
+        canAssign={true}
+        canProcess={true}
+        currentUserRole="ADMIN"
+      />
+    );
+
+    // Initial summary text shows 0 selected
+    expect(html).toContain("(0 dari 2 dipilih)");
+
+    // Button to select all is labeled "Pilih Semua Barang"
+    expect(html).toContain("Pilih Semua Barang");
+
+    // Ship button is disabled when 0 items are selected
+    expect(html).toContain("disabled");
   });
 });
