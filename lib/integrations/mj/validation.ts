@@ -66,6 +66,7 @@ const common = {
   external_reference: z.string().min(1).max(150),
   invoice_reference: z.string().min(1).max(100),
   invoice_date: z.string().date(),
+  transaction_at: z.string().refine((val) => !Number.isNaN(new Date(val).getTime()), { message: "Format transaction_at harus berupa datetime ISO string yang valid" }).optional(),
   currency: z.literal("IDR"),
   bookkeeping_type_code: z.string().min(1).max(50),
   customer: customerSchema,

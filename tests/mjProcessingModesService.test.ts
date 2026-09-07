@@ -103,6 +103,23 @@ describe("MJ processing mode orchestration", () => {
     }
   });
 
+  it("persists exact transactionAt when transaction_at is provided in payload", async () => {
+    const customTime = "2026-08-11T14:35:22.000Z";
+    const payload = {
+      ...base,
+      transaction_at: customTime,
+      processing_mode: "record_only" as const,
+      payment: { ...base.payment, account: { mode: "manual" as const, account_reference: "CASH-MJ", name: "Kas MJ" } },
+      items: [{ product_reference: "SKU-MJ", product_name: "Produk Lokal", quantity: 2, unit_price: 50_000, discount: 0, subtotal: 100_000 }]
+    };
+    const saved = row("record_only", { integrationPayloadHash: immutablePayloadHash(payload) });
+    mocks.salesFind.mockResolvedValueOnce(null).mockResolvedValueOnce(saved);
+
+    await expect(createOrResumeMjInvoice(payload, principal)).resolves.toMatchObject({ status: "created" });
+    const createData = mocks.salesCreate.mock.calls[0][0].data;
+    expect(createData.transactionAt).toEqual(new Date(customTime));
+  });
+
   it("records Tempo payment locally for record_only without AJ payment", async () => {
     const invoice = row("record_only", { paymentMethod: "Tempo", total: 100_000 });
     mocks.tempoReceivableFind.mockResolvedValue({ id: "tempo-1", salesId: "sale-1", paidAmount: 0, remainingAmount: 100_000, originalAmount: 100_000, status: "open" });

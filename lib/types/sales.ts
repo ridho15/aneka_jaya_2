@@ -75,4 +75,11 @@ export type Sale = {
   printedAt?: string;
   printedBy?: string;
   printCount?: number;
+  doStatus?: "belum_selesai" | "selesai_setengah" | "selesai";
+  doPackingStatus?: "belum" | "sudah";
+  doShippingStatus?: "belum" | "sudah";
+  doAssignedUserId?: string;
+  doAssignedUserName?: string;
+  doReceiptPhotoUrl?: string;
+  doTrackingNumber?: string;
 };

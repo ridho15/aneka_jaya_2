@@ -37,14 +37,16 @@ export default async function StokBarangPage({ searchParams }: { searchParams: S
           <h2 className="aj-page-title text-3xl font-bold">Stok Barang</h2>
           <p className="mt-2 text-sm text-slate-600">Tampilan stok ERP per gudang/rak. Gunakan filter produk agar tidak mengambil seluruh data stok.</p>
         </div>
-        <div>
-          <Link
-            href="/stok-barang/ai-forecast"
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
-          >
-            <span>Prediksi Stok & Dead Stock</span>
-          </Link>
-        </div>
+        {role === "OWNER" && (
+          <div>
+            <Link
+              href="/stok-barang/ai-forecast"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
+            >
+              <span>Prediksi Stok & Dead Stock</span>
+            </Link>
+          </div>
+        )}
       </div>
       {response.success ? <StockList key={listKey} initialStocks={response.data.data} initialMeta={response.data.meta} initialFilters={filters} /> : <ErrorState message={response.message} />}
     </AppShell>

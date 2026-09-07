@@ -18,11 +18,18 @@ describe("global navigation", () => {
     expect(ownerLinks.some((link) => link.href.startsWith("/pembelian"))).toBe(false);
   });
 
-  it("shows exactly the sales menus to Admin", () => {
+  it("shows exactly the sales and delivery order menus to Admin", () => {
     expect(visibleNavLinks("ADMIN").map((link) => [link.href, link.label])).toEqual([
       ["/penjualan/input", "Input Penjualan"],
       ["/penjualan", "Riwayat Penjualan"],
       ["/penjualan/draft", "Draft Penjualan"],
+      ["/delivery-orders", "Delivery Order (DO)"],
+    ]);
+  });
+
+  it("shows exactly Delivery Order menu to Petugas DO (DELIVERY_DRIVER)", () => {
+    expect(visibleNavLinks("DELIVERY_DRIVER").map((link) => [link.href, link.label])).toEqual([
+      ["/delivery-orders", "Delivery Order (DO)"],
     ]);
   });
 

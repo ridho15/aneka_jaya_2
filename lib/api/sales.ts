@@ -9,6 +9,7 @@ import { createTempoReceivable, createTempoReceivableInTransaction, syncInitialT
 import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
 import { allocateTransactionIdentity, saveSalesRecord } from "@/lib/sales/store";
+import { createDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { erpSalesTypeCodes as configuredErpSalesTypeCodes, salesTargetForTypeCode } from "@/lib/api/transactionRouting";
@@ -835,6 +836,11 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
 
   if (tempoInput) await saveSalesRecord(sale, { tempo: tempoInput });
   else await saveSalesRecord(sale);
+  if (!isDraft) {
+    await createDeliveryOrderForSale(sale.id).catch((err) => {
+      console.error("[DO] Failed to create delivery order for sale:", err);
+    });
+  }
   if (!isDraft && process.env.NEXT_PUBLIC_APP_MODE !== "production" && tempoInput) await createTempoReceivable(tempoInput);
   if (!isDraft && approvalStatus === "approved" && input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0) {
     await syncInitialTempoPaymentForSale(sale.id);

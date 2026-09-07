@@ -82,6 +82,13 @@ describe("MJ processing-mode validation", () => {
     expect(mjCancelSchema.safeParse({ reason: "x" }).success).toBe(false);
   });
 
+  it("validates transaction_at datetime when provided", () => {
+    expect(mjInvoiceSchema.safeParse({ ...slmProcessAj, transaction_at: "2026-08-11T14:30:00.000Z" }).success).toBe(true);
+    expect(mjInvoiceSchema.safeParse({ ...slmProcessAj, transaction_at: "2026-08-11T14:30:00+07:00" }).success).toBe(true);
+    expect(mjInvoiceSchema.safeParse({ ...recordOnly, transaction_at: "2026-08-11T07:15:22Z" }).success).toBe(true);
+    expect(mjInvoiceSchema.safeParse({ ...slmProcessAj, transaction_at: "invalid-time" }).success).toBe(false);
+  });
+
   it("includes processing mode in immutable hashing", () => {
     expect(immutablePayloadHash({ b: 2, a: { d: 4, c: 3 } })).toBe(immutablePayloadHash({ a: { c: 3, d: 4 }, b: 2 }));
     expect(immutablePayloadHash(slmProcessAj)).not.toBe(immutablePayloadHash({ ...slmProcessAj, processing_mode: "record_only" }));

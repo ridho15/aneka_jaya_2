@@ -14,6 +14,8 @@ export type NavLink = {
   category: NavCategory;
   /** Sembunyikan dari sidebar jika role adalah OWNER (karena sudah terintegrasi di halaman riwayat) */
   hideForOwner?: boolean;
+  /** Tampilkan hanya jika role adalah OWNER */
+  ownerOnly?: boolean;
 };
 
 export type NavGroup = {
@@ -55,6 +57,13 @@ export const NAV_LINKS: NavLink[] = [
     category: "OPERASIONAL & TRANSAKSI",
   },
   {
+    href: "/delivery-orders",
+    label: "Delivery Order (DO)",
+    icon: "⛟",
+    permission: "do.view",
+    category: "OPERASIONAL & TRANSAKSI",
+  },
+  {
     href: "/pengeluaran/input",
     label: "Input Pengeluaran",
     icon: "▣",
@@ -82,6 +91,7 @@ export const NAV_LINKS: NavLink[] = [
     icon: "◈",
     permission: "stock.view",
     category: "OPERASIONAL & TRANSAKSI",
+    ownerOnly: true,
   },
   {
     href: "/tempo",
@@ -168,6 +178,7 @@ const CATEGORY_ORDER: NavCategory[] = [
 
 export function visibleNavLinks(role: Role): NavLink[] {
   return NAV_LINKS.filter((link) => {
+    if (link.ownerOnly && role !== "OWNER") return false;
     if (!can(role, link.permission)) return false;
     return true;
   });
@@ -175,6 +186,7 @@ export function visibleNavLinks(role: Role): NavLink[] {
 
 export function visibleNavGroups(role: Role): NavGroup[] {
   const links = NAV_LINKS.filter((link) => {
+    if (link.ownerOnly && role !== "OWNER") return false;
     if (!can(role, link.permission)) return false;
     if (role === "OWNER" && link.hideForOwner) return false;
     return true;

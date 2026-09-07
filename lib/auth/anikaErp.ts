@@ -37,6 +37,7 @@ function roleFromAnika(value: unknown): Role {
   if (roles.includes("admin")) return "ADMIN";
   if (roles.includes("finance")) return "FINANCE";
   if (roles.includes("manager")) return "MANAGER";
+  if (roles.includes("delivery driver") || roles.includes("delivery_driver")) return "DELIVERY_DRIVER";
   return "VIEWER";
 }
 

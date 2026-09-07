@@ -52,7 +52,7 @@ describe("Supervisor Role and Access Control", () => {
     expect(can("SUPERVISOR", "reports.finance_view")).toBe(false);
   });
 
-  it("does not render PUSAT LAPORAN category in visible navigation for SUPERVISOR, but includes AI Prediksi Stok in OPERASIONAL", () => {
+  it("does not render PUSAT LAPORAN category or AI Prediksi Stok in visible navigation for SUPERVISOR", () => {
     const groups = visibleNavGroups("SUPERVISOR");
     const groupCategories = groups.map((g) => g.category);
     expect(groupCategories).not.toContain("PUSAT LAPORAN");
@@ -62,11 +62,14 @@ describe("Supervisor Role and Access Control", () => {
 
     const links = visibleNavLinks("SUPERVISOR");
     const linkHrefs = links.map((l) => l.href);
-    expect(linkHrefs).toContain("/stok-barang/ai-forecast");
+    expect(linkHrefs).not.toContain("/stok-barang/ai-forecast");
     expect(linkHrefs).not.toContain("/reports");
     expect(linkHrefs).not.toContain("/reports/products");
     expect(linkHrefs).not.toContain("/reports/stocks");
     expect(linkHrefs).not.toContain("/reports/finance");
+
+    const ownerLinks = visibleNavLinks("OWNER");
+    expect(ownerLinks.map((l) => l.href)).toContain("/stok-barang/ai-forecast");
   });
 
   it("renders Supervisor Stock Depletion Dashboard with 4 health KPI cards and operational shortcuts", () => {

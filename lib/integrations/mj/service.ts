@@ -8,6 +8,7 @@ import type { MjAjInvoiceInput, MjInvoiceInput, MjPrintEventInput, MjProcessingM
 import { cancelMjErpSales, createMjErpCustomer, createMjErpInvoice, createMjPayment, deterministicReference, releaseMjStock } from "./erp";
 import { getMjTransactionMode, isErpTransactionSyncEnabled } from "@/lib/settings/erpSync";
 import type { SalesCancellationResult } from "@/lib/api/salesCancellations";
+import { createDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
 
 const includeInvoice = { items: { orderBy: { sortOrder: "asc" as const } }, integrationAttempts: { orderBy: { startedAt: "asc" as const } } };
 type InvoiceRow = Prisma.SalesRecordGetPayload<{ include: typeof includeInvoice }>;
@@ -117,9 +118,14 @@ async function createLocalInvoice(input: MjInvoiceInput, principal: MjIntegratio
   const erpInvoiceNumber = input.processing_mode === "aj_already_processed" ? input.aj_invoice_number : undefined;
   try {
     await prisma.$transaction(async (tx) => {
+      const resolvedTransactionAt = input.transaction_at
+        ? new Date(input.transaction_at)
+        : new Date(`${input.invoice_date}T00:00:00.000Z`);
+      const resolvedSaleDate = new Date(`${input.invoice_date}T00:00:00.000Z`);
+
       await tx.salesRecord.create({ data: {
-        id, saleDate: new Date(`${input.invoice_date}T00:00:00.000Z`), transactionNumber: input.invoice_reference,
-        transactionAt: new Date(`${input.invoice_date}T00:00:00.000Z`), tipeId: tipe.id, tipeCodeSnapshot: tipe.code,
+        id, saleDate: resolvedSaleDate, transactionNumber: input.invoice_reference,
+        transactionAt: resolvedTransactionAt, tipeId: tipe.id, tipeCodeSnapshot: tipe.code,
         tipeNameSnapshot: tipe.name, customerName, customerLocation, paymentMethod: input.payment.method,
         dueDate: input.payment.due_date ? new Date(`${input.payment.due_date}T00:00:00.000Z`) : null,
         initialPaymentAmount: input.payment.method === "Tempo" ? paidAmount : 0,
@@ -170,18 +176,19 @@ async function createLocalInvoice(input: MjInvoiceInput, principal: MjIntegratio
           };
         }) }
       } });
+      await createDeliveryOrderForSale(id, tx);
       if (input.payment.method === "Tempo") {
         const remaining = input.total - paidAmount;
         const receivableId = crypto.randomUUID();
         await tx.tempoReceivable.create({ data: {
           id: receivableId, salesId: id, tipeId: tipe.id, tipeCodeSnapshot: tipe.code, tipeNameSnapshot: tipe.name,
           customerName, originalAmount: input.total, paidAmount, remainingAmount: remaining,
-          transactionDate: new Date(`${input.invoice_date}T00:00:00.000Z`), dueDate: new Date(`${input.payment.due_date}T00:00:00.000Z`),
+          transactionDate: resolvedSaleDate, dueDate: new Date(`${input.payment.due_date}T00:00:00.000Z`),
           status: remaining === 0 ? "paid" : paidAmount > 0 ? "partial_paid" : "open",
           createdByUserId: "integration:mj", createdByNameSnapshot: "Integration MJ", createdAt: new Date(), updatedAt: new Date()
         } });
         if (paidAmount > 0) await tx.tempoPayment.create({ data: {
-          id: crypto.randomUUID(), tempoReceivableId: receivableId, paymentDate: new Date(`${input.invoice_date}T00:00:00.000Z`),
+          id: crypto.randomUUID(), tempoReceivableId: receivableId, paymentDate: resolvedTransactionAt,
           amountPaid: paidAmount, paymentMethod: "Other", rekeningId: (input.payment.account?.mode === "slm" && input.payment.account.rekening_id) ? input.payment.account.rekening_id : "manual",
           rekeningNameSnapshot: accountSnapshot ? String((accountSnapshot as Record<string, unknown>).name || "Manual") : "Manual",
           notes: "Pembayaran awal invoice MJ", erpPaymentStatus: initialTempoPaymentStage(input),

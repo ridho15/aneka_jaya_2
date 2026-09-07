@@ -76,12 +76,14 @@ export default async function StockReportsPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/stok-barang/ai-forecast"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
-          >
-            <span>Prediksi Stok</span>
-          </Link>
+          {role === "OWNER" && (
+            <Link
+              href="/stok-barang/ai-forecast"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
+            >
+              <span>Prediksi Stok</span>
+            </Link>
+          )}
 
           <a
             href={exportExcelUrl}

@@ -87,6 +87,80 @@ export function stockReleaseBadge(sale: Sale) {
   return <Badge value="Non-Stok" tone="slate" />;
 }
 
+export function DeliveryStatusBadge({ status }: { status?: string }) {
+  const normalized = status || "belum_selesai";
+  if (normalized === "selesai") {
+    return (
+      <span
+        data-testid="do-status-badge"
+        className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 shadow-xs"
+      >
+        Selesai
+      </span>
+    );
+  }
+  if (normalized === "selesai_setengah") {
+    return (
+      <span
+        data-testid="do-status-badge"
+        className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 shadow-xs"
+      >
+        Selesai Setengah
+      </span>
+    );
+  }
+  return (
+    <span
+      data-testid="do-status-badge"
+      className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 shadow-xs"
+    >
+      Belum Selesai
+    </span>
+  );
+}
+
+export function DeliveryOrderBadges({ sale }: { sale: Sale }) {
+  const isPackingSudah = sale.doPackingStatus === "sudah";
+  const isShippingSudah = sale.doShippingStatus === "sudah";
+
+  return (
+    <div data-testid="do-badges-container" className="mb-1 flex flex-wrap items-center gap-1.5">
+      <DeliveryStatusBadge status={sale.doStatus} />
+      <span
+        data-testid="do-packing-badge"
+        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+          isPackingSudah
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-slate-100 text-slate-600 border border-slate-200"
+        }`}
+      >
+        Packing: {isPackingSudah ? "Sudah" : "Belum"}
+      </span>
+      <span
+        data-testid="do-shipping-badge"
+        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+          isShippingSudah
+            ? "bg-blue-50 text-blue-700 border border-blue-200"
+            : "bg-slate-100 text-slate-600 border border-slate-200"
+        }`}
+      >
+        Kirim: {isShippingSudah ? "Sudah" : "Belum"}
+      </span>
+      {sale.doReceiptPhotoUrl && (
+        <a
+          href={sale.doReceiptPhotoUrl}
+          target="_blank"
+          rel="noreferrer"
+          title="Lihat Foto Resi Pengiriman"
+          className="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors"
+        >
+          📷 Resi
+        </a>
+      )}
+    </div>
+  );
+}
+
 function ExpandButton({
   sale,
   expanded,
@@ -220,6 +294,7 @@ export function SalesHistoryList({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
+                  <DeliveryOrderBadges sale={sale} />
                   <div className="flex items-center gap-1.5">
                     <p className="truncate font-semibold text-slate-900">
                       {sale.customerName}
@@ -431,6 +506,7 @@ export function SalesHistoryList({
                       </td>
                     )}
                     <td className="px-5 py-4">
+                      <DeliveryOrderBadges sale={sale} />
                       <div className="flex items-center gap-1.5 font-bold text-slate-900">
                         {sale.customerName}
                         {isMj && (

@@ -13,6 +13,7 @@ enum Role {
   ADMIN
   FINANCE
   MANAGER
+  DELIVERY_DRIVER
   VIEWER
 }
 
@@ -228,8 +229,16 @@ model SalesRecord {
   createdByNameSnapshot String
   createdByRoleSnapshot Role
   createdAt             DateTime
+  doStatus              String    @default("belum_selesai")
+  doPackingStatus       String    @default("belum")
+  doShippingStatus      String    @default("belum")
+  doAssignedUserId      String?
+  doAssignedUserName    String?
+  doReceiptPhotoUrl     String?
+  doTrackingNumber      String?
   items                 SalesRecordItem[]
   integrationAttempts   IntegrationStageAttempt[]
+  deliveryOrder         DeliveryOrder?
 
   @@index([saleDate])
   @@index([transactionNumber])
@@ -371,6 +380,7 @@ model SalesRecordItem {
   unitPrice     Decimal     @db.Decimal(18, 2)
   discount      Decimal     @default(0) @db.Decimal(18, 2)
   sortOrder     Int
+  deliveryOrderItem DeliveryOrderItem?
 
   @@index([salesRecordId])
   @@index([productRef])
@@ -479,3 +489,53 @@ model StockAlertLog {
   @@index([productRef])
   @@index([createdAt])
 }
+
+model DeliveryOrder {
+  id                    String              @id @default(cuid())
+  doNumber              String              @unique
+  salesRecordId         String              @unique
+  salesRecord           SalesRecord         @relation(fields: [salesRecordId], references: [id], onDelete: Cascade)
+  status                String              @default("belum_selesai")
+  packingStatus         String              @default("belum")
+  shippingStatus        String              @default("belum")
+  assignedUserId        String?
+  assignedUserName      String?
+  assignedAt            DateTime?
+  packedByUserId        String?
+  packedByNameSnapshot  String?
+  packedAt              DateTime?
+  shippedByUserId       String?
+  shippedByNameSnapshot String?
+  shippedAt             DateTime?
+  receiptPhotoUrl       String?
+  trackingNumber        String?
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  items                 DeliveryOrderItem[]
+
+  @@index([salesRecordId])
+  @@index([status])
+  @@index([assignedUserId])
+}
+
+model DeliveryOrderItem {
+  id                    String          @id @default(cuid())
+  deliveryOrderId       String
+  deliveryOrder         DeliveryOrder   @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  salesRecordItemId     String          @unique
+  salesRecordItem       SalesRecordItem @relation(fields: [salesRecordItemId], references: [id], onDelete: Cascade)
+  productRef            String
+  productNameSnapshot   String
+  warehouseNameSnapshot String?
+  rackNameSnapshot      String?
+  unitSnapshot          String?
+  quantity              Decimal         @db.Decimal(18, 2)
+  isShipped             Boolean         @default(false)
+  shippedQuantity       Decimal         @default(0) @db.Decimal(18, 2)
+  shippedAt             DateTime?
+
+  @@index([deliveryOrderId])
+  @@index([salesRecordItemId])
+}
+

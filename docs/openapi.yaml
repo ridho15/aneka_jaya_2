@@ -375,6 +375,7 @@ components:
         external_reference: { type: string, maxLength: 150 }
         invoice_reference: { type: string, maxLength: 100 }
         invoice_date: { type: string, format: date }
+        transaction_at: { type: string, format: date-time, description: "Waktu transaksi ISO 8601 (opsional)" }
         currency: { type: string, const: IDR }
         bookkeeping_type_code: { type: string }
         customer:
@@ -1163,6 +1164,166 @@ paths:
       responses:
         "200":
           description: Tempo berhasil di-write-off.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/delivery-orders:
+    get:
+      summary: Daftar antrean Delivery Order (DO).
+      description: Membutuhkan permission do.view.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: packingStatus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: shippingStatus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: assignedUserId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Daftar antrean DO dan daftar petugas DO.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Pembuatan Delivery Order manual untuk transaksi penjualan.
+      description: Membutuhkan permission do.assign atau penjualan.create.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [salesRecordId]
+              properties:
+                salesRecordId:
+                  type: string
+      responses:
+        "200":
+          description: Delivery Order dibuat.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/delivery-orders/{id}:
+    get:
+      summary: Detail Delivery Order dengan data masking untuk pengemudi/petugas.
+      description: Membutuhkan permission do.view. Hanya menampilkan customer, alamat, ekspedisi, SKU, rak, qty, satuan.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail DO ter-masking.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Delivery order tidak ditemukan.
+  /api/delivery-orders/{id}/assign:
+    post:
+      summary: Menugaskan Petugas DO pada Delivery Order.
+      description: Membutuhkan permission do.assign.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assignedUserId, assignedUserName]
+              properties:
+                assignedUserId:
+                  type: string
+                assignedUserName:
+                  type: string
+      responses:
+        "200":
+          description: Petugas DO berhasil ditugaskan.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/delivery-orders/{id}/packing:
+    post:
+      summary: Memperbarui status packing DO menjadi Sudah.
+      description: Membutuhkan permission do.process.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                packedItemIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Status packing berhasil diubah menjadi Sudah.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/delivery-orders/{id}/ship:
+    post:
+      summary: Memproses pengiriman sebagian atau seluruh barang DO dengan upload foto resi.
+      description: Membutuhkan permission do.process.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shippedItemIds]
+              properties:
+                shippedItemIds:
+                  type: array
+                  items:
+                    type: string
+                receiptPhotoUrl:
+                  type: string
+                trackingNumber:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: Pengiriman DO berhasil diproses.
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":

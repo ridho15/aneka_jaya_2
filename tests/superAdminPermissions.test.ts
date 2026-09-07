@@ -24,7 +24,7 @@ describe("Super Admin permission contract", () => {
   });
 
   it("keeps Admin focused on sales creation and management while preserving other operational roles", () => {
-    expect(ROLE_PERMISSIONS.ADMIN).toEqual(["penjualan.create", "penjualan.manage"]);
+    expect(ROLE_PERMISSIONS.ADMIN).toEqual(["penjualan.create", "penjualan.manage", "do.view", "do.process", "do.assign"]);
     for (const permission of ["pengeluaran.view", "pengeluaran.create", "stock.view", "stock.create", "master_data.view", "guide.view"] as const) {
       expect(can("ADMIN", permission)).toBe(false);
     }
@@ -32,6 +32,10 @@ describe("Super Admin permission contract", () => {
       expect(can(role, "pengeluaran.view")).toBe(true);
       expect(can(role, "master_data.view")).toBe(true);
     }
+    expect(can("DELIVERY_DRIVER", "do.view")).toBe(true);
+    expect(can("DELIVERY_DRIVER", "do.process")).toBe(true);
+    expect(can("DELIVERY_DRIVER", "do.assign")).toBe(false);
+    expect(can("DELIVERY_DRIVER", "penjualan.create")).toBe(false);
     expect(can("VIEWER", "pengeluaran.view")).toBe(false);
     expect(can("VIEWER", "master_data.view")).toBe(false);
   });

@@ -33,14 +33,16 @@ export default async function BarangPage({ searchParams }: { searchParams: Searc
           <h2 className="aj-page-title text-3xl font-bold">Stock Barang</h2>
           <p className="mt-2 text-sm text-slate-600">Data barang dan quantity terbaru ditarik dari ERP setiap 30 detik. Minimum stock akan memicu alert WhatsApp hanya bila qty dan minimum valid.</p>
         </div>
-        <div>
-          <Link
-            href="/stok-barang/ai-forecast"
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
-          >
-            <span>Prediksi Stok & Dead Stock</span>
-          </Link>
-        </div>
+        {role === "OWNER" && (
+          <div>
+            <Link
+              href="/stok-barang/ai-forecast"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
+            >
+              <span>Prediksi Stok & Dead Stock</span>
+            </Link>
+          </div>
+        )}
       </div>
       {response.success ? <ProductList products={response.data.data} productMeta={response.data.meta} initialKeyword={params.keyword || ""} stocks={stocks?.success ? stocks.data : []} initialStockError={stocks?.success ? null : stocks?.message ?? null} canManage={can(role, "stock.manage")} /> : <ErrorState message={response.message} />}
     </AppShell>

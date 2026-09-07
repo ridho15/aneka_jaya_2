@@ -1,4 +1,4 @@
-export const ROLES = ["OWNER", "SUPERVISOR", "ADMIN", "FINANCE", "MANAGER", "VIEWER"] as const;
+export const ROLES = ["OWNER", "SUPERVISOR", "ADMIN", "FINANCE", "MANAGER", "DELIVERY_DRIVER", "VIEWER"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ALL_PERMISSIONS = [
@@ -7,7 +7,7 @@ export const ALL_PERMISSIONS = [
   "reports.view", "reports.finance_view", "settings.view", "settings.tipe.manage", "settings.rekening.manage",
   "settings.coa.manage", "settings.whatsapp.manage", "settings.profit.manage", "settings.erp_sync.manage", "users.manage", "approval.view", "approval.approve",
   "tempo.view", "tempo.mark_paid", "tempo.cancel", "tempo.write_off", "audit.view", "erp_sync.retry", "rekening.reset",
-  "master_data.view", "guide.view"
+  "master_data.view", "guide.view", "do.view", "do.process", "do.assign"
 ] as const;
 export type Permission = (typeof ALL_PERMISSIONS)[number];
 
@@ -19,15 +19,17 @@ export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Admin",
   FINANCE: "Finance",
   MANAGER: "Manager",
+  DELIVERY_DRIVER: "Petugas DO",
   VIEWER: "Viewer"
 };
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   OWNER: [...ALL_PERMISSIONS],
   SUPERVISOR: ALL_PERMISSIONS.filter((p) => p !== "reports.view" && p !== "reports.finance_view"),
-  ADMIN: ["penjualan.create", "penjualan.manage"],
+  ADMIN: ["penjualan.create", "penjualan.manage", "do.view", "do.process", "do.assign"],
   FINANCE: ["pengeluaran.view", "pengeluaran.create", "tempo.view", "tempo.mark_paid", "reports.finance_view", "master_data.view", "guide.view"],
   MANAGER: ["pengeluaran.view", "approval.view", "approval.approve", "tempo.view", "reports.finance_view", "audit.view", "master_data.view", "guide.view"],
+  DELIVERY_DRIVER: ["do.view", "do.process"],
   VIEWER: []
 };
 
@@ -51,6 +53,7 @@ export function landingPageForRole(role: Role) {
   if (role === "ADMIN") return "/penjualan/input";
   if (role === "FINANCE") return "/tempo";
   if (role === "MANAGER") return "/approval";
+  if (role === "DELIVERY_DRIVER") return "/delivery-orders";
   return "/no-access";
 }
 

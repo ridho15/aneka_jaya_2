@@ -12,6 +12,7 @@ import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCan
 import { cancelStockRelease, nextRevisionReference, releaseSaleStock } from "@/lib/api/stockReleases";
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
 import { createTempoReceivableInTransaction, syncTempoReceivableOnSalesEdit, syncTempoReceivableOnSalesEditInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
+import { createDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -320,6 +321,13 @@ function toSale(row: SalesRecordWithItems): Sale {
     printedAt: metadata.printed_at ? String(metadata.printed_at) : undefined,
     printedBy: metadata.printed_by ? String(metadata.printed_by) : undefined,
     printCount: typeof metadata.print_count === "number" ? metadata.print_count : undefined,
+    doStatus: (row.doStatus as Sale["doStatus"]) || "belum_selesai",
+    doPackingStatus: (row.doPackingStatus as Sale["doPackingStatus"]) || "belum",
+    doShippingStatus: (row.doShippingStatus as Sale["doShippingStatus"]) || "belum",
+    doAssignedUserId: row.doAssignedUserId || undefined,
+    doAssignedUserName: row.doAssignedUserName || undefined,
+    doReceiptPhotoUrl: row.doReceiptPhotoUrl || undefined,
+    doTrackingNumber: row.doTrackingNumber || undefined,
     createdByUserId: row.createdByUserId,
     createdByNameSnapshot: row.createdByNameSnapshot,
     createdByRoleSnapshot: row.createdByRoleSnapshot,
@@ -593,6 +601,11 @@ export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreat
 export async function updateSalesApprovalStatus(id: string, approvalStatus: Sale["approvalStatus"]): Promise<Sale | null> {
   if (isProductionMode()) {
     const row = await prisma.salesRecord.update({ where: { id }, data: { approvalStatus: approvalStatus || "draft" }, include: salesInclude }).catch(() => null);
+    if (row && approvalStatus === "approved") {
+      await createDeliveryOrderForSale(id).catch((err) => {
+        console.error("[DO] Failed to create delivery order on approval:", err);
+      });
+    }
     return row ? toSale(row) : null;
   }
   const rows = await readJsonArray<Sale>(fileName);
