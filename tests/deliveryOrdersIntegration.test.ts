@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => {
   const deliveryOrder = {
+    count: vi.fn(),
     findUnique: vi.fn(),
     findFirst: vi.fn(),
     findMany: vi.fn(),
@@ -281,6 +282,67 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
         doTrackingNumber: noResi
       })
     });
+  });
+
+  it("7. listDeliveryOrdersPage returns paginated results with metadata", async () => {
+    const { listDeliveryOrdersPage } = await import("@/lib/deliveryOrders/store");
+
+    const mockRow = {
+      id: "do-page-1",
+      doNumber: "DO-PAGE-01",
+      salesRecordId: "sale-page-1",
+      status: "belum_selesai",
+      packingStatus: "belum",
+      shippingStatus: "belum",
+      createdAt: new Date("2026-09-06T10:00:00Z"),
+      assignedUserId: "driver-1",
+      assignedUserName: "Pak Supri",
+      receiptPhotoUrl: null,
+      salesRecord: {
+        transactionNumber: "TRX-PAGE-01",
+        saleDate: new Date("2026-09-06T09:30:00Z"),
+        customerName: "Toko Berkah",
+        customerLocation: "Bekasi Timur",
+        shippingMethod: "Ambil Sendiri",
+        deliveryAt: null
+      },
+      items: [{ id: "item-1", isShipped: false }]
+    };
+
+    mocks.deliveryOrder.count.mockResolvedValue(25);
+    mocks.deliveryOrder.findMany.mockResolvedValue([mockRow]);
+
+    const result = await listDeliveryOrdersPage({
+      page: 2,
+      pageSize: 10,
+      filters: {
+        search: "Berkah",
+        status: "belum_selesai"
+      }
+    });
+
+    expect(mocks.deliveryOrder.count).toHaveBeenCalledTimes(1);
+    expect(mocks.deliveryOrder.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 10,
+        take: 10,
+        where: expect.objectContaining({
+          status: "belum_selesai",
+          OR: expect.any(Array)
+        })
+      })
+    );
+
+    expect(result.meta).toEqual({
+      total: 25,
+      totalPages: 3,
+      page: 2,
+      pageSize: 10
+    });
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].doNumber).toBe("DO-PAGE-01");
+    expect(result.data[0].customerName).toBe("Toko Berkah");
+    expect(result.data[0].assignedUserName).toBe("Pak Supri");
   });
 });
 

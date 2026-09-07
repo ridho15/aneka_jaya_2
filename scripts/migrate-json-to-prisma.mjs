@@ -9,7 +9,8 @@ const models = {
   approvalRequests: "approvalRequest",
   tempoReceivables: "tempoReceivable",
   tempoPayments: "tempoPayment",
-  salesRecords: "salesRecord"
+  salesRecords: "salesRecord",
+  stockAlertLogs: "stockAlertLog"
 };
 
 function emptySummary(total = 0) {
@@ -233,6 +234,44 @@ async function migrateSalesRecords() {
   return summary;
 }
 
+async function migrateStockAlertLogs() {
+  const rows = await readJsonArray("stock-alert-logs.json");
+  const summary = emptySummary(rows.length);
+  for (const row of rows) {
+    if (!row?.id || !row?.productCodeSnapshot) {
+      summary.skipped++;
+      continue;
+    }
+    try {
+      const existing = await prisma.stockAlertLog.findUnique({
+        where: { id: String(row.id) },
+        select: { id: true }
+      });
+      if (existing) {
+        summary.skipped++;
+        continue;
+      }
+      await prisma.stockAlertLog.create({
+        data: {
+          id: String(row.id),
+          productRef: String(row.productCodeSnapshot),
+          productName: String(row.productNameSnapshot || row.productCodeSnapshot),
+          currentQuantity: Math.round(Number(row.currentStock) || 0),
+          minimumQuantity: Math.round(Number(row.minimumStock) || 0),
+          status: String(row.status || "failed"),
+          sentTo: row.sentAt ? "WA" : null,
+          createdAt: toDate(row.createdAt) || new Date()
+        }
+      });
+      summary.imported++;
+    } catch (error) {
+      summary.failed++;
+      console.error(`stockAlertLogs:${row.id || "unknown"} failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return summary;
+}
+
 async function main() {
   await assertReady();
   const result = {
@@ -240,7 +279,8 @@ async function main() {
     salesRecords: await migrateSalesRecords(),
     approvalRequests: await migrateApprovalRequests(),
     tempoReceivables: await migrateTempoReceivables(),
-    tempoPayments: await migrateTempoPayments()
+    tempoPayments: await migrateTempoPayments(),
+    stockAlertLogs: await migrateStockAlertLogs()
   };
   const failed = Object.values(result).reduce((sum, item) => sum + item.failed, 0);
   const counts = {};

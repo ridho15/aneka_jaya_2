@@ -2,10 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Sale } from "@/lib/types/sales";
 import { DeliveryOrderBadges, DeliveryStatusBadge } from "@/components/transactions/SalesHistoryList";
+import { DeliveryOrderQueueTable } from "@/components/deliveryOrders/DeliveryOrderQueueTable";
+import type { DeliveryOrderQueueItem } from "@/lib/deliveryOrders/types";
 
 vi.mock("@/lib/db/prisma", () => {
   const mockTx = {
     deliveryOrder: {
+      count: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -49,15 +52,27 @@ describe("Delivery Order UI Badges", () => {
     doShippingStatus: "belum"
   };
 
-  it("renders 'Belum Selesai' DO status and 'Belum' for packing and kirim", () => {
+  it("renders single progressive 'Belum Diproses' badge when DO is not yet packed", () => {
     const html = renderToStaticMarkup(<DeliveryOrderBadges sale={baseSale} />);
-    expect(html).toContain("Belum Selesai");
-    expect(html).toContain("Packing: Belum");
-    expect(html).toContain("Kirim: Belum");
+    expect(html).toContain("Belum Diproses");
+    expect(html).not.toContain("Packing: Belum");
+    expect(html).not.toContain("Kirim: Belum");
     expect(html).not.toContain("📷 Resi");
   });
 
-  it("renders 'Selesai Setengah' when DO status is partial", () => {
+  it("renders single progressive 'Siap Kirim' badge when items are packed but not yet shipped", () => {
+    const readySale: Sale = {
+      ...baseSale,
+      doPackingStatus: "sudah",
+      doShippingStatus: "belum"
+    };
+    const html = renderToStaticMarkup(<DeliveryOrderBadges sale={readySale} />);
+    expect(html).toContain("Siap Kirim");
+    expect(html).not.toContain("Packing:");
+    expect(html).not.toContain("Kirim:");
+  });
+
+  it("renders single progressive 'Selesai Sebagian' badge when DO status is partial", () => {
     const partialSale: Sale = {
       ...baseSale,
       doStatus: "selesai_setengah",
@@ -65,12 +80,12 @@ describe("Delivery Order UI Badges", () => {
       doShippingStatus: "sudah"
     };
     const html = renderToStaticMarkup(<DeliveryOrderBadges sale={partialSale} />);
-    expect(html).toContain("Selesai Setengah");
-    expect(html).toContain("Packing: Sudah");
-    expect(html).toContain("Kirim: Sudah");
+    expect(html).toContain("Selesai Sebagian");
+    expect(html).not.toContain("Packing:");
+    expect(html).not.toContain("Kirim:");
   });
 
-  it("renders 'Selesai' when all items are delivered and displays receipt photo link", () => {
+  it("renders single progressive 'Selesai' badge and receipt photo link when completed", () => {
     const completedSale: Sale = {
       ...baseSale,
       doStatus: "selesai",
@@ -80,8 +95,8 @@ describe("Delivery Order UI Badges", () => {
     };
     const html = renderToStaticMarkup(<DeliveryOrderBadges sale={completedSale} />);
     expect(html).toContain("Selesai");
-    expect(html).toContain("Packing: Sudah");
-    expect(html).toContain("Kirim: Sudah");
+    expect(html).not.toContain("Packing:");
+    expect(html).not.toContain("Kirim:");
     expect(html).toContain("📷 Resi");
     expect(html).toContain('href="https://storage.example.com/receipt-123.jpg"');
   });
@@ -274,5 +289,64 @@ describe("Delivery Order Store Logic", () => {
     expect((detail?.items[0] as any).unitPrice).toBeUndefined();
     expect((detail?.items[0] as any).discount).toBeUndefined();
     expect((detail?.items[0] as any).subtotal).toBeUndefined();
+  });
+});
+
+describe("DeliveryOrderQueueTable UI", () => {
+  const sampleOfficers = [
+    { id: "officer-1", name: "Pak Budi", role: "DELIVERY_DRIVER" },
+    { id: "officer-2", name: "Pak Joko", role: "DELIVERY_DRIVER" }
+  ];
+
+  const sampleItem: DeliveryOrderQueueItem = {
+    id: "do-1",
+    doNumber: "DO-2026-001",
+    salesRecordId: "sale-1",
+    transactionNumber: "TRX-001",
+    saleDate: "2026-09-06T10:00:00Z",
+    customerName: "Toko Sinar Mulia",
+    customerLocation: "Jakarta Barat",
+    shippingMethod: "Kurir Toko",
+    status: "belum_selesai",
+    packingStatus: "belum",
+    shippingStatus: "belum",
+    totalItemsCount: 3,
+    shippedItemsCount: 0,
+    createdAt: "2026-09-06T10:00:00Z"
+  };
+
+  it("renders empty state when queue is empty", () => {
+    const html = renderToStaticMarkup(
+      <DeliveryOrderQueueTable
+        initialQueue={[]}
+        officers={sampleOfficers}
+        canAssign={true}
+        canProcess={true}
+        currentUserId="admin-1"
+        currentUserRole="ADMIN"
+      />
+    );
+
+    expect(html).toContain("Tidak ada Delivery Order yang sesuai filter pencarian.");
+  });
+
+  it("renders DO item details and links correctly", () => {
+    const html = renderToStaticMarkup(
+      <DeliveryOrderQueueTable
+        initialQueue={[sampleItem]}
+        officers={sampleOfficers}
+        canAssign={true}
+        canProcess={true}
+        currentUserId="admin-1"
+        currentUserRole="ADMIN"
+      />
+    );
+
+    expect(html).toContain("DO-2026-001");
+    expect(html).toContain("Toko Sinar Mulia");
+    expect(html).toContain("Jakarta Barat");
+    expect(html).toContain("Kurir Toko");
+    expect(html).toContain("Proses DO");
+    expect(html).toContain('href="/delivery-orders/do-1"');
   });
 });

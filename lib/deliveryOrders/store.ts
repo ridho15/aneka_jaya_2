@@ -100,10 +100,23 @@ export async function createDeliveryOrderForSale(saleId: string, customTx?: Pris
   return prisma.$transaction(runner);
 }
 
-export async function listDeliveryOrders(
-  filters: ListDeliveryOrdersFilter = {},
-  user?: CurrentUser
-): Promise<DeliveryOrderQueueItem[]> {
+export type ListDeliveryOrdersPageParams = {
+  page?: number;
+  pageSize?: number;
+  filters?: ListDeliveryOrdersFilter;
+};
+
+export type DeliveryOrderPageResult = {
+  data: DeliveryOrderQueueItem[];
+  meta: {
+    total: number;
+    totalPages: number;
+    page: number;
+    pageSize: number;
+  };
+};
+
+function buildDeliveryOrderWhere(filters: ListDeliveryOrdersFilter = {}): Prisma.DeliveryOrderWhereInput {
   const where: Prisma.DeliveryOrderWhereInput = {};
 
   if (filters.status && filters.status !== "all") {
@@ -116,9 +129,12 @@ export async function listDeliveryOrders(
     where.shippingStatus = filters.shippingStatus;
   }
 
-  // If user is DELIVERY_DRIVER and filtered to self or viewing queue
   if (filters.assignedUserId) {
-    where.assignedUserId = filters.assignedUserId;
+    if (filters.assignedUserId === "unassigned") {
+      where.assignedUserId = null;
+    } else if (filters.assignedUserId !== "all") {
+      where.assignedUserId = filters.assignedUserId;
+    }
   }
 
   if (filters.search) {
@@ -127,9 +143,90 @@ export async function listDeliveryOrders(
       { doNumber: { contains: s, mode: "insensitive" } },
       { salesRecord: { customerName: { contains: s, mode: "insensitive" } } },
       { salesRecord: { transactionNumber: { contains: s, mode: "insensitive" } } },
-      { salesRecord: { customerLocation: { contains: s, mode: "insensitive" } } }
+      { salesRecord: { customerLocation: { contains: s, mode: "insensitive" } } },
+      { salesRecord: { shippingMethod: { contains: s, mode: "insensitive" } } }
     ];
   }
+
+  return where;
+}
+
+function mapDeliveryOrderQueueItem(row: any): DeliveryOrderQueueItem {
+  return {
+    id: row.id,
+    doNumber: row.doNumber,
+    salesRecordId: row.salesRecordId,
+    transactionNumber: row.salesRecord?.transactionNumber || undefined,
+    saleDate: row.salesRecord?.saleDate ? row.salesRecord.saleDate.toISOString() : row.createdAt.toISOString(),
+    customerName: row.salesRecord?.customerName || "Customer",
+    customerLocation: row.salesRecord?.customerLocation || undefined,
+    shippingMethod: row.salesRecord?.shippingMethod || undefined,
+    deliveryAt: row.salesRecord?.deliveryAt ? row.salesRecord.deliveryAt.toISOString() : undefined,
+    status: row.status as DeliveryOrderStatus,
+    packingStatus: row.packingStatus as PackingStatus,
+    shippingStatus: row.shippingStatus as ShippingStatus,
+    assignedUserId: row.assignedUserId || undefined,
+    assignedUserName: row.assignedUserName || undefined,
+    totalItemsCount: row.items ? row.items.length : 0,
+    shippedItemsCount: row.items ? row.items.filter((i: any) => i.isShipped).length : 0,
+    receiptPhotoUrl: row.receiptPhotoUrl || undefined,
+    createdAt: row.createdAt.toISOString()
+  };
+}
+
+export async function listDeliveryOrdersPage(
+  params: ListDeliveryOrdersPageParams = {},
+  user?: CurrentUser
+): Promise<DeliveryOrderPageResult> {
+  const page = Math.max(1, Number(params.page || 1));
+  const pageSize = Math.max(1, Number(params.pageSize || 10));
+  const where = buildDeliveryOrderWhere(params.filters);
+
+  const [total, rows] = await Promise.all([
+    prisma.deliveryOrder.count({ where }),
+    prisma.deliveryOrder.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: { createdAt: "desc" },
+      include: {
+        salesRecord: {
+          select: {
+            transactionNumber: true,
+            saleDate: true,
+            customerName: true,
+            customerLocation: true,
+            shippingMethod: true,
+            deliveryAt: true
+          }
+        },
+        items: {
+          select: {
+            id: true,
+            isShipped: true
+          }
+        }
+      }
+    })
+  ]);
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  return {
+    data: rows.map(mapDeliveryOrderQueueItem),
+    meta: {
+      total,
+      totalPages,
+      page,
+      pageSize
+    }
+  };
+}
+
+export async function listDeliveryOrders(
+  filters: ListDeliveryOrdersFilter = {},
+  user?: CurrentUser
+): Promise<DeliveryOrderQueueItem[]> {
+  const where = buildDeliveryOrderWhere(filters);
 
   const rows = await prisma.deliveryOrder.findMany({
     where,
@@ -154,26 +251,7 @@ export async function listDeliveryOrders(
     }
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    doNumber: row.doNumber,
-    salesRecordId: row.salesRecordId,
-    transactionNumber: row.salesRecord?.transactionNumber || undefined,
-    saleDate: row.salesRecord?.saleDate ? row.salesRecord.saleDate.toISOString() : row.createdAt.toISOString(),
-    customerName: row.salesRecord?.customerName || "Customer",
-    customerLocation: row.salesRecord?.customerLocation || undefined,
-    shippingMethod: row.salesRecord?.shippingMethod || undefined,
-    deliveryAt: row.salesRecord?.deliveryAt ? row.salesRecord.deliveryAt.toISOString() : undefined,
-    status: row.status as DeliveryOrderStatus,
-    packingStatus: row.packingStatus as PackingStatus,
-    shippingStatus: row.shippingStatus as ShippingStatus,
-    assignedUserId: row.assignedUserId || undefined,
-    assignedUserName: row.assignedUserName || undefined,
-    totalItemsCount: row.items.length,
-    shippedItemsCount: row.items.filter((i) => i.isShipped).length,
-    receiptPhotoUrl: row.receiptPhotoUrl || undefined,
-    createdAt: row.createdAt.toISOString()
-  }));
+  return rows.map(mapDeliveryOrderQueueItem);
 }
 
 export async function getDeliveryOrderDetail(id: string): Promise<DeliveryOrderData | null> {

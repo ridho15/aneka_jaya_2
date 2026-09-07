@@ -87,13 +87,41 @@ export function stockReleaseBadge(sale: Sale) {
   return <Badge value="Non-Stok" tone="slate" />;
 }
 
+export function unifiedDeliveryStatus(sale: Pick<Sale, "doStatus" | "doPackingStatus" | "doShippingStatus">): {
+  label: string;
+  className: string;
+} {
+  if (sale.doStatus === "selesai") {
+    return {
+      label: "Selesai",
+      className: "bg-emerald-100 text-emerald-800 border-emerald-200"
+    };
+  }
+  if (sale.doStatus === "selesai_setengah") {
+    return {
+      label: "Selesai Sebagian",
+      className: "bg-amber-100 text-amber-800 border-amber-200"
+    };
+  }
+  if (sale.doPackingStatus === "sudah") {
+    return {
+      label: "Siap Kirim",
+      className: "bg-blue-100 text-blue-800 border-blue-200"
+    };
+  }
+  return {
+    label: "Belum Diproses",
+    className: "bg-slate-100 text-slate-600 border-slate-200"
+  };
+}
+
 export function DeliveryStatusBadge({ status }: { status?: string }) {
   const normalized = status || "belum_selesai";
   if (normalized === "selesai") {
     return (
       <span
         data-testid="do-status-badge"
-        className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 shadow-xs"
+        className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800 shadow-xs border border-emerald-200"
       >
         Selesai
       </span>
@@ -103,48 +131,32 @@ export function DeliveryStatusBadge({ status }: { status?: string }) {
     return (
       <span
         data-testid="do-status-badge"
-        className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 shadow-xs"
+        className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 shadow-xs border border-amber-200"
       >
-        Selesai Setengah
+        Selesai Sebagian
       </span>
     );
   }
   return (
     <span
       data-testid="do-status-badge"
-      className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 shadow-xs"
+      className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 shadow-xs border border-slate-200"
     >
-      Belum Selesai
+      Belum Diproses
     </span>
   );
 }
 
 export function DeliveryOrderBadges({ sale }: { sale: Sale }) {
-  const isPackingSudah = sale.doPackingStatus === "sudah";
-  const isShippingSudah = sale.doShippingStatus === "sudah";
+  const { label, className } = unifiedDeliveryStatus(sale);
 
   return (
     <div data-testid="do-badges-container" className="mb-1 flex flex-wrap items-center gap-1.5">
-      <DeliveryStatusBadge status={sale.doStatus} />
       <span
-        data-testid="do-packing-badge"
-        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-          isPackingSudah
-            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-slate-100 text-slate-600 border border-slate-200"
-        }`}
+        data-testid="do-status-badge"
+        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold border shadow-xs ${className}`}
       >
-        Packing: {isPackingSudah ? "Sudah" : "Belum"}
-      </span>
-      <span
-        data-testid="do-shipping-badge"
-        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-          isShippingSudah
-            ? "bg-blue-50 text-blue-700 border border-blue-200"
-            : "bg-slate-100 text-slate-600 border border-slate-200"
-        }`}
-      >
-        Kirim: {isShippingSudah ? "Sudah" : "Belum"}
+        {label}
       </span>
       {sale.doReceiptPhotoUrl && (
         <a
