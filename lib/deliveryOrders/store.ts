@@ -117,41 +117,62 @@ export type DeliveryOrderPageResult = {
 };
 
 function buildDeliveryOrderWhere(filters: ListDeliveryOrdersFilter = {}): Prisma.DeliveryOrderWhereInput {
-  const where: Prisma.DeliveryOrderWhereInput = {};
+  const andConditions: Prisma.DeliveryOrderWhereInput[] = [];
 
   if (filters.status && filters.status !== "all") {
-    where.status = filters.status;
+    andConditions.push({ status: filters.status });
   }
   if (filters.packingStatus && filters.packingStatus !== "all") {
-    where.packingStatus = filters.packingStatus;
+    andConditions.push({ packingStatus: filters.packingStatus });
   }
   if (filters.shippingStatus && filters.shippingStatus !== "all") {
-    where.shippingStatus = filters.shippingStatus;
+    andConditions.push({ shippingStatus: filters.shippingStatus });
   }
 
   if (filters.assignedUserId) {
     if (filters.assignedUserId === "unassigned") {
-      where.assignedUserId = null;
+      andConditions.push({
+        assignedUserId: null,
+        assignees: { none: {} }
+      });
     } else if (filters.assignedUserId !== "all") {
-      where.assignedUserId = filters.assignedUserId;
+      andConditions.push({
+        OR: [
+          { assignedUserId: filters.assignedUserId },
+          { assignees: { some: { userId: filters.assignedUserId } } }
+        ]
+      });
     }
   }
 
   if (filters.search) {
     const s = filters.search.trim();
-    where.OR = [
-      { doNumber: { contains: s, mode: "insensitive" } },
-      { salesRecord: { customerName: { contains: s, mode: "insensitive" } } },
-      { salesRecord: { transactionNumber: { contains: s, mode: "insensitive" } } },
-      { salesRecord: { customerLocation: { contains: s, mode: "insensitive" } } },
-      { salesRecord: { shippingMethod: { contains: s, mode: "insensitive" } } }
-    ];
+    andConditions.push({
+      OR: [
+        { doNumber: { contains: s, mode: "insensitive" } },
+        { salesRecord: { customerName: { contains: s, mode: "insensitive" } } },
+        { salesRecord: { transactionNumber: { contains: s, mode: "insensitive" } } },
+        { salesRecord: { customerLocation: { contains: s, mode: "insensitive" } } },
+        { salesRecord: { shippingMethod: { contains: s, mode: "insensitive" } } }
+      ]
+    });
   }
 
-  return where;
+  if (andConditions.length === 0) return {};
+  if (andConditions.length === 1) return andConditions[0];
+  return { AND: andConditions };
 }
 
 function mapDeliveryOrderQueueItem(row: any): DeliveryOrderQueueItem {
+  const assignees = Array.isArray(row.assignees)
+    ? row.assignees.map((a: any) => ({
+        id: a.id,
+        userId: a.userId,
+        userName: a.userName,
+        assignedAt: a.assignedAt instanceof Date ? a.assignedAt.toISOString() : String(a.assignedAt || "")
+      }))
+    : [];
+
   return {
     id: row.id,
     doNumber: row.doNumber,
@@ -165,8 +186,18 @@ function mapDeliveryOrderQueueItem(row: any): DeliveryOrderQueueItem {
     status: row.status as DeliveryOrderStatus,
     packingStatus: row.packingStatus as PackingStatus,
     shippingStatus: row.shippingStatus as ShippingStatus,
-    assignedUserId: row.assignedUserId || undefined,
-    assignedUserName: row.assignedUserName || undefined,
+    assignedUserId: row.assignedUserId || assignees[0]?.userId || undefined,
+    assignedUserName: row.assignedUserName || assignees[0]?.userName || undefined,
+    assignedOfficers: assignees.length > 0
+      ? assignees
+      : row.assignedUserId
+      ? [{
+          id: row.assignedUserId,
+          userId: row.assignedUserId,
+          userName: row.assignedUserName || "Petugas DO",
+          assignedAt: row.assignedAt ? row.assignedAt.toISOString() : row.createdAt.toISOString()
+        }]
+      : [],
     totalItemsCount: row.items ? row.items.length : 0,
     shippedItemsCount: row.items ? row.items.filter((i: any) => i.isShipped).length : 0,
     receiptPhotoUrl: row.receiptPhotoUrl || undefined,
@@ -205,7 +236,8 @@ export async function listDeliveryOrdersPage(
             id: true,
             isShipped: true
           }
-        }
+        },
+        assignees: true
       }
     })
   ]);
@@ -247,7 +279,8 @@ export async function listDeliveryOrders(
           id: true,
           isShipped: true
         }
-      }
+      },
+      assignees: true
     }
   });
 
@@ -269,11 +302,28 @@ export async function getDeliveryOrderDetail(id: string): Promise<DeliveryOrderD
           deliveryAt: true
         }
       },
-      items: true
+      items: true,
+      assignees: true
     }
   });
 
   if (!row) return null;
+
+  const assignedOfficers = (row.assignees && row.assignees.length > 0)
+    ? row.assignees.map((a) => ({
+        id: a.id,
+        userId: a.userId,
+        userName: a.userName,
+        assignedAt: a.assignedAt.toISOString()
+      }))
+    : row.assignedUserId
+      ? [{
+          id: `legacy-${row.assignedUserId}`,
+          userId: row.assignedUserId,
+          userName: row.assignedUserName || row.assignedUserId,
+          assignedAt: (row.assignedAt || row.createdAt).toISOString()
+        }]
+      : [];
 
   return {
     id: row.id,
@@ -285,6 +335,7 @@ export async function getDeliveryOrderDetail(id: string): Promise<DeliveryOrderD
     assignedUserId: row.assignedUserId || undefined,
     assignedUserName: row.assignedUserName || undefined,
     assignedAt: row.assignedAt ? row.assignedAt.toISOString() : undefined,
+    assignedOfficers,
     packedByUserId: row.packedByUserId || undefined,
     packedByNameSnapshot: row.packedByNameSnapshot || undefined,
     packedAt: row.packedAt ? row.packedAt.toISOString() : undefined,
@@ -294,12 +345,12 @@ export async function getDeliveryOrderDetail(id: string): Promise<DeliveryOrderD
     receiptPhotoUrl: row.receiptPhotoUrl || undefined,
     trackingNumber: row.trackingNumber || undefined,
     notes: row.notes || undefined,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : (row.createdAt || new Date().toISOString()),
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : (row.updatedAt || new Date().toISOString()),
     sale: {
       id: row.salesRecord.id,
       transactionNumber: row.salesRecord.transactionNumber || undefined,
-      saleDate: row.salesRecord.saleDate.toISOString(),
+      saleDate: row.salesRecord.saleDate instanceof Date ? row.salesRecord.saleDate.toISOString() : (row.salesRecord.saleDate || new Date().toISOString()),
       customerName: row.salesRecord.customerName,
       customerLocation: row.salesRecord.customerLocation || undefined,
       shippingMethod: row.salesRecord.shippingMethod || undefined,
@@ -352,6 +403,23 @@ export async function assignDeliveryOrder(
       }
     });
 
+    await tx.deliveryOrderAssignee.upsert({
+      where: {
+        deliveryOrderId_userId: {
+          deliveryOrderId: doRow.id,
+          userId: assignedUserId
+        }
+      },
+      create: {
+        deliveryOrderId: doRow.id,
+        userId: assignedUserId,
+        userName: assignedUserName
+      },
+      update: {
+        userName: assignedUserName
+      }
+    });
+
     if (actor) {
       await recordAudit({
         entityType: "delivery_order",
@@ -363,6 +431,115 @@ export async function assignDeliveryOrder(
     }
 
     return updated;
+  });
+}
+
+export async function addDeliveryOrderAssignee(
+  id: string,
+  userId: string,
+  userName: string,
+  actor?: CurrentUser
+) {
+  return prisma.$transaction(async (tx) => {
+    const doRow = await tx.deliveryOrder.findFirst({
+      where: { OR: [{ id }, { salesRecordId: id }] }
+    });
+    if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
+
+    const existing = await tx.deliveryOrderAssignee.findFirst({
+      where: { deliveryOrderId: doRow.id, userId }
+    });
+
+    if (!existing) {
+      await tx.deliveryOrderAssignee.create({
+        data: {
+          deliveryOrderId: doRow.id,
+          userId,
+          userName
+        }
+      });
+    }
+
+    if (!doRow.assignedUserId) {
+      await tx.deliveryOrder.update({
+        where: { id: doRow.id },
+        data: {
+          assignedUserId: userId,
+          assignedUserName: userName,
+          assignedAt: new Date()
+        }
+      });
+      await tx.salesRecord.update({
+        where: { id: doRow.salesRecordId },
+        data: {
+          doAssignedUserId: userId,
+          doAssignedUserName: userName
+        }
+      });
+    }
+
+    if (actor) {
+      await recordAudit({
+        entityType: "delivery_order",
+        entityId: doRow.id,
+        action: "update",
+        afterValue: { addedUserId: userId, addedUserName: userName },
+        reason: `${actor.name} menambahkan Petugas DO: ${userName}`
+      });
+    }
+
+    return getDeliveryOrderDetail(doRow.id);
+  });
+}
+
+export async function removeDeliveryOrderAssignee(
+  id: string,
+  userId: string,
+  actor?: CurrentUser
+) {
+  return prisma.$transaction(async (tx) => {
+    const doRow = await tx.deliveryOrder.findFirst({
+      where: { OR: [{ id }, { salesRecordId: id }] },
+      include: { assignees: true }
+    });
+    if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
+
+    await tx.deliveryOrderAssignee.deleteMany({
+      where: { deliveryOrderId: doRow.id, userId }
+    });
+
+    if (doRow.assignedUserId === userId) {
+      const remaining = await tx.deliveryOrderAssignee.findFirst({
+        where: { deliveryOrderId: doRow.id }
+      });
+      await tx.deliveryOrder.update({
+        where: { id: doRow.id },
+        data: {
+          assignedUserId: remaining ? remaining.userId : null,
+          assignedUserName: remaining ? remaining.userName : null,
+          assignedAt: remaining ? remaining.assignedAt : null
+        }
+      });
+      await tx.salesRecord.update({
+        where: { id: doRow.salesRecordId },
+        data: {
+          doAssignedUserId: remaining ? remaining.userId : null,
+          doAssignedUserName: remaining ? remaining.userName : null
+        }
+      });
+    }
+
+    if (actor) {
+      await recordAudit({
+        entityType: "delivery_order",
+        entityId: doRow.id,
+        action: "update",
+        afterValue: { removedUserId: userId },
+        reason: `${actor.name} menghapus Petugas DO dengan ID: ${userId}`
+      });
+    }
+
+    return getDeliveryOrderDetail(doRow.id);
   });
 }
 

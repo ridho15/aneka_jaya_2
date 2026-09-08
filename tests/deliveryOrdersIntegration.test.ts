@@ -14,6 +14,12 @@ const mocks = vi.hoisted(() => {
   const deliveryOrderItem = {
     updateMany: vi.fn()
   };
+  const deliveryOrderAssignee = {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    upsert: vi.fn(),
+    deleteMany: vi.fn()
+  };
   const salesRecord = {
     findUnique: vi.fn(),
     update: vi.fn()
@@ -25,6 +31,7 @@ const mocks = vi.hoisted(() => {
   const tx = {
     deliveryOrder,
     deliveryOrderItem,
+    deliveryOrderAssignee,
     salesRecord,
     user
   };
@@ -33,6 +40,7 @@ const mocks = vi.hoisted(() => {
     tx,
     deliveryOrder,
     deliveryOrderItem,
+    deliveryOrderAssignee,
     salesRecord,
     user,
     prisma: {
@@ -327,8 +335,10 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
         skip: 10,
         take: 10,
         where: expect.objectContaining({
-          status: "belum_selesai",
-          OR: expect.any(Array)
+          AND: expect.arrayContaining([
+            { status: "belum_selesai" },
+            expect.objectContaining({ OR: expect.any(Array) })
+          ])
         })
       })
     );
@@ -380,5 +390,63 @@ describe("Regression Testing: Roles & Permissions Integrity", () => {
     // Finance does not have DO processing permissions
     expect(can("FINANCE", "do.view")).toBe(false);
     expect(can("FINANCE", "do.process")).toBe(false);
+  });
+
+  it("Multi-assignee: supports adding and removing additional Petugas DO", async () => {
+    const { addDeliveryOrderAssignee, removeDeliveryOrderAssignee } = await import("@/lib/deliveryOrders/store");
+
+    const mockDo = {
+      id: "do-multi-1",
+      salesRecordId: "sale-multi-1",
+      assignedUserId: "driver-1",
+      assignedUserName: "Pak Supardi",
+      assignees: [
+        { id: "asg-1", userId: "driver-1", userName: "Pak Supardi", assignedAt: new Date() }
+      ],
+      salesRecord: {
+        id: "sale-multi-1",
+        customerName: "Toko Abadi",
+        saleDate: new Date()
+      },
+      items: []
+    };
+
+    mocks.deliveryOrder.findFirst.mockResolvedValue(mockDo);
+    mocks.deliveryOrderAssignee.findFirst.mockResolvedValue(null);
+    mocks.deliveryOrderAssignee.create.mockResolvedValue({
+      id: "asg-2",
+      deliveryOrderId: "do-multi-1",
+      userId: "driver-2",
+      userName: "Pak Joko",
+      assignedAt: new Date()
+    });
+
+    await addDeliveryOrderAssignee("do-multi-1", "driver-2", "Pak Joko", {
+      id: "driver-1",
+      name: "Pak Supardi",
+      role: "DELIVERY_DRIVER"
+    } as any);
+
+    expect(mocks.deliveryOrderAssignee.create).toHaveBeenCalledWith({
+      data: {
+        deliveryOrderId: "do-multi-1",
+        userId: "driver-2",
+        userName: "Pak Joko"
+      }
+    });
+
+    // Remove
+    await removeDeliveryOrderAssignee("do-multi-1", "driver-2", {
+      id: "driver-1",
+      name: "Pak Supardi",
+      role: "DELIVERY_DRIVER"
+    } as any);
+
+    expect(mocks.deliveryOrderAssignee.deleteMany).toHaveBeenCalledWith({
+      where: {
+        deliveryOrderId: "do-multi-1",
+        userId: "driver-2"
+      }
+    });
   });
 });

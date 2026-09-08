@@ -1,40 +1,59 @@
 "use client";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { useToast } from "@/components/ui/ToastProvider";
 
 export function ProductDeactivateButton({ id, disabled }: { id: string; disabled?: boolean }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const deactivate = async () => {
-    setError(null);
-    if (!window.confirm("Nonaktifkan barang ini di ERP? Data tidak akan dihapus permanen.")) return;
+  const handleConfirmDeactivate = async () => {
     setBusy(true);
     try {
       const response = await fetch(`/api/products/${encodeURIComponent(id)}`, { method: "DELETE" });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) {
-        setError(result?.message || "Barang gagal dinonaktifkan.");
+        showToast(result?.message || "Barang gagal dinonaktifkan.", "error");
         return;
       }
+      showToast("Barang berhasil dinonaktifkan dari katalog.", "success");
+      setIsConfirmOpen(false);
       router.refresh();
+    } catch {
+      showToast("Terjadi kesalahan jaringan saat menonaktifkan barang.", "error");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <span className="inline-flex flex-col items-end gap-1">
+    <>
       <button
         type="button"
-        onClick={deactivate}
+        onClick={() => setIsConfirmOpen(true)}
         disabled={disabled || busy}
-        className="font-semibold text-red-700 hover:text-red-800 disabled:cursor-not-allowed disabled:text-slate-400"
+        className="font-semibold text-rose-600 hover:text-rose-800 disabled:cursor-not-allowed disabled:text-slate-400 transition-colors"
       >
-        {busy ? "Nonaktif..." : "Nonaktifkan"}
+        {busy ? "Memproses..." : "Nonaktifkan"}
       </button>
-      {error && <span className="max-w-56 text-right text-xs font-medium text-red-600">{error}</span>}
-    </span>
+
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        title="Nonaktifkan Barang"
+        message="Nonaktifkan barang ini di sistem ERP? Data riwayat transaksi tidak akan terhapus, namun barang tidak lagi muncul di daftar aktif."
+        confirmText="Ya, Nonaktifkan"
+        cancelText="Batal"
+        variant="danger"
+        isLoading={busy}
+        onConfirm={handleConfirmDeactivate}
+        onCancel={() => {
+          if (!busy) setIsConfirmOpen(false);
+        }}
+      />
+    </>
   );
 }

@@ -27,6 +27,12 @@ export type DeliveryOrderData = {
   assignedUserId?: string;
   assignedUserName?: string;
   assignedAt?: string;
+  assignedOfficers?: Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    assignedAt: string;
+  }>;
   packedByUserId?: string;
   packedByNameSnapshot?: string;
   packedAt?: string;
@@ -65,6 +71,12 @@ export type DeliveryOrderQueueItem = {
   shippingStatus: ShippingStatus;
   assignedUserId?: string;
   assignedUserName?: string;
+  assignedOfficers?: Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    assignedAt: string;
+  }>;
   totalItemsCount: number;
   shippedItemsCount: number;
   receiptPhotoUrl?: string;

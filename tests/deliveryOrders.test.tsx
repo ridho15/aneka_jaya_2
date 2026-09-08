@@ -24,6 +24,12 @@ vi.mock("@/lib/db/prisma", () => {
     deliveryOrderItem: {
       updateMany: vi.fn()
     },
+    deliveryOrderAssignee: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      upsert: vi.fn(),
+      deleteMany: vi.fn()
+    },
     salesRecord: {
       findUnique: vi.fn(),
       update: vi.fn()
@@ -336,8 +342,9 @@ describe("DeliveryOrderQueueTable UI", () => {
     expect(html).toContain("Tidak ada Delivery Order yang sesuai filter pencarian.");
   });
 
-  it("renders DO item details and links correctly", () => {
-    const html = renderToStaticMarkup(
+  it("renders DO item details and links correctly, with DO number only visible to OWNER", () => {
+    // Non-owner (ADMIN) should NOT see DO-2026-001
+    const adminHtml = renderToStaticMarkup(
       <DeliveryOrderQueueTable
         initialQueue={[sampleItem]}
         officers={sampleOfficers}
@@ -348,18 +355,59 @@ describe("DeliveryOrderQueueTable UI", () => {
       />
     );
 
-    expect(html).toContain("DO-2026-001");
-    expect(html).toContain("Toko Sinar Mulia");
-    expect(html).toContain("Jakarta Barat");
-    expect(html).toContain("Kurir Toko");
-    expect(html).toContain("Proses DO");
-    expect(html).toContain('href="/delivery-orders/do-1"');
+    expect(adminHtml).not.toContain("DO-2026-001");
+    expect(adminHtml).toContain("Inv: TRX-001");
+    expect(adminHtml).toContain("Toko Sinar Mulia");
+    expect(adminHtml).toContain("Jakarta Barat");
+    expect(adminHtml).toContain("Kurir Toko");
+    expect(adminHtml).toContain("Proses DO");
+    expect(adminHtml).toContain('href="/delivery-orders/do-1"');
+
+    // Owner should see DO-2026-001
+    const ownerHtml = renderToStaticMarkup(
+      <DeliveryOrderQueueTable
+        initialQueue={[sampleItem]}
+        officers={sampleOfficers}
+        canAssign={true}
+        canProcess={true}
+        currentUserId="owner-1"
+        currentUserRole="OWNER"
+      />
+    );
+
+    expect(ownerHtml).toContain("DO-2026-001");
+    expect(ownerHtml).toContain("Inv: TRX-001");
+  });
+
+  it("renders multiple assigned officers if present", () => {
+    const multiItem: DeliveryOrderQueueItem = {
+      ...sampleItem,
+      assignedOfficers: [
+        { id: "ao-1", userId: "officer-1", userName: "Pak Budi", assignedAt: "2026-09-06T10:00:00Z" },
+        { id: "ao-2", userId: "officer-2", userName: "Pak Joko", assignedAt: "2026-09-06T10:00:00Z" }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      <DeliveryOrderQueueTable
+        initialQueue={[multiItem]}
+        officers={sampleOfficers}
+        canAssign={true}
+        canProcess={true}
+        currentUserId="driver-1"
+        currentUserRole="DELIVERY_DRIVER"
+      />
+    );
+
+    expect(html).toContain("Pak Budi");
+    expect(html).toContain("Pak Joko");
   });
 });
 
 describe("DeliveryOrderDetailView UI", () => {
   const sampleOfficers = [
-    { id: "officer-1", name: "Pak Budi", role: "DELIVERY_DRIVER" }
+    { id: "officer-1", name: "Pak Budi", role: "DELIVERY_DRIVER" },
+    { id: "officer-2", name: "Pak Joko", role: "DELIVERY_DRIVER" }
   ];
 
   const sampleDetail: DeliveryOrderData = {
@@ -371,6 +419,7 @@ describe("DeliveryOrderDetailView UI", () => {
     shippingStatus: "belum",
     sale: {
       id: "sale-100",
+      transactionNumber: "TRX-100",
       customerName: "Toko Berkah",
       customerLocation: "Jakarta",
       shippingMethod: "Kurir Toko",
@@ -423,5 +472,38 @@ describe("DeliveryOrderDetailView UI", () => {
 
     // Ship button is disabled when 0 items are selected
     expect(html).toContain("disabled");
+  });
+
+  it("masks DO number for non-owner roles and displays it only for OWNER", () => {
+    // DELIVERY_DRIVER view
+    const driverHtml = renderToStaticMarkup(
+      <DeliveryOrderDetailView
+        initialDetail={sampleDetail}
+        officers={sampleOfficers}
+        canAssign={false}
+        canProcess={true}
+        currentUserRole="DELIVERY_DRIVER"
+      />
+    );
+
+    expect(driverHtml).not.toContain("DO-2026-100");
+    expect(driverHtml).toContain("Surat Jalan (Inv: TRX-100)");
+    expect(driverHtml).toContain("Toko Berkah");
+    expect(driverHtml).toContain("Jakarta");
+    expect(driverHtml).toContain("Kurir Toko");
+
+    // OWNER view
+    const ownerHtml = renderToStaticMarkup(
+      <DeliveryOrderDetailView
+        initialDetail={sampleDetail}
+        officers={sampleOfficers}
+        canAssign={true}
+        canProcess={true}
+        currentUserRole="OWNER"
+      />
+    );
+
+    expect(ownerHtml).toContain("DO-2026-100");
+    expect(ownerHtml).toContain("TRX-100");
   });
 });

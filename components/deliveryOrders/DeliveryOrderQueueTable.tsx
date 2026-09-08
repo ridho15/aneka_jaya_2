@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { DeliveryOrderQueueItem } from "@/lib/deliveryOrders/types";
 import { formatJakartaDate } from "@/lib/date/jakarta";
+import { useToast } from "@/components/ui/ToastProvider";
 
 type Officer = {
   id: string;
@@ -26,13 +27,17 @@ export function DeliveryOrderQueueTable({
   officers,
   canAssign,
   canProcess,
+  currentUserRole
 }: Props) {
+  const { showToast } = useToast();
   const [queue, setQueue] = useState<DeliveryOrderQueueItem[]>(initialQueue);
   const [assigningId, setAssigningId] = useState<string | null>(null);
 
   useEffect(() => {
     setQueue(initialQueue);
   }, [initialQueue]);
+
+  const isOwner = currentUserRole === "OWNER";
 
   const handleAssign = async (doId: string, officerId: string) => {
     const officer = officers.find((o) => o.id === officerId);
@@ -44,6 +49,7 @@ export function DeliveryOrderQueueTable({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "add",
           assignedUserId: officer.id,
           assignedUserName: officer.name
         })
@@ -51,17 +57,56 @@ export function DeliveryOrderQueueTable({
       const data = await res.json();
       if (data.success) {
         setQueue((prev) =>
-          prev.map((item) =>
-            item.id === doId
-              ? { ...item, assignedUserId: officer.id, assignedUserName: officer.name }
-              : item
-          )
+          prev.map((item) => {
+            if (item.id !== doId) return item;
+            const existing =
+              item.assignedOfficers && item.assignedOfficers.length > 0
+                ? item.assignedOfficers
+                : item.assignedUserId
+                ? [
+                    {
+                      id: `legacy-${item.assignedUserId}`,
+                      userId: item.assignedUserId,
+                      userName: item.assignedUserName || item.assignedUserId,
+                      assignedAt: new Date().toISOString()
+                    }
+                  ]
+                : [];
+            const alreadyAssigned = existing.some((ao) => ao.userId === officer.id);
+            const nextOfficers = alreadyAssigned
+              ? existing
+              : [
+                  ...existing,
+                  {
+                    id: `new-${officer.id}`,
+                    userId: officer.id,
+                    userName: officer.name,
+                    assignedAt: new Date().toISOString()
+                  }
+                ];
+            return {
+              ...item,
+              assignedUserId: item.assignedUserId || officer.id,
+              assignedUserName: item.assignedUserName || officer.name,
+              assignedOfficers: nextOfficers
+            };
+          })
         );
+        showToast({
+          type: "success",
+          message: `Petugas DO ${officer.name} berhasil ditugaskan.`
+        });
       } else {
-        alert(data.message || "Gagal menugaskan Petugas DO.");
+        showToast({
+          type: "error",
+          message: data.message || "Gagal menambahkan Petugas DO."
+        });
       }
     } catch {
-      alert("Terjadi kesalahan jaringan.");
+      showToast({
+        type: "error",
+        message: "Terjadi kesalahan jaringan saat menugaskan Petugas DO."
+      });
     } finally {
       setAssigningId(null);
     }
@@ -100,32 +145,49 @@ export function DeliveryOrderQueueTable({
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="font-bold text-slate-900">{item.doNumber}</div>
-                <div className="text-xs text-slate-500">
-                  Inv: {item.transactionNumber || "—"} • {formatJakartaDate(item.saleDate)}
+                {isOwner && (
+                  <div className="font-bold text-slate-900">{item.doNumber}</div>
+                )}
+                <div
+                  className={`${
+                    isOwner ? "text-xs text-slate-500" : "font-bold text-slate-900 text-sm"
+                  }`}
+                >
+                  Inv: {item.transactionNumber || "—"}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  {formatJakartaDate(item.saleDate)}
                 </div>
               </div>
               <div>{getStatusBadge(item.status)}</div>
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-2.5 text-xs space-y-1">
-              <div className="font-semibold text-slate-900">{item.customerName}</div>
-              <div className="text-slate-600">{item.customerLocation || "Lokasi: —"}</div>
-              <div className="text-slate-500">Ekspedisi: {item.shippingMethod || "Reguler / Ambil"}</div>
+            <div className="rounded-lg bg-slate-50 p-2.5 text-xs space-y-1.5">
+              <div className="font-semibold text-slate-900 text-sm">{item.customerName}</div>
+              <div className="text-slate-600 break-words leading-relaxed">
+                📍 {item.customerLocation || "Lokasi: —"}
+              </div>
+              <div className="text-slate-700 font-medium">
+                ⛟ Ekspedisi: {item.shippingMethod || "Reguler / Ambil"}
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                    item.packingStatus === "sudah" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                    item.packingStatus === "sudah"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-slate-100 text-slate-600"
                   }`}
                 >
                   Packing: {item.packingStatus === "sudah" ? "Sudah" : "Belum"}
                 </span>
                 <span
                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                    item.shippingStatus === "sudah" ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-600"
+                    item.shippingStatus === "sudah"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-slate-100 text-slate-600"
                   }`}
                 >
                   Kirim: {item.shippingStatus === "sudah" ? "Sudah" : "Belum"}
@@ -136,16 +198,34 @@ export function DeliveryOrderQueueTable({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-              <div className="text-xs text-slate-600 truncate">
-                Petugas: <span className="font-semibold">{item.assignedUserName || "Belum"}</span>
+            <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+              <div className="text-xs text-slate-600 flex flex-wrap items-center gap-1.5">
+                <span className="font-semibold text-slate-700">Petugas:</span>
+                {item.assignedOfficers && item.assignedOfficers.length > 0 ? (
+                  item.assignedOfficers.map((ao) => (
+                    <span
+                      key={ao.userId}
+                      className="inline-flex items-center rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 border border-blue-200"
+                    >
+                      👤 {ao.userName}
+                    </span>
+                  ))
+                ) : item.assignedUserName ? (
+                  <span className="inline-flex items-center rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 border border-blue-200">
+                    👤 {item.assignedUserName}
+                  </span>
+                ) : (
+                  <span className="text-slate-400 italic">Belum ditugaskan</span>
+                )}
               </div>
-              <Link
-                href={`/delivery-orders/${item.id}`}
-                className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
-              >
-                {canProcess && item.status !== "selesai" ? "Proses DO" : "Lihat DO"}
-              </Link>
+              <div className="flex items-center justify-end">
+                <Link
+                  href={`/delivery-orders/${item.id}`}
+                  className="w-full text-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
+                >
+                  {canProcess && item.status !== "selesai" ? "Proses DO" : "Lihat DO"}
+                </Link>
+              </div>
             </div>
           </div>
         ))}
@@ -162,7 +242,7 @@ export function DeliveryOrderQueueTable({
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
             <tr>
-              <th className="px-5 py-3.5">No DO / Invoice</th>
+              <th className="px-5 py-3.5">{isOwner ? "No DO / Invoice" : "No. Invoice"}</th>
               <th className="px-5 py-3.5">Customer &amp; Alamat</th>
               <th className="px-5 py-3.5">Ekspedisi / Jadwal</th>
               <th className="px-5 py-3.5">Petugas DO</th>
@@ -175,53 +255,90 @@ export function DeliveryOrderQueueTable({
           <tbody className="divide-y divide-slate-100">
             {queue.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                <td className="px-5 py-3.5">
-                  <div className="font-bold text-slate-900">{item.doNumber}</div>
-                  <div className="mt-0.5 font-mono text-xs text-slate-500">
+                <td className="px-5 py-3.5 whitespace-nowrap">
+                  {isOwner && <div className="font-bold text-slate-900">{item.doNumber}</div>}
+                  <div
+                    className={`font-mono text-xs ${
+                      isOwner ? "text-slate-500 mt-0.5" : "font-bold text-slate-900 text-sm"
+                    }`}
+                  >
                     Inv: {item.transactionNumber || "—"}
                   </div>
                   <div className="text-[11px] text-slate-400">
                     {formatJakartaDate(item.saleDate)}
                   </div>
                 </td>
-                <td className="px-5 py-3.5">
+                <td className="px-5 py-3.5 max-w-xs">
                   <div className="font-semibold text-slate-900">{item.customerName}</div>
-                  <div className="mt-0.5 text-xs text-slate-500 max-w-xs truncate" title={item.customerLocation}>
-                    {item.customerLocation || "—"}
+                  <div
+                    className="mt-1 text-xs text-slate-600 break-words leading-relaxed"
+                    title={item.customerLocation}
+                  >
+                    📍 {item.customerLocation || <span className="text-slate-400 italic">Alamat: —</span>}
                   </div>
                 </td>
-                <td className="px-5 py-3.5">
-                  <div className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                <td className="px-5 py-3.5 whitespace-nowrap">
+                  <div className="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                     ⛟ {item.shippingMethod || "Reguler / Ambil"}
                   </div>
                   {item.deliveryAt && (
                     <div className="mt-1 text-[11px] text-slate-500">
-                      Kirim: {formatJakartaDate(item.deliveryAt)}
+                      Jadwal: {formatJakartaDate(item.deliveryAt)}
                     </div>
                   )}
                 </td>
                 <td className="px-5 py-3.5">
-                  {canAssign ? (
-                    <select
-                      value={item.assignedUserId || ""}
-                      disabled={assigningId === item.id}
-                      onChange={(e) => handleAssign(item.id, e.target.value)}
-                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 bg-white hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    >
-                      <option value="">-- Pilih Petugas DO --</option>
-                      {officers.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.name} ({o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-xs font-medium text-slate-700">
-                      {item.assignedUserName || <span className="text-slate-400 italic">Belum ditugaskan</span>}
-                    </span>
-                  )}
+                  <div className="space-y-1.5 min-w-[180px]">
+                    <div className="flex flex-wrap gap-1">
+                      {item.assignedOfficers && item.assignedOfficers.length > 0 ? (
+                        item.assignedOfficers.map((ao) => (
+                          <span
+                            key={ao.userId}
+                            className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200"
+                          >
+                            👤 {ao.userName}
+                          </span>
+                        ))
+                      ) : item.assignedUserName ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+                          👤 {item.assignedUserName}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">Belum ditugaskan</span>
+                      )}
+                    </div>
+                    {(canAssign || currentUserRole === "DELIVERY_DRIVER") && (
+                      <div className="mt-1">
+                        <select
+                          value=""
+                          disabled={assigningId === item.id}
+                          onChange={(e) => {
+                            if (e.target.value) handleAssign(item.id, e.target.value);
+                          }}
+                          className="w-full rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-700 bg-white hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        >
+                          <option value="">
+                            {assigningId === item.id
+                              ? "Menugaskan..."
+                              : `+ ${currentUserRole === "DELIVERY_DRIVER" ? "Ajak Petugas DO" : "Tambah Petugas DO"}`}
+                          </option>
+                          {officers
+                            .filter(
+                              (o) =>
+                                !item.assignedOfficers?.some((ao) => ao.userId === o.id) &&
+                                item.assignedUserId !== o.id
+                            )
+                            .map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.name} ({o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role})
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </td>
-                <td className="px-5 py-3.5 text-center">
+                <td className="px-5 py-3.5 text-center whitespace-nowrap">
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
                       item.packingStatus === "sudah"
@@ -232,7 +349,7 @@ export function DeliveryOrderQueueTable({
                     {item.packingStatus === "sudah" ? "Sudah" : "Belum"}
                   </span>
                 </td>
-                <td className="px-5 py-3.5 text-center">
+                <td className="px-5 py-3.5 text-center whitespace-nowrap">
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
                       item.shippingStatus === "sudah"
@@ -255,13 +372,13 @@ export function DeliveryOrderQueueTable({
                     </div>
                   )}
                 </td>
-                <td className="px-5 py-3.5 text-center">
+                <td className="px-5 py-3.5 text-center whitespace-nowrap">
                   {getStatusBadge(item.status)}
                   <div className="mt-1 text-[11px] text-slate-500">
                     {item.shippedItemsCount} / {item.totalItemsCount} item
                   </div>
                 </td>
-                <td className="px-5 py-3.5 text-right">
+                <td className="px-5 py-3.5 text-right whitespace-nowrap">
                   <Link
                     href={`/delivery-orders/${item.id}`}
                     className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"

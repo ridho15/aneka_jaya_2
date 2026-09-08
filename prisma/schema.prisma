@@ -513,6 +513,7 @@ model DeliveryOrder {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   items                 DeliveryOrderItem[]
+  assignees             DeliveryOrderAssignee[]
 
   @@index([salesRecordId])
   @@index([status])
@@ -537,5 +538,20 @@ model DeliveryOrderItem {
 
   @@index([deliveryOrderId])
   @@index([salesRecordItemId])
+}
+
+model DeliveryOrderAssignee {
+  id                     String        @id @default(cuid())
+  deliveryOrderId        String
+  deliveryOrder          DeliveryOrder @relation(fields: [deliveryOrderId], references: [id], onDelete: Cascade)
+  userId                 String
+  userName               String
+  assignedByUserId       String?
+  assignedByNameSnapshot String?
+  assignedAt             DateTime      @default(now())
+
+  @@unique([deliveryOrderId, userId])
+  @@index([deliveryOrderId])
+  @@index([userId])
 }
 

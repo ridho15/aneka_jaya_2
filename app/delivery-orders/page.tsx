@@ -34,22 +34,36 @@ function pageHref(params: SearchParams, page: number): string {
   return `/delivery-orders?${next.toString()}`;
 }
 
-function filtersFromParams(params: SearchParams): ListDeliveryOrdersFilter {
+function filtersFromParams(
+  params: SearchParams,
+  userRole?: string,
+  userId?: string
+): ListDeliveryOrdersFilter {
+  const isAllExplicit = valueOf(params, "view") === "all";
+  const hasExplicitOfficerParam = "officerId" in params;
+  let officerId = valueOf(params, "officerId") || undefined;
+
+  if (userRole === "DELIVERY_DRIVER" && !hasExplicitOfficerParam && !isAllExplicit) {
+    officerId = userId;
+  }
+
   return {
     search: valueOf(params, "search") || undefined,
     status: valueOf(params, "status") || undefined,
     packingStatus: valueOf(params, "packingStatus") || undefined,
     shippingStatus: valueOf(params, "shippingStatus") || undefined,
-    assignedUserId: valueOf(params, "officerId") || undefined
+    assignedUserId: officerId
   };
 }
 
 function officerFilterLabel(
   officers: Array<{ id: string; name: string }>,
-  value?: string
+  value?: string,
+  currentUserId?: string
 ): string | undefined {
   if (!value) return undefined;
   if (value === "unassigned") return "Belum Ditugaskan";
+  if (currentUserId && value === currentUserId) return "Tugas Saya";
   const officer = officers.find((o) => o.id === value);
   return officer ? officer.name : value;
 }
@@ -75,7 +89,9 @@ function shippingStatusLabel(status?: string): string | undefined {
 
 function activeFilterLabels(
   params: SearchParams,
-  officers: Array<{ id: string; name: string }>
+  officers: Array<{ id: string; name: string }>,
+  effectiveOfficerId?: string,
+  currentUserId?: string
 ): string[] {
   return [
     valueOf(params, "search") ? `Cari: ${valueOf(params, "search")}` : null,
@@ -86,8 +102,8 @@ function activeFilterLabels(
     valueOf(params, "shippingStatus")
       ? `Pengiriman: ${shippingStatusLabel(valueOf(params, "shippingStatus"))}`
       : null,
-    valueOf(params, "officerId")
-      ? `Petugas: ${officerFilterLabel(officers, valueOf(params, "officerId"))}`
+    effectiveOfficerId
+      ? `Petugas: ${officerFilterLabel(officers, effectiveOfficerId, currentUserId)}`
       : null
   ].filter(Boolean) as string[];
 }
@@ -105,9 +121,17 @@ export default async function DeliveryOrdersPage({
   const params = (await searchParams) || {};
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
 
+  const isAllExplicit = valueOf(params, "view") === "all";
+  const hasExplicitOfficerParam = "officerId" in params;
+  const isDriver = user.role === "DELIVERY_DRIVER";
+  const defaultToMyTasks = isDriver && !hasExplicitOfficerParam && !isAllExplicit;
+  const effectiveOfficerId = defaultToMyTasks ? user.id : (valueOf(params, "officerId") || undefined);
+
+  const filters = filtersFromParams(params, user.role, user.id);
+
   const [{ data: paged, meta }, officers] = await Promise.all([
     listDeliveryOrdersPage(
-      { page, pageSize: PAGE_SIZE, filters: filtersFromParams(params) },
+      { page, pageSize: PAGE_SIZE, filters },
       user
     ),
     listDeliveryOfficers()
@@ -116,18 +140,12 @@ export default async function DeliveryOrdersPage({
   const canAssign = can(user.role, "do.assign");
   const canProcess = can(user.role, "do.process");
   const totalPages = meta.totalPages;
-  const activeFilters = activeFilterLabels(params, officers);
+  const activeFilters = activeFilterLabels(params, officers, effectiveOfficerId, user.id);
 
   const currentStatus = valueOf(params, "status");
-  const currentOfficerId = valueOf(params, "officerId");
-  const isAll =
-    !currentStatus &&
-    !currentOfficerId &&
-    !valueOf(params, "search") &&
-    !valueOf(params, "packingStatus") &&
-    !valueOf(params, "shippingStatus");
+  const isMyTasks = effectiveOfficerId === user.id && !isAllExplicit;
+  const isAll = isAllExplicit || (!currentStatus && !effectiveOfficerId && !valueOf(params, "search") && !valueOf(params, "packingStatus") && !valueOf(params, "shippingStatus"));
   const isBelumSelesai = currentStatus === "belum_selesai";
-  const isMyTasks = currentOfficerId === user.id;
 
   return (
     <AppShell>
@@ -150,10 +168,22 @@ export default async function DeliveryOrdersPage({
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-slate-500">Shortcut:</span>
+        {user.id && (
+          <Link
+            href={isDriver ? "/delivery-orders" : `/delivery-orders?officerId=${user.id}`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              isMyTasks
+                ? "bg-blue-700 text-white"
+                : "bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100"
+            }`}
+          >
+            ✓ Tugas Saya {isDriver && "(Default)"}
+          </Link>
+        )}
         <Link
-          href="/delivery-orders"
+          href="/delivery-orders?view=all"
           className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-            isAll
+            isAll && !isMyTasks
               ? "bg-slate-900 text-white"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
@@ -161,7 +191,7 @@ export default async function DeliveryOrdersPage({
           Semua Antrean
         </Link>
         <Link
-          href="/delivery-orders?status=belum_selesai"
+          href={isMyTasks ? `/delivery-orders?status=belum_selesai&officerId=${user.id}` : "/delivery-orders?status=belum_selesai&view=all"}
           className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
             isBelumSelesai
               ? "bg-emerald-700 text-white"
@@ -170,23 +200,11 @@ export default async function DeliveryOrdersPage({
         >
           Belum Selesai
         </Link>
-        {user.id && (
-          <Link
-            href={`/delivery-orders?officerId=${user.id}`}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              isMyTasks
-                ? "bg-blue-700 text-white"
-                : "bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100"
-            }`}
-          >
-            Tugas Saya
-          </Link>
-        )}
       </div>
 
       <ResponsiveFilterPanel
         title="Filter Delivery Order"
-        resetHref="/delivery-orders"
+        resetHref={isDriver ? "/delivery-orders" : "/delivery-orders?view=all"}
         activeFilters={activeFilters}
         emptyText="Filter aktif: semua antrean."
         className="mb-5"
@@ -243,7 +261,7 @@ export default async function DeliveryOrdersPage({
           Petugas DO
           <Select
             name="officerId"
-            defaultValue={valueOf(params, "officerId") || ""}
+            defaultValue={effectiveOfficerId || ""}
             className="mt-1"
           >
             <option value="">Semua</option>

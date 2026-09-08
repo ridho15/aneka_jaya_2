@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import type { DeliveryOrderData } from "@/lib/deliveryOrders/types";
 import { formatJakartaDate } from "@/lib/date/jakarta";
 
+import { useToast } from "@/components/ui/ToastProvider";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+
 type Officer = {
   id: string;
   name: string;
@@ -25,9 +28,11 @@ export function DeliveryOrderDetailView({
   initialDetail,
   officers,
   canAssign,
-  canProcess
+  canProcess,
+  currentUserRole
 }: Props) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [detail, setDetail] = useState<DeliveryOrderData>(initialDetail);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [receiptPhotoUrl, setReceiptPhotoUrl] = useState<string>(
@@ -42,7 +47,26 @@ export function DeliveryOrderDetailView({
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [officerToRemove, setOfficerToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [isRemovingOfficer, setIsRemovingOfficer] = useState(false);
+  const [isShipConfirmOpen, setIsShipConfirmOpen] = useState(false);
+
+  const isOwner = currentUserRole === "OWNER";
+  const canInvite = canAssign || currentUserRole === "DELIVERY_DRIVER";
+
+  const assignedList =
+    detail.assignedOfficers && detail.assignedOfficers.length > 0
+      ? detail.assignedOfficers
+      : detail.assignedUserId
+      ? [
+          {
+            id: `legacy-${detail.assignedUserId}`,
+            userId: detail.assignedUserId,
+            userName: detail.assignedUserName || detail.assignedUserId,
+            assignedAt: detail.assignedAt || ""
+          }
+        ]
+      : [];
 
   const allSelected = detail.items.length > 0 && selectedItemIds.length === detail.items.length;
   const someSelected = selectedItemIds.length > 0 && selectedItemIds.length < detail.items.length;
@@ -66,7 +90,6 @@ export function DeliveryOrderDetailView({
     if (!file) return;
 
     setIsUploading(true);
-    setStatusMessage(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -78,21 +101,18 @@ export function DeliveryOrderDetailView({
       const data = await res.json();
       if (data.success && data.data?.url) {
         setReceiptPhotoUrl(data.data.url);
-        setStatusMessage({ type: "success", text: "Foto resi berhasil diunggah." });
+        showToast("Foto resi berhasil diunggah.", "success");
       } else {
-        setStatusMessage({
-          type: "error",
-          text: data.message || "Gagal mengunggah foto resi."
-        });
+        showToast(data.message || "Gagal mengunggah foto resi.", "error");
       }
     } catch {
-      setStatusMessage({ type: "error", text: "Terjadi kesalahan koneksi saat unggah." });
+      showToast("Terjadi kesalahan koneksi saat unggah foto resi.", "error");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleAssignOfficer = async (officerId: string) => {
+  const handleAddOfficer = async (officerId: string) => {
     const officer = officers.find((o) => o.id === officerId);
     if (!officer) return;
 
@@ -101,29 +121,105 @@ export function DeliveryOrderDetailView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          action: "add",
           assignedUserId: officer.id,
           assignedUserName: officer.name
         })
       });
       const data = await res.json();
       if (data.success) {
-        setDetail((prev) => ({
-          ...prev,
-          assignedUserId: officer.id,
-          assignedUserName: officer.name
-        }));
-        setStatusMessage({ type: "success", text: `Petugas DO ditugaskan ke ${officer.name}` });
+        setDetail((prev) => {
+          const existing =
+            prev.assignedOfficers && prev.assignedOfficers.length > 0
+              ? prev.assignedOfficers
+              : prev.assignedUserId
+              ? [
+                  {
+                    id: `legacy-${prev.assignedUserId}`,
+                    userId: prev.assignedUserId,
+                    userName: prev.assignedUserName || prev.assignedUserId,
+                    assignedAt: new Date().toISOString()
+                  }
+                ]
+              : [];
+          const alreadyAssigned = existing.some((ao) => ao.userId === officer.id);
+          const nextOfficers = alreadyAssigned
+            ? existing
+            : [
+                ...existing,
+                {
+                  id: `new-${officer.id}`,
+                  userId: officer.id,
+                  userName: officer.name,
+                  assignedAt: new Date().toISOString()
+                }
+              ];
+          return {
+            ...prev,
+            assignedUserId: prev.assignedUserId || officer.id,
+            assignedUserName: prev.assignedUserName || officer.name,
+            assignedOfficers: nextOfficers
+          };
+        });
+        showToast(`Petugas DO ${officer.name} berhasil ditambahkan.`, "success");
+        router.refresh();
       } else {
-        setStatusMessage({ type: "error", text: data.message || "Gagal menugaskan petugas." });
+        showToast(data.message || "Gagal menambahkan petugas.", "error");
       }
     } catch {
-      setStatusMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+      showToast("Terjadi kesalahan jaringan saat menambahkan petugas.", "error");
+    }
+  };
+
+  const handleRemoveOfficer = (officerId: string) => {
+    const assigned = (detail.assignedOfficers || []).find((ao) => ao.userId === officerId);
+    const officer = assigned ? { name: assigned.userName } : officers.find((o) => o.id === officerId);
+    setOfficerToRemove({
+      id: officerId,
+      name: officer?.name || "Petugas"
+    });
+  };
+
+  const confirmRemoveOfficer = async () => {
+    if (!officerToRemove) return;
+    setIsRemovingOfficer(true);
+    try {
+      const res = await fetch(`/api/delivery-orders/${detail.id}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "remove",
+          assignedUserId: officerToRemove.id
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDetail((prev) => {
+          const nextOfficers = (prev.assignedOfficers || []).filter(
+            (ao) => ao.userId !== officerToRemove.id
+          );
+          return {
+            ...prev,
+            assignedUserId: nextOfficers[0]?.userId,
+            assignedUserName: nextOfficers[0]?.userName,
+            assignedOfficers: nextOfficers
+          };
+        });
+        showToast(`Petugas ${officerToRemove.name} berhasil dihapus dari penugasan ini.`, "success");
+        setOfficerToRemove(null);
+        router.refresh();
+      } else {
+        showToast(data.message || "Gagal menghapus petugas.", "error");
+      }
+    } catch {
+      showToast("Terjadi kesalahan jaringan saat menghapus petugas.", "error");
+    } finally {
+      setIsRemovingOfficer(false);
     }
   };
 
   const handleUpdatePacking = async () => {
     setIsSubmitting(true);
-    setStatusMessage(null);
     try {
       const res = await fetch(`/api/delivery-orders/${detail.id}/packing`, {
         method: "POST",
@@ -133,26 +229,28 @@ export function DeliveryOrderDetailView({
       const data = await res.json();
       if (data.success) {
         setDetail((prev) => ({ ...prev, packingStatus: "sudah" }));
-        setStatusMessage({ type: "success", text: "Status packing berhasil diubah menjadi Sudah." });
+        showToast("Status packing berhasil diubah menjadi Sudah.", "success");
         router.refresh();
       } else {
-        setStatusMessage({ type: "error", text: data.message || "Gagal memperbarui packing." });
+        showToast(data.message || "Gagal memperbarui status packing.", "error");
       }
     } catch {
-      setStatusMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+      showToast("Terjadi kesalahan jaringan saat memperbarui packing.", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleShipItems = async () => {
+  const handleShipItems = () => {
     if (selectedItemIds.length === 0) {
-      setStatusMessage({ type: "error", text: "Pilih setidaknya satu barang untuk dikirim." });
+      showToast("Pilih setidaknya satu barang untuk dikirim.", "warning");
       return;
     }
+    setIsShipConfirmOpen(true);
+  };
 
+  const executeShipItems = async () => {
     setIsSubmitting(true);
-    setStatusMessage(null);
     try {
       const res = await fetch(`/api/delivery-orders/${detail.id}/ship`, {
         method: "POST",
@@ -175,18 +273,19 @@ export function DeliveryOrderDetailView({
           receiptPhotoUrl,
           trackingNumber
         }));
-        setStatusMessage({
-          type: "success",
-          text: isFull
+        setIsShipConfirmOpen(false);
+        showToast(
+          isFull
             ? "Pengiriman selesai! Semua barang telah dikirim & status invoice Selesai."
-            : "Pengiriman sebagian berhasil diproses (Status: Selesai Setengah)."
-        });
+            : "Pengiriman sebagian berhasil diproses (Status: Selesai Setengah).",
+          "success"
+        );
         router.refresh();
       } else {
-        setStatusMessage({ type: "error", text: data.message || "Gagal memproses pengiriman." });
+        showToast(data.message || "Gagal memproses pengiriman.", "error");
       }
     } catch {
-      setStatusMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+      showToast("Terjadi kesalahan jaringan saat memproses pengiriman.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -205,7 +304,7 @@ export function DeliveryOrderDetailView({
           </Link>
           <div className="mt-1 flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              {detail.doNumber}
+              {isOwner ? detail.doNumber : `Surat Jalan (Inv: ${detail.sale.transactionNumber || "—"})`}
             </h1>
             <span
               className={`rounded-full px-2.5 py-1 text-xs font-bold ${
@@ -219,12 +318,15 @@ export function DeliveryOrderDetailView({
               {detail.status === "selesai"
                 ? "Selesai"
                 : detail.status === "selesai_setengah"
-                ? "Selesai Setengah"
+                ? "Selesai Sebagian"
                 : "Belum Selesai"}
             </span>
           </div>
           <div className="mt-0.5 text-xs text-slate-500">
-            No Invoice / Transaksi: <span className="font-mono font-medium text-slate-700">{detail.sale.transactionNumber || "—"}</span> • Tanggal: {formatJakartaDate(detail.sale.saleDate)}
+            {isOwner && (
+              <span>No Invoice / Transaksi: <span className="font-mono font-medium text-slate-700">{detail.sale.transactionNumber || "—"}</span> • </span>
+            )}
+            Tanggal: {formatJakartaDate(detail.sale.saleDate)}
           </div>
         </div>
 
@@ -250,57 +352,93 @@ export function DeliveryOrderDetailView({
         </div>
       </div>
 
-      {statusMessage && (
-        <div
-          className={`rounded-lg p-3 text-sm font-medium ${
-            statusMessage.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-rose-50 text-rose-800 border border-rose-200"
-          }`}
-        >
-          {statusMessage.text}
-        </div>
-      )}
 
       {/* Customer & Expedition Information Card (STRICTLY MASKED: NO PRICES) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">
-          Informasi Penerima & Pengiriman
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+          Informasi Penerima &amp; Pengiriman
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <span className="block text-xs text-slate-400">Nama Customer</span>
-            <span className="text-sm font-bold text-slate-900">{detail.sale.customerName}</span>
+            <span className="block text-xs font-semibold text-slate-400">Nama Customer</span>
+            <span className="text-base font-bold text-slate-900">{detail.sale.customerName}</span>
           </div>
           <div>
-            <span className="block text-xs text-slate-400">Alamat / Lokasi</span>
-            <span className="text-sm text-slate-800">{detail.sale.customerLocation || "—"}</span>
-          </div>
-          <div>
-            <span className="block text-xs text-slate-400">Ekspedisi / Metode Kirim</span>
-            <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">
+            <span className="block text-xs font-semibold text-slate-400">Ekspedisi / Metode Kirim</span>
+            <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-800 mt-1">
               ⛟ {detail.sale.shippingMethod || "Reguler / Ambil"}
             </span>
+            {detail.sale.deliveryAt && (
+              <div className="mt-1 text-xs text-slate-500">
+                Jadwal Kirim: {formatJakartaDate(detail.sale.deliveryAt)}
+              </div>
+            )}
           </div>
-          <div>
-            <span className="block text-xs text-slate-400">Petugas DO</span>
-            {canAssign ? (
-              <select
-                value={detail.assignedUserId || ""}
-                onChange={(e) => handleAssignOfficer(e.target.value)}
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-xs text-slate-800 bg-white"
-              >
-                <option value="">-- Pilih Petugas DO --</option>
-                {officers.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <span className="text-sm font-medium text-slate-800">
-                {detail.assignedUserName || <span className="text-slate-400 italic">Belum ditugaskan</span>}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <span className="block text-xs font-semibold text-slate-400">Alamat Lengkap / Lokasi Pengiriman</span>
+            <span className="text-sm font-medium text-slate-800 break-words leading-relaxed">
+              📍 {detail.sale.customerLocation || <span className="text-slate-400 italic">Alamat: —</span>}
+            </span>
+          </div>
+        </div>
+
+        {/* Petugas DO Section */}
+        <div className="pt-3 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div>
+              <span className="block text-xs font-semibold text-slate-700">
+                Petugas DO ({assignedList.length} orang)
               </span>
+              <p className="text-[11px] text-slate-500">
+                Pengiriman dapat melibatkan lebih dari satu petugas DO. Petugas dapat mengajak rekan DO lainnya.
+              </p>
+            </div>
+            {canInvite && (
+              <div className="w-full sm:w-auto">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) handleAddOfficer(e.target.value);
+                  }}
+                  className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-800 bg-white hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+                >
+                  <option value="">
+                    + {currentUserRole === "DELIVERY_DRIVER" ? "Ajak Petugas DO Lainnya" : "Tambah Petugas DO"}
+                  </option>
+                  {officers
+                    .filter((o) => !assignedList.some((ao) => ao.userId === o.id))
+                    .map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name} ({o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {assignedList.length > 0 ? (
+              assignedList.map((ao) => (
+                <div
+                  key={ao.userId}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-800 border border-blue-200"
+                >
+                  <span>👤 {ao.userName}</span>
+                  {canInvite && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveOfficer(ao.userId)}
+                      className="rounded-full hover:bg-blue-200 p-0.5 text-blue-600 hover:text-rose-600 font-bold transition-colors"
+                      title="Hapus petugas dari DO ini"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <span className="text-xs text-slate-400 italic">Belum ada petugas DO yang ditugaskan</span>
             )}
           </div>
         </div>
@@ -499,6 +637,48 @@ export function DeliveryOrderDetailView({
           </button>
         </div>
       )}
+
+      {/* Officer Removal Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(officerToRemove)}
+        title="Hapus Penugasan Petugas DO"
+        message={
+          officerToRemove
+            ? `Apakah Anda yakin ingin menghapus "${officerToRemove.name}" dari penugasan surat jalan ini? Petugas ini tidak akan lagi melihat DO ini di antrean kerjanya.`
+            : ""
+        }
+        confirmText="Hapus Penugasan"
+        cancelText="Batal"
+        variant="danger"
+        isLoading={isRemovingOfficer}
+        onConfirm={confirmRemoveOfficer}
+        onCancel={() => {
+          if (!isRemovingOfficer) setOfficerToRemove(null);
+        }}
+      />
+
+      {/* Shipment Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isShipConfirmOpen}
+        title="Konfirmasi Pengiriman Barang"
+        message={
+          selectedItemIds.length >= detail.items.length
+            ? `Konfirmasi pengiriman untuk SEMUA barang (${selectedItemIds.length} item) ke customer ${detail.sale.customerName}? Status Surat Jalan dan Penjualan akan otomatis diselesaikan.`
+            : `Konfirmasi pengiriman SEBAGIAN (${selectedItemIds.length} dari ${detail.items.length} item) ke customer ${detail.sale.customerName}? Status Surat Jalan akan menjadi "Selesai Sebagian".`
+        }
+        confirmText={
+          selectedItemIds.length >= detail.items.length
+            ? "Ya, Kirim Semua Barang"
+            : `Ya, Kirim ${selectedItemIds.length} Barang`
+        }
+        cancelText="Batal"
+        variant="primary"
+        isLoading={isSubmitting}
+        onConfirm={executeShipItems}
+        onCancel={() => {
+          if (!isSubmitting) setIsShipConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

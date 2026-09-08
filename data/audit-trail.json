@@ -1,5 +1,119 @@
 [
   {
+    "id": "f2d4af16-57dd-47a4-9c81-44008cd03b24",
+    "createdAt": "2026-09-07T14:18:36.951Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "20ed64d0-dc02-43b2-80b6-53d0cd4abe59",
+    "createdAt": "2026-09-07T14:03:13.163Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "44f2c00b-0e90-4137-ad43-3267deae325e",
+    "createdAt": "2026-09-07T13:40:44.415Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "delivery_order",
+    "entityId": "cmtq0wxfz0006ko7phq5dndqw",
+    "action": "update",
+    "afterValue": {
+      "removedUserId": "9d0cc589-2ae8-4801-aa0c-e069747ae502"
+    },
+    "reason": "Ridho Al Amzah menghapus Petugas DO dengan ID: 9d0cc589-2ae8-4801-aa0c-e069747ae502"
+  },
+  {
+    "id": "2e2cca1e-ffe9-4bde-98d1-56e2b64be6ae",
+    "createdAt": "2026-09-07T13:40:42.062Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "delivery_order",
+    "entityId": "cmtq0wxfz0006ko7phq5dndqw",
+    "action": "update",
+    "afterValue": {
+      "removedUserId": "9b99aede-3d3f-40d3-94b2-a8489b7c5f38"
+    },
+    "reason": "Ridho Al Amzah menghapus Petugas DO dengan ID: 9b99aede-3d3f-40d3-94b2-a8489b7c5f38"
+  },
+  {
+    "id": "b95369ab-7eab-482e-b6fa-795e85c762f7",
+    "createdAt": "2026-09-07T13:40:38.662Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "delivery_order",
+    "entityId": "cmtq0wxfz0006ko7phq5dndqw",
+    "action": "update",
+    "afterValue": {
+      "addedUserId": "9b99aede-3d3f-40d3-94b2-a8489b7c5f38",
+      "addedUserName": "Joko Prasetyo"
+    },
+    "reason": "Ridho Al Amzah menambahkan Petugas DO: Joko Prasetyo"
+  },
+  {
+    "id": "a985b91a-3e6c-4728-8316-c61229ea5c4b",
+    "createdAt": "2026-09-07T13:40:38.146Z",
+    "userId": "anika:1",
+    "userNameSnapshot": "Ridho Al Amzah",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+    "entityType": "delivery_order",
+    "entityId": "cmtq0wxfz0006ko7phq5dndqw",
+    "action": "update",
+    "afterValue": {
+      "addedUserId": "9d0cc589-2ae8-4801-aa0c-e069747ae502",
+      "addedUserName": "Agus Santoso"
+    },
+    "reason": "Ridho Al Amzah menambahkan Petugas DO: Agus Santoso"
+  },
+  {
+    "id": "582d2a0b-7e05-4140-961f-220ee4c75e4b",
+    "createdAt": "2026-09-07T09:08:58.829Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
     "id": "ccd44dce-d04e-43fb-bf16-6af7b3af2740",
     "createdAt": "2026-09-07T03:10:07.748Z",
     "userId": "anika:1",
