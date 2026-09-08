@@ -8,6 +8,7 @@ import { formatJakartaDate } from "@/lib/date/jakarta";
 
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 type Officer = {
   id: string;
@@ -395,24 +396,20 @@ export function DeliveryOrderDetailView({
             </div>
             {canInvite && (
               <div className="w-full sm:w-auto">
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) handleAddOfficer(e.target.value);
-                  }}
-                  className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-800 bg-white hover:border-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
-                >
-                  <option value="">
-                    + {currentUserRole === "DELIVERY_DRIVER" ? "Ajak Petugas DO Lainnya" : "Tambah Petugas DO"}
-                  </option>
-                  {officers
+                <SearchableSelect
+                  placeholder={`+ ${currentUserRole === "DELIVERY_DRIVER" ? "Ajak Petugas DO Lainnya" : "Tambah Petugas DO"}`}
+                  searchPlaceholder="Cari nama atau role..."
+                  options={officers
                     .filter((o) => !assignedList.some((ao) => ao.userId === o.id))
-                    .map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name} ({o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role})
-                      </option>
-                    ))}
-                </select>
+                    .map((o) => ({
+                      value: o.id,
+                      label: o.name,
+                      badge: o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role
+                    }))}
+                  onSelect={(officerId) => handleAddOfficer(officerId)}
+                  align="right"
+                  buttonClassName="w-full sm:w-auto font-medium text-xs px-3 py-1.5"
+                />
               </div>
             )}
           </div>

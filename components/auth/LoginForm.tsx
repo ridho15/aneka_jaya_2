@@ -38,7 +38,7 @@ export function LoginForm({ className = "" }: { className?: string }) {
     <form onSubmit={submit} className={`space-y-4 ${className}`}>
       <label className="block text-sm font-semibold text-neutral-800">
         <span className="mb-1.5 block">Email atau username</span>
-        <Input autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="owner@perusahaan.com" className="min-h-12 border-neutral-300 bg-white px-3.5" required />
+        <Input autoComplete="username" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="Username atau email" className="min-h-12 border-neutral-300 bg-white px-3.5" required />
       </label>
       <label className="block text-sm font-semibold text-neutral-800">
         <span className="mb-1.5 block">Password</span>

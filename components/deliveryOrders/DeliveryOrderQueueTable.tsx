@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { DeliveryOrderQueueItem } from "@/lib/deliveryOrders/types";
 import { formatJakartaDate } from "@/lib/date/jakarta";
 import { useToast } from "@/components/ui/ToastProvider";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 type Officer = {
   id: string;
@@ -218,6 +219,34 @@ export function DeliveryOrderQueueTable({
                   <span className="text-slate-400 italic">Belum ditugaskan</span>
                 )}
               </div>
+              {(canAssign || currentUserRole === "DELIVERY_DRIVER") && (
+                <div className="w-full">
+                  <SearchableSelect
+                    placeholder={
+                      assigningId === item.id
+                        ? "Menugaskan..."
+                        : `+ ${currentUserRole === "DELIVERY_DRIVER" ? "Ajak Petugas DO" : "Tambah Petugas DO"}`
+                    }
+                    searchPlaceholder="Cari nama petugas..."
+                    disabled={assigningId === item.id}
+                    isLoading={assigningId === item.id}
+                    options={officers
+                      .filter(
+                        (o) =>
+                          !item.assignedOfficers?.some((ao) => ao.userId === o.id) &&
+                          item.assignedUserId !== o.id
+                      )
+                      .map((o) => ({
+                        value: o.id,
+                        label: o.name,
+                        badge: o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role
+                      }))}
+                    onSelect={(officerId) => handleAssign(item.id, officerId)}
+                    align="left"
+                    buttonClassName="w-full text-xs py-1.5 px-2.5 border-slate-200 hover:border-slate-300"
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-end">
                 <Link
                   href={`/delivery-orders/${item.id}`}
@@ -309,31 +338,30 @@ export function DeliveryOrderQueueTable({
                     </div>
                     {(canAssign || currentUserRole === "DELIVERY_DRIVER") && (
                       <div className="mt-1">
-                        <select
-                          value=""
-                          disabled={assigningId === item.id}
-                          onChange={(e) => {
-                            if (e.target.value) handleAssign(item.id, e.target.value);
-                          }}
-                          className="w-full rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-700 bg-white hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        >
-                          <option value="">
-                            {assigningId === item.id
+                        <SearchableSelect
+                          placeholder={
+                            assigningId === item.id
                               ? "Menugaskan..."
-                              : `+ ${currentUserRole === "DELIVERY_DRIVER" ? "Ajak Petugas DO" : "Tambah Petugas DO"}`}
-                          </option>
-                          {officers
+                              : `+ ${currentUserRole === "DELIVERY_DRIVER" ? "Ajak Petugas DO" : "Tambah Petugas DO"}`
+                          }
+                          searchPlaceholder="Cari nama petugas..."
+                          disabled={assigningId === item.id}
+                          isLoading={assigningId === item.id}
+                          options={officers
                             .filter(
                               (o) =>
                                 !item.assignedOfficers?.some((ao) => ao.userId === o.id) &&
                                 item.assignedUserId !== o.id
                             )
-                            .map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {o.name} ({o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role})
-                              </option>
-                            ))}
-                        </select>
+                            .map((o) => ({
+                              value: o.id,
+                              label: o.name,
+                              badge: o.role === "DELIVERY_DRIVER" ? "Petugas DO" : o.role
+                            }))}
+                          onSelect={(officerId) => handleAssign(item.id, officerId)}
+                          align="left"
+                          buttonClassName="w-full text-[11px] py-1 px-2 border-slate-200 hover:border-slate-300"
+                        />
                       </div>
                     )}
                   </div>

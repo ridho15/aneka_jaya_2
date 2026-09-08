@@ -135,4 +135,20 @@ describe("Anika ERP authentication", () => {
       data: expect.objectContaining({ externalId: "anika:21", email: "supervisor@example.test", role: "SUPERVISOR" })
     });
   });
+
+  it("returns a friendly error message when Aneka Jaya ERP server is offline or unreachable", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
+
+    await expect(loginWithAnikaErp({ identifier: "admin@example.test", password: "secret" }))
+      .rejects.toThrow("Server Aneka Jaya sedang tidak aktif atau tidak dapat dihubungi. Pastikan server ERP berjalan.");
+  });
+
+  it("returns a friendly timeout error message when connection to Aneka Jaya times out", async () => {
+    const timeoutError = new Error("The operation was aborted due to timeout");
+    timeoutError.name = "TimeoutError";
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(timeoutError);
+
+    await expect(loginWithAnikaErp({ identifier: "admin@example.test", password: "secret" }))
+      .rejects.toThrow("Koneksi ke server Aneka Jaya melebihi batas waktu (timeout). Silakan coba beberapa saat lagi.");
+  });
 });

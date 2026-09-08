@@ -84,12 +84,21 @@ export async function loginWithAnikaErp(input: unknown) {
   const password = typeof body.password === "string" ? body.password : "";
   if (!identifier || !password) throw new Error(INVALID_MESSAGE);
 
-  const response = await fetch(loginUrl(), {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier, password, app: "slm" }),
-    cache: "no-store"
-  });
+  let response: Response;
+  try {
+    response = await fetch(loginUrl(), {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, password, app: "slm" }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000)
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new Error("Koneksi ke server Aneka Jaya melebihi batas waktu (timeout). Silakan coba beberapa saat lagi.");
+    }
+    throw new Error("Server Aneka Jaya sedang tidak aktif atau tidak dapat dihubungi. Pastikan server ERP berjalan.");
+  }
   const result = await response.json().catch(() => null) as AnikaVerifyUserResponse | null;
   if (!response.ok || result?.success === false) {
     if (response.status === 403) {

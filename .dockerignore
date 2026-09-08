@@ -7,3 +7,13 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+
+# Test and development artifacts
+tests
+test-results
+playwright-report
+blob-report
+audit-output
+scratch
+*.dump
+*.sql
