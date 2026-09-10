@@ -8,6 +8,7 @@ import type { Prisma } from "@prisma/client";
 import { rekeningForTipe } from "@/lib/business/masterData";
 import { syncErpSalesPayment } from "@/lib/api/salesPayments";
 import { jakartaDateKey } from "@/lib/date/jakarta";
+import { calculateTempoMetricsSummary, type TempoMetricsSummary } from "./summary";
 
 export type TempoStatus = "open" | "paid" | "partial_paid" | "overdue" | "cancelled" | "written_off";
 
@@ -926,3 +927,35 @@ export async function writeOffTempo(id: string, reason: string): Promise<TempoRe
   await recordAudit({ entityType: "tempo", entityId: id, action: "write_off", beforeValue: before, afterValue: { receivable: after, writtenOffAmount: before.remainingAmount }, reason: cleanReason });
   return after;
 }
+
+export async function getTempoMetricsSummary(filters: TempoReceivableFilters = {}): Promise<TempoMetricsSummary> {
+  const todayKey = todayDateString();
+  if (isProductionMode()) {
+    const where: Prisma.TempoReceivableWhereInput = {
+      status: { notIn: finalStatuses }
+    };
+    if (filters.tipe) {
+      where.OR = [{ tipeCodeSnapshot: filters.tipe }, { tipeId: filters.tipe }];
+    }
+    const rows = await prisma.tempoReceivable.findMany({
+      where,
+      select: {
+        id: true,
+        status: true,
+        dueDate: true,
+        remainingAmount: true
+      }
+    });
+    return calculateTempoMetricsSummary(
+      rows.map((r) => ({ ...r, remainingAmount: Number(r.remainingAmount) || 0 })),
+      todayKey
+    );
+  }
+
+  const all = await listTempoReceivables();
+  const relevantRows = filters.tipe
+    ? all.filter((r) => (r.tipeCodeSnapshot || r.tipeId) === filters.tipe)
+    : all;
+  return calculateTempoMetricsSummary(relevantRows, todayKey);
+}
+

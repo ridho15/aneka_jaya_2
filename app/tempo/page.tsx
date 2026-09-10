@@ -3,7 +3,12 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listTempoReceivablesPage, listTempoTipeOptions, type TempoReceivableFilters } from "@/lib/tempo/store";
+import {
+  listTempoReceivablesPage,
+  listTempoTipeOptions,
+  getTempoMetricsSummary,
+  type TempoReceivableFilters
+} from "@/lib/tempo/store";
 import { Input } from "@/components/ui/Input";
 import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
@@ -26,6 +31,20 @@ function pageHref(params: SearchParams, page: number) {
   }
   next.set("page", String(page));
   return `/tempo?${next.toString()}`;
+}
+
+function filterHref(baseParams: SearchParams, overrides: Record<string, string | undefined>) {
+  const next = new URLSearchParams();
+  const currentTipe = valueOf(baseParams, "tipe");
+  const currentKeyword = valueOf(baseParams, "keyword");
+  if (currentTipe) next.set("tipe", currentTipe);
+  if (currentKeyword) next.set("keyword", currentKeyword);
+
+  for (const [key, val] of Object.entries(overrides)) {
+    if (val) next.set(key, val);
+  }
+  const qs = next.toString();
+  return qs ? `/tempo?${qs}` : "/tempo";
 }
 
 function filtersFromParams(params: SearchParams): TempoReceivableFilters {
@@ -63,19 +82,151 @@ export default async function TempoPage({ searchParams }: { searchParams?: Promi
   if (!can(role, "tempo.view")) redirect("/");
   const params = await searchParams || {};
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
-  const [{ data: paged, meta }, tipeOptions] = await Promise.all([
-    listTempoReceivablesPage({ page, pageSize: PAGE_SIZE, filters: filtersFromParams(params) }),
-    listTempoTipeOptions()
+  const filters = filtersFromParams(params);
+  const [{ data: paged, meta }, tipeOptions, metricsSummary] = await Promise.all([
+    listTempoReceivablesPage({ page, pageSize: PAGE_SIZE, filters }),
+    listTempoTipeOptions(),
+    getTempoMetricsSummary(filters)
   ]);
   const totalPages = meta.totalPages;
   const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
   const activeFilters = activeFilterLabels(params);
+
+  const currentStatus = valueOf(params, "status");
+  const currentDueFrom = valueOf(params, "dueFrom");
+  const currentDueTo = valueOf(params, "dueTo");
+  const currentIncludeFinal = valueOf(params, "includeFinal") === "1";
+
+  const isOverdueActive = currentStatus === "overdue";
+  const isComingSoonActive =
+    currentDueFrom === metricsSummary.comingSoonH3.fromDate &&
+    currentDueTo === metricsSummary.comingSoonH3.toDate;
+  const isBeyondActive =
+    currentDueFrom === metricsSummary.beyondH3.fromDate && !currentDueTo;
+  const isTotalActive =
+    !isOverdueActive &&
+    !isComingSoonActive &&
+    !isBeyondActive &&
+    !currentStatus &&
+    !currentDueFrom &&
+    !currentDueTo &&
+    !currentIncludeFinal;
+
   return (
     <AppShell>
       <div className="mb-7">
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Piutang</p>
         <h2 className="aj-page-title text-3xl font-bold">Tempo</h2>
         <p className="mt-2 text-sm text-slate-600">Default menampilkan open Tempo. Aktifkan final status untuk melihat paid, cancelled, atau written off.</p>
+      </div>
+
+      {/* 4 Summary Cards / Widgets */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Card 1: Total Tempo Aktif */}
+        <Link
+          href={filterHref(params, { status: undefined, dueFrom: undefined, dueTo: undefined, includeFinal: undefined })}
+          className={`group block rounded-2xl border p-5 shadow-xs transition-all hover:shadow-sm hover:border-slate-300 bg-white cursor-pointer ${
+            isTotalActive ? "ring-2 ring-emerald-600 border-emerald-300" : "border-slate-200"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Total Tempo Aktif
+            </span>
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+              {metricsSummary.total.count} Nota
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+            {rupiah(metricsSummary.total.amount)}
+          </p>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500 font-medium">
+            <span>Seluruh piutang berjalan</span>
+            <span className="font-bold text-emerald-700 group-hover:underline">Semua</span>
+          </div>
+        </Link>
+
+        {/* Card 2: Lewat Jatuh Tempo (Overdue) */}
+        <Link
+          href={filterHref(params, { status: "overdue", dueFrom: undefined, dueTo: undefined, includeFinal: undefined })}
+          className={`group block rounded-2xl border p-5 shadow-xs transition-all hover:shadow-sm hover:border-rose-300 bg-rose-50/40 hover:bg-rose-50/70 cursor-pointer ${
+            isOverdueActive ? "ring-2 ring-rose-600 border-rose-400" : "border-rose-200/80"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800">
+              Lewat Jatuh Tempo
+            </span>
+            <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-800">
+              {metricsSummary.overdue.count} Nota &bull; {metricsSummary.overdue.percentage}%
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-black tracking-tight text-rose-700 sm:text-3xl">
+            {rupiah(metricsSummary.overdue.amount)}
+          </p>
+          <div className="mt-2 flex items-center justify-between text-xs text-rose-600 font-medium">
+            <span>Jatuh tempo terlampaui</span>
+            <span className="font-bold group-hover:underline">Filter Overdue</span>
+          </div>
+        </Link>
+
+        {/* Card 3: Jatuh Tempo Segera (H-3) */}
+        <Link
+          href={filterHref(params, {
+            status: undefined,
+            dueFrom: metricsSummary.comingSoonH3.fromDate,
+            dueTo: metricsSummary.comingSoonH3.toDate,
+            includeFinal: undefined
+          })}
+          className={`group block rounded-2xl border p-5 shadow-xs transition-all hover:shadow-sm hover:border-amber-300 bg-amber-50/40 hover:bg-amber-50/70 cursor-pointer ${
+            isComingSoonActive ? "ring-2 ring-amber-600 border-amber-400" : "border-amber-200/80"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900">
+              Jatuh Tempo Segera (H-3)
+            </span>
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
+              {metricsSummary.comingSoonH3.count} Nota &bull; {metricsSummary.comingSoonH3.percentage}%
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-black tracking-tight text-amber-800 sm:text-3xl">
+            {rupiah(metricsSummary.comingSoonH3.amount)}
+          </p>
+          <div className="mt-2 flex items-center justify-between text-xs text-amber-700 font-medium">
+            <span>Hari ini s/d 3 hari ke depan</span>
+            <span className="font-bold group-hover:underline">Filter H-3</span>
+          </div>
+        </Link>
+
+        {/* Card 4: Jatuh Tempo Aman (> H-3) */}
+        <Link
+          href={filterHref(params, {
+            status: undefined,
+            dueFrom: metricsSummary.beyondH3.fromDate,
+            dueTo: undefined,
+            includeFinal: undefined
+          })}
+          className={`group block rounded-2xl border p-5 shadow-xs transition-all hover:shadow-sm hover:border-emerald-300 bg-emerald-50/30 hover:bg-emerald-50/60 cursor-pointer ${
+            isBeyondActive ? "ring-2 ring-emerald-600 border-emerald-400" : "border-emerald-200/80"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900">
+              Jatuh Tempo Aman (&gt; H-3)
+            </span>
+            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+              {metricsSummary.beyondH3.count} Nota &bull; {metricsSummary.beyondH3.percentage}%
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-black tracking-tight text-emerald-700 sm:text-3xl">
+            {rupiah(metricsSummary.beyondH3.amount)}
+          </p>
+          <div className="mt-2 flex items-center justify-between text-xs text-emerald-700 font-medium">
+            <span>Lebih dari 3 hari lagi</span>
+            <span className="font-bold group-hover:underline">Filter &gt; H-3</span>
+          </div>
+        </Link>
       </div>
       <ResponsiveFilterPanel
         title="Filter tempo"
