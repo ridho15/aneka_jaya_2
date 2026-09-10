@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => {
     approvalRequest: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     tempoReceivable: { create: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     tempoPayment: { create: vi.fn(), findUnique: vi.fn() },
-    auditLog: { create: vi.fn() }
+    auditLog: { create: vi.fn() },
+    dailyTransactionCounter: { upsert: vi.fn(async ({ dateKey }: { dateKey: string }) => ({ dateKey, lastValue: 1 })) }
   };
   return {
     tx,
@@ -621,6 +622,17 @@ describe("production Prisma transactions", () => {
 
     await expect(updateApprovalStatus("APR-1", "approve")).resolves.toMatchObject({ status: "approved" });
 
+    expect(mocks.tx.salesRecord.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "S-1" },
+      data: expect.objectContaining({
+        approvalStatus: "approved",
+        transactionAt: expect.any(Date),
+        saleDate: expect.any(Date),
+        transactionNumber: expect.any(String),
+        transactionDateKey: expect.any(String),
+        transactionSequence: expect.any(Number)
+      })
+    }));
     expect(mocks.tx.tempoReceivable.create).not.toHaveBeenCalled();
     expect(mocks.tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ entityType: "approval", action: "approve" })
@@ -661,7 +673,7 @@ describe("production Prisma transactions", () => {
 
     expect(mocks.tx.expenseRecord.update).toHaveBeenCalledWith({
       where: { id: "E-1" },
-      data: { approvalStatus: "approved" }
+      data: { approvalStatus: "approved", expenseDate: expect.any(Date) }
     });
   });
 

@@ -340,7 +340,75 @@ describe("Verifikasi 3 Agenda Pekerjaan", () => {
           data: expect.objectContaining({
             approvalStatus: "approved",
             stockReleaseStatus: "released",
-            stockReleaseReference: "SLM-STOCK-1"
+            stockReleaseReference: "SLM-STOCK-1",
+            transactionAt: expect.any(Date),
+            saleDate: expect.any(Date),
+            transactionNumber: expect.any(String),
+            transactionDateKey: expect.any(String),
+            transactionSequence: expect.any(Number)
+          })
+        })
+      );
+    });
+
+    it("memperbarui tanggal dan jam transaksi draf ke waktu sekarang saat difinalkan / di-approve", async () => {
+      const draftFromYesterday: Sale = {
+        id: "DRAFT-YESTERDAY",
+        saleDate: "2026-09-08",
+        transactionAt: "2026-09-08T08:00:00.000Z",
+        createdAt: "2026-09-08T08:00:00.000Z",
+        tipeId: "tipe-w",
+        tipeCodeSnapshot: "W",
+        tipeNameSnapshot: "Walk In",
+        customerName: "Customer Tempo",
+        customerLocation: "Toko",
+        shippingMethod: "di Tempat",
+        paymentMethod: "Cash",
+        total: 250000,
+        approvalStatus: "draft",
+        stockReleaseStatus: "not_required",
+        syncStatus: "local",
+        items: []
+      };
+
+      mocks.prisma.salesRecord.findUnique.mockResolvedValue({
+        ...draftFromYesterday,
+        saleDate: new Date("2026-09-08T00:00:00Z"),
+        transactionAt: new Date("2026-09-08T08:00:00Z"),
+        createdAt: new Date("2026-09-08T08:00:00Z"),
+        items: []
+      });
+
+      mocks.prisma.salesRecord.update.mockImplementation(async ({ data }) => ({
+        ...draftFromYesterday,
+        ...data,
+        createdAt: new Date("2026-09-08T08:00:00Z"),
+        saleDate: data.saleDate instanceof Date ? data.saleDate : new Date(data.saleDate),
+        transactionAt: data.transactionAt instanceof Date ? data.transactionAt : new Date(data.transactionAt),
+        items: []
+      }));
+
+      const finalized = await updateSalesRecord("DRAFT-YESTERDAY", {
+        saleDate: "2026-09-08",
+        tipeId: "tipe-w",
+        customerName: "Customer Tempo",
+        customerLocation: "Toko",
+        shippingMethod: "di Tempat",
+        paymentMethod: "Cash",
+        isDraft: false, // klik finalkan
+        items: [{ productRef: "P-1", quantity: 2, unitPrice: 125000, discount: 0 }]
+      });
+
+      expect(finalized.approvalStatus).toBe("approved");
+      // Memastikan tanggal & jam transaksi bukan lagi dari tanggal draf lama (2026-09-08)
+      expect(finalized.saleDate).not.toBe("2026-09-08");
+      expect(finalized.transactionAt).toBeDefined();
+      expect(mocks.prisma.salesRecord.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            approvalStatus: "approved",
+            transactionAt: expect.any(Date),
+            saleDate: expect.any(Date)
           })
         })
       );

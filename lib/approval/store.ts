@@ -3,8 +3,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { recordAudit } from "@/lib/audit/store";
 import { readJsonArray, writeJsonArray } from "@/lib/data/jsonStore";
-import { getSalesRecord, updateSalesApprovalStatus } from "@/lib/sales/store";
+import { allocateTransactionIdentity, getSalesRecord, updateSalesApprovalStatus } from "@/lib/sales/store";
 import { updateExpenseApprovalStatus } from "@/lib/expenses/store";
+import { createDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
+import { transactionDateKey } from "@/lib/date/jakarta";
 import { createTempoReceivable, createTempoReceivableInTransaction } from "@/lib/tempo/store";
 import { prisma } from "@/lib/db/prisma";
 import { ApprovalStatus as PrismaApprovalStatus, type Prisma } from "@prisma/client";
@@ -215,13 +217,39 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
       const after = toApprovalRequest(updated);
       if (after.module === "penjualan") {
         const salesStatus = after.status === "approved" ? "approved" : after.status === "rejected" ? "rejected" : after.status;
-        const sale = await tx.salesRecord.update({ where: { id: after.entityId }, data: { approvalStatus: salesStatus } }).catch(() => null);
-        if (after.status === "approved" && sale?.paymentMethod === "Tempo") {
-          await createTempoReceivableInTransaction(tx, {
-            salesId: sale.id, tipeId: sale.tipeId, tipeCodeSnapshot: sale.tipeCodeSnapshot, tipeNameSnapshot: sale.tipeNameSnapshot,
-            customerName: sale.customerName, originalAmount: Number(sale.total), transactionDate: sale.saleDate.toISOString(), dueDate: (sale.dueDate || sale.saleDate).toISOString(),
-            initialPayment: { amount: Number(sale.initialPaymentAmount || 0), method: sale.initialPaymentMethod as "Cash" | "TF" | "Other" | undefined, rekeningId: sale.initialPaymentRekeningId || undefined, rekeningNameSnapshot: sale.initialPaymentRekeningNameSnapshot || undefined, notes: sale.initialPaymentNotes || undefined }
-          }, user);
+        if (after.status === "approved") {
+          const nowIso = now.toISOString();
+          const identity = await allocateTransactionIdentity(tx, nowIso);
+          const existingSale = await tx.salesRecord.findUnique({ where: { id: after.entityId } });
+          const deliveryAt = existingSale?.deliveryAt && existingSale.deliveryAt < now ? now : (existingSale?.deliveryAt || null);
+          const sale = await tx.salesRecord.update({
+            where: { id: after.entityId },
+            data: {
+              approvalStatus: salesStatus,
+              transactionAt: now,
+              saleDate: new Date(identity.transactionDateKey),
+              transactionDateKey: identity.transactionDateKey,
+              transactionSequence: identity.transactionSequence,
+              transactionNumber: identity.transactionNumber,
+              deliveryAt
+            }
+          }).catch(() => null);
+
+          if (sale?.paymentMethod === "Tempo") {
+            const dueDate = sale.dueDate && sale.dueDate < now ? now : (sale.dueDate || sale.saleDate);
+            await createTempoReceivableInTransaction(tx, {
+              salesId: sale.id, tipeId: sale.tipeId, tipeCodeSnapshot: sale.tipeCodeSnapshot, tipeNameSnapshot: sale.tipeNameSnapshot,
+              customerName: sale.customerName, originalAmount: Number(sale.total),
+              transactionDate: nowIso,
+              dueDate: dueDate.toISOString(),
+              initialPayment: { amount: Number(sale.initialPaymentAmount || 0), method: sale.initialPaymentMethod as "Cash" | "TF" | "Other" | undefined, rekeningId: sale.initialPaymentRekeningId || undefined, rekeningNameSnapshot: sale.initialPaymentRekeningNameSnapshot || undefined, notes: sale.initialPaymentNotes || undefined }
+            }, user);
+          }
+          await createDeliveryOrderForSale(after.entityId, tx).catch((err) => {
+            console.error("[DO] Failed to create delivery order on approval:", err);
+          });
+        } else {
+          await tx.salesRecord.update({ where: { id: after.entityId }, data: { approvalStatus: salesStatus } }).catch(() => null);
         }
       }
       if (after.module === "pengeluaran") {
@@ -230,7 +258,7 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
           where: { id: after.entityId },
           data: after.status === "rejected"
             ? { approvalStatus: expenseStatus, erpSyncStatus: "not_required", erpSyncError: "Pengeluaran ditolak approval." }
-            : { approvalStatus: expenseStatus }
+            : { approvalStatus: expenseStatus, expenseDate: now }
         }).catch(() => null);
       }
       await tx.auditLog.create({
@@ -266,7 +294,16 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
   if (after.module === "penjualan") {
     const sale = await updateSalesApprovalStatus(after.entityId, after.status === "approved" ? "approved" : after.status === "rejected" ? "rejected" : after.status);
     const fullSale = sale || await getSalesRecord(after.entityId);
-    if (after.status === "approved" && fullSale?.paymentMethod === "Tempo") await createTempoReceivable({ salesId: fullSale.id, tipeId: fullSale.tipeId || "W", tipeCodeSnapshot: fullSale.tipeCodeSnapshot || "W", tipeNameSnapshot: fullSale.tipeNameSnapshot || "W", customerName: fullSale.customerName, originalAmount: fullSale.total, transactionDate: fullSale.saleDate, dueDate: fullSale.dueDate || fullSale.saleDate, initialPayment: { amount: fullSale.initialPaymentAmount || 0, method: fullSale.initialPaymentMethod, rekeningId: fullSale.initialPaymentRekeningId, rekeningNameSnapshot: fullSale.initialPaymentRekeningNameSnapshot, notes: fullSale.initialPaymentNotes } });
+    if (after.status === "approved" && fullSale?.paymentMethod === "Tempo") {
+      const dueDate = fullSale.dueDate && new Date(fullSale.dueDate) < new Date(now) ? now : (fullSale.dueDate || fullSale.saleDate);
+      await createTempoReceivable({
+        salesId: fullSale.id, tipeId: fullSale.tipeId || "W", tipeCodeSnapshot: fullSale.tipeCodeSnapshot || "W", tipeNameSnapshot: fullSale.tipeNameSnapshot || "W",
+        customerName: fullSale.customerName, originalAmount: fullSale.total,
+        transactionDate: fullSale.saleDate,
+        dueDate,
+        initialPayment: { amount: fullSale.initialPaymentAmount || 0, method: fullSale.initialPaymentMethod, rekeningId: fullSale.initialPaymentRekeningId, rekeningNameSnapshot: fullSale.initialPaymentRekeningNameSnapshot, notes: fullSale.initialPaymentNotes }
+      });
+    }
   }
   if (after.module === "pengeluaran") await updateExpenseApprovalStatus(after.entityId, after.status === "approved" ? "approved" : after.status === "rejected" ? "rejected" : after.status);
   await recordAudit({ entityType: "approval", entityId: id, action, beforeValue: before, afterValue: after, reason });

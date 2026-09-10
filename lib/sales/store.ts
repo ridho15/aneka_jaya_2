@@ -20,6 +20,14 @@ const salesInclude = { items: { orderBy: { sortOrder: "asc" as const } } };
 
 export async function allocateTransactionIdentity(tx: Prisma.TransactionClient, transactionAt: string) {
   const dateKey = transactionDateKey(transactionAt);
+  if (!tx?.dailyTransactionCounter?.upsert) {
+    return {
+      transactionAt,
+      transactionDateKey: dateKey,
+      transactionSequence: 1,
+      transactionNumber: transactionNumberFor(dateKey, 1)
+    };
+  }
   const counter = await tx.dailyTransactionCounter.upsert({
     where: { dateKey },
     create: { dateKey, lastValue: 1 },
@@ -600,7 +608,25 @@ export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreat
 
 export async function updateSalesApprovalStatus(id: string, approvalStatus: Sale["approvalStatus"]): Promise<Sale | null> {
   if (isProductionMode()) {
-    const row = await prisma.salesRecord.update({ where: { id }, data: { approvalStatus: approvalStatus || "draft" }, include: salesInclude }).catch(() => null);
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const dateKey = transactionDateKey(nowIso);
+    let updateData: Prisma.SalesRecordUpdateInput = { approvalStatus: approvalStatus || "draft" };
+    if (approvalStatus === "approved") {
+      const identity = await prisma.$transaction(async (tx) => allocateTransactionIdentity(tx, nowIso));
+      const existingSale = await prisma.salesRecord.findUnique({ where: { id }, select: { deliveryAt: true } });
+      const deliveryAt = existingSale?.deliveryAt && existingSale.deliveryAt < now ? now : (existingSale?.deliveryAt || null);
+      updateData = {
+        ...updateData,
+        transactionAt: now,
+        saleDate: new Date(dateKey),
+        transactionDateKey: identity.transactionDateKey,
+        transactionSequence: identity.transactionSequence,
+        transactionNumber: identity.transactionNumber,
+        deliveryAt
+      };
+    }
+    const row = await prisma.salesRecord.update({ where: { id }, data: updateData, include: salesInclude }).catch(() => null);
     if (row && approvalStatus === "approved") {
       await createDeliveryOrderForSale(id).catch((err) => {
         console.error("[DO] Failed to create delivery order on approval:", err);
@@ -611,7 +637,24 @@ export async function updateSalesApprovalStatus(id: string, approvalStatus: Sale
   const rows = await readJsonArray<Sale>(fileName);
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) return null;
-  rows[index] = { ...rows[index], approvalStatus };
+  if (approvalStatus === "approved") {
+    const nowIso = new Date().toISOString();
+    const identity = nextJsonTransactionIdentity(rows, nowIso);
+    const existingDelivery = rows[index].deliveryAt;
+    const deliveryAt = existingDelivery && new Date(existingDelivery) < new Date(nowIso) ? nowIso : existingDelivery;
+    rows[index] = {
+      ...rows[index],
+      approvalStatus,
+      transactionAt: nowIso,
+      saleDate: transactionDateKey(nowIso),
+      transactionDateKey: identity.transactionDateKey,
+      transactionSequence: identity.transactionSequence,
+      transactionNumber: identity.transactionNumber,
+      deliveryAt
+    };
+  } else {
+    rows[index] = { ...rows[index], approvalStatus };
+  }
   await writeJsonArray(fileName, rows);
   return rows[index];
 }
@@ -794,12 +837,29 @@ async function updatePrismaSalesRecord(
       );
     }
 
+    const isFinalizingDraft = before.approvalStatus === "draft" && stockOptions?.approvalStatus === "approved";
+    const dateKey = input.transactionAt ? transactionDateKey(input.transactionAt) : input.saleDate;
+    let identityUpdate: {
+      transactionDateKey?: string;
+      transactionSequence?: number;
+      transactionNumber?: string;
+    } = {};
+    if (input.transactionAt && (isFinalizingDraft || !before.transactionNumber)) {
+      const allocated = await allocateTransactionIdentity(tx, input.transactionAt);
+      identityUpdate = {
+        transactionDateKey: allocated.transactionDateKey,
+        transactionSequence: allocated.transactionSequence,
+        transactionNumber: allocated.transactionNumber
+      };
+    }
+
     return tx.salesRecord.update({
       where: { id },
       data: {
         saleDate: new Date(input.saleDate),
         transactionAt: input.transactionAt ? new Date(input.transactionAt) : before.transactionAt ? new Date(before.transactionAt) : null,
         deliveryAt: input.deliveryAt ? new Date(input.deliveryAt) : null,
+        ...identityUpdate,
         tipeId: tipe.id,
         tipeCodeSnapshot: tipe.code,
         tipeNameSnapshot: tipe.name,
@@ -858,6 +918,11 @@ async function updatePrismaSalesRecord(
       include: salesInclude
     });
   });
+  if (stockOptions?.approvalStatus === "approved" && before.approvalStatus === "draft") {
+    await createDeliveryOrderForSale(id).catch((err) => {
+      console.error("[DO] Failed to create delivery order on draft finalization:", err);
+    });
+  }
   return toSale(row);
 }
 
@@ -870,18 +935,32 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     throw Object.assign(new Error("Transaksi yang sudah dibatalkan tidak dapat diedit."), { code: "TRANSACTION_CANCELLED" });
   }
 
-  const transactionAt = input.transactionAt ? jakartaTimestampFromLocal(input.transactionAt) : before.transactionAt;
-  const deliveryAt = input.deliveryAt === undefined ? before.deliveryAt : input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
+  const isDraft = input.isDraft === true;
+  const isKeepingDraft = before.approvalStatus === "draft" && isDraft;
+  const isFinalizingDraft = before.approvalStatus === "draft" && !isDraft;
+
+  const nowIso = new Date().toISOString();
+  let transactionAt: string | undefined = input.transactionAt ? jakartaTimestampFromLocal(input.transactionAt) : before.transactionAt;
+  if (isFinalizingDraft) {
+    const isExplicitlyModified = Boolean(input.transactionAt && before.transactionAt && jakartaTimestampFromLocal(input.transactionAt) !== before.transactionAt);
+    transactionAt = isExplicitlyModified ? jakartaTimestampFromLocal(input.transactionAt!) : nowIso;
+  }
+  let deliveryAt = input.deliveryAt === undefined ? before.deliveryAt : input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
+  if (isFinalizingDraft && deliveryAt && transactionAt && deliveryAt < transactionAt) {
+    deliveryAt = transactionAt;
+  }
   if (deliveryAt && transactionAt && deliveryAt < transactionAt) throw new Error("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi.");
-  const normalizedInput: PenjualanInput = { ...input, transactionAt, deliveryAt, saleDate: transactionAt ? transactionDateKey(transactionAt) : input.saleDate };
+  const computedSaleDate = transactionAt ? transactionDateKey(transactionAt) : input.saleDate;
+  let dueDate = input.dueDate;
+  if (isFinalizingDraft && dueDate && new Date(dueDate) < new Date(computedSaleDate)) {
+    dueDate = computedSaleDate;
+  }
+  const normalizedInput: PenjualanInput = { ...input, transactionAt, deliveryAt, saleDate: computedSaleDate, dueDate };
   const total = saleTotal(normalizedInput);
   const tipe = await findTipe(normalizedInput.tipeId || before.tipeId);
   const rekening = await resolveRekeningForUpdate(before, normalizedInput, tipe);
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
-
-  const isDraft = input.isDraft === true;
-  const isKeepingDraft = before.approvalStatus === "draft" && isDraft;
 
   let newStockReference: string | null = before.stockReleaseReference || `SLM-STOCK-${before.erpReference || id}`;
   let stockReleaseStatus: Sale["stockReleaseStatus"] = before.stockReleaseStatus || "not_required";
@@ -986,9 +1065,14 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
     );
   }
 
+  const identity = (isFinalizingDraft || !before.transactionNumber)
+    ? nextJsonTransactionIdentity(rows, normalizedInput.transactionAt || nowIso)
+    : {};
+
   const after: Sale = {
     ...before,
     ...normalizedInput,
+    ...identity,
     tipeId: tipe.id,
     tipeCodeSnapshot: tipe.code,
     tipeNameSnapshot: tipe.name,
@@ -1016,6 +1100,11 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   };
   rows[index] = after;
   await writeJsonArray(fileName, rows);
+  if (isFinalizingDraft) {
+    await createDeliveryOrderForSale(id).catch((err) => {
+      console.error("[DO] Failed to create delivery order on json draft finalization:", err);
+    });
+  }
   await recordAudit({
     entityType: "sales",
     entityId: id,

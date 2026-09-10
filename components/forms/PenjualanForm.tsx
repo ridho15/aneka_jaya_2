@@ -703,10 +703,20 @@ export function PenjualanForm({
     //   return;
     // }
     const isDraft = submitMode === "draft" || Boolean(data.isDraft);
+    const isFinalizingDraft = isEdit && sale?.approvalStatus === "draft" && !isDraft;
+    const finalTransactionAt = isFinalizingDraft
+      ? (data.transactionAt && data.transactionAt !== defaultDateTimes.transactionAt ? data.transactionAt : nowJakarta())
+      : data.transactionAt;
+    const finalSaleDate = finalTransactionAt ? finalTransactionAt.slice(0, 10) : data.saleDate;
+    const finalDeliveryAt = isFinalizingDraft && (!deliveryTouchedRef.current || data.shippingMethod === "di Tempat" || (data.deliveryAt && data.deliveryAt < (finalTransactionAt || "")))
+      ? finalTransactionAt
+      : data.deliveryAt;
     const payload: PenjualanInput = {
       ...data,
       isDraft,
-      saleDate: data.transactionAt?.slice(0, 10) || data.saleDate,
+      transactionAt: finalTransactionAt,
+      saleDate: finalSaleDate,
+      deliveryAt: finalDeliveryAt,
       items: data.items.map((item) => ({
         ...item,
         discount: itemDiscountAmount(item),
@@ -1625,6 +1635,14 @@ export function PenjualanForm({
                 onClick={() => {
                   setValue("isDraft", false);
                   setSubmitMode("final");
+                  if (isEdit && sale?.approvalStatus === "draft") {
+                    const currentNow = nowJakarta();
+                    setValue("transactionAt", currentNow);
+                    setValue("saleDate", currentNow.slice(0, 10));
+                    if (!deliveryTouchedRef.current || getValues("shippingMethod") === "di Tempat") {
+                      setValue("deliveryAt", currentNow);
+                    }
+                  }
                 }}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               >
