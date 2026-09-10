@@ -1,4 +1,5 @@
-import type { Expense, TempoReceivable } from "@/lib/types/reports";
+import type { Expense } from "@/lib/types/expenses";
+import type { TempoReceivable } from "@/lib/tempo/store";
 
 export type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -102,8 +103,9 @@ export function filterApprovedExpenses(
     if (keyword) {
       const matchVendor = row.vendorName?.toLowerCase().includes(keyword);
       const matchCategory = row.category?.toLowerCase().includes(keyword);
-      const matchNote = row.note?.toLowerCase().includes(keyword);
-      if (!matchVendor && !matchCategory && !matchNote) return false;
+      const matchNotes = row.notes?.toLowerCase().includes(keyword);
+      const matchDescription = row.description?.toLowerCase().includes(keyword);
+      if (!matchVendor && !matchCategory && !matchNotes && !matchDescription) return false;
     }
     if (tipe && row.tipeCodeSnapshot !== tipe) return false;
     if (rekening) {

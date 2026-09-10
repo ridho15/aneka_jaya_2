@@ -467,7 +467,7 @@ export default async function FinanceReportsPage({
           current={currentTempoPage}
           totalPages={tempoTotalPages}
           totalItems={filteredTempo.length}
-          pageSize={PAGE_SIZE}
+          pageSize={FINANCE_PAGE_SIZE}
           hrefFor={(page) => pageHref(params, "tempoPage", page)}
         />
       </section>
@@ -596,9 +596,9 @@ export default async function FinanceReportsPage({
                 <span>Rekening:</span>
                 <span className="font-medium text-slate-800">{row.rekeningNameSnapshot}</span>
               </div>
-              {row.note && (
+              {(row.notes || row.description) && (
                 <p className="mt-1.5 text-xs text-slate-500 italic">
-                  Catatan: {row.note}
+                  Catatan: {row.notes || row.description}
                 </p>
               )}
             </article>
@@ -653,7 +653,7 @@ export default async function FinanceReportsPage({
                   </td>
                   <td className="px-5 py-3.5 font-semibold text-slate-900">{row.vendorName}</td>
                   <td className="px-5 py-3.5 max-w-xs truncate text-xs text-slate-500">
-                    {row.note || "-"}
+                    {row.notes || row.description || "-"}
                   </td>
                   <td className="px-5 py-3.5 text-right font-bold text-slate-900">
                     {rupiah(row.amount)}
@@ -688,7 +688,7 @@ export default async function FinanceReportsPage({
           current={currentExpensePage}
           totalPages={expenseTotalPages}
           totalItems={filteredExpenses.length}
-          pageSize={PAGE_SIZE}
+          pageSize={FINANCE_PAGE_SIZE}
           hrefFor={(page) => pageHref(params, "expensePage", page)}
         />
       </section>

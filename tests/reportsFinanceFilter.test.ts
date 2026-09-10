@@ -9,7 +9,8 @@ import {
   toPage,
   valueOf,
 } from "@/lib/reports/financeFilters";
-import type { Expense, TempoReceivable } from "@/lib/types/reports";
+import type { Expense } from "@/lib/types/expenses";
+import type { TempoReceivable } from "@/lib/tempo/store";
 
 const sampleTempo: TempoReceivable[] = [
   {
@@ -71,8 +72,10 @@ const sampleExpenses: Expense[] = [
     rekeningNameSnapshot: "Kas Walk In",
     category: "Operasional",
     vendorName: "PLN Listrik",
-    note: "Listrik gudang September",
+    description: "Biaya listrik",
+    notes: "Listrik gudang September",
     amount: 500_000,
+    paymentMethod: "TF",
     approvalStatus: "approved",
     createdAt: "2026-09-02T09:00:00.000Z",
   },
@@ -84,8 +87,10 @@ const sampleExpenses: Expense[] = [
     rekeningNameSnapshot: "BCA Operasional",
     category: "Logistik",
     vendorName: "Ekspedisi JNE",
-    note: "Kirim barang ke Surabaya",
+    description: "Kirim barang ke Surabaya",
+    notes: "Resi 123456",
     amount: 250_000,
+    paymentMethod: "TF",
     approvalStatus: "approved",
     createdAt: "2026-09-03T10:00:00.000Z",
   },
@@ -97,8 +102,10 @@ const sampleExpenses: Expense[] = [
     rekeningNameSnapshot: "BCA Operasional",
     category: "Operasional",
     vendorName: "PDAM Air Bersih",
-    note: "Tagihan air kantor",
+    description: "Tagihan air kantor",
+    notes: "Pemakaian Agustus",
     amount: 150_000,
+    paymentMethod: "TF",
     approvalStatus: "approved",
     createdAt: "2026-09-04T11:00:00.000Z",
   },
