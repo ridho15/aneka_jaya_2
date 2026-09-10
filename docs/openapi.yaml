@@ -1035,6 +1035,66 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/ai/finance-forecast:
+    get:
+      summary: Proyeksi arus kas 30 hari dan ringkasan eksekutif keuangan berbasis Gemini AI.
+      description: Khusus role OWNER (Super Admin). Menghasilkan proyeksi likuiditas 30 hari, titik kritis buffer kas, dan analisis CFO.
+      parameters:
+        - name: force
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Force refresh melewati cache in-memory.
+      responses:
+        "200":
+          description: Hasil proyeksi arus kas dan analisis AI keuangan.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/ai/finance-advisor:
+    post:
+      summary: Asisten tanya-jawab keuangan interaktif (AI CFO Advisor).
+      description: Khusus role OWNER (Super Admin). Menjawab pertanyaan strategi keuangan Owner berdasarkan data finansial riil.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  description: Pertanyaan spesifik mengenai performa finansial.
+      responses:
+        "200":
+          description: Jawaban dan rekomendasi tindakan dari AI CFO.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/stocks:
     get:
       summary: Daftar stok ERP.

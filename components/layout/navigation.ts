@@ -137,6 +137,14 @@ export const NAV_LINKS: NavLink[] = [
     permission: "reports.finance_view",
     category: "PUSAT LAPORAN",
   },
+  {
+    href: "/reports/ai-finance",
+    label: "AI Keuangan & CFO",
+    icon: "✨",
+    permission: "reports.finance_view",
+    category: "PUSAT LAPORAN",
+    ownerOnly: true,
+  },
 
   // SISTEM & MONITORING
   {
@@ -215,6 +223,7 @@ export function isNavLinkActive(pathname: string, href: string) {
     (href === "/settings" && pathname.startsWith("/settings")) ||
     (href === "/reports/products" && pathname.startsWith("/reports/products")) ||
     (href === "/reports/stocks" && pathname.startsWith("/reports/stocks")) ||
-    (href === "/reports/finance" && pathname.startsWith("/reports/finance"))
+    (href === "/reports/finance" && pathname.startsWith("/reports/finance")) ||
+    (href === "/reports/ai-finance" && pathname.startsWith("/reports/ai-finance"))
   );
 }
