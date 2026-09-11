@@ -6,7 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npx prisma generate
-RUN npm run build
+RUN npm run build && rm -rf .next/cache
 RUN npm prune --omit=dev --no-audit --no-fund
 
 FROM base AS production
