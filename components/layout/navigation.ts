@@ -140,7 +140,7 @@ export const NAV_LINKS: NavLink[] = [
   {
     href: "/reports/ai-finance",
     label: "AI Keuangan & CFO",
-    icon: "✨",
+    icon: "◈",
     permission: "reports.finance_view",
     category: "PUSAT LAPORAN",
     ownerOnly: true,
