@@ -111,7 +111,7 @@ function layoutHeader(left: string[], right: string[]) {
 }
 
 function getProductCode(productRef: string) {
-  return productRef.split(/\s+/)[0] || productRef;
+  return productRef.trim() || "-";
 }
 
 // function itemLines(
