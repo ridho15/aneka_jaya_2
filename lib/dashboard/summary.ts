@@ -72,6 +72,66 @@ export type PaymentBreakdown = {
   transfers: PaymentBreakdownEntry[];
 };
 
+export type ProfitDetailItem = {
+  productRef: string;
+  quantity: number;
+  unitPrice: number;
+  costPrice: number | null;
+  discount: number;
+  revenue: number;
+  cost: number;
+  grossProfit: number;
+  marginPercent: number;
+  isRealCost: boolean;
+};
+
+export type ProfitDetailSale = {
+  id: string;
+  saleDate: string;
+  transactionNumber?: string;
+  customerName: string;
+  paymentMethod: string;
+  rekeningNameSnapshot?: string;
+  tipeCode: string;
+  revenue: number;
+  cost: number;
+  grossProfit: number;
+  marginPercent: number;
+  hasRealCost: boolean;
+  items: ProfitDetailItem[];
+};
+
+export type ProfitDetailExpense = {
+  id: string;
+  expenseDate: string;
+  category: string;
+  vendorName: string;
+  description: string;
+  rekeningNameSnapshot?: string;
+  amount: number;
+  attachmentUrl?: string;
+  notes?: string;
+};
+
+export type DashboardProfitDetails = {
+  periodLabel: string;
+  from?: string;
+  to?: string;
+  fallbackMarginPercent: number;
+  totalRevenue: number;
+  totalCost: number;
+  grossProfit: number;
+  effectiveMarginPercent: number;
+  totalExpenses: number;
+  nettProfit: number;
+  realCostItemsCount: number;
+  totalItemsCount: number;
+  salesCount: number;
+  expensesCount: number;
+  sales: ProfitDetailSale[];
+  expenses: ProfitDetailExpense[];
+};
+
 // ============================================================================
 // 1. FUNGSI PEMBANTU PENANGGALAN & WAKTU
 // ============================================================================
@@ -562,7 +622,215 @@ export function activityStatusText(log: AuditLog) {
 }
 
 // ============================================================================
-// 14. ALIAS EKSPOR BAHASA INDONESIA (MEMPERMUDAH PEMAHAMAN)
+// 14. RINCIAN SUMBER DATA PROFITABILITAS (AUDIT DETIL)
+// ============================================================================
+
+export function buildDashboardProfitDetails(
+  daftarPenjualan: Sale[],
+  daftarPengeluaran: Expense[],
+  options: {
+    from?: string;
+    to?: string;
+    tipe?: string;
+    fallbackMarginPercent?: number;
+  } = {},
+  daftarProduk: Product[] = []
+): DashboardProfitDetails {
+  const persen = Number.isFinite(options.fallbackMarginPercent)
+    ? Math.min(100, Math.max(0, options.fallbackMarginPercent!))
+    : 0;
+
+  const petaHargaModal = buatPetaHargaModal(daftarProduk);
+
+  // Filter penjualan operasional yang approved dan sesuai filter periode & tipe
+  const operationalSales = daftarPenjualan.filter((s) => {
+    if (s.approvalStatus !== "approved") return false;
+    if (!apakahPenjualanOperasional(s)) return false;
+    if (options.from && s.saleDate < options.from) return false;
+    if (options.to && s.saleDate > options.to) return false;
+    if (options.tipe && kodeTipe(s) !== options.tipe.trim().toUpperCase()) return false;
+    return true;
+  });
+
+  // Filter pengeluaran operasional yang approved dan sesuai filter periode & tipe
+  const operationalExpenses = daftarPengeluaran.filter((e) => {
+    if (e.approvalStatus !== "approved") return false;
+    if (!apakahPengeluaranOperasional(e)) return false;
+    if (options.from && e.expenseDate < options.from) return false;
+    if (options.to && e.expenseDate > options.to) return false;
+    if (options.tipe && kodeTipe(e) !== options.tipe.trim().toUpperCase()) return false;
+    return true;
+  });
+
+  let totalRevenue = 0;
+  let totalCost = 0;
+  let totalGrossProfit = 0;
+  let realCostItemsCount = 0;
+  let totalItemsCount = 0;
+
+  const detailSales: ProfitDetailSale[] = [];
+
+  for (const sale of operationalSales) {
+    const saleTotal = Number(sale.total) || 0;
+    const isMj = sale.source === "MJ" || sale.createdByUserId === "integration:mj";
+    const items: ProfitDetailItem[] = [];
+
+    let saleRevenue = 0;
+    let saleCost = 0;
+    let saleGrossProfit = 0;
+    let saleRealCostItems = 0;
+
+    for (const it of sale.items || []) {
+      const qty = Number(it.quantity) || 0;
+      const price = Number(it.unitPrice) || 0;
+      const disc = Number(it.discount) || 0;
+      const itemRawOmset = Math.max(0, qty * price - disc);
+      // Jika MJ, omset dasar = itemRawOmset / 1.10
+      const itemRevenue = isMj ? Math.round(itemRawOmset / 1.10) : itemRawOmset;
+
+      // Cari modal riil
+      let modalAktif: number | null = null;
+      const modalManual = Number(it.manualProduct?.costPrice);
+      if (Number.isFinite(modalManual) && modalManual > MINIMUM_REAL_COST_THRESHOLD) {
+        modalAktif = modalManual;
+      } else {
+        const kunciId = it.productId ? it.productId.trim().toLowerCase() : "";
+        const kunciRef = it.productRef ? it.productRef.trim().toLowerCase() : "";
+        if (kunciId && petaHargaModal.has(kunciId)) {
+          modalAktif = petaHargaModal.get(kunciId)!;
+        } else if (kunciRef && petaHargaModal.has(kunciRef)) {
+          modalAktif = petaHargaModal.get(kunciRef)!;
+        }
+      }
+
+      const isReal = modalAktif !== null && modalAktif > MINIMUM_REAL_COST_THRESHOLD;
+      let itemCost = 0;
+      let itemGross = 0;
+
+      if (isReal) {
+        itemCost = qty * modalAktif!;
+        itemGross = itemRevenue - itemCost;
+        saleRealCostItems++;
+      } else {
+        itemGross = Math.round((itemRevenue * persen) / 100);
+        itemCost = Math.max(0, itemRevenue - itemGross);
+      }
+
+      const itemMargin = itemRevenue > 0 ? Number(((itemGross / itemRevenue) * 100).toFixed(1)) : 0;
+
+      items.push({
+        productRef: it.productRef,
+        quantity: qty,
+        unitPrice: price,
+        costPrice: isReal ? modalAktif : null,
+        discount: disc,
+        revenue: itemRevenue,
+        cost: itemCost,
+        grossProfit: itemGross,
+        marginPercent: itemMargin,
+        isRealCost: isReal,
+      });
+
+      saleRevenue += itemRevenue;
+      saleCost += itemCost;
+      saleGrossProfit += itemGross;
+      totalItemsCount++;
+    }
+
+    realCostItemsCount += saleRealCostItems;
+
+    // Sisa omset pembulatan atau jika tidak ada item
+    let finalSaleRevenue = saleRevenue;
+    let finalSaleGrossProfit = saleGrossProfit;
+    let finalSaleCost = saleCost;
+
+    const baseSaleTotal = isMj ? Math.round(saleTotal / 1.10) : saleTotal;
+    if (items.length === 0 || saleRevenue === 0) {
+      finalSaleRevenue = baseSaleTotal;
+      finalSaleGrossProfit = Math.round((baseSaleTotal * persen) / 100);
+      finalSaleCost = Math.max(0, finalSaleRevenue - finalSaleGrossProfit);
+    } else if (baseSaleTotal > saleRevenue) {
+      const extra = baseSaleTotal - saleRevenue;
+      const extraGross = Math.round((extra * persen) / 100);
+      const extraCost = Math.max(0, extra - extraGross);
+      finalSaleRevenue += extra;
+      finalSaleGrossProfit += extraGross;
+      finalSaleCost += extraCost;
+    }
+
+    const saleMargin = finalSaleRevenue > 0 ? Number(((finalSaleGrossProfit / finalSaleRevenue) * 100).toFixed(1)) : 0;
+
+    totalRevenue += finalSaleRevenue;
+    totalCost += finalSaleCost;
+    totalGrossProfit += finalSaleGrossProfit;
+
+    detailSales.push({
+      id: sale.id,
+      saleDate: sale.saleDate,
+      transactionNumber: sale.transactionNumber,
+      customerName: sale.customerName,
+      paymentMethod: sale.paymentMethod,
+      rekeningNameSnapshot: sale.rekeningNameSnapshot,
+      tipeCode: kodeTipe(sale),
+      revenue: finalSaleRevenue,
+      cost: finalSaleCost,
+      grossProfit: finalSaleGrossProfit,
+      marginPercent: saleMargin,
+      hasRealCost: saleRealCostItems > 0,
+      items,
+    });
+  }
+
+  const detailExpenses: ProfitDetailExpense[] = [];
+  let totalExpenses = 0;
+
+  for (const exp of operationalExpenses) {
+    const amt = Number(exp.amount) || 0;
+    totalExpenses += amt;
+    detailExpenses.push({
+      id: exp.id,
+      expenseDate: exp.expenseDate,
+      category: exp.category,
+      vendorName: exp.vendorName,
+      description: exp.description,
+      rekeningNameSnapshot: exp.rekeningNameSnapshot || undefined,
+      amount: amt,
+      attachmentUrl: exp.attachmentUrl,
+      notes: exp.notes,
+    });
+  }
+
+  const effectiveMargin = totalRevenue > 0 ? Number(((totalGrossProfit / totalRevenue) * 100).toFixed(2)) : persen;
+  const nettProfit = totalGrossProfit - totalExpenses;
+
+  const periodLabel = options.from && options.to
+    ? `${options.from} s/d ${options.to}`
+    : options.from
+      ? `Mulai ${options.from}`
+      : "Bulan Berjalan";
+
+  return {
+    periodLabel,
+    from: options.from,
+    to: options.to,
+    fallbackMarginPercent: persen,
+    totalRevenue,
+    totalCost,
+    grossProfit: totalGrossProfit,
+    effectiveMarginPercent: effectiveMargin,
+    totalExpenses,
+    nettProfit,
+    realCostItemsCount,
+    totalItemsCount,
+    salesCount: detailSales.length,
+    expensesCount: detailExpenses.length,
+    sales: detailSales.sort((a, b) => b.saleDate.localeCompare(a.saleDate)),
+    expenses: detailExpenses.sort((a, b) => b.expenseDate.localeCompare(a.expenseDate)),
+  };
+}
+
+// ============================================================================
+// 15. ALIAS EKSPOR BAHASA INDONESIA (MEMPERMUDAH PEMAHAMAN)
 // ============================================================================
 
 export const buatRingkasanProfitOperasional = buildOperationalProfitSummary;

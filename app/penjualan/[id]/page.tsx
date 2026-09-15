@@ -65,7 +65,10 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
-          <Link href={`/print/sales/${sale.id}/continuous`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors">Cetak Nota</Link>
+          <Link href={`/penjualan/${sale.id}/invoice`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors">
+            {sale.paymentMethod === "Tempo" ? "Lihat / Simpan Nota Tempo" : "Lihat / Simpan Invoice"}
+          </Link>
+          <Link href={`/print/sales/${sale.id}/continuous`} className="rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors">Cetak Nota</Link>
           {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && (
             <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Edit</Link>
           )}

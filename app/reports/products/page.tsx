@@ -13,7 +13,30 @@ type SearchParams = Promise<{
   endDate?: string;
   keyword?: string;
   sku?: string;
+  page?: string;
+  pageSize?: string;
 }>;
+
+function buildPageHref(
+  params: {
+    startDate?: string;
+    endDate?: string;
+    keyword?: string;
+    sku?: string;
+    pageSize?: string;
+  },
+  targetPage: number,
+) {
+  const q = new URLSearchParams();
+  if (params.startDate) q.set("startDate", params.startDate);
+  if (params.endDate) q.set("endDate", params.endDate);
+  if (params.keyword) q.set("keyword", params.keyword);
+  if (params.sku) q.set("sku", params.sku);
+  if (params.pageSize && params.pageSize !== "25") q.set("pageSize", params.pageSize);
+  if (targetPage > 1) q.set("page", String(targetPage));
+  const qs = q.toString();
+  return `/reports/products${qs ? `?${qs}` : ""}`;
+}
 
 const rupiah = (value: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -46,6 +69,24 @@ export default async function ProductReportsPage({
     productKeyword: keyword,
     sku,
   });
+
+  const pageParam = parseInt(params?.page || "1", 10);
+  const pageSizeParam = parseInt(params?.pageSize || "25", 10);
+  const pageSize = [10, 25, 50, 100].includes(pageSizeParam) ? pageSizeParam : 25;
+  const totalItems = report.items.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const page = Math.min(Math.max(1, isNaN(pageParam) ? 1 : pageParam), totalPages);
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const pagedItems = report.items.slice(startIndex, endIndex);
+
+  const filterState = {
+    startDate,
+    endDate,
+    keyword,
+    sku,
+    pageSize: String(pageSize),
+  };
 
   const exportExcelUrl = `/api/reports/products?startDate=${encodeURIComponent(
     startDate,
@@ -243,15 +284,32 @@ export default async function ProductReportsPage({
               Daftar Penjualan per Produk
             </h3>
             <p className="mt-0.5 text-xs text-slate-500">
-              Menampilkan {report.items.length} produk yang terjual dalam periode
-              ini.
+              Menampilkan {totalItems === 0 ? "0" : `${startIndex + 1} - ${endIndex}`} dari {totalItems} produk yang terjual dalam periode ini.
             </p>
           </div>
+          {totalItems > 0 && (
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <span className="font-medium text-slate-500">Baris:</span>
+              {[25, 50, 100].map((size) => (
+                <Link
+                  key={size}
+                  href={buildPageHref({ ...filterState, pageSize: String(size) }, 1)}
+                  className={`rounded-md px-2.5 py-1 font-semibold transition ${
+                    pageSize === size
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  {size}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Mobile View */}
         <div className="divide-y divide-slate-100 md:hidden">
-          {report.items.map((item, idx) => (
+          {pagedItems.map((item, idx) => (
             <article key={item.productRef} className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -276,7 +334,7 @@ export default async function ProductReportsPage({
             </article>
           ))}
 
-          {report.items.length === 0 && (
+          {pagedItems.length === 0 && (
             <div className="py-12 text-center text-sm text-slate-500">
               Tidak ada data penjualan produk pada rentang tanggal yang dipilih.
             </div>
@@ -299,10 +357,10 @@ export default async function ProductReportsPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {report.items.map((item, index) => (
+              {pagedItems.map((item, index) => (
                 <tr key={item.productRef} className="hover:bg-slate-50/75">
                   <td className="px-5 py-4 text-center font-mono text-xs text-slate-500">
-                    {index + 1}
+                    {startIndex + index + 1}
                   </td>
                   <td className="px-5 py-4 font-mono text-xs font-bold text-slate-800">
                     {item.code}
@@ -328,7 +386,7 @@ export default async function ProductReportsPage({
                 </tr>
               ))}
 
-              {report.items.length === 0 && (
+              {pagedItems.length === 0 && (
                 <tr>
                   <td
                     colSpan={8}
@@ -344,7 +402,7 @@ export default async function ProductReportsPage({
               <tfoot className="border-t-2 border-slate-300 bg-slate-50 font-bold text-slate-900">
                 <tr>
                   <td colSpan={3} className="px-5 py-4 text-center uppercase tracking-wider">
-                    Total Keseluruhan
+                    Total Keseluruhan (Semua {report.summary.uniqueProductsCount} Produk)
                   </td>
                   <td className="px-5 py-4 text-right text-base text-emerald-800">
                     {report.summary.totalQuantity.toLocaleString("id-ID")}
@@ -360,6 +418,45 @@ export default async function ProductReportsPage({
             )}
           </table>
         </div>
+
+        {/* Pagination Controls Footer */}
+        {totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 bg-slate-50/50 px-5 py-4 text-xs text-slate-600 sm:text-sm">
+            <div>
+              <span>
+                Menampilkan <b className="text-slate-900">{startIndex + 1}</b> -{" "}
+                <b className="text-slate-900">{endIndex}</b> dari{" "}
+                <b className="text-slate-900">{totalItems}</b> produk (Halaman {page} dari {totalPages})
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {page > 1 ? (
+                <Link
+                  className="rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+                  href={buildPageHref(filterState, page - 1)}
+                >
+                  Sebelumnya
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                  Sebelumnya
+                </span>
+              )}
+              {page < totalPages ? (
+                <Link
+                  className="rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+                  href={buildPageHref(filterState, page + 1)}
+                >
+                  Berikutnya
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                  Berikutnya
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </section>
     </AppShell>
   );

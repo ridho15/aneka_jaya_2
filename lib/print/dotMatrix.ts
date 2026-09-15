@@ -1,7 +1,10 @@
 import type { Sale } from "@/lib/types/sales";
 import type { Expense } from "@/lib/types/expenses";
 import type { TempoPayment, TempoReceivable } from "@/lib/tempo/store";
-import { formatJakartaDateTimeCompact } from "@/lib/date/jakarta";
+import {
+  formatJakartaDate,
+  formatJakartaDateTimeCompact,
+} from "@/lib/date/jakarta";
 
 export const DOT_MATRIX_WIDTH = 44;
 const LEFT_HEADER_WIDTH = 21;
@@ -444,24 +447,42 @@ export function formatSaleDotMatrix(
             )}${column("TOTAL", 22, "right")}`,
           ];
 
+    const isTempo = sale.paymentMethod === "Tempo";
+    const formattedDueDate = sale.dueDate
+      ? (/^\d{2}\/\d{2}\/\d{4}$/.test(sale.dueDate.trim())
+          ? sale.dueDate.trim()
+          : formatJakartaDate(sale.dueDate))
+      : "-";
+
+    const dateTimeLabel = sale.transactionAt
+      ? formatJakartaDateTimeCompact(sale.transactionAt)
+      : sale.saleDate;
+
+    const headerRows = isTempo
+      ? [
+          twoColumn("Nota Tempo", sale.customerName),
+          truncate(`Jatuh tempo tanggal ${formattedDueDate}`),
+          "",
+          twoColumn(dateTimeLabel, `Bayar ${sale.paymentMethod}`),
+          twoColumn(
+            sale.customerLocation || "-",
+            sale.shippingMethod ? `Kirim ${sale.shippingMethod}` : "",
+          ),
+        ]
+      : infoHeader(
+          "INVOICE PENJUALAN",
+          dateTimeLabel,
+          "",
+          [
+            sale.customerName,
+            sale.customerLocation || "-",
+            `Bayar ${sale.paymentMethod}`,
+            `Kirim ${sale.shippingMethod || "-"}`,
+          ],
+        );
+
     const rows: string[] = [
-      ...infoHeader(
-        "INVOICE PENJUALAN",
-        `${
-          sale.transactionAt
-            ? formatJakartaDateTimeCompact(sale.transactionAt)
-            : sale.saleDate
-        }`,
-        "",
-        [
-          sale.customerName,
-          sale.customerLocation || "-",
-          `Bayar ${sale.paymentMethod}`,
-          sale.paymentMethod === "Tempo"
-            ? `Tempo ${sale.dueDate || "-"}`
-            : `Kirim ${sale.shippingMethod || "-"}`,
-        ],
-      ),
+      ...headerRows,
 
       line("="),
 

@@ -191,7 +191,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
             <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">OPERASIONAL</p>
             <h3 className="text-lg font-bold tracking-tight">Profit Operasional</h3>
           </div>
-          <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href="/settings/profit-slm">Atur Gross Profit {operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}% →</Link>
+          <div className="flex flex-wrap items-center gap-4 text-sm font-semibold">
+            <Link className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:text-emerald-700" href="/dashboard/detail">
+              Lihat Rincian Sumber Data Profit →
+            </Link>
+            <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href="/settings/profit-slm">
+              Atur Gross Profit {operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}% →
+            </Link>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard testId="dashboard-kpi-operational-month-revenue" label="Omset operasional bulan ini" value={formatDashboardMoney(operationalProfit.monthlyRevenue)} change={`${operationalProfit.monthlySalesCount} transaksi operasional`} tone="blue" />

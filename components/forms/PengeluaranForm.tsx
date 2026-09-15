@@ -94,14 +94,20 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
     const defaultRek = rekeningForTipe(defaultTipe.id)[0];
     reset({ expenseDate: todayJakarta(), tipeId: defaultTipe.id, tipeCodeSnapshot: defaultTipe.code, tipeNameSnapshot: defaultTipe.name, rekeningId: defaultRek?.id || "", rekeningNameSnapshot: defaultRek?.name || "", coaId: "Kas", coaNameSnapshot: "Kas", amount: 0, attachmentUrl: "" });
     setFile(undefined);
-    if (result.data?.id) setCreatedExpense({
-      id: String(result.data.id),
-      approvalStatus: result.data.approvalStatus,
-      erpSyncTarget: result.data.erpSyncTarget,
-      erpSyncStatus: result.data.erpSyncStatus,
-      erpReference: result.data.erpReference,
-      retryable: result.data.retryable
-    });
+    if (result.data?.id) {
+      const createdId = String(result.data.id);
+      setCreatedExpense({
+        id: createdId,
+        approvalStatus: result.data.approvalStatus,
+        erpSyncTarget: result.data.erpSyncTarget,
+        erpSyncStatus: result.data.erpSyncStatus,
+        erpReference: result.data.erpReference,
+        retryable: result.data.retryable
+      });
+      setTimeout(() => {
+        router.push(`/pengeluaran/${encodeURIComponent(createdId)}/invoice?created=1`);
+      }, 600);
+    }
     setNotice({ type: "success", message: result.data?.approvalStatus === "pending_approval" ? "Data berhasil disimpan dan menunggu approval." : "Data pengeluaran berhasil disimpan." });
   };
 
@@ -112,7 +118,10 @@ export function PengeluaranForm({ tipes, rekenings, expense }: Props) {
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           {createdExpense.erpReference && <p className="mb-2">Referensi ERP: <code>{createdExpense.erpReference}</code></p>}
           <div className="flex flex-wrap gap-3">
-            <Link href={`/pengeluaran/${createdExpense.id}`} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700">
+            <Link href={`/pengeluaran/${createdExpense.id}/invoice`} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors">
+              Lihat Bukti (PNG / PDF)
+            </Link>
+            <Link href={`/pengeluaran/${createdExpense.id}`} className="rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors">
               Lihat Pengeluaran
             </Link>
             <Link href={`/print/expenses/${createdExpense.id}`} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100">

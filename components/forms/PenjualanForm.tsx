@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   useFieldArray,
   useForm,
+  type FieldErrors,
   type UseFormRegister,
   type UseFormSetValue,
 } from "react-hook-form";
@@ -27,7 +28,7 @@ import type {
 } from "@/lib/business/masterData";
 import { APP_BRAND_NAME, EXTERNAL_ERP_NAME } from "@/lib/appBrand";
 import { useRouter } from "next/navigation";
-import { jakartaDateTimeLocalValue } from "@/lib/date/jakarta";
+import { jakartaDateTimeLocalValue, jakartaTimestampFromLocal } from "@/lib/date/jakarta";
 
 const draftKey = "aneka-jaya-draft-penjualan";
 const rupiah = (value: number) =>
@@ -197,7 +198,8 @@ export function PenjualanForm({
       if (saleRekening) return saleRekening;
     }
     if (!sale && cashWalkInRekening) return cashWalkInRekening;
-    return defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined;
+    if (!sale && defaultTipe) return rekeningForTipe(defaultTipe.id)[0];
+    return undefined;
   }, [
     cashWalkInRekening,
     defaultTipe,
@@ -250,9 +252,10 @@ export function PenjualanForm({
       tipeId: sale?.tipeId || defaultTipe?.id || "",
       tipeCodeSnapshot: sale?.tipeCodeSnapshot || defaultTipe?.code || "",
       tipeNameSnapshot: sale?.tipeNameSnapshot || defaultTipe?.name || "",
-      rekeningId: sale?.rekeningId || defaultRekening?.id || "",
-      rekeningNameSnapshot:
-        sale?.rekeningNameSnapshot || defaultRekening?.name || "",
+      rekeningId: sale ? (sale.rekeningId || "") : (defaultRekening?.id || ""),
+      rekeningNameSnapshot: sale
+        ? (sale.rekeningNameSnapshot || "")
+        : (defaultRekening?.name || ""),
       customerName: sale?.customerName || "Walk In",
       customerLocation: sale?.customerLocation || "Toko",
       shippingMethod: sale?.shippingMethod || "di Tempat",
@@ -272,8 +275,8 @@ export function PenjualanForm({
           productInputMode:
             item.productInputMode || (item.manualProduct ? "manual" : "erp"),
           manualProduct: item.manualProduct,
-          warehouseId: item.warehouseId || "1",
-          warehouseNameSnapshot: item.warehouseNameSnapshot || "Gudang Utama",
+          warehouseId: item.warehouseId || "",
+          warehouseNameSnapshot: item.warehouseNameSnapshot || "",
           rackId: item.rackId,
           rackNameSnapshot: item.rackNameSnapshot,
           unitSnapshot: item.unitSnapshot || "Pcs",
@@ -305,8 +308,13 @@ export function PenjualanForm({
   const paymentMethod = watch("paymentMethod");
   const initialPaymentAmount = watch("initialPaymentAmount") || 0;
   const initialPaymentMethod = watch("initialPaymentMethod");
+  const initialPaymentRekeningId = watch("initialPaymentRekeningId");
   const tipeId = watch("tipeId");
+  const rekeningId = watch("rekeningId");
+  const customerName = watch("customerName");
+  const dueDate = watch("dueDate");
   const transactionAt = watch("transactionAt");
+  const deliveryAt = watch("deliveryAt");
   const selectedTipe = activeTipes.find((tipe) => tipe.id === tipeId);
   const targetsErp = Boolean(
     selectedTipe && erpTypeCodeSet.has(selectedTipe.code.trim().toUpperCase()),
@@ -387,34 +395,126 @@ export function PenjualanForm({
     values.every(
       (item) => item.productInputMode === "manual" || Boolean(item.warehouseId),
     );
-  const releaseQuantitiesReady =
-    !targetsErp ||
-    values.every((item) => {
-      if (item.productInputMode === "manual" || !item.warehouseId) return true;
-      const option = productOptions.find(
-        (row) =>
-          normalizeCode(row.product.code) === normalizeCode(item.productRef),
-      );
-      const stock = option?.stockRows.find(
-        (row) =>
-          row.warehouseId === item.warehouseId &&
-          (row.rackId || "") === (item.rackId || ""),
-      );
-      return (
-        typeof stock?.quantity !== "number" ||
-        Number(item.quantity || 0) <= stock.quantity
-      );
-    });
+  const releaseQuantitiesReady = true;
   const selectedProductsReady =
     values.length > 0 &&
     values.every(isSalesItemReady) &&
-    releaseSelectionsReady &&
-    releaseQuantitiesReady;
+    releaseSelectionsReady;
   const hasManualItems = values.some(
     (item) => item.productInputMode === "manual",
   );
   const dependenciesReady =
     (productState.status === "ready" || allItemsManual) && masterDataReady;
+
+  const isDraftEdit = isEdit && sale?.approvalStatus === "draft";
+
+  const publishBlockingReasons = useMemo(() => {
+    const reasons: string[] = [];
+
+    // 1. Kesiapan Master Data & Produk ERP
+    if (productState.status === "error") {
+      reasons.push("Katalog produk ERP gagal dimuat. Periksa koneksi ke server ERP.");
+    }
+    if (!masterDataReady) {
+      reasons.push("Data tipe pembukuan atau rekening belum siap.");
+    }
+
+    // 2. Kesiapan Rincian Barang
+    if (!values || values.length === 0) {
+      reasons.push("Belum ada barang yang ditambahkan ke pesanan.");
+    } else {
+      values.forEach((item, index) => {
+        const itemNumber = index + 1;
+        const itemLabel = item.productRef?.trim() || `Barang #${itemNumber}`;
+
+        if (item.productInputMode === "manual") {
+          const sku = item.manualProduct?.sku || item.productRef;
+          if (!sku?.trim() || !item.manualProduct?.name?.trim()) {
+            reasons.push(`${itemLabel}: Nama dan SKU barang manual wajib diisi.`);
+          }
+          if (!item.manualProduct?.productCategoryId) {
+            reasons.push(`${itemLabel}: Kategori ERP untuk barang manual wajib dipilih.`);
+          }
+          if (!item.manualProduct?.uomId) {
+            reasons.push(`${itemLabel}: Satuan UOM ERP untuk barang manual wajib dipilih.`);
+          }
+        } else {
+          if (!item.productRef?.trim() || !item.productId?.trim()) {
+            reasons.push(`Barang #${itemNumber}: Belum dipilih dari katalog produk ERP.`);
+          }
+        }
+
+        if (Number(item.quantity || 0) <= 0) {
+          reasons.push(`${itemLabel}: Kuantitas barang harus lebih dari 0.`);
+        }
+
+        // Validasi alokasi gudang saat target mengarah ke ERP (mekanisme setara dengan Create Penjualan)
+        if (targetsErp && item.productInputMode !== "manual") {
+          if (!item.warehouseId) {
+            reasons.push(`${itemLabel}: Lokasi gudang belum dipilih untuk potong stok fisik.`);
+          }
+        }
+      });
+    }
+
+    // 3. Validasi Persyaratan Pembayaran untuk Finalisasi
+    if (paymentMethod === "TF" && !rekeningId && !getValues("transferAccount")) {
+      reasons.push("Pembayaran Transfer (TF): Rekening bank penerima belum dipilih.");
+    }
+
+    if (paymentMethod === "Tempo") {
+      if (!dueDate || Number.isNaN(Date.parse(dueDate))) {
+        reasons.push("Pembayaran Tempo: Tanggal jatuh tempo wajib diisi.");
+      }
+      if (!customerName || customerName.trim().toLowerCase() === "walk in") {
+        reasons.push("Pembayaran Tempo: Nama customer wajib diisi (tidak boleh 'Walk In').");
+      }
+      if (initialPaymentAmount >= total && total > 0) {
+        reasons.push("Pembayaran Tempo: Pembayaran awal (DP) tidak boleh sama atau melebihi total pesanan.");
+      }
+      if (initialPaymentAmount > 0) {
+        if (!initialPaymentMethod) {
+          reasons.push("Pembayaran Tempo: Metode pembayaran awal (DP) wajib dipilih.");
+        }
+        if (!initialPaymentRekeningId) {
+          reasons.push("Pembayaran Tempo: Rekening penerima pembayaran awal (DP) wajib dipilih.");
+        }
+      }
+    }
+
+    // 4. Validasi Waktu Kirim
+    if (deliveryAt && transactionAt) {
+      try {
+        const transIso = jakartaTimestampFromLocal(transactionAt);
+        const delivIso = jakartaTimestampFromLocal(deliveryAt);
+        if (delivIso < transIso) {
+          reasons.push("Waktu pengiriman tidak boleh sebelum waktu transaksi.");
+        }
+      } catch {
+        // Ignored, handled by schema validator
+      }
+    }
+
+    return reasons;
+  }, [
+    customerName,
+    deliveryAt,
+    dependenciesReady,
+    dueDate,
+    getValues,
+    initialPaymentAmount,
+    initialPaymentMethod,
+    initialPaymentRekeningId,
+    masterDataReady,
+    paymentMethod,
+    productOptions,
+    productState.status,
+    rekeningId,
+    targetsErp,
+    total,
+    transactionAt,
+    values,
+  ]);
 
   const addItem = () => {
     const newIndex = fields.length;
@@ -764,9 +864,10 @@ export function PenjualanForm({
       setTimeout(() => router.push("/penjualan/draft"), 800);
       return;
     }
-    if (result.data?.id)
+    if (result.data?.id) {
+      const createdId = String(result.data.id);
       setCreatedSale({
-        id: String(result.data.id),
+        id: createdId,
         transactionNumber: result.data.transactionNumber,
         approvalStatus: result.data.approvalStatus,
         target: result.data.target,
@@ -779,6 +880,10 @@ export function PenjualanForm({
         testReference: result.data.testReference,
         erpReference: result.data.erpReference,
       });
+      setTimeout(() => {
+        router.push(`/penjualan/${encodeURIComponent(createdId)}/invoice?created=1`);
+      }, 600);
+    }
     const defaultRek =
       cashWalkInRekening ??
       (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
@@ -844,8 +949,51 @@ export function PenjualanForm({
     });
   };
 
+  const onInvalid = (fieldErrors: FieldErrors<PenjualanInput>) => {
+    const errorList: string[] = [];
+
+    const extractErrors = (obj: Record<string, unknown>, prefix = "") => {
+      for (const [key, val] of Object.entries(obj)) {
+        if (!val) continue;
+        if (typeof val === "object" && "message" in val && typeof val.message === "string") {
+          errorList.push(prefix ? `${prefix}: ${val.message}` : val.message);
+        } else if (Array.isArray(val)) {
+          val.forEach((item, idx) => {
+            if (item && typeof item === "object") {
+              extractErrors(item as Record<string, unknown>, `Barang #${idx + 1}`);
+            }
+          });
+        } else if (typeof val === "object") {
+          extractErrors(val as Record<string, unknown>, prefix);
+        }
+      }
+    };
+
+    extractErrors(fieldErrors as Record<string, unknown>);
+
+    const summary =
+      errorList.length > 0
+        ? errorList.slice(0, 3).join(" • ") + (errorList.length > 3 ? ` (+${errorList.length - 3} data lainnya)` : "")
+        : "Ada data wajib yang belum lengkap atau tidak valid.";
+
+    setNotice({
+      type: "error",
+      message: `Belum dapat disimpan / dipublish: ${summary}`,
+    });
+
+    // Scroll ke field pertama yang bermasalah agar kasir langsung melihat kolom yang harus diisi
+    const firstKey = Object.keys(fieldErrors)[0];
+    if (firstKey) {
+      const el =
+        document.querySelector(`[name="${firstKey}"]`) ||
+        document.getElementById(firstKey) ||
+        document.getElementById("sale-item-0");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(submit)} className="space-y-5">
+    <form onSubmit={handleSubmit(submit, onInvalid)} className="space-y-5">
       {notice && <Toast {...notice} />}
       {createdSale && (
         <div
@@ -881,8 +1029,16 @@ export function PenjualanForm({
           {createdSale.approvalStatus === "approved" ? (
             <div className="flex flex-wrap gap-3">
               <Link
+                href={`/penjualan/${createdSale.id}/invoice`}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors"
+              >
+                {createdSale.paymentMethod === "Tempo"
+                  ? "Lihat Nota Tempo (PNG / PDF)"
+                  : "Lihat Invoice (PNG / PDF)"}
+              </Link>
+              <Link
                 href={`/penjualan/${createdSale.id}`}
-                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                className="rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors"
               >
                 Lihat Transaksi
               </Link>
@@ -1630,6 +1786,32 @@ export function PenjualanForm({
               </div>
             </dl>
             <div className="sticky bottom-3 z-20 mt-6 space-y-2 rounded-md border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">
+              {/* Notifikasi error duplikat dekat tombol agar langsung terlihat oleh kasir */}
+              {notice && notice.type === "error" && (
+                <div className="mb-2">
+                  <Toast {...notice} onClose={() => setNotice(undefined)} />
+                </div>
+              )}
+
+              {/* Banner diagnostik penyebab draft belum dapat dipublish / difinalisasi */}
+              {isDraftEdit && publishBlockingReasons.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 shadow-xs mb-3">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1.5">
+                    <span className="text-base leading-none">⚠️</span>
+                    <span>Penyebab Draft Belum Dapat Dipublish ({publishBlockingReasons.length}):</span>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-1 text-amber-900">
+                    {publishBlockingReasons.map((reason, idx) => (
+                      <li key={idx} className="leading-relaxed">
+                        {reason}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-[11px] font-medium text-amber-800">
+                    Lengkapi data di atas agar dapat difinalisasi &amp; memotong stok di gudang Aneka Jaya. Anda tetap dapat menekan &quot;Perbarui Draft&quot; untuk menyimpan sementara.
+                  </p>
+                </div>
+              )}
               <Button
                 type="submit"
                 onClick={() => {

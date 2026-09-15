@@ -99,7 +99,7 @@ describe("dot matrix print formatter", () => {
         approvalStatus: "approved",
         total: 250000,
         items: [
-          { productRef: "BRG-001 Kain Katun", quantity: 2, unitPrice: 125000, discount: 0, unitSnapshot: "Roll" },
+          { productRef: "BRG-001", quantity: 2, unitPrice: 125000, discount: 0, unitSnapshot: "Roll" },
         ],
       },
       { itemLayout: "single" },
@@ -149,10 +149,11 @@ describe("dot matrix print formatter", () => {
     });
 
     expectFixedWidth(text);
-    expect(text).toContain("INVOICE PENJUALAN");
+    expect(text).toContain("Nota Tempo");
+    expect(text).not.toContain("INVOICE PENJUALAN");
+    expect(text).toContain("Jatuh tempo tanggal 04/07/2026");
     expect(text).toContain("Toko Contoh");
     expect(text).toContain("Rp 300.000");
-    expect(text).toContain("2026-07-04");
     expect(text).toContain("DP:");
     expect(text).toContain("SISA TEMPO");
     expect(text).not.toContain("approved");

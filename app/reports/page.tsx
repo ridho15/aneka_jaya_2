@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 const rupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 
-export default async function ReportsPage({ searchParams }: { searchParams?: Promise<{ date?: string }> }) {
+export default async function ReportsPage({ searchParams }: { searchParams?: Promise<{ date?: string; page?: string }> }) {
   const role = await getCurrentRole();
   if (!can(role, "reports.view")) redirect("/");
 
@@ -25,6 +25,23 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
   const openTempo = tempo.filter((row) => !["paid", "cancelled", "written_off"].includes(row.status));
   const reportText = formatDailyReportText(summary, openTempo, new Date(`${selectedDate}T12:00:00+07:00`));
   const canSeeQaNote = role === "OWNER";
+
+  const pageParam = parseInt(params?.page || "1", 10);
+  const PAGE_SIZE = 15;
+  const totalPaidSales = summary.paidSales.length;
+  const totalPages = Math.max(1, Math.ceil(totalPaidSales / PAGE_SIZE));
+  const page = Math.min(Math.max(1, isNaN(pageParam) ? 1 : pageParam), totalPages);
+  const startIndex = (page - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, totalPaidSales);
+  const pagedPaidSales = summary.paidSales.slice(startIndex, endIndex);
+
+  function pageHref(targetPage: number) {
+    const q = new URLSearchParams();
+    if (selectedDate) q.set("date", selectedDate);
+    if (targetPage > 1) q.set("page", String(targetPage));
+    const qs = q.toString();
+    return `/reports${qs ? `?${qs}` : ""}`;
+  }
 
   return (
     <AppShell>
@@ -94,10 +111,12 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
         <section className="aj-surface">
           <div className="border-b border-slate-100 p-5">
             <p className="font-bold">Transaksi paid {selectedDate}</p>
-            <p className="mt-1 text-sm text-slate-500">Hanya Cash dan TF approved. Transaksi QA tidak ditampilkan.</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Menampilkan {totalPaidSales === 0 ? "0" : `${startIndex + 1} - ${endIndex}`} dari {totalPaidSales} transaksi (Hanya Cash &amp; TF approved).
+            </p>
           </div>
           <div data-testid="reports-mobile-cards" className="space-y-3 p-4 md:hidden">
-            {summary.paidSales.map((sale) => (
+            {pagedPaidSales.map((sale) => (
               <article key={sale.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -112,7 +131,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
                 </div>
               </article>
             ))}
-            {summary.paidSales.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Tidak ada transaksi paid pada tanggal ini.</p>}
+            {pagedPaidSales.length === 0 && <p className="py-8 text-center text-sm text-slate-500">Tidak ada transaksi paid pada tanggal ini.</p>}
           </div>
           <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full text-left text-sm">
@@ -126,7 +145,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
                 </tr>
               </thead>
               <tbody>
-                {summary.paidSales.map((sale) => (
+                {pagedPaidSales.map((sale) => (
                   <tr key={sale.id} className="border-b border-slate-100">
                     <td className="px-5 py-4 font-semibold">{sale.customerName}</td>
                     <td className="px-5 py-4">{sale.tipeCodeSnapshot || "W"}</td>
@@ -135,7 +154,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
                     <td className="px-5 py-4 text-right">{rupiah(sale.total)}</td>
                   </tr>
                 ))}
-                {summary.paidSales.length === 0 && (
+                {pagedPaidSales.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-5 py-10 text-center text-slate-500">Tidak ada transaksi paid pada tanggal ini.</td>
                   </tr>
@@ -143,6 +162,43 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Pro
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls Footer */}
+          {totalPaidSales > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-100 bg-slate-50/50 px-5 py-4 text-xs text-slate-600 sm:text-sm">
+              <div>
+                <span>
+                  Halaman <b className="text-slate-900">{page}</b> dari <b className="text-slate-900">{totalPages}</b> ({totalPaidSales} transaksi)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {page > 1 ? (
+                  <Link
+                    className="rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+                    href={pageHref(page - 1)}
+                  >
+                    Sebelumnya
+                  </Link>
+                ) : (
+                  <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                    Sebelumnya
+                  </span>
+                )}
+                {page < totalPages ? (
+                  <Link
+                    className="rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+                    href={pageHref(page + 1)}
+                  >
+                    Berikutnya
+                  </Link>
+                ) : (
+                  <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                    Berikutnya
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="aj-surface overflow-hidden">

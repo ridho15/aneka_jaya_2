@@ -46,7 +46,8 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/pengeluaran" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
-          <Link href={`/print/expenses/${expense.id}`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Cetak</Link>
+          <Link href={`/pengeluaran/${expense.id}/invoice`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors">Lihat / Simpan Bukti</Link>
+          <Link href={`/print/expenses/${expense.id}`} className="rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors">Cetak</Link>
           {canManage && expense.approvalStatus !== "cancelled" && <Link href={`/pengeluaran/${expense.id}/edit`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Edit</Link>}
         </div>
       </div>
