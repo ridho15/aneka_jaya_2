@@ -114,6 +114,7 @@ type CreatedSale = {
   retryable?: boolean;
   testReference?: string;
   erpReference?: string;
+  paymentMethod?: string;
 };
 type ProductState =
   | { status: "loading" }
@@ -879,6 +880,7 @@ export function PenjualanForm({
         retryable: result.data.retryable === true,
         testReference: result.data.testReference,
         erpReference: result.data.erpReference,
+        paymentMethod: result.data.paymentMethod || data.paymentMethod,
       });
       setTimeout(() => {
         router.push(`/penjualan/${encodeURIComponent(createdId)}/invoice?created=1`);
