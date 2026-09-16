@@ -1313,7 +1313,7 @@ export function PenjualanForm({
               onRetry={refreshProducts}
             />
             <StockDependencyState state={stockState} />
-            <div className="hidden grid-cols-[minmax(0,2fr)_78px_120px_100px_120px] gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 md:grid sm:px-6">
+            <div className="hidden grid-cols-[minmax(0,2fr)_78px_135px_95px_135px] gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 md:grid sm:px-6">
               <span>Barang</span>
               <span>Qty</span>
               <span>Harga satuan</span>
@@ -1456,7 +1456,7 @@ export function PenjualanForm({
                         </span>
                       )}
                     </div>
-                    <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_120px_100px_120px]">
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,2fr)_78px_135px_95px_135px]">
                       <Field
                         label="Barang"
                         error={
@@ -1658,10 +1658,14 @@ export function PenjualanForm({
                         />
                       </Field>
                       <Field
-                        label="Harga"
+                        label="Harga satuan"
                         error={errors.items?.[index]?.unitPrice?.message}
                       >
                         <MoneyInput
+                          id={`items-${index}-unitPrice`}
+                          name={`items.${index}.unitPrice`}
+                          placeholder="0"
+                          title="Harga satuan (dapat diedit)"
                           value={values[index]?.unitPrice}
                           min={0}
                           onValueChange={(value) => {

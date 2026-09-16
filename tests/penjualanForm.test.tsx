@@ -81,4 +81,14 @@ describe("PenjualanForm Cash rekening defaults", () => {
     expect(html).toContain('<option value="legacy-cash">Legacy Cash</option>');
     expect(html).toContain('<option value="cash-w">Kas Walk In</option>');
   });
+
+  it("renders editable Harga satuan input field with proper attributes on sales items", () => {
+    const html = renderToStaticMarkup(<PenjualanForm tipes={tipes} rekenings={rekenings} sale={sale} />);
+
+    expect(html).toContain("Harga satuan");
+    expect(html).toMatch(/name="items\.0\.unitPrice"/);
+    expect(html).toMatch(/id="items-0-unitPrice"/);
+    expect(html).toMatch(/title="Harga satuan \(dapat diedit\)"/);
+    expect(html).toContain('value="10.000"');
+  });
 });
