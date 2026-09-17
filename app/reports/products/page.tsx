@@ -122,6 +122,13 @@ export default async function ProductReportsPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 text-xs font-semibold shadow-xs">
+            <Link href="/reports" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Harian</Link>
+            <Link href="/reports/customers" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Customer</Link>
+            <Link href="/reports/products" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-white shadow-xs">Produk</Link>
+            <Link href="/reports/stocks" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Stok</Link>
+            <Link href="/reports/finance" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Finance</Link>
+          </div>
           <a
             href={exportExcelUrl}
             className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 shadow-xs transition hover:bg-emerald-100 sm:text-sm"

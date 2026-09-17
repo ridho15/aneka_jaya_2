@@ -117,6 +117,13 @@ export const NAV_LINKS: NavLink[] = [
     category: "PUSAT LAPORAN",
   },
   {
+    href: "/reports/customers",
+    label: "Laporan Customer",
+    icon: "◪",
+    permission: "reports.view",
+    category: "PUSAT LAPORAN",
+  },
+  {
     href: "/reports/products",
     label: "Laporan Produk",
     icon: "▥",
@@ -221,6 +228,7 @@ export function isNavLinkActive(pathname: string, href: string) {
     (href === "/barang" && pathname.startsWith("/barang")) ||
     (href === "/tempo" && pathname.startsWith("/tempo")) ||
     (href === "/settings" && pathname.startsWith("/settings")) ||
+    (href === "/reports/customers" && pathname.startsWith("/reports/customers")) ||
     (href === "/reports/products" && pathname.startsWith("/reports/products")) ||
     (href === "/reports/stocks" && pathname.startsWith("/reports/stocks")) ||
     (href === "/reports/finance" && pathname.startsWith("/reports/finance")) ||

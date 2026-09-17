@@ -166,7 +166,15 @@ describe("sales store normalized persistence", () => {
     const expectedWhere = expect.objectContaining({
       paymentMethod: "TF",
       approvalStatus: "approved",
-      AND: [expect.objectContaining({ OR: [{ rekeningId: "bca" }, { rekeningNameSnapshot: "bca" }, { transferAccount: "bca" }] })]
+      AND: [
+        expect.objectContaining({
+          OR: [
+            { rekeningId: "bca" },
+            { rekeningNameSnapshot: { contains: "bca", mode: "insensitive" } },
+            { transferAccount: { contains: "bca", mode: "insensitive" } }
+          ]
+        })
+      ]
     });
     expect(mocks.prisma.salesRecord.count).toHaveBeenCalledWith({ where: expectedWhere });
     expect(mocks.prisma.salesRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expectedWhere }));

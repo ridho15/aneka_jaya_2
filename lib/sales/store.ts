@@ -201,14 +201,18 @@ function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = 
     if (filters.from) where.saleDate.gte = dateStart(filters.from);
     if (filters.to) where.saleDate.lte = dateEnd(filters.to);
   }
-  if (filters.tipe) where.OR = [{ tipeCodeSnapshot: filters.tipe }, { tipeId: filters.tipe }];
+  if (filters.tipe) {
+    appendSalesWhereAnd(where, {
+      OR: [{ tipeCodeSnapshot: filters.tipe }, { tipeId: filters.tipe }],
+    });
+  }
   if (filters.paymentMethod) where.paymentMethod = filters.paymentMethod;
   if (filters.rekening) {
     appendSalesWhereAnd(where, {
       OR: [
         { rekeningId: filters.rekening },
-        { rekeningNameSnapshot: filters.rekening },
-        { transferAccount: filters.rekening }
+        { rekeningNameSnapshot: { contains: filters.rekening, mode: "insensitive" } },
+        { transferAccount: { contains: filters.rekening, mode: "insensitive" } }
       ]
     });
   }
@@ -223,7 +227,8 @@ function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = 
       { customerLocation: { contains: keyword, mode: "insensitive" } },
       { testReference: { contains: keyword, mode: "insensitive" } },
       { erpReference: { contains: keyword, mode: "insensitive" } },
-      { createdByNameSnapshot: { contains: keyword, mode: "insensitive" } }
+      { createdByNameSnapshot: { contains: keyword, mode: "insensitive" } },
+      { items: { some: { productRef: { contains: keyword, mode: "insensitive" } } } }
     ];
     appendSalesWhereAnd(where, { OR: keywordOr });
   }
@@ -248,13 +253,29 @@ export function filterSalesRecordsInMemory(sales: Sale[], filters: SalesRecordFi
     if (filters.tipe && (sale.tipeCodeSnapshot || sale.tipeId || "") !== filters.tipe) return false;
     if (filters.paymentMethod && sale.paymentMethod !== filters.paymentMethod) return false;
     if (filters.rekening) {
-      const rekeningValues = [sale.rekeningId, sale.rekeningNameSnapshot, sale.transferAccount].filter(Boolean);
-      if (!rekeningValues.includes(filters.rekening)) return false;
+      const target = filters.rekening.toLowerCase();
+      const rekeningValues = [sale.rekeningId, sale.rekeningNameSnapshot, sale.transferAccount]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+      if (!rekeningValues.some((v) => v === target || v.includes(target))) return false;
     }
     if (filters.approvalStatus && (sale.approvalStatus || "approved") !== filters.approvalStatus) return false;
     if (filters.syncStatus && (sale.syncStatus || "local") !== filters.syncStatus) return false;
     if (keyword) {
-      const haystack = [sale.id, sale.transactionNumber, sale.customerName, sale.customerLocation, sale.testReference, sale.erpReference, sale.createdByNameSnapshot].filter(Boolean).join(" ").toLowerCase();
+      const itemsHaystack = (sale.items || []).map((i) => i.productRef).join(" ");
+      const haystack = [
+        sale.id,
+        sale.transactionNumber,
+        sale.customerName,
+        sale.customerLocation,
+        sale.testReference,
+        sale.erpReference,
+        sale.createdByNameSnapshot,
+        itemsHaystack
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
       if (!haystack.includes(keyword)) return false;
     }
     return true;

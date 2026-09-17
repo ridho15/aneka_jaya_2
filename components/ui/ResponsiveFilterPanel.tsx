@@ -7,6 +7,7 @@ import { useEffect, useId, useState } from "react";
 type ResponsiveFilterPanelProps = {
   title: string;
   resetHref: string;
+  action?: string;
   children: ReactNode;
   activeFilters?: string[];
   emptyText?: string;
@@ -20,6 +21,7 @@ type ResponsiveFilterPanelProps = {
 export function ResponsiveFilterPanel({
   title,
   resetHref,
+  action,
   children,
   activeFilters = [],
   emptyText = "Filter aktif: semua data.",
@@ -32,6 +34,7 @@ export function ResponsiveFilterPanel({
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const activeCount = activeFilters.length;
+  const formAction = action || resetHref;
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +63,7 @@ export function ResponsiveFilterPanel({
       </div>
 
       <div className="hidden p-5 md:block">
-        <form className={formClassName}>
+        <form action={formAction} method="GET" className={formClassName}>
           {children}
           <FilterActions resetHref={resetHref} submitLabel={submitLabel} className={actionsClassName} />
         </form>
@@ -85,7 +88,7 @@ export function ResponsiveFilterPanel({
                 x
               </button>
             </div>
-            <form className="max-h-[calc(88vh-73px)] overflow-y-auto p-5" onSubmit={() => setOpen(false)}>
+            <form action={formAction} method="GET" className="max-h-[calc(88vh-73px)] overflow-y-auto p-5" onSubmit={() => setOpen(false)}>
               <div className="grid gap-3">
                 {children}
               </div>
