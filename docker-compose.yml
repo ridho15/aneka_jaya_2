@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "20m"
+    max-file: "3"
+
 services:
   slm-gateway:
     container_name: slm-gateway
@@ -11,6 +17,7 @@ services:
       AUTH_GATEWAY_APP_ORIGIN: http://slm-app:3000
       AUTH_GATEWAY_HOST: "0.0.0.0"
       AUTH_GATEWAY_PORT: "3001"
+    logging: *default-logging
     depends_on:
       slm-app:
         condition: service_started
@@ -25,6 +32,7 @@ services:
       - .env.local
     environment:
       DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
+    logging: *default-logging
     depends_on:
       slm-postgres:
         condition: service_healthy
@@ -98,6 +106,7 @@ services:
       POSTGRES_DB: slm
       POSTGRES_USER: slm
       POSTGRES_PASSWORD: slm
+    logging: *default-logging
     volumes:
       - slm_postgres:/var/lib/postgresql/data
     healthcheck:
