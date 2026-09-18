@@ -91,4 +91,14 @@ describe("PenjualanForm Cash rekening defaults", () => {
     expect(html).toMatch(/title="Harga satuan \(dapat diedit\)"/);
     expect(html).toContain('value="10.000"');
   });
+
+  it("renders No. HP customer input field", () => {
+    const html = renderToStaticMarkup(<PenjualanForm tipes={tipes} rekenings={rekenings} sale={{ ...sale, customerPhone: "0812345678" }} />);
+
+    expect(html).toContain("No. HP customer");
+    expect(html).toMatch(/name="customerPhone"/);
+    expect(html).toContain('placeholder="08xxx"');
+  });
+
 });
+

@@ -22,6 +22,7 @@ export const penjualanSchema = z.object({
   rekeningId: z.string().trim().max(150).optional(),
   rekeningNameSnapshot: z.string().trim().max(150).optional(),
   customerName: z.preprocess((value) => !String(value ?? "").trim() ? "Walk In" : value, z.string().trim().max(150)),
+  customerPhone: z.string().trim().max(25).optional(),
   customerLocation: z.preprocess((value) => !String(value ?? "").trim() ? "Toko" : value, z.string().trim().max(200)),
   deliveryDate: z.string().optional(),
   shippingMethod: z.preprocess((value) => !String(value ?? "").trim() ? "di Tempat" : value, z.string().trim().max(100)),

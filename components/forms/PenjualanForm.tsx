@@ -258,6 +258,7 @@ export function PenjualanForm({
         ? (sale.rekeningNameSnapshot || "")
         : (defaultRekening?.name || ""),
       customerName: sale?.customerName || "Walk In",
+      customerPhone: sale?.customerPhone || "",
       customerLocation: sale?.customerLocation || "Toko",
       shippingMethod: sale?.shippingMethod || "di Tempat",
       paymentMethod: sale?.paymentMethod || "Cash",
@@ -901,6 +902,7 @@ export function PenjualanForm({
       rekeningId: defaultRek?.id || "",
       rekeningNameSnapshot: defaultRek?.name || "",
       customerName: "Walk In",
+      customerPhone: "",
       customerLocation: "Toko",
       shippingMethod: "di Tempat",
       paymentMethod: "Cash",
@@ -1132,6 +1134,9 @@ export function PenjualanForm({
               </Field>
               <Field label="Nama customer" error={errors.customerName?.message}>
                 <Input placeholder="Walk In" {...register("customerName")} />
+              </Field>
+              <Field label="No. HP customer">
+                <Input placeholder="08xxx" {...register("customerPhone")} />
               </Field>
               <Field label="Lokasi customer">
                 <Input placeholder="Toko" {...register("customerLocation")} />

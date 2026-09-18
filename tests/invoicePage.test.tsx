@@ -102,6 +102,47 @@ describe("SalesInvoicePage (Server Component)", () => {
     expect(html).toContain("Transaksi penjualan berhasil disimpan!");
   });
 
+  it("renders dedicated customerPhone in invoice view", async () => {
+    mocks.getCurrentUser.mockResolvedValue({
+      id: "u-1",
+      name: "Admin User",
+      role: "ADMIN",
+    });
+
+    mocks.getSalesRecordForUser.mockResolvedValue({
+      id: "sale-789",
+      saleDate: "2026-09-18",
+      transactionNumber: "0926-2001",
+      customerName: "Budi Santoso",
+      customerPhone: "081234567890",
+      customerLocation: "Surabaya",
+      items: [
+        {
+          productRef: "PROD-1",
+          quantity: 2,
+          unitPrice: 50000,
+          discount: 0,
+        },
+      ],
+      total: 100000,
+      paymentMethod: "Cash",
+    });
+
+    mocks.listAllRekeningAccounts.mockResolvedValue([]);
+
+    const element = await SalesInvoicePage({
+      params: Promise.resolve({ id: "sale-789" }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const html = renderToStaticMarkup(element);
+
+    expect(html).toContain("Budi Santoso");
+    expect(html).toContain("081234567890");
+    expect(html).toContain("Telp: 081234567890");
+  });
+
+
   it("redirects unauthorized roles without permission to root", async () => {
     mocks.getCurrentUser.mockResolvedValue({
       id: "u-viewer",

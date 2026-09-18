@@ -62,4 +62,26 @@ describe("penjualanSchema payment rekening validation", () => {
   it("rejects an initial payment for non-Tempo transactions", () => {
     expect(penjualanSchema.safeParse({ ...baseInput, paymentMethod: "Cash", initialPaymentAmount: 1_000 }).success).toBe(false);
   });
+
+  it("accepts and trims optional customerPhone", () => {
+    const result = penjualanSchema.safeParse({
+      ...baseInput,
+      paymentMethod: "Cash",
+      customerPhone: "  081234567890  ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.customerPhone).toBe("081234567890");
+    }
+  });
+
+  it("rejects customerPhone that exceeds 25 characters", () => {
+    const result = penjualanSchema.safeParse({
+      ...baseInput,
+      paymentMethod: "Cash",
+      customerPhone: "0812345678901234567890123456",
+    });
+    expect(result.success).toBe(false);
+  });
 });
+

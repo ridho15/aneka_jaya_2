@@ -176,6 +176,7 @@ model SalesRecord {
   tipeCodeSnapshot      String
   tipeNameSnapshot      String
   customerName          String
+  customerPhone         String?
   customerLocation      String?
   shippingMethod        String?
   paymentMethod         String

@@ -19,19 +19,21 @@ export const dynamic = "force-dynamic";
 function resolveCustomer(sale: Sale): InvoiceCustomer {
   const name = sale.customerName || "Walk In";
   let city = "";
-  let phone = "";
+  let phone = sale.customerPhone || "";
   let address = "";
 
   const location = (sale.customerLocation || "").trim();
   const notes = (sale.notes || "").trim();
 
-  // Extract phone number from location or notes
-  const combined = `${location} ${notes}`;
-  const phoneMatch = combined.match(
-    /(?:Telp:?|WA:?|HP:?|No\.?:?)?\s*(08\d{8,12}|\+62\d{9,13})/i,
-  );
-  if (phoneMatch) {
-    phone = phoneMatch[1];
+  // If no dedicated phone, try to extract from location or notes
+  if (!phone) {
+    const combined = `${location} ${notes}`;
+    const phoneMatch = combined.match(
+      /(?:Telp:?|WA:?|HP:?|No\.?:?)?\s*(08\d{8,12}|\+62\d{9,13})/i,
+    );
+    if (phoneMatch) {
+      phone = phoneMatch[1];
+    }
   }
 
   if (location && location !== "Toko") {

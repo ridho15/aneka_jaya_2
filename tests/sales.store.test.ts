@@ -131,6 +131,7 @@ describe("sales store normalized persistence", () => {
       tipeCodeSnapshot: "W",
       tipeNameSnapshot: "Walk In",
       customerName: "Ani",
+      customerPhone: "081234567890",
       customerLocation: "Toko",
       shippingMethod: "di Tempat",
       paymentMethod: "Cash",
@@ -146,12 +147,15 @@ describe("sales store normalized persistence", () => {
 
     expect(mocks.prisma.salesRecord.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
+        customerName: "Ani",
+        customerPhone: "081234567890",
         rekeningId: "cash-w",
         rekeningNameSnapshot: "Kas Walk In",
         items: { create: [expect.objectContaining({ productRef: "P-2", sortOrder: 0 })] }
       })
     }));
   });
+
 
   it("filters paginated sales by rekening together with payment and approval status", async () => {
     mocks.prisma.salesRecord.count.mockResolvedValue(1);
