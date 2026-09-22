@@ -470,7 +470,7 @@ export function DeliveryOrderDetailView({
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-white text-xs font-semibold uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="w-10 px-4 py-3 text-center">
+                <th className="w-10 px-3 py-3 text-center">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -481,6 +481,7 @@ export function DeliveryOrderDetailView({
                     className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
                 </th>
+                <th className="w-10 px-2 py-3 text-center">No</th>
                 <th className="px-4 py-3">Produk & SKU</th>
                 <th className="px-4 py-3">Lokasi / Rak Gudang</th>
                 <th className="px-4 py-3 text-right">Quantity</th>
@@ -489,7 +490,7 @@ export function DeliveryOrderDetailView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {detail.items.map((item) => {
+              {detail.items.map((item, index) => {
                 const isChecked = selectedItemIds.includes(item.id);
                 return (
                   <tr
@@ -499,13 +500,16 @@ export function DeliveryOrderDetailView({
                       isChecked ? "bg-emerald-50/50" : "hover:bg-slate-50/80"
                     }`}
                   >
-                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="w-10 px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleItem(item.id)}
                         className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                       />
+                    </td>
+                    <td className="w-10 px-2 py-3 text-center text-xs font-semibold text-slate-600 tabular-nums">
+                      {index + 1}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-slate-900">{item.productNameSnapshot}</div>

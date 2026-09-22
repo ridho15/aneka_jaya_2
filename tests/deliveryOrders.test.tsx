@@ -472,7 +472,13 @@ describe("DeliveryOrderDetailView UI", () => {
 
     // Ship button is disabled when 0 items are selected
     expect(html).toContain("disabled");
+
+    // Number column header and row numbers are rendered
+    expect(html).toContain(">No</th>");
+    expect(html).toContain(">1</td>");
+    expect(html).toContain(">2</td>");
   });
+
 
   it("masks DO number for non-owner roles and displays it only for OWNER", () => {
     // DELIVERY_DRIVER view
