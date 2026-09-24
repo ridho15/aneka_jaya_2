@@ -16,6 +16,7 @@ type AnikaVerifyUserResponse = {
     email?: unknown;
     username?: unknown;
     roles?: unknown;
+    posisi?: unknown;
     allowed_apps?: unknown;
     status?: unknown;
   };
@@ -30,14 +31,78 @@ type AnikaVerifyUserResponse = {
   };
 };
 
-function roleFromAnika(value: unknown): Role {
+export function roleFromAnika(value: unknown, posisiValue?: unknown): Role {
   const roles = Array.isArray(value) ? value.map((role) => String(role).trim().toLowerCase()) : [];
-  if (roles.includes("super admin") || roles.includes("owner")) return "OWNER";
+  const posisi = typeof posisiValue === "string" ? posisiValue.trim().toLowerCase() : "";
+
+  if (roles.includes("super admin") || roles.includes("owner") || roles.includes("it support")) return "OWNER";
   if (roles.includes("supervisor")) return "SUPERVISOR";
-  if (roles.includes("admin")) return "ADMIN";
-  if (roles.includes("finance")) return "FINANCE";
-  if (roles.includes("manager")) return "MANAGER";
-  if (roles.includes("delivery driver") || roles.includes("delivery_driver")) return "DELIVERY_DRIVER";
+  if (
+    roles.includes("admin") ||
+    roles.includes("admin inventory") ||
+    roles.includes("kasir") ||
+    roles.includes("sales") ||
+    roles.includes("purchasing")
+  ) {
+    return "ADMIN";
+  }
+  if (
+    roles.includes("finance") ||
+    roles.includes("finance manager") ||
+    roles.includes("admin keuangan") ||
+    roles.includes("accounting")
+  ) {
+    return "FINANCE";
+  }
+  if (
+    roles.includes("manager") ||
+    roles.includes("sales manager") ||
+    roles.includes("inventory manager") ||
+    roles.includes("purchasing manager")
+  ) {
+    return "MANAGER";
+  }
+  if (
+    roles.includes("delivery driver") ||
+    roles.includes("delivery_driver") ||
+    roles.includes("delivery") ||
+    roles.includes("driver") ||
+    roles.includes("kurir") ||
+    roles.includes("petugas do") ||
+    roles.includes("petugas_do") ||
+    roles.includes("warehouse staff") ||
+    roles.includes("warehouse_staff") ||
+    roles.includes("staff gudang") ||
+    roles.includes("gudang") ||
+    roles.includes("checker") ||
+    roles.includes("logistik")
+  ) {
+    return "DELIVERY_DRIVER";
+  }
+
+  // Fallback ke field "Posisi" jika Level/roles di ERP belum dipilih atau kosong
+  if (posisi) {
+    if (posisi.includes("super admin") || posisi.includes("owner")) return "OWNER";
+    if (posisi.includes("supervisor")) return "SUPERVISOR";
+    if (
+      posisi.includes("driver") ||
+      posisi.includes("kurir") ||
+      posisi.includes("delivery") ||
+      posisi.includes("petugas do") ||
+      posisi.includes("do") ||
+      posisi.includes("gudang") ||
+      posisi.includes("warehouse") ||
+      posisi.includes("checker") ||
+      posisi.includes("pengiriman") ||
+      posisi.includes("logistik")
+    ) {
+      return "DELIVERY_DRIVER";
+    }
+    if (posisi.includes("finance") || posisi.includes("keuangan") || posisi.includes("akunting") || posisi.includes("accounting")) return "FINANCE";
+    if (posisi.includes("manager")) return "MANAGER";
+    if (posisi.includes("admin") || posisi.includes("kasir") || posisi.includes("sales")) return "ADMIN";
+  }
+
   return "VIEWER";
 }
 
@@ -114,7 +179,7 @@ export async function loginWithAnikaErp(input: unknown) {
   const issuedEmail = typeof userData.email === "string" ? userData.email.trim().toLowerCase() : identifier.toLowerCase();
   const externalId = `anika:${String(userData.id || (userData as { username?: unknown }).username || issuedEmail)}`;
   const name = typeof userData.name === "string" && userData.name.trim() ? userData.name.trim() : issuedEmail;
-  const role = roleFromAnika(userData.roles);
+  const role = roleFromAnika(userData.roles, (userData as { posisi?: unknown }).posisi);
   const existing = await prisma.user.findFirst({ where: { OR: [{ externalId }, { email: issuedEmail }] } });
   const user = existing
     ? await prisma.user.update({

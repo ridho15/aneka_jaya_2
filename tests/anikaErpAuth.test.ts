@@ -136,6 +136,74 @@ describe("Anika ERP authentication", () => {
     });
   });
 
+  it("authenticates delivery driver role from ERP and redirects to /delivery-orders", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      message: "Autentikasi berhasil.",
+      user: {
+        id: 31,
+        name: "Driver Budi",
+        email: "driver@example.test",
+        username: "driver_budi",
+        roles: ["Delivery Driver"],
+        allowed_apps: ["slm"]
+      },
+      token: "driver-token",
+      expires_in_minutes: 720
+    }), { status: 200 }));
+
+    await expect(loginWithAnikaErp({ identifier: "driver@example.test", password: "secret" })).resolves.toMatchObject({
+      user: { id: "anika:31", name: "Driver Budi", role: "DELIVERY_DRIVER" },
+      redirectTo: "/delivery-orders"
+    });
+  });
+
+  it("maps Warehouse Staff role or Driver posisi fallback to DELIVERY_DRIVER", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      message: "Autentikasi berhasil.",
+      user: {
+        id: 32,
+        name: "Staff Gudang Joko",
+        email: "joko@example.test",
+        username: "joko_gudang",
+        roles: ["Warehouse Staff"],
+        posisi: "Petugas DO",
+        allowed_apps: ["slm"]
+      },
+      token: "joko-token",
+      expires_in_minutes: 720
+    }), { status: 200 }));
+
+    await expect(loginWithAnikaErp({ identifier: "joko@example.test", password: "secret" })).resolves.toMatchObject({
+      user: { id: "anika:32", name: "Staff Gudang Joko", role: "DELIVERY_DRIVER" },
+      redirectTo: "/delivery-orders"
+    });
+  });
+
+  it("falls back to posisi when ERP roles array is empty", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      message: "Autentikasi berhasil.",
+      user: {
+        id: 33,
+        name: "Kurir Santoso",
+        email: "santoso@example.test",
+        username: "santoso",
+        roles: [],
+        posisi: "Driver Delivery",
+        allowed_apps: ["slm"]
+      },
+      token: "santoso-token",
+      expires_in_minutes: 720
+    }), { status: 200 }));
+
+    await expect(loginWithAnikaErp({ identifier: "santoso@example.test", password: "secret" })).resolves.toMatchObject({
+      user: { id: "anika:33", name: "Kurir Santoso", role: "DELIVERY_DRIVER" },
+      redirectTo: "/delivery-orders"
+    });
+  });
+
   it("returns a friendly error message when Aneka Jaya ERP server is offline or unreachable", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("fetch failed"));
 
