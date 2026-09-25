@@ -363,11 +363,10 @@ export function DeliveryOrderDetailView({
             type="button"
             onClick={handleSyncItems}
             disabled={isSyncing}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+            className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 shadow-2xs"
             title="Sinkronkan daftar item DO dengan transaksi penjualan terkini"
           >
-            <span className={isSyncing ? "animate-spin" : ""}>🔄</span>
-            {isSyncing ? "Menyinkronkan..." : "Sinkronkan DO"}
+            {isSyncing ? "Menyinkronkan..." : "Sinkronkan dari Transaksi"}
           </button>
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold ${
@@ -480,24 +479,20 @@ export function DeliveryOrderDetailView({
 
       {/* Zero items alert banner */}
       {detail.items.length === 0 && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-start gap-3">
-            <span className="text-xl">⚠️</span>
-            <div>
-              <h3 className="text-sm font-bold text-amber-950">Item Surat Jalan (DO) Kosong</h3>
-              <p className="text-xs text-amber-800 mt-0.5">
-                Item DO belum terisi atau terhapus karena pembaruan transaksi. Anda dapat menyinkronkan kembali item langsung dari transaksi penjualan.
-              </p>
-            </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div>
+            <h3 className="text-sm font-semibold text-amber-950">Item Surat Jalan Kosong</h3>
+            <p className="text-xs text-amber-800 mt-0.5">
+              Daftar barang belum terisi dari transaksi penjualan terkait. Anda dapat menyinkronkan kembali item langsung dari transaksi.
+            </p>
           </div>
           <button
             type="button"
             onClick={handleSyncItems}
             disabled={isSyncing}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50 shrink-0 shadow-xs"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-semibold bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50 shrink-0 shadow-2xs"
           >
-            <span className={isSyncing ? "animate-spin" : ""}>🔄</span>
-            {isSyncing ? "Menyinkronkan..." : "Sinkronkan Item Sekarang"}
+            {isSyncing ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
           </button>
         </div>
       )}

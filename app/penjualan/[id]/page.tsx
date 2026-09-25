@@ -92,11 +92,6 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
             {sale.paymentMethod === "Tempo" ? "Lihat / Simpan Nota Tempo" : "Lihat / Simpan Invoice"}
           </Link>
           <Link href={`/print/sales/${sale.id}/continuous`} className="rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors">Cetak Nota</Link>
-          <DeliveryOrderSyncButton
-            salesRecordId={sale.id}
-            deliveryOrder={deliveryOrderSummary}
-            approvalStatus={sale.approvalStatus}
-          />
           {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && (
             <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Edit</Link>
           )}
@@ -133,21 +128,11 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Surat Jalan (DO)</p>
               <div className="mt-1">
-                {deliveryOrderSummary ? (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Link
-                      href={`/delivery-orders/${deliveryOrderSummary.id}`}
-                      className="font-medium text-sky-700 hover:underline text-sm font-mono"
-                    >
-                      {deliveryOrderSummary.doNumber}
-                    </Link>
-                    <span className="text-xs text-slate-500">
-                      ({deliveryOrderSummary.itemCount} item • Packing: {deliveryOrderSummary.packingStatus})
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-xs text-slate-400 italic">Belum dibuat</span>
-                )}
+                <DeliveryOrderSyncButton
+                  salesRecordId={sale.id}
+                  deliveryOrder={deliveryOrderSummary}
+                  approvalStatus={sale.approvalStatus}
+                />
               </div>
             </div>
             <div>

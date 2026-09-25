@@ -58,54 +58,52 @@ export function DeliveryOrderSyncButton({
 
   const isCancelled = approvalStatus === "cancelled";
 
-  return (
-    <div className={`inline-flex flex-wrap items-center gap-2 ${className}`}>
-      {deliveryOrder ? (
-        <>
-          <Link
-            href={`/delivery-orders/${deliveryOrder.id}`}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-sky-300 bg-sky-50 px-4 py-2.5 text-sm font-bold text-sky-800 hover:bg-sky-100 shadow-xs transition-colors"
-            title="Buka detail Surat Jalan (DO)"
-          >
-            <span>📦</span>
-            <span>Surat Jalan ({deliveryOrder.doNumber})</span>
-            {deliveryOrder.itemCount === 0 ? (
-              <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 animate-pulse">
-                0 item!
-              </span>
-            ) : (
-              <span className="rounded-full bg-sky-200/70 px-2 py-0.5 text-xs font-medium text-sky-900">
-                {deliveryOrder.itemCount} item
-              </span>
-            )}
-          </Link>
-
-          {!isCancelled && (
-            <button
-              type="button"
-              onClick={handleSync}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-sm font-bold text-indigo-700 hover:bg-indigo-100 shadow-xs transition-colors disabled:opacity-50"
-              title="Sinkronkan ulang item Surat Jalan dengan transaksi ini"
-            >
-              <span className={busy ? "animate-spin" : ""}>🔄</span>
-              <span>{busy ? "Menyinkronkan..." : "Sinkronkan DO"}</span>
-            </button>
-          )}
-        </>
-      ) : (
-        !isCancelled && (
+  if (!deliveryOrder) {
+    return (
+      <div className={`flex items-center gap-2 ${className}`}>
+        <span className="text-xs text-slate-400 italic">Belum dibuat</span>
+        {!isCancelled && (
           <button
             type="button"
             onClick={handleSync}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 hover:bg-indigo-100 shadow-xs transition-colors disabled:opacity-50"
+            className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             title="Buat Surat Jalan (DO) dan sinkronkan item dari transaksi ini"
           >
-            <span className={busy ? "animate-spin" : ""}>🔄</span>
-            <span>{busy ? "Membuat DO..." : "Buat / Sinkronkan DO"}</span>
+            {busy ? "Membuat..." : "Buat DO"}
           </button>
-        )
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      <Link
+        href={`/delivery-orders/${deliveryOrder.id}`}
+        className="font-mono text-sm font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+        title="Lihat detail Surat Jalan (DO)"
+      >
+        {deliveryOrder.doNumber}
+      </Link>
+      <span className="text-xs text-slate-500">
+        ({deliveryOrder.itemCount} item • Packing: {deliveryOrder.packingStatus})
+      </span>
+      {deliveryOrder.itemCount === 0 && (
+        <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">
+          Item Kosong
+        </span>
+      )}
+      {!isCancelled && (
+        <button
+          type="button"
+          onClick={handleSync}
+          disabled={busy}
+          className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+          title="Sinkronkan ulang item Surat Jalan dengan transaksi ini"
+        >
+          {busy ? "Menyinkronkan..." : "Sinkronkan"}
+        </button>
       )}
     </div>
   );
