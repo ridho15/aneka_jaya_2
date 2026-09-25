@@ -12,7 +12,7 @@ import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCan
 import { cancelStockRelease, nextRevisionReference, releaseSaleStock } from "@/lib/api/stockReleases";
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
 import { createTempoReceivableInTransaction, syncTempoReceivableOnSalesEdit, syncTempoReceivableOnSalesEditInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
-import { createDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
+import { createDeliveryOrderForSale, syncDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -942,9 +942,10 @@ async function updatePrismaSalesRecord(
       include: salesInclude
     });
   });
-  if (stockOptions?.approvalStatus === "approved" && before.approvalStatus === "draft") {
-    await createDeliveryOrderForSale(id).catch((err) => {
-      console.error("[DO] Failed to create delivery order on draft finalization:", err);
+  const isApproved = (stockOptions?.approvalStatus || before.approvalStatus) === "approved";
+  if (isApproved) {
+    await syncDeliveryOrderForSale(id).catch((err) => {
+      console.error("[DO] Failed to sync delivery order on sales update:", err);
     });
   }
   return toSale(row);
@@ -1125,7 +1126,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
   rows[index] = after;
   await writeJsonArray(fileName, rows);
   if (isFinalizingDraft) {
-    await createDeliveryOrderForSale(id).catch((err) => {
+    await syncDeliveryOrderForSale(id).catch((err) => {
       console.error("[DO] Failed to create delivery order on json draft finalization:", err);
     });
   }

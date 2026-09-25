@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => {
     update: vi.fn()
   };
   const deliveryOrderItem = {
-    updateMany: vi.fn()
+    updateMany: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn()
   };
   const deliveryOrderAssignee = {
     findFirst: vi.fn(),
@@ -448,5 +450,62 @@ describe("Regression Testing: Roles & Permissions Integrity", () => {
         userId: "driver-2"
       }
     });
+  });
+
+  it("11. Reconciles DO items when DO already exists but has empty items", async () => {
+    const { syncDeliveryOrderForSale } = await import("@/lib/deliveryOrders/store");
+
+    const existingDoWithoutItems = {
+      id: "do-existing-1",
+      doNumber: "DO-TRX-EXISTING",
+      salesRecordId: "sale-existing-1",
+      status: "belum_selesai",
+      packingStatus: "belum",
+      shippingStatus: "belum",
+      items: []
+    };
+
+    const mockSaleWithItems = {
+      id: "sale-existing-1",
+      transactionNumber: "TRX-EXISTING",
+      customerName: "Toko Besi Maju",
+      items: [
+        {
+          id: "item-rec-1",
+          productRef: "SEMEN-PADANG-50KG",
+          manualProduct: JSON.stringify({ name: "Semen Padang 50kg" }),
+          warehouseNameSnapshot: "Gudang Utama",
+          rackNameSnapshot: "Area Semen",
+          unitSnapshot: "Sak",
+          quantity: 25
+        }
+      ]
+    };
+
+    mocks.deliveryOrder.findUnique.mockResolvedValue(existingDoWithoutItems);
+    mocks.salesRecord.findUnique.mockResolvedValue(mockSaleWithItems);
+    mocks.deliveryOrderItem.deleteMany.mockResolvedValue({ count: 0 });
+    mocks.deliveryOrderItem.create.mockImplementation(({ data }: any) => ({
+      id: "do-item-rec-1",
+      ...data
+    }));
+
+    const result = await syncDeliveryOrderForSale("sale-existing-1");
+
+    expect(result).toBeDefined();
+    expect(mocks.deliveryOrderItem.deleteMany).toHaveBeenCalledWith({
+      where: { deliveryOrderId: "do-existing-1" }
+    });
+    expect(mocks.deliveryOrderItem.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          deliveryOrderId: "do-existing-1",
+          productRef: "SEMEN-PADANG-50KG",
+          productNameSnapshot: "Semen Padang 50kg",
+          quantity: 25,
+          unitSnapshot: "Sak"
+        })
+      })
+    );
   });
 });

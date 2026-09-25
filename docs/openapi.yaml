@@ -1388,6 +1388,56 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/delivery-orders/sync:
+    post:
+      summary: Membuat atau menyinkronkan Surat Jalan (DO) dari transaksi penjualan.
+      description: Membutuhkan permission do.process atau penjualan.create/manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [salesRecordId]
+              properties:
+                salesRecordId:
+                  type: string
+      responses:
+        "200":
+          description: DO berhasil disinkronkan.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /api/delivery-orders/{id}/sync:
+    post:
+      summary: Menyinkronkan ulang item Surat Jalan (DO) dari transaksi penjualannya.
+      description: Membutuhkan permission do.process atau penjualan.create/manage.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Item DO berhasil disinkronkan.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /api/upload:
     post:
       summary: Upload lampiran transaksi.

@@ -9,7 +9,7 @@ import { createTempoReceivable, createTempoReceivableInTransaction, syncInitialT
 import { getCurrentUser } from "@/lib/auth/session";
 import { findTipe, resolveSalesRekening } from "@/lib/business/masterData";
 import { allocateTransactionIdentity, saveSalesRecord } from "@/lib/sales/store";
-import { createDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
+import { createDeliveryOrderForSale, syncDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { erpSalesTypeCodes as configuredErpSalesTypeCodes, salesTargetForTypeCode } from "@/lib/api/transactionRouting";

@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
+import { DeliveryOrderSyncButton } from "@/components/transactions/DeliveryOrderSyncButton";
 import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
 import { formatJakartaDateTime } from "@/lib/date/jakarta";
 import { listAllRekeningAccounts } from "@/lib/business/masterData";
 import { salesRekeningLabel } from "@/lib/sales/rekening";
 import { getSalesRecordForUser } from "@/lib/sales/access";
+import { prisma } from "@/lib/db/prisma";
 
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
@@ -55,6 +57,27 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
   const canManage = can(role, "penjualan.manage");
   const canViewTransactionNumber = role === "OWNER";
 
+  const deliveryOrderRow = await prisma.deliveryOrder.findUnique({
+    where: { salesRecordId: sale.id },
+    select: {
+      id: true,
+      doNumber: true,
+      packingStatus: true,
+      shippingStatus: true,
+      items: { select: { id: true } }
+    }
+  }).catch(() => null);
+
+  const deliveryOrderSummary = deliveryOrderRow
+    ? {
+        id: deliveryOrderRow.id,
+        doNumber: deliveryOrderRow.doNumber,
+        packingStatus: deliveryOrderRow.packingStatus,
+        shippingStatus: deliveryOrderRow.shippingStatus,
+        itemCount: deliveryOrderRow.items.length
+      }
+    : null;
+
   return (
     <AppShell>
       <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -63,12 +86,17 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           <h2 className="aj-page-title text-3xl font-bold">{sale.customerName}</h2>
           {canViewTransactionNumber && <p className="mt-2 font-mono text-sm text-slate-500">{sale.transactionNumber || sale.id}</p>}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/penjualan" className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Riwayat</Link>
           <Link href={`/penjualan/${sale.id}/invoice`} className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors">
             {sale.paymentMethod === "Tempo" ? "Lihat / Simpan Nota Tempo" : "Lihat / Simpan Invoice"}
           </Link>
           <Link href={`/print/sales/${sale.id}/continuous`} className="rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors">Cetak Nota</Link>
+          <DeliveryOrderSyncButton
+            salesRecordId={sale.id}
+            deliveryOrder={deliveryOrderSummary}
+            approvalStatus={sale.approvalStatus}
+          />
           {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && (
             <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Edit</Link>
           )}
@@ -101,6 +129,26 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status Persetujuan</p>
               <div className="mt-1"><Badge value={sale.approvalStatus || "approved"} tone={statusTone(sale.approvalStatus || "approved")} /></div>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Surat Jalan (DO)</p>
+              <div className="mt-1">
+                {deliveryOrderSummary ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Link
+                      href={`/delivery-orders/${deliveryOrderSummary.id}`}
+                      className="font-medium text-sky-700 hover:underline text-sm font-mono"
+                    >
+                      {deliveryOrderSummary.doNumber}
+                    </Link>
+                    <span className="text-xs text-slate-500">
+                      ({deliveryOrderSummary.itemCount} item • Packing: {deliveryOrderSummary.packingStatus})
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400 italic">Belum dibuat</span>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status Cetak Struk</p>

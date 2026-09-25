@@ -48,12 +48,39 @@ export function DeliveryOrderDetailView({
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [officerToRemove, setOfficerToRemove] = useState<{ id: string; name: string } | null>(null);
   const [isRemovingOfficer, setIsRemovingOfficer] = useState(false);
   const [isShipConfirmOpen, setIsShipConfirmOpen] = useState(false);
 
   const isOwner = currentUserRole === "OWNER";
   const canInvite = canAssign || currentUserRole === "DELIVERY_DRIVER";
+
+  const handleSyncItems = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`/api/delivery-orders/${detail.id}/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setDetail((prev) => ({
+          ...prev,
+          ...data.data,
+          items: data.data.items || []
+        }));
+        showToast(data.message || "Item DO berhasil disinkronkan dari invoice penjualan.", "success");
+        router.refresh();
+      } else {
+        showToast(data.message || "Gagal menyinkronkan item DO.", "error");
+      }
+    } catch {
+      showToast("Terjadi kesalahan koneksi saat menyinkronkan DO.", "error");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const assignedList =
     detail.assignedOfficers && detail.assignedOfficers.length > 0
@@ -331,7 +358,17 @@ export function DeliveryOrderDetailView({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSyncItems}
+            disabled={isSyncing}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors disabled:opacity-50"
+            title="Sinkronkan daftar item DO dengan transaksi penjualan terkini"
+          >
+            <span className={isSyncing ? "animate-spin" : ""}>🔄</span>
+            {isSyncing ? "Menyinkronkan..." : "Sinkronkan DO"}
+          </button>
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold ${
               detail.packingStatus === "sudah"
@@ -440,6 +477,30 @@ export function DeliveryOrderDetailView({
           </div>
         </div>
       </div>
+
+      {/* Zero items alert banner */}
+      {detail.items.length === 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <h3 className="text-sm font-bold text-amber-950">Item Surat Jalan (DO) Kosong</h3>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Item DO belum terisi atau terhapus karena pembaruan transaksi. Anda dapat menyinkronkan kembali item langsung dari transaksi penjualan.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSyncItems}
+            disabled={isSyncing}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50 shrink-0 shadow-xs"
+          >
+            <span className={isSyncing ? "animate-spin" : ""}>🔄</span>
+            {isSyncing ? "Menyinkronkan..." : "Sinkronkan Item Sekarang"}
+          </button>
+        </div>
+      )}
 
       {/* Items Checklist Card (STRICTLY MASKED: NO PRICES, ONLY SKU, RACK, QTY, UOM) */}
       <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">

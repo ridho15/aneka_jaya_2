@@ -26,7 +26,8 @@
     "seed:dashboard-dummy": "node scripts/seed-dashboard-dummy-sales.mjs",
     "db:verify": "node scripts/verify-prisma-db.mjs",
     "audit:dashboard": "node scripts/audit-dashboard-values.mjs",
-    "integration:token:provision": "node scripts/provision-integration-token.mjs"
+    "integration:token:provision": "node scripts/provision-integration-token.mjs",
+    "reconcile:do": "node scripts/reconcile-delivery-orders.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

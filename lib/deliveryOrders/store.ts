@@ -19,85 +19,237 @@ export type ListDeliveryOrdersFilter = {
   search?: string;
 };
 
-export async function createDeliveryOrderForSale(saleId: string, customTx?: Prisma.TransactionClient) {
+export async function syncDeliveryOrderForSale(saleId: string, customTx?: Prisma.TransactionClient) {
   const runner = async (tx: Prisma.TransactionClient) => {
     if (!tx?.deliveryOrder || !tx?.salesRecord) return null;
-    const existing = await tx.deliveryOrder.findUnique({
-      where: { salesRecordId: saleId },
-      include: { items: true }
-    });
-    if (existing) return existing;
 
-    const sale = await tx.salesRecord.findUnique({
+    let sale = await tx.salesRecord.findUnique({
       where: { id: saleId },
       include: { items: { orderBy: { sortOrder: "asc" } } }
     });
+
+    // Fallback: If not in Prisma yet, attempt reading from local json store (for dev mode or legacy data)
+    if (!sale) {
+      try {
+        const { readJsonArray } = await import("@/lib/data/jsonStore");
+        const jsonRows = await readJsonArray<any>("sales-records.json");
+        const jsonSale = jsonRows.find((r: any) => r.id === saleId);
+        if (jsonSale) {
+          const items = Array.isArray(jsonSale.items) ? jsonSale.items : [];
+          if (tx.salesRecord.upsert) {
+            sale = await tx.salesRecord.upsert({
+              where: { id: jsonSale.id },
+              create: {
+                id: jsonSale.id,
+                saleDate: jsonSale.saleDate ? new Date(jsonSale.saleDate) : new Date(),
+                transactionNumber: jsonSale.transactionNumber || null,
+                transactionAt: jsonSale.transactionAt ? new Date(jsonSale.transactionAt) : null,
+                transactionSequence: jsonSale.transactionSequence || null,
+                transactionDateKey: jsonSale.transactionDateKey || null,
+                deliveryAt: jsonSale.deliveryAt ? new Date(jsonSale.deliveryAt) : null,
+                tipeId: jsonSale.tipeId || "W",
+                tipeCodeSnapshot: jsonSale.tipeCodeSnapshot || "W",
+                tipeNameSnapshot: jsonSale.tipeNameSnapshot || "Walk In",
+                customerName: jsonSale.customerName || "Customer",
+                customerPhone: jsonSale.customerPhone || null,
+                customerLocation: jsonSale.customerLocation || null,
+                shippingMethod: jsonSale.shippingMethod || null,
+                paymentMethod: jsonSale.paymentMethod || "Cash",
+                dueDate: jsonSale.dueDate ? new Date(jsonSale.dueDate) : null,
+                total: jsonSale.total || 0,
+                approvalStatus: jsonSale.approvalStatus || "approved",
+                source: jsonSale.source || "SLM",
+                createdByUserId: jsonSale.createdByUserId || "legacy",
+                createdByNameSnapshot: jsonSale.createdByNameSnapshot || "Legacy",
+                createdByRoleSnapshot: jsonSale.createdByRoleSnapshot || "OWNER",
+                createdAt: jsonSale.createdAt ? new Date(jsonSale.createdAt) : new Date(),
+                items: {
+                  create: items.map((it: any, idx: number) => ({
+                    id: `${jsonSale.id}-item-${idx}`,
+                    productRef: it.productRef || "ITEM",
+                    productId: it.productId ? String(it.productId) : null,
+                    manualProduct: it.manualProduct ? JSON.stringify(it.manualProduct) : undefined,
+                    warehouseId: it.warehouseId || "1",
+                    warehouseNameSnapshot: it.warehouseNameSnapshot || "Gudang Utama",
+                    rackId: it.rackId ? String(it.rackId) : null,
+                    rackNameSnapshot: it.rackNameSnapshot || null,
+                    unitSnapshot: it.unitSnapshot || "Pcs",
+                    quantity: it.quantity || 1,
+                    unitPrice: it.unitPrice || 0,
+                    discount: it.discount || 0,
+                    sortOrder: idx
+                  }))
+                }
+              },
+              update: {},
+              include: { items: { orderBy: { sortOrder: "asc" } } }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[DO Sync] Fallback to jsonStore failed:", err);
+      }
+    }
 
     if (!sale) {
       throw new Error(`Sales record dengan ID ${saleId} tidak ditemukan.`);
     }
 
+    const existing = await tx.deliveryOrder.findUnique({
+      where: { salesRecordId: saleId },
+      include: { items: true }
+    });
+
     const doNumber = sale.transactionNumber
       ? `DO-${sale.transactionNumber}`
       : `DO-${saleId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`;
 
-    const createdDo = await tx.deliveryOrder.create({
-      data: {
-        doNumber,
-        salesRecordId: sale.id,
-        status: "belum_selesai",
-        packingStatus: "belum",
-        shippingStatus: "belum",
-        items: {
-          create: sale.items.map((item) => {
-            let productName = item.productRef;
-            if (item.manualProduct) {
-              try {
-                const parsed = typeof item.manualProduct === "string"
-                  ? JSON.parse(item.manualProduct)
-                  : item.manualProduct;
-                if (parsed && typeof parsed === "object" && "name" in parsed && typeof parsed.name === "string") {
-                  productName = parsed.name;
-                }
-              } catch {
-                // fallback to productRef
-              }
-            }
-
-            return {
-              salesRecordItemId: item.id,
-              productRef: item.productRef,
-              productNameSnapshot: productName,
-              warehouseNameSnapshot: item.warehouseNameSnapshot || undefined,
-              rackNameSnapshot: item.rackNameSnapshot || undefined,
-              unitSnapshot: item.unitSnapshot || "Pcs",
-              quantity: item.quantity,
-              isShipped: false,
-              shippedQuantity: 0
-            };
-          })
+    const itemsToCreate = (sale.items || []).map((item) => {
+      let productName = item.productRef;
+      if (item.manualProduct) {
+        try {
+          const parsed = typeof item.manualProduct === "string"
+            ? JSON.parse(item.manualProduct)
+            : item.manualProduct;
+          if (parsed && typeof parsed === "object" && "name" in parsed && typeof parsed.name === "string") {
+            productName = parsed.name;
+          }
+        } catch {
+          // fallback to productRef
         }
-      },
-      include: { items: true }
+      }
+
+      return {
+        salesRecordItemId: item.id,
+        productRef: item.productRef,
+        productNameSnapshot: productName,
+        warehouseNameSnapshot: item.warehouseNameSnapshot || undefined,
+        rackNameSnapshot: item.rackNameSnapshot || undefined,
+        unitSnapshot: item.unitSnapshot || "Pcs",
+        quantity: item.quantity,
+        isShipped: false,
+        shippedQuantity: 0
+      };
     });
+
+    let targetDo = existing;
+
+    if (!targetDo) {
+      targetDo = await tx.deliveryOrder.create({
+        data: {
+          doNumber,
+          salesRecordId: sale.id,
+          status: "belum_selesai",
+          packingStatus: "belum",
+          shippingStatus: "belum",
+          items: {
+            create: itemsToCreate
+          }
+        },
+        include: { items: true }
+      });
+    } else {
+      // Reconcile items if existing has 0 items or needs synchronization
+      const currentItems = targetDo.items || [];
+      const hasMissingItems = currentItems.length === 0 && itemsToCreate.length > 0;
+      const salesItemIds = new Set((sale.items || []).map((i) => i.id));
+      const hasStaleItems = currentItems.some((i) => !salesItemIds.has(i.salesRecordItemId));
+
+      if (hasMissingItems || hasStaleItems) {
+        const shippedMap = new Map<string, { isShipped: boolean; shippedQuantity: any; shippedAt: any }>();
+        for (const ci of currentItems) {
+          if (ci.isShipped) {
+            shippedMap.set(ci.productRef, {
+              isShipped: ci.isShipped,
+              shippedQuantity: ci.shippedQuantity,
+              shippedAt: ci.shippedAt
+            });
+          }
+        }
+
+        if (tx.deliveryOrderItem?.deleteMany) {
+          await tx.deliveryOrderItem.deleteMany({
+            where: { deliveryOrderId: targetDo.id }
+          });
+        }
+
+        for (const itm of itemsToCreate) {
+          const prevShipped = shippedMap.get(itm.productRef);
+          if (tx.deliveryOrderItem?.create) {
+            await tx.deliveryOrderItem.create({
+              data: {
+                deliveryOrderId: targetDo.id,
+                ...itm,
+                isShipped: prevShipped?.isShipped ?? false,
+                shippedQuantity: prevShipped?.shippedQuantity ?? 0,
+                shippedAt: prevShipped?.shippedAt ?? null
+              }
+            });
+          }
+        }
+
+        if (tx.deliveryOrder?.findUnique) {
+          targetDo = await tx.deliveryOrder.findUnique({
+            where: { id: targetDo.id },
+            include: { items: true }
+          }) || targetDo;
+        }
+      }
+    }
+
+    const items = Array.isArray(targetDo?.items)
+      ? targetDo.items
+      : Array.isArray((targetDo as any)?.items?.create)
+      ? (targetDo as any).items.create
+      : [];
+    const totalCount = items.length;
+    const shippedCount = items.filter((i: any) => i?.isShipped).length;
+
+    let nextStatus = targetDo?.status || "belum_selesai";
+    let nextShipping = targetDo?.shippingStatus || "belum";
+
+    if (totalCount > 0 && shippedCount === totalCount) {
+      nextStatus = "selesai";
+      nextShipping = "sudah";
+    } else if (shippedCount > 0) {
+      nextStatus = "selesai_setengah";
+    }
+
+    if (existing && tx.deliveryOrder?.update) {
+      const updatedDo = await tx.deliveryOrder.update({
+        where: { id: targetDo.id },
+        data: {
+          status: nextStatus,
+          shippingStatus: nextShipping
+        },
+        include: { items: true }
+      });
+      if (updatedDo) {
+        targetDo = updatedDo;
+      }
+    }
 
     // Sync denormalized status to SalesRecord
     await tx.salesRecord.update({
       where: { id: sale.id },
       data: {
-        doStatus: "belum_selesai",
-        doPackingStatus: "belum",
-        doShippingStatus: "belum"
+        doStatus: nextStatus,
+        doPackingStatus: targetDo?.packingStatus || "belum",
+        doShippingStatus: nextShipping
       }
     });
 
-    return createdDo;
+    return targetDo;
   };
 
   if (customTx) {
     return runner(customTx);
   }
   return prisma.$transaction(runner);
+}
+
+export async function createDeliveryOrderForSale(saleId: string, customTx?: Prisma.TransactionClient) {
+  return syncDeliveryOrderForSale(saleId, customTx);
 }
 
 export type ListDeliveryOrdersPageParams = {
