@@ -18,7 +18,7 @@ export default async function DeliveryOrderDetailPage({
   }
 
   const { id } = await params;
-  const detail = await getDeliveryOrderDetail(id);
+  const detail = await getDeliveryOrderDetail(id, user);
   if (!detail) {
     notFound();
   }

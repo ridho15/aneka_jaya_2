@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 interface DeliveryOrderSummary {
   id: string;
   doNumber: string;
+  status?: string;
   packingStatus: string;
   shippingStatus: string;
   itemCount: number;
@@ -17,6 +18,7 @@ interface DeliveryOrderSyncButtonProps {
   salesRecordId: string;
   deliveryOrder: DeliveryOrderSummary | null;
   approvalStatus?: string;
+  currentUserRole?: string;
   className?: string;
 }
 
@@ -24,6 +26,7 @@ export function DeliveryOrderSyncButton({
   salesRecordId,
   deliveryOrder,
   approvalStatus,
+  currentUserRole,
   className = ""
 }: DeliveryOrderSyncButtonProps) {
   const router = useRouter();
@@ -57,6 +60,10 @@ export function DeliveryOrderSyncButton({
   };
 
   const isCancelled = approvalStatus === "cancelled";
+  const isSuperAdmin = currentUserRole === "OWNER";
+  const isCompleted =
+    deliveryOrder &&
+    deliveryOrder.status === "selesai";
 
   if (!deliveryOrder) {
     return (
@@ -73,6 +80,20 @@ export function DeliveryOrderSyncButton({
             {busy ? "Membuat..." : "Buat DO"}
           </button>
         )}
+      </div>
+    );
+  }
+
+  // Jika DO sudah selesai, batasi akses non-Super Admin (hanya teks tanpa link)
+  if (isCompleted && !isSuperAdmin) {
+    return (
+      <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+        <span className="font-mono text-sm font-semibold text-slate-700">
+          {deliveryOrder.doNumber}
+        </span>
+        <span className="text-xs text-slate-500">
+          ({deliveryOrder.itemCount} item • Selesai)
+        </span>
       </div>
     );
   }
@@ -94,7 +115,7 @@ export function DeliveryOrderSyncButton({
           Item Kosong
         </span>
       )}
-      {!isCancelled && (
+      {!isCancelled && !isCompleted && (
         <button
           type="button"
           onClick={handleSync}

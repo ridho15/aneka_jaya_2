@@ -47,9 +47,13 @@ function filtersFromParams(
     officerId = userId;
   }
 
+  const rawStatus = valueOf(params, "status") || undefined;
+  // Non-Super Admin (bukan OWNER) tidak diizinkan memfilter DO selesai
+  const status = userRole !== "OWNER" && rawStatus === "selesai" ? undefined : rawStatus;
+
   return {
     search: valueOf(params, "search") || undefined,
-    status: valueOf(params, "status") || undefined,
+    status,
     packingStatus: valueOf(params, "packingStatus") || undefined,
     shippingStatus: valueOf(params, "shippingStatus") || undefined,
     assignedUserId: officerId
@@ -230,7 +234,7 @@ export default async function DeliveryOrdersPage({
             <option value="">Semua</option>
             <option value="belum_selesai">Belum Selesai</option>
             <option value="selesai_sebagian">Selesai Sebagian</option>
-            <option value="selesai">Selesai</option>
+            {user.role === "OWNER" && <option value="selesai">Selesai</option>}
           </Select>
         </label>
         <label className="text-sm font-medium text-slate-700">

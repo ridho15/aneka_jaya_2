@@ -103,7 +103,7 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
 
     const created = await createDeliveryOrderForSale("sale-lifecycle-1");
 
-    expect(created.doNumber).toBe("DO-TRX-050926-01");
+    expect((created as any)?.doNumber).toBe("DO-TRX-050926-01");
     expect(mocks.salesRecord.update).toHaveBeenCalledWith({
       where: { id: "sale-lifecycle-1" },
       data: {
@@ -506,6 +506,141 @@ describe("Regression Testing: Roles & Permissions Integrity", () => {
           unitSnapshot: "Sak"
         })
       })
+    );
+  });
+
+  it("12. Hides completed DO from non-Super Admin (DELIVERY_DRIVER, ADMIN, SUPERVISOR)", async () => {
+    const { listDeliveryOrdersPage } = await import("@/lib/deliveryOrders/store");
+
+    mocks.deliveryOrder.count.mockResolvedValue(0);
+    mocks.deliveryOrder.findMany.mockResolvedValue([]);
+
+    const driverUser = { id: "driver-1", name: "Driver 1", role: "DELIVERY_DRIVER" } as any;
+    const supervisorUser = { id: "spv-1", name: "Spv 1", role: "SUPERVISOR" } as any;
+
+    await listDeliveryOrdersPage({ page: 1, pageSize: 10 }, driverUser);
+
+    expect(mocks.deliveryOrder.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: {
+          status: { not: "selesai" }
+        }
+      })
+    );
+
+    await listDeliveryOrdersPage({ page: 1, pageSize: 10 }, supervisorUser);
+
+    expect(mocks.deliveryOrder.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: {
+          status: { not: "selesai" }
+        }
+      })
+    );
+  });
+
+  it("13. Allows Super Admin (OWNER) to see all DOs including completed", async () => {
+    const { listDeliveryOrdersPage } = await import("@/lib/deliveryOrders/store");
+
+    mocks.deliveryOrder.count.mockResolvedValue(0);
+    mocks.deliveryOrder.findMany.mockResolvedValue([]);
+
+    const ownerUser = { id: "owner-1", name: "Super Admin", role: "OWNER" } as any;
+
+    await listDeliveryOrdersPage({ page: 1, pageSize: 10 }, ownerUser);
+
+    const callArgs = mocks.deliveryOrder.findMany.mock.calls.at(-1)?.[0];
+    const andClauses = callArgs?.where?.AND || [];
+    const hasNotCompleted = andClauses.some(
+      (clause: any) => clause?.status?.not === "selesai"
+    );
+
+    expect(hasNotCompleted).toBe(false);
+  });
+
+  it("14. Blocks non-Super Admin (driver & supervisor) from accessing getDeliveryOrderDetail for completed DO", async () => {
+    const { getDeliveryOrderDetail } = await import("@/lib/deliveryOrders/store");
+
+    const mockCompletedDo = {
+      id: "do-completed-1",
+      doNumber: "DO-COMPLETED-01",
+      salesRecordId: "sale-completed-1",
+      status: "selesai",
+      packingStatus: "belum", // Even if packingStatus is not "sudah", status: "selesai" is strictly blocked
+      shippingStatus: "sudah",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      salesRecord: {
+        id: "sale-completed-1",
+        transactionNumber: "TRX-DONE-01",
+        saleDate: new Date(),
+        customerName: "Pelanggan Selesai"
+      },
+      items: [],
+      assignees: []
+    };
+
+    mocks.deliveryOrder.findFirst.mockResolvedValue(mockCompletedDo);
+
+    const driverUser = { id: "driver-1", name: "Driver 1", role: "DELIVERY_DRIVER" } as any;
+    const supervisorUser = { id: "spv-1", name: "Spv 1", role: "SUPERVISOR" } as any;
+    const ownerUser = { id: "owner-1", name: "Super Admin", role: "OWNER" } as any;
+
+    // Driver cannot access completed DO
+    const driverResult = await getDeliveryOrderDetail("do-completed-1", driverUser);
+    expect(driverResult).toBeNull();
+
+    // Supervisor cannot access completed DO
+    const supervisorResult = await getDeliveryOrderDetail("do-completed-1", supervisorUser);
+    expect(supervisorResult).toBeNull();
+
+    // Super Admin (OWNER) can access completed DO
+    const ownerResult = await getDeliveryOrderDetail("do-completed-1", ownerUser);
+    expect(ownerResult).not.toBeNull();
+    expect(ownerResult?.doNumber).toBe("DO-COMPLETED-01");
+  });
+
+  it("15. Rejects mutation attempts on completed DOs by non-Super Admin", async () => {
+    const {
+      assignDeliveryOrder,
+      addDeliveryOrderAssignee,
+      removeDeliveryOrderAssignee,
+      updateDeliveryOrderPacking,
+      completeDeliveryOrderShipping
+    } = await import("@/lib/deliveryOrders/store");
+
+    const mockCompletedDo = {
+      id: "do-completed-guard",
+      salesRecordId: "sale-guard",
+      status: "selesai",
+      packingStatus: "sudah",
+      shippingStatus: "sudah",
+      items: [{ id: "item-1" }],
+      assignees: []
+    };
+
+    mocks.deliveryOrder.findFirst.mockResolvedValue(mockCompletedDo);
+
+    const driverUser = { id: "driver-1", name: "Driver 1", role: "DELIVERY_DRIVER" } as any;
+
+    await expect(assignDeliveryOrder("do-completed-guard", "driver-2", "Driver 2", driverUser)).rejects.toThrow(
+      "Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin."
+    );
+
+    await expect(addDeliveryOrderAssignee("do-completed-guard", "driver-2", "Driver 2", driverUser)).rejects.toThrow(
+      "Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin."
+    );
+
+    await expect(removeDeliveryOrderAssignee("do-completed-guard", "driver-1", driverUser)).rejects.toThrow(
+      "Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin."
+    );
+
+    await expect(updateDeliveryOrderPacking("do-completed-guard", ["item-1"], driverUser)).rejects.toThrow(
+      "Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin."
+    );
+
+    await expect(completeDeliveryOrderShipping("do-completed-guard", { shippedItemIds: ["item-1"] }, driverUser)).rejects.toThrow(
+      "Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin."
     );
   });
 });

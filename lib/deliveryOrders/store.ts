@@ -268,8 +268,18 @@ export type DeliveryOrderPageResult = {
   };
 };
 
-function buildDeliveryOrderWhere(filters: ListDeliveryOrdersFilter = {}): Prisma.DeliveryOrderWhereInput {
+function buildDeliveryOrderWhere(
+  filters: ListDeliveryOrdersFilter = {},
+  user?: CurrentUser
+): Prisma.DeliveryOrderWhereInput {
   const andConditions: Prisma.DeliveryOrderWhereInput[] = [];
+
+  // Hide DO yang sudah selesai dari non-super admin (hanya OWNER yang boleh melihat)
+  if (!user || user.role !== "OWNER") {
+    andConditions.push({
+      status: { not: "selesai" }
+    });
+  }
 
   if (filters.status && filters.status !== "all") {
     andConditions.push({ status: filters.status });
@@ -363,7 +373,7 @@ export async function listDeliveryOrdersPage(
 ): Promise<DeliveryOrderPageResult> {
   const page = Math.max(1, Number(params.page || 1));
   const pageSize = Math.max(1, Number(params.pageSize || 10));
-  const where = buildDeliveryOrderWhere(params.filters);
+  const where = buildDeliveryOrderWhere(params.filters, user);
 
   const [total, rows] = await Promise.all([
     prisma.deliveryOrder.count({ where }),
@@ -410,7 +420,7 @@ export async function listDeliveryOrders(
   filters: ListDeliveryOrdersFilter = {},
   user?: CurrentUser
 ): Promise<DeliveryOrderQueueItem[]> {
-  const where = buildDeliveryOrderWhere(filters);
+  const where = buildDeliveryOrderWhere(filters, user);
 
   const rows = await prisma.deliveryOrder.findMany({
     where,
@@ -439,7 +449,10 @@ export async function listDeliveryOrders(
   return rows.map(mapDeliveryOrderQueueItem);
 }
 
-export async function getDeliveryOrderDetail(id: string): Promise<DeliveryOrderData | null> {
+export async function getDeliveryOrderDetail(
+  id: string,
+  user?: CurrentUser
+): Promise<DeliveryOrderData | null> {
   const row = await prisma.deliveryOrder.findFirst({
     where: { OR: [{ id }, { salesRecordId: id }, { doNumber: id }] },
     include: {
@@ -460,6 +473,11 @@ export async function getDeliveryOrderDetail(id: string): Promise<DeliveryOrderD
   });
 
   if (!row) return null;
+
+  // Sembunyikan DO yang sudah selesai dari non-Super Admin (hanya OWNER yang boleh melihat)
+  if ((!user || user.role !== "OWNER") && row.status === "selesai") {
+    return null;
+  }
 
   const assignedOfficers = (row.assignees && row.assignees.length > 0)
     ? row.assignees.map((a) => ({
@@ -537,6 +555,10 @@ export async function assignDeliveryOrder(
     });
     if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
 
+    if (doRow.status === "selesai" && actor?.role !== "OWNER") {
+      throw new Error("Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin.");
+    }
+
     const updated = await tx.deliveryOrder.update({
       where: { id: doRow.id },
       data: {
@@ -598,6 +620,10 @@ export async function addDeliveryOrderAssignee(
     });
     if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
 
+    if (doRow.status === "selesai" && actor?.role !== "OWNER") {
+      throw new Error("Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin.");
+    }
+
     const existing = await tx.deliveryOrderAssignee.findFirst({
       where: { deliveryOrderId: doRow.id, userId }
     });
@@ -656,6 +682,10 @@ export async function removeDeliveryOrderAssignee(
     });
     if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
 
+    if (doRow.status === "selesai" && actor?.role !== "OWNER") {
+      throw new Error("Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin.");
+    }
+
     await tx.deliveryOrderAssignee.deleteMany({
       where: { deliveryOrderId: doRow.id, userId }
     });
@@ -707,6 +737,10 @@ export async function updateDeliveryOrderPacking(
     });
     if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
 
+    if (doRow.status === "selesai" && actor?.role !== "OWNER") {
+      throw new Error("Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin.");
+    }
+
     const packingStatus: PackingStatus = "sudah";
 
     const updated = await tx.deliveryOrder.update({
@@ -757,6 +791,10 @@ export async function completeDeliveryOrderShipping(
       include: { items: true }
     });
     if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
+
+    if (doRow.status === "selesai" && actor?.role !== "OWNER") {
+      throw new Error("Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin.");
+    }
 
     if (!input.shippedItemIds || input.shippedItemIds.length === 0) {
       throw new Error("Pilih setidaknya satu barang yang dikirim.");

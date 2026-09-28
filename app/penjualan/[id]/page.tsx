@@ -62,6 +62,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
     select: {
       id: true,
       doNumber: true,
+      status: true,
       packingStatus: true,
       shippingStatus: true,
       items: { select: { id: true } }
@@ -72,6 +73,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
     ? {
         id: deliveryOrderRow.id,
         doNumber: deliveryOrderRow.doNumber,
+        status: deliveryOrderRow.status,
         packingStatus: deliveryOrderRow.packingStatus,
         shippingStatus: deliveryOrderRow.shippingStatus,
         itemCount: deliveryOrderRow.items.length
@@ -132,6 +134,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
                   salesRecordId={sale.id}
                   deliveryOrder={deliveryOrderSummary}
                   approvalStatus={sale.approvalStatus}
+                  currentUserRole={role}
                 />
               </div>
             </div>
