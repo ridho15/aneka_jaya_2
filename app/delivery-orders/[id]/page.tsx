@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/db/prisma";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -20,6 +21,17 @@ export default async function DeliveryOrderDetailPage({
   const { id } = await params;
   const detail = await getDeliveryOrderDetail(id, user);
   if (!detail) {
+    // Jika DO ada di database tapi berstatus 'selesai' dan user bukan OWNER,
+    // alihkan kembali ke antrean aktif (/delivery-orders) alih-alih melempar 404
+    const existing = await prisma.deliveryOrder.findFirst({
+      where: { OR: [{ id }, { salesRecordId: id }, { doNumber: id }] },
+      select: { id: true, status: true }
+    });
+
+    if (existing && existing.status === "selesai" && user.role !== "OWNER") {
+      redirect("/delivery-orders");
+    }
+
     notFound();
   }
 

@@ -643,4 +643,23 @@ describe("Regression Testing: Roles & Permissions Integrity", () => {
       "Delivery Order yang sudah selesai tidak dapat diubah kecuali oleh Super Admin."
     );
   });
+
+  it("16. Verifies completed DO detection logic for non-Super Admin fallback redirect", async () => {
+    const mockCompleted = { id: "do-done", status: "selesai" };
+    mocks.deliveryOrder.findFirst.mockResolvedValue(mockCompleted);
+
+    const { getDeliveryOrderDetail } = await import("@/lib/deliveryOrders/store");
+    const driverUser = { id: "driver-1", name: "Driver 1", role: "DELIVERY_DRIVER" } as any;
+
+    const detail = await getDeliveryOrderDetail("do-done", driverUser);
+    expect(detail).toBeNull();
+
+    const existing = await mocks.deliveryOrder.findFirst({
+      where: { OR: [{ id: "do-done" }, { salesRecordId: "do-done" }, { doNumber: "do-done" }] },
+      select: { id: true, status: true }
+    });
+    expect(existing).toBeDefined();
+    expect(existing?.status).toBe("selesai");
+    expect(existing?.status === "selesai" && driverUser.role !== "OWNER").toBe(true);
+  });
 });

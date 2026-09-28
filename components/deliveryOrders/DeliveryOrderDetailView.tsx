@@ -292,10 +292,10 @@ export function DeliveryOrderDetailView({
       });
       const data = await res.json();
       if (data.success) {
-        const isFull = selectedItemIds.length >= detail.items.length;
+        const isComplete = data.data?.status === "selesai";
         setDetail((prev) => ({
           ...prev,
-          status: isFull ? "selesai" : "selesai_setengah",
+          status: isComplete ? "selesai" : "selesai_setengah",
           packingStatus: "sudah",
           shippingStatus: "sudah",
           receiptPhotoUrl,
@@ -303,12 +303,16 @@ export function DeliveryOrderDetailView({
         }));
         setIsShipConfirmOpen(false);
         showToast(
-          isFull
+          isComplete
             ? "Pengiriman selesai! Semua barang telah dikirim & status invoice Selesai."
             : "Pengiriman sebagian berhasil diproses (Status: Selesai Setengah).",
           "success"
         );
-        router.refresh();
+        if (isComplete && !isOwner) {
+          router.replace("/delivery-orders");
+        } else {
+          router.refresh();
+        }
       } else {
         showToast(data.message || "Gagal memproses pengiriman.", "error");
       }
