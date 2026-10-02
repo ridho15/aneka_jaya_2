@@ -7,7 +7,12 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: APP_BRAND_TITLE,
-  description: `Aplikasi operasional internal ${APP_BRAND_NAME}`
+  description: `Aplikasi operasional internal ${APP_BRAND_NAME}`,
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg"
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

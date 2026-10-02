@@ -5,7 +5,7 @@ import { DeliveryOrderProofUploader } from "@/components/deliveryOrders/Delivery
 import { compressImage } from "@/lib/utils/imageCompression";
 
 describe("DeliveryOrderProofUploader Component", () => {
-  it("renders camera, viewfinder, and file upload action buttons", () => {
+  it("renders smart camera and file upload action buttons", () => {
     const html = renderToStaticMarkup(
       <DeliveryOrderProofUploader
         onPhotoChange={vi.fn()}
@@ -14,8 +14,8 @@ describe("DeliveryOrderProofUploader Component", () => {
 
     expect(html).toContain("Foto Resi / Bukti Pengiriman");
     expect(html).toContain("Foto Kamera");
-    expect(html).toContain("Buka Viewfinder");
     expect(html).toContain("Pilih dari File");
+    expect(html).not.toContain("Buka Viewfinder");
     expect(html).toContain("Belum ada foto bukti pengiriman.");
   });
 

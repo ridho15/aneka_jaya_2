@@ -101,6 +101,22 @@ export function DeliveryOrderProofUploader({
     startCameraStream(nextMode);
   };
 
+  // Smart camera handler:
+  // - On mobile devices: launches native camera capture directly
+  // - On desktop/laptop: opens in-browser live webcam viewfinder modal directly
+  const handleSmartCameraClick = () => {
+    const isMobile =
+      typeof window !== "undefined" &&
+      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 0 && window.innerWidth < 768));
+
+    if (isMobile) {
+      nativeCameraInputRef.current?.click();
+    } else {
+      handleOpenViewfinder();
+    }
+  };
+
   // Process and upload file with compression
   const processAndUploadFile = async (rawFile: File) => {
     setIsUploading(true);
@@ -251,33 +267,19 @@ export function DeliveryOrderProofUploader({
 
       {/* Action Buttons */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Tombol Ambil Foto Kamera */}
+        {/* Tombol Ambil Foto Kamera (Pintar: Langsung buka Webcam di Desktop, Kamera Native di HP) */}
         <button
           type="button"
-          onClick={() => nativeCameraInputRef.current?.click()}
+          onClick={handleSmartCameraClick}
           disabled={disabled || isUploading}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors shadow-2xs"
-          title="Buka kamera perangkat untuk langsung memotret resi atau surat jalan"
+          title="Buka kamera perangkat untuk mengambil foto resi atau surat jalan"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span>Foto Kamera</span>
-        </button>
-
-        {/* Tombol Viewfinder / In-App Webcam */}
-        <button
-          type="button"
-          onClick={handleOpenViewfinder}
-          disabled={disabled || isUploading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 active:bg-slate-100 disabled:opacity-50 transition-colors shadow-2xs"
-          title="Buka jendela kamera live di layar untuk melihat bidikan sebelum memotret"
-        >
-          <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          <span>Buka Viewfinder</span>
         </button>
 
         {/* Tombol Unggah File / Galeri */}
@@ -377,16 +379,28 @@ export function DeliveryOrderProofUploader({
               {cameraError ? (
                 <div className="p-4 text-center space-y-3">
                   <p className="text-xs text-rose-300">{cameraError}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleCloseCameraModal();
-                      nativeCameraInputRef.current?.click();
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
-                    Gunakan Kamera Native HP
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCloseCameraModal();
+                        galleryInputRef.current?.click();
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                    >
+                      Pilih dari File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCloseCameraModal();
+                        nativeCameraInputRef.current?.click();
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
+                    >
+                      Kamera HP (Native)
+                    </button>
+                  </div>
                 </div>
               ) : capturedPreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
