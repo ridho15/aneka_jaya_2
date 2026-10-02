@@ -9,6 +9,7 @@ import { formatJakartaDate } from "@/lib/date/jakarta";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { DeliveryOrderProofUploader } from "./DeliveryOrderProofUploader";
 
 type Officer = {
   id: string;
@@ -111,33 +112,6 @@ export function DeliveryOrderDetailView({
     setSelectedItemIds((prev) =>
       prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
     );
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
-      if (data.success && data.data?.url) {
-        setReceiptPhotoUrl(data.data.url);
-        showToast("Foto resi berhasil diunggah.", "success");
-      } else {
-        showToast(data.message || "Gagal mengunggah foto resi.", "error");
-      }
-    } catch {
-      showToast("Terjadi kesalahan koneksi saat unggah foto resi.", "error");
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   const handleAddOfficer = async (officerId: string) => {
@@ -612,33 +586,14 @@ export function DeliveryOrderDetailView({
         </h2>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* File upload */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-              Upload Foto Resi / Bukti Kirim
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              disabled={isUploading || isSubmitting}
-              onChange={handleFileUpload}
-              className="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-            />
-            {isUploading && <p className="mt-1 text-xs text-emerald-600">Mengunggah foto resi...</p>}
-            {receiptPhotoUrl && (
-              <div className="mt-3">
-                <span className="block text-xs text-slate-400 mb-1">Preview Foto Resi:</span>
-                <a href={receiptPhotoUrl} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={receiptPhotoUrl}
-                    alt="Foto Resi"
-                    className="h-32 w-auto max-w-full rounded-lg border border-slate-200 object-cover shadow-xs hover:opacity-90 transition-opacity"
-                  />
-                </a>
-              </div>
-            )}
-          </div>
+          {/* Bukti Pengiriman (Kamera & File) */}
+          <DeliveryOrderProofUploader
+            receiptPhotoUrl={receiptPhotoUrl}
+            onPhotoChange={setReceiptPhotoUrl}
+            onUploadingChange={setIsUploading}
+            disabled={isSubmitting}
+            showToast={showToast}
+          />
 
           {/* Tracking number & notes */}
           <div className="space-y-3">
