@@ -14,7 +14,7 @@ export const pengeluaranSchema = z.object({
   description: z.string().trim().min(1, "Deskripsi wajib diisi").max(1000),
   amount: z.coerce.number().positive("Jumlah harus lebih dari 0"),
   paymentMethod: z.string().trim().min(1, "Metode pembayaran wajib diisi").max(80),
-  attachmentUrl: z.string().url("URL lampiran tidak valid").optional().or(z.literal("")),
+  attachmentUrl: z.string().refine((value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value), "URL lampiran tidak valid").optional().or(z.literal("")),
   notes: z.string().trim().max(1000).optional()
 });
 export type PengeluaranInput = z.infer<typeof pengeluaranSchema>;

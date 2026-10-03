@@ -5,7 +5,7 @@ export const tempoPaymentSchema = z.object({
   amountPaid: z.coerce.number().finite("Nominal dibayar tidak valid").positive("Nominal dibayar harus lebih dari 0."),
   paymentMethod: z.enum(["Cash", "TF", "Other"]).default("Cash"),
   rekeningId: z.string().trim().min(1, "Rekening penerima wajib dipilih."),
-  attachmentUrl: z.string().url("URL lampiran tidak valid").optional().or(z.literal("")),
+  attachmentUrl: z.string().refine((value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value), "URL lampiran tidak valid").optional().or(z.literal("")),
   notes: z.string().trim().max(1000).optional()
 });
 

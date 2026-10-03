@@ -337,6 +337,14 @@ export function DeliveryOrderDetailView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/delivery-orders/${detail.id}/print`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 transition-colors shadow-2xs"
+            title="Cetak Surat Jalan DO dengan Printer Thermal 80mm Bluetooth"
+          >
+            🖨️ Cetak DO Thermal (80mm)
+          </Link>
           <button
             type="button"
             onClick={handleSyncItems}

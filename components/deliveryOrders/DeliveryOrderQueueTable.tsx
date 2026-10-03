@@ -247,10 +247,18 @@ export function DeliveryOrderQueueTable({
                   />
                 </div>
               )}
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-end gap-2">
+                <Link
+                  href={`/delivery-orders/${item.id}/print`}
+                  target="_blank"
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+                  title="Cetak DO Thermal 80mm"
+                >
+                  🖨️ Cetak
+                </Link>
                 <Link
                   href={`/delivery-orders/${item.id}`}
-                  className="w-full text-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
+                  className="flex-1 text-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700"
                 >
                   {canProcess && item.status !== "selesai" ? "Proses DO" : "Lihat DO"}
                 </Link>
@@ -407,12 +415,22 @@ export function DeliveryOrderQueueTable({
                   </div>
                 </td>
                 <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                  <Link
-                    href={`/delivery-orders/${item.id}`}
-                    className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                  >
-                    {canProcess && item.status !== "selesai" ? "Proses DO" : "Lihat DO"}
-                  </Link>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Link
+                      href={`/delivery-orders/${item.id}/print`}
+                      target="_blank"
+                      className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
+                      title="Cetak DO Thermal 80mm"
+                    >
+                      🖨️ Cetak
+                    </Link>
+                    <Link
+                      href={`/delivery-orders/${item.id}`}
+                      className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                    >
+                      {canProcess && item.status !== "selesai" ? "Proses DO" : "Lihat DO"}
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}

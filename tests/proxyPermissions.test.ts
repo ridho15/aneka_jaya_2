@@ -186,4 +186,10 @@ describe("proxy permission enforcement", () => {
 
     expect(response.headers.get("location")).toBeNull();
   });
+
+  it("does not protect /uploads/ static and receipt paths", () => {
+    vi.stubEnv("AUTH_PROVIDER", "local_credentials");
+    const response = proxy(makeRequest("/uploads/receipts/test.jpg"));
+    expect(response.headers.get("location")).toBeNull();
+  });
 });
