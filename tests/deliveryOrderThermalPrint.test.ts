@@ -130,9 +130,8 @@ describe("Delivery Order Thermal 80mm Printing", () => {
       // Verify invoice number is present
       expect(binaryString).toContain("INV-202610-0088");
 
-      // Verify ESC/POS Font enlargement commands:
-      // GS ! 0x33 (0x1D, 0x21, 0x33) for Jumbo Customer Name
-      expect(binaryString).toContain("\x1D\x21\x33");
+      // GS ! 0x11 (0x1D, 0x21, 0x11) for Long Customer Name (>14 chars)
+      expect(binaryString).toContain("\x1D\x21\x11");
 
       // GS ! 0x11 (0x1D, 0x21, 0x11) for Large Invoice Number
       expect(binaryString).toContain("\x1D\x21\x11");
@@ -140,6 +139,18 @@ describe("Delivery Order Thermal 80mm Printing", () => {
       // Verify Cut command at the end (GS V 66 0: 0x1D, 0x56, 0x42, 0x00)
       const lastBytes = bytes.slice(-4);
       expect(Array.from(lastBytes)).toEqual([0x1d, 0x56, 0x42, 0x00]);
+
+      // Test short customer name (<= 14 chars) uses Triple size (0x22)
+      const shortCustomerDo = {
+        ...mockDoData,
+        sale: {
+          ...mockDoData.sale,
+          customerName: "TOKO ABU"
+        }
+      };
+      const shortBytes = generateDeliveryOrderEscPos(shortCustomerDo);
+      const shortBinaryString = new TextDecoder("latin1").decode(shortBytes);
+      expect(shortBinaryString).toContain("\x1D\x21\x22");
     });
   });
 

@@ -193,9 +193,9 @@ export function TransactionInvoiceView({
       <div className="no-print mx-auto mb-6 max-w-4xl">
         {/* Success Banner if redirected directly from transaction creation */}
         {isNewlyCreated && (
-          <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-xs">
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">
             <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white shadow-xs">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white shadow-sm">
                 ✓
               </span>
               <div>
@@ -215,37 +215,37 @@ export function TransactionInvoiceView({
         )}
 
         {exportError && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-700 shadow-xs">
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-700 shadow-sm">
             {exportError}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-sm sm:p-4">
           {/* Left Cluster Navigation Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={listUrl}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-sm"
             >
               <span aria-hidden="true">← Kembali</span>
               <span className="sr-only">Kembali ke Riwayat</span>
             </Link>
             <Link
               href={detailUrl}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-sm"
             >
               Detail Transaksi
             </Link>
             <Link
               href={inputUrl}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-sm"
             >
               + {isSales ? "Penjualan Baru" : "Pengeluaran Baru"} <span className="sr-only">Input Transaksi Baru</span>
             </Link>
             {isSales && (
               <Link
                 href={dotMatrixUrl}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-2xs"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-sm"
                 title="Cetak Nota Rangkap Continuous Form LX-310"
               >
                 Dot Matrix <span className="sr-only">Cetak Struk Dot-Matrix</span>
@@ -259,13 +259,13 @@ export function TransactionInvoiceView({
               type="button"
               onClick={handleExportImage}
               disabled={isExportingImage}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/50 shadow-2xs disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/50 shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isExportingImage ? (
                 <>Memproses...</>
               ) : (
                 <>
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span>Simpan Gambar</span>
@@ -277,9 +277,9 @@ export function TransactionInvoiceView({
             <button
               type="button"
               onClick={handlePrintPdf}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/50 shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:border-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/50 shadow-sm"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
               <span>Simpan PDF</span>
@@ -289,9 +289,9 @@ export function TransactionInvoiceView({
             <button
               type="button"
               onClick={handlePrintPdf}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 border border-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-slate-800"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 border border-slate-900 px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-800"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
               <span>Cetak</span>

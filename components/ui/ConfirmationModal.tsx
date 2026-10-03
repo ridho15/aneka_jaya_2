@@ -86,7 +86,7 @@ export function ConfirmationModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/50 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/50 p-4 backdrop-blur-sm transition-opacity duration-150"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !isLoading) {
@@ -98,7 +98,7 @@ export function ConfirmationModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirmation-dialog-title"
-        className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-150 space-y-4"
+        className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-slate-100 transition-all duration-150 space-y-4"
       >
         <div className="flex items-start justify-between gap-3">
           <div>

@@ -191,7 +191,7 @@ export function PerformanceChart({ data }: Props) {
               transform: "translateX(-50%)"
             }}
           >
-            <div className="rounded-xl border border-slate-800/90 bg-slate-900/95 px-3.5 py-2.5 text-white shadow-xl backdrop-blur-xs min-w-[260px]">
+            <div className="rounded-xl border border-slate-800/90 bg-slate-900/95 px-3.5 py-2.5 text-white shadow-xl backdrop-blur-sm min-w-[260px]">
               <div className="flex items-center justify-between border-b border-slate-700/80 pb-1.5 mb-1.5">
                 <span className="font-bold text-xs text-emerald-400">
                   {activeItem.label} ({activeItem.key})

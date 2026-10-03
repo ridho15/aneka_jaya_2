@@ -272,10 +272,10 @@ export function DeliveryOrderProofUploader({
           type="button"
           onClick={handleSmartCameraClick}
           disabled={disabled || isUploading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors shadow-2xs"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors shadow-sm"
           title="Buka kamera perangkat untuk mengambil foto resi atau surat jalan"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
@@ -290,7 +290,7 @@ export function DeliveryOrderProofUploader({
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-50 transition-colors"
           title="Pilih gambar atau dokumen dari penyimpanan file perangkat"
         >
-          <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <span>Pilih dari File</span>
@@ -300,7 +300,7 @@ export function DeliveryOrderProofUploader({
       {/* Uploading Status Banner */}
       {isUploading && (
         <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 animate-pulse">
-          <svg className="w-4 h-4 animate-spin text-emerald-600" fill="none" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 animate-spin text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -320,7 +320,7 @@ export function DeliveryOrderProofUploader({
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
                 Lihat Foto Penuh
@@ -331,7 +331,7 @@ export function DeliveryOrderProofUploader({
                   onClick={handleRemovePhoto}
                   className="inline-flex items-center gap-0.5 text-[11px] font-medium text-rose-600 hover:text-rose-700 hover:underline"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Hapus
@@ -345,7 +345,7 @@ export function DeliveryOrderProofUploader({
               <img
                 src={receiptPhotoUrl}
                 alt="Foto Resi / Bukti Kirim"
-                className="h-36 max-h-48 w-auto max-w-full rounded-lg border border-slate-300 object-cover shadow-2xs group-hover:opacity-95 transition-opacity"
+                className="h-36 max-h-48 w-auto max-w-full rounded-lg border border-slate-300 object-cover shadow-sm group-hover:opacity-95 transition-opacity"
               />
             </a>
           </div>
@@ -358,7 +358,7 @@ export function DeliveryOrderProofUploader({
 
       {/* Live Camera Viewfinder Modal */}
       {isCameraModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -375,7 +375,7 @@ export function DeliveryOrderProofUploader({
             </div>
 
             {/* Video or Snapshot Preview Container */}
-            <div className="relative w-full aspect-4/3 rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
+            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
               {cameraError ? (
                 <div className="p-4 text-center space-y-3">
                   <p className="text-xs text-rose-300">{cameraError}</p>

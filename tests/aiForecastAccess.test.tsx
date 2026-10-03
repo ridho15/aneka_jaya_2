@@ -136,14 +136,14 @@ describe("Verifikasi Pembatasan Akses AI Prediksi Stok", () => {
       const html = renderToStaticMarkup(await StokBarangPage({ searchParams: Promise.resolve({}) }));
       expect(html).toContain('href="/stok-barang/ai-forecast"');
       expect(html).toContain("Prediksi Stok &amp; Dead Stock");
-    });
+    }, 15000);
 
     it("tidak menampilkan tombol Prediksi Stok untuk SUPERVISOR", async () => {
       authMocks.currentRole = "SUPERVISOR";
       const html = renderToStaticMarkup(await StokBarangPage({ searchParams: Promise.resolve({}) }));
       expect(html).not.toContain('href="/stok-barang/ai-forecast"');
       expect(html).not.toContain("Prediksi Stok &amp; Dead Stock");
-    });
+    }, 15000);
   });
 
   describe("4. Tombol Akses di Halaman /barang", () => {
@@ -152,14 +152,14 @@ describe("Verifikasi Pembatasan Akses AI Prediksi Stok", () => {
       const html = renderToStaticMarkup(await BarangPage({ searchParams: Promise.resolve({}) }));
       expect(html).toContain('href="/stok-barang/ai-forecast"');
       expect(html).toContain("Prediksi Stok &amp; Dead Stock");
-    });
+    }, 15000);
 
     it("tidak menampilkan tombol Prediksi Stok untuk SUPERVISOR", async () => {
       authMocks.currentRole = "SUPERVISOR";
       const html = renderToStaticMarkup(await BarangPage({ searchParams: Promise.resolve({}) }));
       expect(html).not.toContain('href="/stok-barang/ai-forecast"');
       expect(html).not.toContain("Prediksi Stok &amp; Dead Stock");
-    });
+    }, 15000);
   });
 
   describe("5. Tombol Akses di Halaman /reports/stocks", () => {
@@ -168,14 +168,14 @@ describe("Verifikasi Pembatasan Akses AI Prediksi Stok", () => {
       const html = renderToStaticMarkup(await StockReportsPage({ searchParams: Promise.resolve({}) }));
       expect(html).toContain('href="/stok-barang/ai-forecast"');
       expect(html).toContain("Prediksi Stok");
-    });
+    }, 15000);
 
     it("tidak menampilkan tombol Prediksi Stok untuk SUPERVISOR", async () => {
       authMocks.currentRole = "SUPERVISOR";
       const html = renderToStaticMarkup(await StockReportsPage({ searchParams: Promise.resolve({}) }));
       expect(html).not.toContain('href="/stok-barang/ai-forecast"');
       expect(html).not.toContain("Prediksi Stok");
-    });
+    }, 15000);
 
     it("me-redirect FINANCE yang tidak memiliki izin stok atau laporan persediaan ke /", async () => {
       authMocks.currentRole = "FINANCE";

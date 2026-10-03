@@ -71,21 +71,21 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/tempo"
-            className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+            className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
           >
             ← Kembali
           </Link>
           {tempo.salesId && (
             <Link
               href={`/penjualan/${tempo.salesId}`}
-              className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+              className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
             >
               Nota Penjualan
             </Link>
           )}
           <Link
             href={`/print/tempo/${tempo.id}`}
-            className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+            className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-sm"
           >
             Cetak Nota
           </Link>
@@ -95,14 +95,14 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
       {/* KPI Financial Overview Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Tagihan */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Tagihan Awal</p>
           <p className="mt-2 text-2xl font-black text-slate-900">{rupiah(tempo.originalAmount)}</p>
           <p className="mt-1 text-xs text-slate-400">Nilai total faktur penjualan</p>
         </div>
 
         {/* Card 2: Sudah Dibayar */}
-        <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-5 shadow-xs">
+        <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">Sudah Dibayar</p>
             <span className="text-xs font-extrabold text-emerald-700">{percentagePaid}%</span>
@@ -114,7 +114,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Card 3: Sisa Piutang */}
-        <div className={`rounded-2xl border p-5 shadow-xs ${
+        <div className={`rounded-2xl border p-5 shadow-sm ${
           isPaid
             ? "border-emerald-200/80 bg-emerald-50/30"
             : "border-amber-200/80 bg-amber-50/40"
@@ -127,7 +127,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
         </div>
 
         {/* Card 4: Jatuh Tempo & Status */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex flex-col justify-between">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm flex flex-col justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Status & Jatuh Tempo</p>
             <div className="mt-2">{statusBadge(tempo.status)}</div>
@@ -143,7 +143,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
         {/* Left Column: Details, Purchased Items Table, & Payment Timeline */}
         <div className="space-y-6">
           {/* Card 1: Informasi Detail Tempo */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
               Informasi Piutang & Transaksi
             </h3>
@@ -176,7 +176,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
 
           {/* Card 2: Rincian Barang yang Di-Tempo */}
           {sale?.items && sale.items.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-5 py-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
                   Rincian Barang yang Di-Tempo
@@ -235,7 +235,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
           )}
 
           {/* Card 3: Riwayat Pembayaran */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
                 Riwayat Pembayaran & Cicilan
@@ -314,9 +314,9 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
               )}
             </>
           ) : isPaid ? (
-            <div className="rounded-2xl border border-emerald-200 bg-linear-to-b from-white to-emerald-50/50 p-6 text-center shadow-xs">
+            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-b from-white to-emerald-50/50 p-6 text-center shadow-sm">
               <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <svg className="h-7 w-7 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -326,7 +326,7 @@ export default async function TempoDetailPage({ params }: { params: Promise<{ id
               </p>
               <Link
                 href={`/print/tempo/${tempo.id}`}
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
               >
                 Cetak Bukti Pelunasan
               </Link>

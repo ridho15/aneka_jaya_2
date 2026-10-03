@@ -199,12 +199,14 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
   pushText("SURAT JALAN PENGIRIMAN (DO)\n");
   pushText("=".repeat(THERMAL_80MM_WIDTH) + "\n\n");
 
-  // 3. JUMBO NAMA CUSTOMER (LARGEST FONT SIZE: Quadruple / Double Width + Double Height)
+  // 3. JUMBO NAMA CUSTOMER (DYNAMIC SCALING: Triple for <= 14 chars, Double for > 14 chars)
   pushText("********************************\n");
   pushText("TUJUAN / PELANGGAN:\n");
-  push(0x1d, 0x21, 0x33); // GS ! 0x33 (4x Width + 4x Height / Maximum Jumbo)
-  push(0x1b, 0x45, 0x01); // Bold on
   const customerName = (detail.sale.customerName || "PELANGGAN").toUpperCase();
+  // If short name (<= 14 chars), use Triple Width + Triple Height (0x22). Otherwise Double Width + Double Height (0x11).
+  const fontScalingByte = customerName.length <= 14 ? 0x22 : 0x11;
+  push(0x1d, 0x21, fontScalingByte); // GS ! n
+  push(0x1b, 0x45, 0x01); // Bold on
   pushText(customerName + "\n");
   push(0x1d, 0x21, 0x00); // Normal size
   push(0x1b, 0x45, 0x00); // Bold off
