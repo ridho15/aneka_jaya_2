@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { DeliveryOrderData } from "@/lib/deliveryOrders/types";
-import { formatJakartaDate } from "@/lib/date/jakarta";
 import {
   generateDeliveryOrderEscPos,
   generateDeliveryOrderThermalText,
@@ -131,6 +130,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
   const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [supportsBluetooth, setSupportsBluetooth] = useState<boolean>(false);
+  const [viewOrientation, setViewOrientation] = useState<"roll" | "horizontal">("roll");
   const [bannerAlert, setBannerAlert] = useState<{
     type: "info" | "error" | "success";
     message: string;
@@ -171,16 +171,17 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
         optionalServices: BLUETOOTH_PRINT_SERVICES
       });
 
-      setBannerAlert({
-        type: "info",
-        message: `Menghubungkan ke ${device.name || "Printer Bluetooth"}...`
-      });
-
       if (!device.gatt) {
-        throw new Error("GATT server tidak tersedia pada perangkat Bluetooth ini.");
+        throw new Error("GATT Server tidak tersedia pada perangkat Bluetooth.");
       }
 
+      setBannerAlert({
+        type: "info",
+        message: `Menghubungkan ke ${device.name || "Printer Thermal"}...`
+      });
+
       const server = await device.gatt.connect();
+
       let writeCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 
       for (const serviceUuid of BLUETOOTH_PRINT_SERVICES) {
@@ -195,7 +196,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
           }
           if (writeCharacteristic) break;
         } catch {
-          // Continue scanning services
+          // Continue trying other candidate services
         }
       }
 
@@ -268,7 +269,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
       setCopied(true);
       setBannerAlert({
         type: "success",
-        message: "Format teks struk thermal 48 kolom berhasil disalin ke clipboard."
+        message: "Format teks struk thermal (Nomor Invoice & Nama Customer) berhasil disalin."
       });
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -279,9 +280,9 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
     }
   };
 
-  const totalQty = detail.items.reduce((sum, item) => sum + item.quantity, 0);
-  const tanggalKirim = detail.sale.deliveryAt ? formatJakartaDate(detail.sale.deliveryAt) : formatJakartaDate(detail.sale.saleDate);
-  const driverName = detail.shippedByNameSnapshot || detail.assignedUserName || "-";
+  // Pure raw values without labels
+  const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
+  const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
 
   return (
     <div className="min-h-screen bg-slate-100/80 py-6 px-4 print:bg-white print:p-0">
@@ -308,7 +309,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             width: 72mm !important;
             max-width: 72mm !important;
             margin: 0 auto !important;
-            padding: 2mm 1mm !important;
+            padding: 8mm 2mm !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
@@ -343,7 +344,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 text-white font-semibold text-xs shadow-sm hover:bg-emerald-700 transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 text-white font-semibold text-xs shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             <PrinterIcon />
             <span>Cetak Dialog</span>
@@ -354,7 +355,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             type="button"
             onClick={handleBluetoothPrint}
             disabled={isBluetoothPrinting}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold text-xs shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold text-xs shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
             title={supportsBluetooth ? "Cetak langsung via Web Bluetooth" : "Memerlukan browser berbasis Chromium"}
           >
             <BluetoothIcon className={isBluetoothPrinting ? "animate-spin" : ""} />
@@ -365,8 +366,8 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
           <button
             type="button"
             onClick={handleCopyText}
-            className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium text-xs shadow-sm hover:bg-slate-50 transition-colors"
-            title="Salin teks struk 48 kolom untuk dicetak via aplikasi lain"
+            className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium text-xs shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
+            title="Salin teks struk (No Invoice & Nama Customer)"
           >
             {copied ? <CheckIcon className="text-emerald-600" /> : <CopyIcon />}
             <span>{copied ? "Tersalin" : "Salin Teks"}</span>
@@ -381,6 +382,35 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             <ExternalLinkIcon />
             <span>Buka RawBT</span>
           </a>
+        </div>
+
+        {/* View Orientation Switch (Roll Mode vs Horizontal Mode) */}
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs">
+          <span className="text-slate-500 font-medium">Orientasi:</span>
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
+            <button
+              type="button"
+              onClick={() => setViewOrientation("roll")}
+              className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                viewOrientation === "roll"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Roll Vertikal
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewOrientation("horizontal")}
+              className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                viewOrientation === "horizontal"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Mendatar (Landscape)
+            </button>
+          </div>
         </div>
 
         {/* Non-Blocking Status & Alert Feedback */}
@@ -401,7 +431,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             <button
               type="button"
               onClick={() => setBannerAlert(null)}
-              className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors"
+              className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors cursor-pointer"
               title="Tutup pesan"
             >
               <XIcon />
@@ -411,153 +441,76 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
 
         {/* Technical Sub-info */}
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Lebar efektif: ~72mm (48 kolom karakter)</span>
-          <span>Protokol: ESC/POS Raster &amp; Text</span>
+          <span>Format: No. Invoice &amp; Customer</span>
+          <span>Protokol: ESC/POS Landscape</span>
         </div>
       </div>
 
       {/* Realistic 80mm Physical Thermal Paper Slip */}
-      <div className="max-w-[340px] mx-auto select-none print:select-auto">
+      <div className={`${viewOrientation === "roll" ? "max-w-[340px]" : "max-w-[480px]"} mx-auto select-none print:select-auto transition-all duration-200`}>
         {/* Top Paper Tear Sawtooth Edge (Visual only, hidden on print) */}
         <div
           aria-hidden="true"
           className="no-print h-2.5 w-full bg-[linear-gradient(135deg,transparent_4px,#ffffff_0),linear-gradient(-135deg,transparent_4px,#ffffff_0)] bg-[size:10px_10px] bg-repeat-x"
         />
 
-        {/* Thermal Slip Body (Pure 1-Bit Monochrome, Zero Dithering) */}
+        {/* Thermal Slip Body (Pure 1-Bit Monochrome, Zero Dithering, Max Bold) */}
         <div
-          className="thermal-slip-container w-full bg-white text-black px-4 py-3 shadow-md print:shadow-none print:p-0"
+          className="thermal-slip-container w-full bg-white text-black px-4 py-8 shadow-md print:shadow-none print:p-0"
           style={{
-            fontFamily: "'Courier New', Courier, 'Lucida Console', Monaco, monospace",
-            fontSize: "12px",
-            lineHeight: "1.25"
+            fontFamily: "'Arial Black', 'Impact', 'Trebuchet MS', 'Arial', sans-serif"
           }}
         >
-          {/* Header Toko */}
-          <div className="text-center pb-2 border-b-2 border-black">
-            <div className="font-extrabold text-sm tracking-wider">ANEKA JAYA / SLM</div>
-            <div className="text-[11px] font-bold">SURAT JALAN PENGIRIMAN (DO)</div>
-          </div>
-
-          {/* 1. JUMBO NAMA PELANGGAN (PALING BESAR, 100% MONOKROM) */}
-          <div className="my-3 py-2 px-1 text-center border-2 border-black">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-black">
-              TUJUAN / PELANGGAN:
-            </div>
-            <div className="text-2xl font-black uppercase tracking-wide leading-tight mt-0.5 break-words">
-              {detail.sale.customerName || "PELANGGAN"}
-            </div>
-          </div>
-
-          {/* 2. NO INVOICE & NO DO (MENONJOL) */}
-          <div className="text-center border-b border-dashed border-black pb-2 mb-2">
-            <div className="text-base font-black">
-              INV: {detail.sale.transactionNumber || "—"}
-            </div>
-            <div className="text-[11px] font-bold mt-0.5">
-              DO: {detail.doNumber}
-            </div>
-          </div>
-
-          {/* Info Pengiriman (Bebas Emoji) */}
-          <div className="space-y-1 text-[11px] pb-2 border-b border-dashed border-black">
-            <div className="flex justify-between">
-              <span className="font-medium">Tanggal Kirim:</span>
-              <span className="font-bold">{tanggalKirim}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium">Ekspedisi:</span>
-              <span className="font-bold">{detail.sale.shippingMethod || "Kurir Toko"}</span>
-            </div>
-            {detail.trackingNumber && (
-              <div className="flex justify-between">
-                <span className="font-medium">No. Resi:</span>
-                <span className="font-bold">{detail.trackingNumber}</span>
+          {viewOrientation === "roll" ? (
+            /* Mode Roll (Sesuai Gambar Sketsa Pengguna: 2 Kolom Vertikal Memanjang) */
+            <div className="flex flex-row justify-around items-stretch min-h-[440px] sm:min-h-[500px]">
+              {/* Kolom 1: Nomor Invoice (Rotated vertically along paper roll) */}
+              <div className="flex-1 flex items-center justify-center border-r-2 border-dashed border-black/30 pr-2">
+                <span
+                  className="font-black text-3xl sm:text-4xl md:text-5xl text-black tracking-wider break-all select-all whitespace-nowrap"
+                  style={{
+                    writingMode: "vertical-rl",
+                    transform: "rotate(180deg)"
+                  }}
+                >
+                  {invoiceNumber}
+                </span>
               </div>
-            )}
-            <div className="flex justify-between">
-              <span className="font-medium">Petugas/Kurir:</span>
-              <span className="font-bold">{driverName}</span>
-            </div>
-            <div className="pt-1">
-              <span className="font-bold block text-[10px] uppercase">Alamat Tujuan:</span>
-              <div className="font-bold break-words mt-0.5">
-                {detail.sale.customerLocation || "-"}
+
+              {/* Kolom 2: Nama Customer (Rotated vertically along paper roll) */}
+              <div className="flex-1 flex items-center justify-center pl-2">
+                <span
+                  className="font-black text-2xl sm:text-3xl md:text-4xl text-black uppercase tracking-wider break-words select-all whitespace-nowrap"
+                  style={{
+                    writingMode: "vertical-rl",
+                    transform: "rotate(180deg)"
+                  }}
+                >
+                  {customerName}
+                </span>
               </div>
             </div>
-          </div>
+          ) : (
+            /* Mode Horizontal (Landscape Card: Baris Atas No Invoice, Baris Bawah Nama Customer) */
+            <div className="flex flex-col justify-center items-center gap-6 py-6 sm:py-8 min-h-[220px]">
+              {/* Baris 1: Nomor Invoice */}
+              <div className="w-full text-center">
+                <span className="font-black text-3xl sm:text-4xl md:text-5xl text-black tracking-tight break-all leading-tight select-all">
+                  {invoiceNumber}
+                </span>
+              </div>
 
-          {/* Tabel Barang (Strictly Masked: No Prices, Pure Black & White) */}
-          <div className="py-2 border-b-2 border-black">
-            <div className="flex justify-between font-bold text-[11px] uppercase pb-1 border-b border-black">
-              <span>Daftar Barang</span>
-              <span>Lokasi Rak</span>
-            </div>
-            <div className="divide-y divide-dashed divide-black/40 pt-1">
-              {detail.items.map((item, idx) => (
-                <div key={item.id || idx} className="py-1.5 text-[11px]">
-                  <div className="font-bold">
-                    {idx + 1}. {item.productNameSnapshot || item.productRef}
-                  </div>
-                  <div className="flex justify-between items-center mt-0.5 pl-3">
-                    <span className="font-extrabold text-xs">
-                      {item.quantity} {item.unitSnapshot || "PCS"}
-                    </span>
-                    <span className="font-bold text-[10px] border border-black px-1.5 py-0.5">
-                      Rak: {item.rackNameSnapshot || item.warehouseNameSnapshot || "-"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+              {/* Garis Pemisah */}
+              <div className="w-full border-b-2 border-dashed border-black/40" />
 
-            <div className="flex justify-between font-bold text-[11px] pt-2 mt-1 border-t border-black">
-              <span>TOTAL: {detail.items.length} Macam Barang</span>
-              <span className="text-xs font-black">{totalQty} Unit</span>
-            </div>
-          </div>
-
-          {/* Catatan Tambahan (jika ada) */}
-          {detail.notes && (
-            <div className="py-2 text-[11px] border-b border-dashed border-black">
-              <span className="font-bold block text-[10px] uppercase">Catatan:</span>
-              <div className="italic break-words mt-0.5">
-                {detail.notes}
+              {/* Baris 2: Nama Customer */}
+              <div className="w-full text-center">
+                <span className="font-black text-2xl sm:text-3xl md:text-4xl text-black uppercase tracking-tight break-words leading-tight select-all">
+                  {customerName}
+                </span>
               </div>
             </div>
           )}
-
-          {/* Kolom Tanda Tangan */}
-          <div className="pt-3 pb-2">
-            <div className="text-[10px] font-bold text-center mb-1.5">
-              Tanda Tangan Serah Terima:
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-center text-[11px]">
-              <div>
-                <div className="font-semibold mb-8">
-                  Pengirim / Sopir
-                </div>
-                <div className="border-t border-black pt-1 font-bold">
-                  ( {driverName !== "-" ? driverName : " ................ " } )
-                </div>
-              </div>
-              <div>
-                <div className="font-semibold mb-8">
-                  Penerima / Toko
-                </div>
-                <div className="border-t border-black pt-1 font-bold">
-                  ( ................ )
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-center text-[9px] font-medium pt-2 border-t border-black/40">
-            Harap periksa kelengkapan barang saat serah terima.
-            <br />
-            Dicetak dari Sistem SLM
-          </div>
         </div>
 
         {/* Bottom Paper Tear Sawtooth Edge (Visual only, hidden on print) */}

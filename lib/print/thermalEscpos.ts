@@ -1,5 +1,4 @@
 import type { DeliveryOrderData } from "@/lib/deliveryOrders/types";
-import { formatJakartaDate } from "@/lib/date/jakarta";
 
 export const THERMAL_80MM_WIDTH = 48; // Standard 48 characters for 80mm thermal printer (Font A)
 
@@ -82,102 +81,25 @@ export function formatKeyValue(
 }
 
 /**
- * Generates formatted 48-column thermal text for preview or raw text printing
+ * Generates formatted minimal text representation for clipboard (Copy Text)
+ * Only Invoice Number and Customer Name, without labels or extra info.
  */
 export function generateDeliveryOrderThermalText(detail: DeliveryOrderData): string {
-  const W = THERMAL_80MM_WIDTH;
-  const sep = "=".repeat(W);
-  const thin = "-".repeat(W);
-  const star = "*".repeat(W);
+  const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
+  const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
 
-  const lines: string[] = [
-    sep,
-    padOrTruncate("ANEKA JAYA / SLM", W, "center"),
-    padOrTruncate("SURAT JALAN PENGIRIMAN (DO)", W, "center"),
-    sep,
-    "",
-    star,
-    padOrTruncate("PELANGGAN / CUSTOMER", W, "center"),
-    padOrTruncate((detail.sale.customerName || "PELANGGAN").toUpperCase(), W, "center"),
-    star,
-    "",
-    twoColumn(
-      `INVOICE: ${detail.sale.transactionNumber || "-"}`,
-      `DO: ${detail.doNumber}`
-    ),
-    thin,
-    ...formatKeyValue("Tanggal Kirim", detail.sale.deliveryAt ? formatJakartaDate(detail.sale.deliveryAt) : formatJakartaDate(detail.sale.saleDate)),
-    ...formatKeyValue("Ekspedisi/Kurir", detail.sale.shippingMethod || "Reguler / Kurir Toko"),
-    ...formatKeyValue("Alamat Tujuan", detail.sale.customerLocation || "-"),
-  ];
-
-  if (detail.trackingNumber) {
-    lines.push(...formatKeyValue("Nomor Resi", detail.trackingNumber));
-  }
-
-  const driverName = detail.shippedByNameSnapshot || detail.assignedUserName || "-";
-  lines.push(...formatKeyValue("Petugas / Supir", driverName));
-
-  lines.push(
-    "",
-    thin,
-    twoColumn("RINCIAN BARANG", "LOKASI RAK"),
-    thin
-  );
-
-  // Strictly masked: SKU, Qty, Unit, Rack (No Prices)
-  let totalQty = 0;
-  detail.items.forEach((item, idx) => {
-    totalQty += item.quantity;
-    const no = `${idx + 1}.`;
-    const namePart = item.productNameSnapshot || item.productRef || "Item";
-    const qtyPart = `${item.quantity} ${item.unitSnapshot || "PCS"}`;
-    const rackPart = item.rackNameSnapshot || item.warehouseNameSnapshot || "-";
-
-    // Line 1: No + Name
-    lines.push(`${padOrTruncate(no, 3)} ${namePart}`);
-    // Line 2: Qty & Rack
-    lines.push(twoColumn(`    Qty: ${qtyPart}`, `Rak: ${rackPart}`));
-  });
-
-  lines.push(
-    thin,
-    twoColumn(`TOTAL: ${detail.items.length} Macam Barang`, `Total Unit: ${totalQty}`),
-    thin
-  );
-
-  if (detail.notes) {
-    lines.push(...formatKeyValue("Catatan", detail.notes));
-    lines.push(thin);
-  }
-
-  lines.push(
-    "",
-    "Tanda Tangan Serah Terima:",
-    "",
-    twoColumn("  Pengirim / Sopir", "  Penerima / Toko "),
-    "",
-    "",
-    "",
-    twoColumn(" (................) ", " (................) "),
-    "",
-    padOrTruncate("Harap periksa kelengkapan saat serah terima", W, "center"),
-    sep,
-    ""
-  );
-
-  return lines.join("\n");
+  return `${invoiceNumber}\n${customerName}\n`;
 }
 
 /**
  * Generates raw ESC/POS binary command buffer for 80mm Bluetooth thermal printer
- * Emphasizes Customer Name and Invoice Number in MAXIMUM/JUMBO font sizes.
+ * Minimalist landscape format: Only Invoice Number and Customer Name,
+ * in MAXIMUM BOLD font size filling the paper, without labels or extra info.
  */
 export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Array {
   const encoder = new TextEncoder();
   const bytes: number[] = [];
 
-  // Helper to push raw ASCII/bytes
   const push = (...b: number[]) => bytes.push(...b);
   const pushText = (text: string) => {
     const encoded = encoder.encode(text);
@@ -186,99 +108,38 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
     }
   };
 
-  const lineFeed = () => push(0x0a);
+  const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
+  const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
 
   // 1. Initialize printer
   push(0x1b, 0x40); // ESC @ (Initialize)
 
-  // 2. Header
-  push(0x1b, 0x61, 0x01); // Center align
-  push(0x1b, 0x45, 0x01); // Bold on
-  pushText("ANEKA JAYA / SLM\n");
-  push(0x1b, 0x45, 0x00); // Bold off
-  pushText("SURAT JALAN PENGIRIMAN (DO)\n");
-  pushText("=".repeat(THERMAL_80MM_WIDTH) + "\n\n");
+  // 2. Enable 90-degree clockwise rotation (Landscape on continuous roll)
+  push(0x1b, 0x56, 0x01); // ESC V 1 (Turn 90° clockwise rotation ON)
 
-  // 3. JUMBO NAMA CUSTOMER (DYNAMIC SCALING: Triple for <= 14 chars, Double for > 14 chars)
-  pushText("********************************\n");
-  pushText("TUJUAN / PELANGGAN:\n");
-  const customerName = (detail.sale.customerName || "PELANGGAN").toUpperCase();
-  // If short name (<= 14 chars), use Triple Width + Triple Height (0x22). Otherwise Double Width + Double Height (0x11).
-  const fontScalingByte = customerName.length <= 14 ? 0x22 : 0x11;
-  push(0x1d, 0x21, fontScalingByte); // GS ! n
-  push(0x1b, 0x45, 0x01); // Bold on
-  pushText(customerName + "\n");
+  // 3. Center alignment
+  push(0x1b, 0x61, 0x01); // ESC a 1 (Center align)
+
+  // 4. Maximum Bold
+  push(0x1b, 0x45, 0x01); // ESC E 1 (Bold ON)
+
+  // Font scaling for Invoice Number (Triple or Double width/height)
+  const invScale = invoiceNumber.length <= 14 ? 0x22 : 0x11;
+  push(0x1d, 0x21, invScale); // GS ! n
+  pushText(invoiceNumber + "\n\n");
+
+  // Font scaling for Customer Name (Double or Triple width/height)
+  const custScale = customerName.length <= 12 ? 0x22 : 0x11;
+  push(0x1d, 0x21, custScale); // GS ! n
+  pushText(customerName + "\n\n");
+
+  // Reset font scaling & bold & rotation
   push(0x1d, 0x21, 0x00); // Normal size
-  push(0x1b, 0x45, 0x00); // Bold off
-  pushText("********************************\n\n");
+  push(0x1b, 0x45, 0x00); // Bold OFF
+  push(0x1b, 0x56, 0x00); // ESC V 0 (Turn 90° rotation OFF)
 
-  // 4. LARGE NO INVOICE & NO DO (Double Width + Double Height)
-  push(0x1d, 0x21, 0x11); // GS ! 0x11 (2x Width + 2x Height)
-  push(0x1b, 0x45, 0x01); // Bold on
-  const invNumber = detail.sale.transactionNumber || detail.doNumber;
-  pushText(`INV: ${invNumber}\n`);
-  push(0x1d, 0x21, 0x00); // Reset to normal font
-  push(0x1b, 0x45, 0x00); // Bold off
-  pushText(`DO: ${detail.doNumber}\n`);
-  pushText("-".repeat(THERMAL_80MM_WIDTH) + "\n");
-
-  // 5. Delivery Details (Left aligned)
-  push(0x1b, 0x61, 0x00); // Left align
-  const tanggalKirim = detail.sale.deliveryAt ? formatJakartaDate(detail.sale.deliveryAt) : formatJakartaDate(detail.sale.saleDate);
-  pushText(`Tanggal Kirim : ${tanggalKirim}\n`);
-  pushText(`Ekspedisi/Tipe: ${detail.sale.shippingMethod || "Kurir Toko"}\n`);
-  pushText(`Alamat Tujuan : ${detail.sale.customerLocation || "-"}\n`);
-  if (detail.trackingNumber) {
-    pushText(`Nomor Resi    : ${detail.trackingNumber}\n`);
-  }
-  const driverName = detail.shippedByNameSnapshot || detail.assignedUserName || "-";
-  pushText(`Petugas/Kurir : ${driverName}\n`);
-
-  // 6. Items Table (Masked: No prices)
-  pushText("-".repeat(THERMAL_80MM_WIDTH) + "\n");
-  push(0x1b, 0x45, 0x01); // Bold
-  pushText(twoColumn("RINCIAN BARANG", "LOKASI RAK") + "\n");
-  push(0x1b, 0x45, 0x00); // Bold off
-  pushText("-".repeat(THERMAL_80MM_WIDTH) + "\n");
-
-  let totalQty = 0;
-  detail.items.forEach((item, idx) => {
-    totalQty += item.quantity;
-    const no = `${idx + 1}.`;
-    const namePart = item.productNameSnapshot || item.productRef || "Item";
-    const qtyPart = `${item.quantity} ${item.unitSnapshot || "PCS"}`;
-    const rackPart = item.rackNameSnapshot || item.warehouseNameSnapshot || "-";
-
-    push(0x1b, 0x45, 0x01);
-    pushText(`${padOrTruncate(no, 3)} ${namePart}\n`);
-    push(0x1b, 0x45, 0x00);
-    pushText(twoColumn(`    Qty: ${qtyPart}`, `Rak: ${rackPart}`) + "\n");
-  });
-
-  pushText("-".repeat(THERMAL_80MM_WIDTH) + "\n");
-  push(0x1b, 0x45, 0x01);
-  pushText(twoColumn(`TOTAL: ${detail.items.length} Macam Barang`, `Total Unit: ${totalQty}`) + "\n");
-  push(0x1b, 0x45, 0x00);
-  pushText("-".repeat(THERMAL_80MM_WIDTH) + "\n");
-
-  if (detail.notes) {
-    pushText(`Catatan: ${detail.notes}\n`);
-    pushText("-".repeat(THERMAL_80MM_WIDTH) + "\n");
-  }
-
-  // 7. Signatures
-  lineFeed();
-  pushText("Tanda Tangan Serah Terima:\n\n");
-  pushText(twoColumn("  Pengirim / Sopir", "  Penerima / Toko ") + "\n\n\n\n");
-  pushText(twoColumn(" (................) ", " (................) ") + "\n\n");
-
-  // 8. Footer
-  push(0x1b, 0x61, 0x01); // Center align
-  pushText("Harap periksa kelengkapan saat serah terima\n");
-  pushText("=".repeat(THERMAL_80MM_WIDTH) + "\n\n");
-
-  // 9. Feed & Cut
-  push(0x1b, 0x64, 0x04); // Feed 4 lines
+  // Feed & Cut
+  push(0x1b, 0x64, 0x03); // Feed 3 lines
   push(0x1d, 0x56, 0x42, 0x00); // GS V 66 0 (Cut paper)
 
   return new Uint8Array(bytes);
