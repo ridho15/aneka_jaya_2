@@ -120,16 +120,17 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
   // 3. Center alignment
   push(0x1b, 0x61, 0x01); // ESC a 1 (Center align)
 
-  // 4. Maximum Bold
+  // 4. Maximum Bold & Double-strike
   push(0x1b, 0x45, 0x01); // ESC E 1 (Bold ON)
+  push(0x1b, 0x47, 0x01); // ESC G 1 (Double-strike bold ON)
 
-  // Font scaling for Invoice Number (Triple or Double width/height)
-  const invScale = invoiceNumber.length <= 14 ? 0x22 : 0x11;
+  // Max font scaling for Invoice Number (4x width & 4x height: JUMBO)
+  const invScale = 0x33; // 4x width, 4x height (96 dots)
   push(0x1d, 0x21, invScale); // GS ! n
   pushText(invoiceNumber + "\n\n");
 
-  // Font scaling for Customer Name (Double or Triple width/height)
-  const custScale = customerName.length <= 12 ? 0x22 : 0x11;
+  // Max font scaling for Customer Name (4x width & 4x height if <= 16 chars, 3x width & 3x height if > 16 chars)
+  const custScale = customerName.length <= 16 ? 0x33 : 0x22;
   push(0x1d, 0x21, custScale); // GS ! n
   pushText(customerName + "\n\n");
 

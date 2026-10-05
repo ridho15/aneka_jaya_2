@@ -309,10 +309,18 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             width: 72mm !important;
             max-width: 72mm !important;
             margin: 0 auto !important;
-            padding: 8mm 2mm !important;
+            padding: 4mm 1mm !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
+          }
+          .print-jumbo-invoice {
+            font-size: 52pt !important;
+            line-height: 0.9 !important;
+          }
+          .print-jumbo-customer {
+            font-size: 42pt !important;
+            line-height: 0.9 !important;
           }
         }
       `}</style>
@@ -463,11 +471,11 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
         >
           {viewOrientation === "roll" ? (
             /* Mode Roll (Sesuai Gambar Sketsa Pengguna: 2 Kolom Vertikal Memanjang) */
-            <div className="flex flex-row justify-around items-stretch min-h-[440px] sm:min-h-[500px]">
+            <div className="flex flex-row justify-around items-stretch min-h-[460px] sm:min-h-[540px]">
               {/* Kolom 1: Nomor Invoice (Rotated vertically along paper roll) */}
-              <div className="flex-1 flex items-center justify-center border-r-2 border-dashed border-black/30 pr-2">
+              <div className="flex-1 flex items-center justify-center border-r-2 border-dashed border-black/30 pr-1">
                 <span
-                  className="font-black text-3xl sm:text-4xl md:text-5xl text-black tracking-wider break-all select-all whitespace-nowrap"
+                  className="print-jumbo-invoice font-black text-6xl sm:text-7xl md:text-8xl text-black tracking-wider break-all select-all whitespace-nowrap leading-none"
                   style={{
                     writingMode: "vertical-rl",
                     transform: "rotate(180deg)"
@@ -478,9 +486,9 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
               </div>
 
               {/* Kolom 2: Nama Customer (Rotated vertically along paper roll) */}
-              <div className="flex-1 flex items-center justify-center pl-2">
+              <div className="flex-1 flex items-center justify-center pl-1">
                 <span
-                  className="font-black text-2xl sm:text-3xl md:text-4xl text-black uppercase tracking-wider break-words select-all whitespace-nowrap"
+                  className="print-jumbo-customer font-black text-5xl sm:text-6xl md:text-7xl text-black uppercase tracking-wider break-words select-all whitespace-nowrap leading-none"
                   style={{
                     writingMode: "vertical-rl",
                     transform: "rotate(180deg)"
@@ -492,10 +500,10 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             </div>
           ) : (
             /* Mode Horizontal (Landscape Card: Baris Atas No Invoice, Baris Bawah Nama Customer) */
-            <div className="flex flex-col justify-center items-center gap-6 py-6 sm:py-8 min-h-[220px]">
+            <div className="flex flex-col justify-center items-center gap-6 py-6 sm:py-10 min-h-[260px]">
               {/* Baris 1: Nomor Invoice */}
               <div className="w-full text-center">
-                <span className="font-black text-3xl sm:text-4xl md:text-5xl text-black tracking-tight break-all leading-tight select-all">
+                <span className="font-black text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-black tracking-tight break-all leading-tight select-all">
                   {invoiceNumber}
                 </span>
               </div>
@@ -505,7 +513,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
 
               {/* Baris 2: Nama Customer */}
               <div className="w-full text-center">
-                <span className="font-black text-2xl sm:text-3xl md:text-4xl text-black uppercase tracking-tight break-words leading-tight select-all">
+                <span className="font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-black uppercase tracking-tight break-words leading-tight select-all">
                   {customerName}
                 </span>
               </div>
