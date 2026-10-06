@@ -11,7 +11,7 @@ export default async function DeliveryOrderPrintPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ auto?: string }>;
+  searchParams?: Promise<{ auto?: string; userName?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!can(user.role, "do.view")) {
@@ -27,5 +27,14 @@ export default async function DeliveryOrderPrintPage({
     notFound();
   }
 
-  return <DeliveryOrderThermalPrint detail={detail} autoPrint={autoPrint} />;
+  // Username/account user yang menekan tombol cetak pada DO
+  const printUserName = resolvedSearchParams?.userName || user.name || user.id || "";
+
+  return (
+    <DeliveryOrderThermalPrint
+      detail={detail}
+      autoPrint={autoPrint}
+      printUserName={printUserName}
+    />
+  );
 }

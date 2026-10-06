@@ -291,6 +291,7 @@ export default async function DeliveryOrdersPage({
           canProcess={canProcess}
           currentUserId={user.id}
           currentUserRole={user.role}
+          currentUserName={user.name || user.id}
         />
 
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">

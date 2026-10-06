@@ -94,11 +94,11 @@ export function getDeliveryOrderSourceLabel(detail: DeliveryOrderData): "SIP : M
  * Generates formatted minimal text representation for clipboard (Copy Text)
  * Invoice Number, Customer Name, and Source Indicator (SIP / MJ).
  */
-export function generateDeliveryOrderThermalText(detail: DeliveryOrderData): string {
+export function generateDeliveryOrderThermalText(detail: DeliveryOrderData, printUserName?: string): string {
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
-  const rawOfficer = detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
+  const rawOfficer = printUserName || detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
   const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
 
   const footerLine = officerName ? `${sourceLabel}   ${officerName}` : sourceLabel;
@@ -110,7 +110,7 @@ export function generateDeliveryOrderThermalText(detail: DeliveryOrderData): str
  * Minimalist landscape format: Invoice Number, Customer Name, and Source Indicator (SIP / MJ),
  * in MAXIMUM BOLD font size filling the paper, without labels or extra info.
  */
-export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Array {
+export function generateDeliveryOrderEscPos(detail: DeliveryOrderData, printUserName?: string): Uint8Array {
   const encoder = new TextEncoder();
   const bytes: number[] = [];
 
@@ -125,7 +125,7 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
-  const rawOfficer = detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
+  const rawOfficer = printUserName || detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
   const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
 
   // 1. Initialize printer
@@ -205,8 +205,8 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
 /**
  * Creates an Android RawBT intent URL for direct 1-tap printing
  */
-export function generateRawBtUrl(detail: DeliveryOrderData): string {
-  const escposBytes = generateDeliveryOrderEscPos(detail);
+export function generateRawBtUrl(detail: DeliveryOrderData, printUserName?: string): string {
+  const escposBytes = generateDeliveryOrderEscPos(detail, printUserName);
   let binary = "";
   const len = escposBytes.byteLength;
   for (let i = 0; i < len; i++) {

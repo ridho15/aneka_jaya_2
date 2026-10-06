@@ -111,6 +111,13 @@ describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
       expect(text).toContain("SIP : MJ");
       expect(text).not.toContain("SIP : AJ");
     });
+
+    it("uses the printUserName of the account that clicked print over the assigned officer", () => {
+      const text = generateDeliveryOrderThermalText(mockDoData, "KASIR-01");
+
+      expect(text).toContain("KASIR-01");
+      expect(text).not.toContain("PAK SUPARDI");
+    });
   });
 
   describe("generateDeliveryOrderEscPos", () => {
@@ -168,6 +175,14 @@ describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
       expect(binaryString).toContain("SIP : MJ");
       expect(binaryString).not.toContain("SIP : AJ");
     });
+
+    it("uses printUserName in ESC/POS byte sequence when provided", () => {
+      const bytes = generateDeliveryOrderEscPos(mockDoData, "KASIR-01");
+      const binaryString = new TextDecoder("latin1").decode(bytes);
+
+      expect(binaryString).toContain("KASIR-01");
+      expect(binaryString).not.toContain("PAK SUPARDI");
+    });
   });
 
   describe("generateRawBtUrl", () => {
@@ -176,6 +191,15 @@ describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
 
       expect(url.startsWith("rawbt:data:base64,")).toBe(true);
       expect(url.length).toBeGreaterThan(30);
+    });
+
+    it("generates an Android RawBT intent URL with printUserName when provided", () => {
+      const url = generateRawBtUrl(mockDoData, "KASIR-01");
+
+      expect(url.startsWith("rawbt:data:base64,")).toBe(true);
+      const base64Data = url.replace("rawbt:data:base64,", "");
+      const decoded = atob(base64Data);
+      expect(decoded).toContain("KASIR-01");
     });
   });
 });

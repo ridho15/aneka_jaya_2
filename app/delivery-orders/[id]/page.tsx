@@ -48,6 +48,7 @@ export default async function DeliveryOrderDetailPage({
           canAssign={canAssign}
           canProcess={canProcess}
           currentUserRole={user.role}
+          currentUserName={user.name || user.id}
         />
       </div>
     </AppShell>

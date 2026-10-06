@@ -21,6 +21,7 @@ type Props = {
   canProcess: boolean;
   currentUserId: string;
   currentUserRole: string;
+  currentUserName?: string;
 };
 
 export function DeliveryOrderQueueTable({
@@ -28,7 +29,8 @@ export function DeliveryOrderQueueTable({
   officers,
   canAssign,
   canProcess,
-  currentUserRole
+  currentUserRole,
+  currentUserName
 }: Props) {
   const { showToast } = useToast();
   const [queue, setQueue] = useState<DeliveryOrderQueueItem[]>(initialQueue);
@@ -249,7 +251,7 @@ export function DeliveryOrderQueueTable({
               )}
               <div className="flex items-center justify-end gap-2">
                 <Link
-                  href={`/delivery-orders/${item.id}/print`}
+                  href={`/delivery-orders/${item.id}/print${currentUserName ? `?userName=${encodeURIComponent(currentUserName)}` : ""}`}
                   target="_blank"
                   className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
                   title="Cetak DO Thermal 80mm"
@@ -420,7 +422,7 @@ export function DeliveryOrderQueueTable({
                 <td className="px-5 py-3.5 text-right whitespace-nowrap">
                   <div className="flex items-center justify-end gap-1.5">
                     <Link
-                      href={`/delivery-orders/${item.id}/print`}
+                      href={`/delivery-orders/${item.id}/print${currentUserName ? `?userName=${encodeURIComponent(currentUserName)}` : ""}`}
                       target="_blank"
                       className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
                       title="Cetak DO Thermal 80mm"

@@ -13,6 +13,7 @@ import {
 interface Props {
   detail: DeliveryOrderData;
   autoPrint?: boolean;
+  printUserName?: string;
 }
 
 // Web Bluetooth Type Definitions
@@ -127,7 +128,7 @@ function XIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) {
+export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUserName }: Props) {
   const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [supportsBluetooth, setSupportsBluetooth] = useState<boolean>(false);
@@ -136,6 +137,13 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
     message: string;
   } | null>(null);
 
+  // Pure raw values without labels
+  const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
+  const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
+  const sourceLabel = getDeliveryOrderSourceLabel(detail);
+  const rawOfficer = printUserName || detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
+  const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
+
   useEffect(() => {
     const nav = typeof navigator !== "undefined" ? (navigator as unknown as BluetoothNavigator) : null;
     setSupportsBluetooth(Boolean(nav?.bluetooth));
@@ -143,7 +151,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
     if (autoPrint) {
       const timer = setTimeout(() => {
         window.print();
-      }, 500);
+      }, 350);
       return () => clearTimeout(timer);
     }
   }, [autoPrint]);
@@ -223,7 +231,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
         message: "Mengirim data cetak ke printer..."
       });
 
-      const escPosData = generateDeliveryOrderEscPos(detail);
+      const escPosData = generateDeliveryOrderEscPos(detail, officerName);
       const CHUNK_SIZE = 100;
       for (let i = 0; i < escPosData.length; i += CHUNK_SIZE) {
         const chunk = escPosData.slice(i, i + CHUNK_SIZE);
@@ -264,7 +272,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
 
   const handleCopyText = async () => {
     try {
-      const text = generateDeliveryOrderThermalText(detail);
+      const text = generateDeliveryOrderThermalText(detail, officerName);
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setBannerAlert({
@@ -279,13 +287,6 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
       });
     }
   };
-
-  // Pure raw values without labels
-  const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
-  const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
-  const sourceLabel = getDeliveryOrderSourceLabel(detail);
-  const rawOfficer = detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
-  const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
 
   // Dynamic font scaling to guarantee text fits strictly within 15cm without being cut off
   const invoiceScreenSize = invoiceNumber.length <= 9
@@ -415,7 +416,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
 
           {/* Android RawBT Intent */}
           <a
-            href={generateRawBtUrl(detail)}
+            href={generateRawBtUrl(detail, officerName)}
             className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium text-xs shadow-sm hover:bg-slate-50 transition-colors"
             title="Kirim ke aplikasi RawBT Driver di Android"
           >
@@ -453,7 +454,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
         {/* Technical Sub-info */}
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
           <span>Format: 3 Kolom Vertikal</span>
-          <span>Asal: {sourceLabel === "SIP : MJ" ? "Integrasi MJ (mj.playgo.id)" : "Sistem SIP (AJ)"}</span>
+          <span>{officerName ? `Petugas: ${officerName}` : `Asal: ${sourceLabel}`}</span>
         </div>
       </div>
 

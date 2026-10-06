@@ -24,6 +24,7 @@ type Props = {
   canAssign: boolean;
   canProcess: boolean;
   currentUserRole: string;
+  currentUserName?: string;
 };
 
 export function DeliveryOrderDetailView({
@@ -31,7 +32,8 @@ export function DeliveryOrderDetailView({
   officers,
   canAssign,
   canProcess,
-  currentUserRole
+  currentUserRole,
+  currentUserName
 }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -338,7 +340,7 @@ export function DeliveryOrderDetailView({
 
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/delivery-orders/${detail.id}/print`}
+            href={`/delivery-orders/${detail.id}/print${currentUserName ? `?userName=${encodeURIComponent(currentUserName)}` : ""}`}
             target="_blank"
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
             title="Cetak Surat Jalan DO dengan Printer Thermal 80mm Bluetooth"
