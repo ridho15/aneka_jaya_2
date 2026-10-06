@@ -464,7 +464,9 @@ export async function getDeliveryOrderDetail(
           customerName: true,
           customerLocation: true,
           shippingMethod: true,
-          deliveryAt: true
+          deliveryAt: true,
+          source: true,
+          createdByUserId: true
         }
       },
       items: true,
@@ -524,7 +526,9 @@ export async function getDeliveryOrderDetail(
       customerName: row.salesRecord.customerName,
       customerLocation: row.salesRecord.customerLocation || undefined,
       shippingMethod: row.salesRecord.shippingMethod || undefined,
-      deliveryAt: row.salesRecord.deliveryAt ? row.salesRecord.deliveryAt.toISOString() : undefined
+      deliveryAt: row.salesRecord.deliveryAt ? row.salesRecord.deliveryAt.toISOString() : undefined,
+      source: row.salesRecord.source || undefined,
+      createdByUserId: row.salesRecord.createdByUserId || undefined
     },
     items: row.items.map((item) => ({
       id: item.id,

@@ -52,6 +52,8 @@ export type DeliveryOrderData = {
     customerLocation?: string;
     shippingMethod?: string;
     deliveryAt?: string;
+    source?: string;
+    createdByUserId?: string;
   };
   items: DeliveryOrderItemData[];
 };

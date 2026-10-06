@@ -6,7 +6,8 @@ import type { DeliveryOrderData } from "@/lib/deliveryOrders/types";
 import {
   generateDeliveryOrderEscPos,
   generateDeliveryOrderThermalText,
-  generateRawBtUrl
+  generateRawBtUrl,
+  getDeliveryOrderSourceLabel
 } from "@/lib/print/thermalEscpos";
 
 interface Props {
@@ -130,7 +131,6 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
   const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [supportsBluetooth, setSupportsBluetooth] = useState<boolean>(false);
-  const [viewOrientation, setViewOrientation] = useState<"roll" | "horizontal">("roll");
   const [bannerAlert, setBannerAlert] = useState<{
     type: "info" | "error" | "success";
     message: string;
@@ -283,6 +283,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
   // Pure raw values without labels
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
+  const sourceLabel = getDeliveryOrderSourceLabel(detail);
 
   return (
     <div className="min-h-screen bg-slate-100/80 py-6 px-4 print:bg-white print:p-0">
@@ -309,18 +310,23 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             width: 72mm !important;
             max-width: 72mm !important;
             margin: 0 auto !important;
-            padding: 4mm 1mm !important;
+            padding: 2mm 1mm !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
           }
           .print-jumbo-invoice {
-            font-size: 52pt !important;
-            line-height: 0.9 !important;
+            font-size: 84pt !important;
+            line-height: 0.85 !important;
           }
           .print-jumbo-customer {
-            font-size: 42pt !important;
-            line-height: 0.9 !important;
+            font-size: 70pt !important;
+            line-height: 0.85 !important;
+          }
+          .print-jumbo-source {
+            font-size: 26pt !important;
+            line-height: 0.85 !important;
+            letter-spacing: 0.15em !important;
           }
         }
       `}</style>
@@ -392,35 +398,6 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
           </a>
         </div>
 
-        {/* View Orientation Switch (Roll Mode vs Horizontal Mode) */}
-        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs">
-          <span className="text-slate-500 font-medium">Orientasi:</span>
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-            <button
-              type="button"
-              onClick={() => setViewOrientation("roll")}
-              className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                viewOrientation === "roll"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Roll Vertikal
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewOrientation("horizontal")}
-              className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                viewOrientation === "horizontal"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Mendatar (Landscape)
-            </button>
-          </div>
-        </div>
-
         {/* Non-Blocking Status & Alert Feedback */}
         {bannerAlert && (
           <div
@@ -449,13 +426,13 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
 
         {/* Technical Sub-info */}
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Format: No. Invoice &amp; Customer</span>
-          <span>Protokol: ESC/POS Landscape</span>
+          <span>Format: 3 Kolom Vertikal</span>
+          <span>Asal: {sourceLabel === "MJ" ? "Integrasi MJ (mj.playgo.id)" : "Sistem SIP (AJ)"}</span>
         </div>
       </div>
 
-      {/* Realistic 80mm Physical Thermal Paper Slip */}
-      <div className={`${viewOrientation === "roll" ? "max-w-[340px]" : "max-w-[480px]"} mx-auto select-none print:select-auto transition-all duration-200`}>
+      {/* Realistic 80mm Physical Thermal Paper Slip (3 Kolom Vertikal) */}
+      <div className="max-w-[340px] mx-auto select-none print:select-auto transition-all duration-200">
         {/* Top Paper Tear Sawtooth Edge (Visual only, hidden on print) */}
         <div
           aria-hidden="true"
@@ -469,56 +446,47 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             fontFamily: "'Arial Black', 'Impact', 'Trebuchet MS', 'Arial', sans-serif"
           }}
         >
-          {viewOrientation === "roll" ? (
-            /* Mode Roll (Sesuai Gambar Sketsa Pengguna: 2 Kolom Vertikal Memanjang) */
-            <div className="flex flex-row justify-around items-stretch min-h-[460px] sm:min-h-[540px]">
-              {/* Kolom 1: Nomor Invoice (Rotated vertically along paper roll) */}
-              <div className="flex-1 flex items-center justify-center border-r-2 border-dashed border-black/30 pr-1">
-                <span
-                  className="print-jumbo-invoice font-black text-6xl sm:text-7xl md:text-8xl text-black tracking-wider break-all select-all whitespace-nowrap leading-none"
-                  style={{
-                    writingMode: "vertical-rl",
-                    transform: "rotate(180deg)"
-                  }}
-                >
-                  {invoiceNumber}
-                </span>
-              </div>
-
-              {/* Kolom 2: Nama Customer (Rotated vertically along paper roll) */}
-              <div className="flex-1 flex items-center justify-center pl-1">
-                <span
-                  className="print-jumbo-customer font-black text-5xl sm:text-6xl md:text-7xl text-black uppercase tracking-wider break-words select-all whitespace-nowrap leading-none"
-                  style={{
-                    writingMode: "vertical-rl",
-                    transform: "rotate(180deg)"
-                  }}
-                >
-                  {customerName}
-                </span>
-              </div>
+          {/* 3 Kolom Vertikal: Kolom 1 (Invoice), Kolom 2 (Customer), Kolom 3 (Keterangan Asal) */}
+          <div className="flex flex-row justify-around items-stretch min-h-[500px] sm:min-h-[580px]">
+            {/* Kolom 1: Nomor Invoice */}
+            <div className="flex-[2.5] flex items-center justify-center border-r-2 border-dashed border-black/30 pr-1">
+              <span
+                className="print-jumbo-invoice font-black text-6xl sm:text-7xl md:text-8xl text-black tracking-wider break-all select-all whitespace-nowrap leading-none"
+                style={{
+                  writingMode: "vertical-rl",
+                  transform: "rotate(180deg)"
+                }}
+              >
+                {invoiceNumber}
+              </span>
             </div>
-          ) : (
-            /* Mode Horizontal (Landscape Card: Baris Atas No Invoice, Baris Bawah Nama Customer) */
-            <div className="flex flex-col justify-center items-center gap-6 py-6 sm:py-10 min-h-[260px]">
-              {/* Baris 1: Nomor Invoice */}
-              <div className="w-full text-center">
-                <span className="font-black text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-black tracking-tight break-all leading-tight select-all">
-                  {invoiceNumber}
-                </span>
-              </div>
 
-              {/* Garis Pemisah */}
-              <div className="w-full border-b-2 border-dashed border-black/40" />
-
-              {/* Baris 2: Nama Customer */}
-              <div className="w-full text-center">
-                <span className="font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-black uppercase tracking-tight break-words leading-tight select-all">
-                  {customerName}
-                </span>
-              </div>
+            {/* Kolom 2: Nama Customer */}
+            <div className="flex-[2] flex items-center justify-center border-r-2 border-dashed border-black/30 px-1">
+              <span
+                className="print-jumbo-customer font-black text-5xl sm:text-6xl md:text-7xl text-black uppercase tracking-wider break-words select-all whitespace-nowrap leading-none"
+                style={{
+                  writingMode: "vertical-rl",
+                  transform: "rotate(180deg)"
+                }}
+              >
+                {customerName}
+              </span>
             </div>
-          )}
+
+            {/* Kolom 3: Keterangan Asal (SIP / MJ) */}
+            <div className="flex-1 flex items-center justify-center pl-1">
+              <span
+                className="print-jumbo-source font-black text-2xl sm:text-3xl text-black tracking-widest select-all whitespace-nowrap leading-none"
+                style={{
+                  writingMode: "vertical-rl",
+                  transform: "rotate(180deg)"
+                }}
+              >
+                {sourceLabel}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Bottom Paper Tear Sawtooth Edge (Visual only, hidden on print) */}

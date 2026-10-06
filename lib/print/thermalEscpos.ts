@@ -81,19 +81,30 @@ export function formatKeyValue(
 }
 
 /**
+ * Helper to determine order origin:
+ * - "MJ" for orders originating from mj.playgo.id
+ * - "SIP" for default internal Aneka Jaya (AJ) orders
+ */
+export function getDeliveryOrderSourceLabel(detail: DeliveryOrderData): "MJ" | "SIP" {
+  const isMj = detail.sale.source === "MJ" || detail.sale.createdByUserId === "integration:mj";
+  return isMj ? "MJ" : "SIP";
+}
+
+/**
  * Generates formatted minimal text representation for clipboard (Copy Text)
- * Only Invoice Number and Customer Name, without labels or extra info.
+ * Invoice Number, Customer Name, and Source Indicator (SIP / MJ).
  */
 export function generateDeliveryOrderThermalText(detail: DeliveryOrderData): string {
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
+  const sourceLabel = getDeliveryOrderSourceLabel(detail);
 
-  return `${invoiceNumber}\n${customerName}\n`;
+  return `${invoiceNumber}\n${customerName}\n${sourceLabel}\n`;
 }
 
 /**
  * Generates raw ESC/POS binary command buffer for 80mm Bluetooth thermal printer
- * Minimalist landscape format: Only Invoice Number and Customer Name,
+ * Minimalist landscape format: Invoice Number, Customer Name, and Source Indicator (SIP / MJ),
  * in MAXIMUM BOLD font size filling the paper, without labels or extra info.
  */
 export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Array {
@@ -110,12 +121,13 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
 
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
+  const sourceLabel = getDeliveryOrderSourceLabel(detail);
 
   // 1. Initialize printer
   push(0x1b, 0x40); // ESC @ (Initialize)
 
-  // 2. Enable 90-degree clockwise rotation (Landscape on continuous roll)
-  push(0x1b, 0x56, 0x01); // ESC V 1 (Turn 90° clockwise rotation ON)
+  // 2. Ensure standard horizontal orientation (Rotation OFF)
+  push(0x1b, 0x56, 0x00); // ESC V 0
 
   // 3. Center alignment
   push(0x1b, 0x61, 0x01); // ESC a 1 (Center align)
@@ -124,20 +136,58 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
   push(0x1b, 0x45, 0x01); // ESC E 1 (Bold ON)
   push(0x1b, 0x47, 0x01); // ESC G 1 (Double-strike bold ON)
 
-  // Max font scaling for Invoice Number (4x width & 4x height: JUMBO)
-  const invScale = 0x33; // 4x width, 4x height (96 dots)
+  // 5. Dynamic 2x Jumbo Scaling:
+  // Standard 80mm printable width = 576 dots. Font A base size = 12x24 dots.
+  // ESC/POS GS ! n command: n = ((widthMultiplier - 1) << 4) | (heightMultiplier - 1)
+  // Height is 8x maximum (192 dots / ~24mm) -> 2x taller than previous 4x
+  
+  // Invoice Number (e.g. 051026-33 = 9 chars: 5x width = 540 dots, fills 94% of paper)
+  let invWidth = 4;
+  if (invoiceNumber.length <= 6) {
+    invWidth = 8;
+  } else if (invoiceNumber.length <= 9) {
+    invWidth = 5;
+  } else if (invoiceNumber.length <= 12) {
+    invWidth = 4;
+  } else {
+    invWidth = 3;
+  }
+  const invScale = ((invWidth - 1) << 4) | 0x07; // 8x height (0x07)
   push(0x1d, 0x21, invScale); // GS ! n
   pushText(invoiceNumber + "\n\n");
 
-  // Max font scaling for Customer Name (4x width & 4x height if <= 16 chars, 3x width & 3x height if > 16 chars)
-  const custScale = customerName.length <= 16 ? 0x33 : 0x22;
+  // Customer Name (e.g. FIRMAN = 6 chars: 8x width = 576 dots, fills 100% of paper)
+  let custWidth = 4;
+  let custHeight = 8;
+  if (customerName.length <= 6) {
+    custWidth = 8;
+    custHeight = 8;
+  } else if (customerName.length <= 8) {
+    custWidth = 6;
+    custHeight = 8;
+  } else if (customerName.length <= 9) {
+    custWidth = 5;
+    custHeight = 8;
+  } else if (customerName.length <= 12) {
+    custWidth = 4;
+    custHeight = 7;
+  } else {
+    custWidth = 3;
+    custHeight = 5;
+  }
+  const custScale = ((custWidth - 1) << 4) | (custHeight - 1);
   push(0x1d, 0x21, custScale); // GS ! n
   pushText(customerName + "\n\n");
 
-  // Reset font scaling & bold & rotation
+  // 3rd Line: Source indicator (SIP or MJ) - Normal 1x font size, subtle & non-dominating footer
+  push(0x1d, 0x21, 0x00); // GS ! 0 (Normal 1x font size)
+  push(0x1b, 0x45, 0x01); // Bold ON
+  pushText(sourceLabel + "\n\n");
+
+  // Reset font scaling & bold
   push(0x1d, 0x21, 0x00); // Normal size
   push(0x1b, 0x45, 0x00); // Bold OFF
-  push(0x1b, 0x56, 0x00); // ESC V 0 (Turn 90° rotation OFF)
+  push(0x1b, 0x47, 0x00); // Double-strike OFF
 
   // Feed & Cut
   push(0x1b, 0x64, 0x03); // Feed 3 lines
