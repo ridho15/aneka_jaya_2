@@ -284,14 +284,29 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
+  const rawOfficer = detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
+  const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
+
+  // Dynamic font scaling to guarantee text fits strictly within 15cm without being cut off
+  const invoiceScreenSize = invoiceNumber.length <= 9
+    ? "text-5xl sm:text-6xl"
+    : invoiceNumber.length <= 14
+    ? "text-3xl sm:text-4xl"
+    : "text-2xl sm:text-3xl";
+
+  const customerScreenSize = customerName.length <= 8
+    ? "text-4xl sm:text-5xl"
+    : customerName.length <= 15
+    ? "text-2xl sm:text-3xl"
+    : "text-xl sm:text-2xl";
 
   return (
     <div className="min-h-screen bg-slate-100/80 py-6 px-4 print:bg-white print:p-0">
-      {/* Print Styles for 80mm Roll (Effective printable width ~72mm) */}
+      {/* Print Styles for 80mm Roll (Effective printable width ~72mm, Max Length 15cm = 150mm) */}
       <style jsx global>{`
         @media print {
           @page {
-            size: 80mm auto;
+            size: 80mm 150mm;
             margin: 0mm !important;
           }
           html, body {
@@ -300,6 +315,9 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
+            height: 150mm !important;
+            max-height: 150mm !important;
+            overflow: hidden !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
@@ -309,24 +327,32 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
           .thermal-slip-container {
             width: 72mm !important;
             max-width: 72mm !important;
+            height: 146mm !important;
+            max-height: 146mm !important;
             margin: 0 auto !important;
             padding: 2mm 1mm !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
+            overflow: hidden !important;
           }
           .print-jumbo-invoice {
-            font-size: 84pt !important;
+            font-size: ${invoiceNumber.length <= 9 ? "62pt" : invoiceNumber.length <= 14 ? "42pt" : "30pt"} !important;
             line-height: 0.85 !important;
           }
           .print-jumbo-customer {
-            font-size: 70pt !important;
+            font-size: ${customerName.length <= 8 ? "50pt" : customerName.length <= 15 ? "34pt" : "24pt"} !important;
             line-height: 0.85 !important;
           }
           .print-jumbo-source {
-            font-size: 26pt !important;
+            font-size: 22pt !important;
             line-height: 0.85 !important;
-            letter-spacing: 0.15em !important;
+            letter-spacing: 0.1em !important;
+          }
+          .print-officer-name {
+            font-size: 11pt !important;
+            line-height: 0.85 !important;
+            letter-spacing: 0.05em !important;
           }
         }
       `}</style>
@@ -427,11 +453,11 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
         {/* Technical Sub-info */}
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
           <span>Format: 3 Kolom Vertikal</span>
-          <span>Asal: {sourceLabel === "MJ" ? "Integrasi MJ (mj.playgo.id)" : "Sistem SIP (AJ)"}</span>
+          <span>Asal: {sourceLabel === "SIP : MJ" ? "Integrasi MJ (mj.playgo.id)" : "Sistem SIP (AJ)"}</span>
         </div>
       </div>
 
-      {/* Realistic 80mm Physical Thermal Paper Slip (3 Kolom Vertikal) */}
+      {/* Realistic 80mm Physical Thermal Paper Slip (Maks 15cm) */}
       <div className="max-w-[340px] mx-auto select-none print:select-auto transition-all duration-200">
         {/* Top Paper Tear Sawtooth Edge (Visual only, hidden on print) */}
         <div
@@ -439,19 +465,19 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
           className="no-print h-2.5 w-full bg-[linear-gradient(135deg,transparent_4px,#ffffff_0),linear-gradient(-135deg,transparent_4px,#ffffff_0)] bg-[size:10px_10px] bg-repeat-x"
         />
 
-        {/* Thermal Slip Body (Pure 1-Bit Monochrome, Zero Dithering, Max Bold) */}
+        {/* Thermal Slip Body (Pure 1-Bit Monochrome, 15cm Max Height, Zero Overflow) */}
         <div
-          className="thermal-slip-container w-full bg-white text-black px-4 py-8 shadow-md print:shadow-none print:p-0"
+          className="thermal-slip-container w-full h-[550px] max-h-[550px] overflow-hidden bg-white text-black px-4 py-4 shadow-md print:shadow-none print:p-0"
           style={{
             fontFamily: "'Arial Black', 'Impact', 'Trebuchet MS', 'Arial', sans-serif"
           }}
         >
-          {/* 3 Kolom Vertikal: Kolom 1 (Invoice), Kolom 2 (Customer), Kolom 3 (Keterangan Asal) */}
-          <div className="flex flex-row justify-around items-stretch min-h-[500px] sm:min-h-[580px]">
+          {/* 3 Kolom Vertikal: Kolom 1 (Invoice), Kolom 2 (Customer), Kolom 3 (Keterangan Asal & Petugas) */}
+          <div className="flex flex-row justify-around items-stretch h-full">
             {/* Kolom 1: Nomor Invoice */}
-            <div className="flex-[2.5] flex items-center justify-center border-r-2 border-dashed border-black/30 pr-1">
+            <div className="flex-[2.5] flex items-center justify-center border-r-2 border-dashed border-black/30 pr-1 overflow-hidden">
               <span
-                className="print-jumbo-invoice font-black text-6xl sm:text-7xl md:text-8xl text-black tracking-wider break-all select-all whitespace-nowrap leading-none"
+                className={`print-jumbo-invoice font-black ${invoiceScreenSize} text-black tracking-wider break-all select-all whitespace-nowrap leading-none`}
                 style={{
                   writingMode: "vertical-rl",
                   transform: "rotate(180deg)"
@@ -462,9 +488,9 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
             </div>
 
             {/* Kolom 2: Nama Customer */}
-            <div className="flex-[2] flex items-center justify-center border-r-2 border-dashed border-black/30 px-1">
+            <div className="flex-[2] flex items-center justify-center border-r-2 border-dashed border-black/30 px-1 overflow-hidden">
               <span
-                className="print-jumbo-customer font-black text-5xl sm:text-6xl md:text-7xl text-black uppercase tracking-wider break-words select-all whitespace-nowrap leading-none"
+                className={`print-jumbo-customer font-black ${customerScreenSize} text-black uppercase tracking-wider break-words select-all whitespace-nowrap leading-none`}
                 style={{
                   writingMode: "vertical-rl",
                   transform: "rotate(180deg)"
@@ -474,17 +500,35 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false }: Props) 
               </span>
             </div>
 
-            {/* Kolom 3: Keterangan Asal (SIP / MJ) */}
-            <div className="flex-1 flex items-center justify-center pl-1">
-              <span
-                className="print-jumbo-source font-black text-2xl sm:text-3xl text-black tracking-widest select-all whitespace-nowrap leading-none"
-                style={{
-                  writingMode: "vertical-rl",
-                  transform: "rotate(180deg)"
-                }}
-              >
-                {sourceLabel}
-              </span>
+            {/* Kolom 3: Keterangan Asal (Bawah) & Nama Petugas DO di Ujung Tepi (Atas / Lingkaran Hijau) */}
+            <div className="flex-1 flex flex-col justify-between items-center py-2 pl-1 overflow-hidden">
+              {/* Paling Ujung Tepi (Atas / Sesuai Lingkaran Hijau - Font 1/2 Ukuran SIP) */}
+              <div className="flex items-center justify-center min-h-[30px]">
+                {officerName ? (
+                  <span
+                    className="print-officer-name font-bold text-[10px] sm:text-xs text-black uppercase tracking-wider select-all whitespace-nowrap leading-none"
+                    style={{
+                      writingMode: "vertical-rl",
+                      transform: "rotate(180deg)"
+                    }}
+                  >
+                    {officerName}
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Sisi Bawah: Keterangan Asal (SIP : AJ / SIP : MJ) */}
+              <div className="flex items-center justify-center">
+                <span
+                  className="print-jumbo-source font-black text-lg sm:text-xl text-black tracking-wider select-all whitespace-nowrap leading-none"
+                  style={{
+                    writingMode: "vertical-rl",
+                    transform: "rotate(180deg)"
+                  }}
+                >
+                  {sourceLabel}
+                </span>
+              </div>
             </div>
           </div>
         </div>

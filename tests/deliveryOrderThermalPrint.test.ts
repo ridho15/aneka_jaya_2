@@ -70,25 +70,26 @@ const mockMjDoData: DeliveryOrderData = {
   }
 };
 
-describe("Delivery Order Thermal 80mm Printing (Minimal Landscape)", () => {
+describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
   describe("getDeliveryOrderSourceLabel", () => {
-    it("returns 'SIP' for default internal Aneka Jaya orders", () => {
-      expect(getDeliveryOrderSourceLabel(mockDoData)).toBe("SIP");
+    it("returns 'SIP : AJ' for default internal Aneka Jaya orders", () => {
+      expect(getDeliveryOrderSourceLabel(mockDoData)).toBe("SIP : AJ");
     });
 
-    it("returns 'MJ' for orders originating from mj.playgo.id", () => {
-      expect(getDeliveryOrderSourceLabel(mockMjDoData)).toBe("MJ");
+    it("returns 'SIP : MJ' for orders originating from mj.playgo.id", () => {
+      expect(getDeliveryOrderSourceLabel(mockMjDoData)).toBe("SIP : MJ");
     });
   });
 
   describe("generateDeliveryOrderThermalText", () => {
-    it("generates minimal text containing invoice number, customer name, and default SIP source indicator", () => {
+    it("generates minimal text containing invoice number, customer name, default SIP : AJ source indicator, and officer name", () => {
       const text = generateDeliveryOrderThermalText(mockDoData);
 
       // Verify exact raw values exist
       expect(text).toContain("INV-202610-0088");
       expect(text).toContain("TOKO MAJU JAYA ABADI");
-      expect(text).toContain("SIP");
+      expect(text).toContain("SIP : AJ");
+      expect(text).toContain("PAK SUPARDI");
 
       // Verify NO labels or extra info exist
       expect(text).not.toContain("INVOICE:");
@@ -99,22 +100,21 @@ describe("Delivery Order Thermal 80mm Printing (Minimal Landscape)", () => {
       expect(text).not.toContain("RAK");
       expect(text).not.toContain("Tanda Tangan");
       expect(text).not.toContain("Rp");
-      expect(text).not.toContain("Pak Supardi");
       expect(text).not.toContain("STATUS");
     });
 
-    it("generates text containing 'MJ' for orders originating from mj.playgo.id", () => {
+    it("generates text containing 'SIP : MJ' for orders originating from mj.playgo.id", () => {
       const text = generateDeliveryOrderThermalText(mockMjDoData);
 
       expect(text).toContain("INV-202610-0088");
       expect(text).toContain("TOKO MAJU JAYA ABADI");
-      expect(text).toContain("MJ");
-      expect(text).not.toContain("SIP");
+      expect(text).toContain("SIP : MJ");
+      expect(text).not.toContain("SIP : AJ");
     });
   });
 
   describe("generateDeliveryOrderEscPos", () => {
-    it("generates valid ESC/POS byte sequence with center alignment, bold scaling, and SIP source label", () => {
+    it("generates valid ESC/POS byte sequence with center alignment, bold scaling, SIP : AJ source label, and officer name", () => {
       const bytes = generateDeliveryOrderEscPos(mockDoData);
 
       expect(bytes).toBeInstanceOf(Uint8Array);
@@ -133,8 +133,11 @@ describe("Delivery Order Thermal 80mm Printing (Minimal Landscape)", () => {
       // Verify invoice number is present
       expect(binaryString).toContain("INV-202610-0088");
 
-      // Verify source indicator SIP is present
-      expect(binaryString).toContain("SIP");
+      // Verify source indicator SIP : AJ is present
+      expect(binaryString).toContain("SIP : AJ");
+
+      // Verify officer name is present
+      expect(binaryString).toContain("PAK SUPARDI");
 
       // Verify ESC a 1 (0x1B, 0x61, 0x01) center alignment
       expect(binaryString).toContain("\x1b\x61\x01");
@@ -158,12 +161,12 @@ describe("Delivery Order Thermal 80mm Printing (Minimal Landscape)", () => {
       expect(binaryString).not.toContain("Rp");
     });
 
-    it("generates ESC/POS byte sequence with 'MJ' label for MJ integration order", () => {
+    it("generates ESC/POS byte sequence with 'SIP : MJ' label for MJ integration order", () => {
       const bytes = generateDeliveryOrderEscPos(mockMjDoData);
       const binaryString = new TextDecoder("latin1").decode(bytes);
 
-      expect(binaryString).toContain("MJ");
-      expect(binaryString).not.toContain("SIP");
+      expect(binaryString).toContain("SIP : MJ");
+      expect(binaryString).not.toContain("SIP : AJ");
     });
   });
 

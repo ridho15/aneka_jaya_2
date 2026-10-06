@@ -82,12 +82,12 @@ export function formatKeyValue(
 
 /**
  * Helper to determine order origin:
- * - "MJ" for orders originating from mj.playgo.id
- * - "SIP" for default internal Aneka Jaya (AJ) orders
+ * - "SIP : MJ" for orders originating from mj.playgo.id
+ * - "SIP : AJ" for default internal Aneka Jaya (SLM) orders
  */
-export function getDeliveryOrderSourceLabel(detail: DeliveryOrderData): "MJ" | "SIP" {
+export function getDeliveryOrderSourceLabel(detail: DeliveryOrderData): "SIP : MJ" | "SIP : AJ" {
   const isMj = detail.sale.source === "MJ" || detail.sale.createdByUserId === "integration:mj";
-  return isMj ? "MJ" : "SIP";
+  return isMj ? "SIP : MJ" : "SIP : AJ";
 }
 
 /**
@@ -98,8 +98,11 @@ export function generateDeliveryOrderThermalText(detail: DeliveryOrderData): str
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
+  const rawOfficer = detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
+  const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
 
-  return `${invoiceNumber}\n${customerName}\n${sourceLabel}\n`;
+  const footerLine = officerName ? `${sourceLabel}   ${officerName}` : sourceLabel;
+  return `${invoiceNumber}\n${customerName}\n${footerLine}\n`;
 }
 
 /**
@@ -122,6 +125,8 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
+  const rawOfficer = detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
+  const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
 
   // 1. Initialize printer
   push(0x1b, 0x40); // ESC @ (Initialize)
@@ -179,18 +184,19 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData): Uint8Arr
   push(0x1d, 0x21, custScale); // GS ! n
   pushText(customerName + "\n\n");
 
-  // 3rd Line: Source indicator (SIP or MJ) - Normal 1x font size, subtle & non-dominating footer
+  // 3rd Line: Source indicator & Officer Name at the far edge - Normal 1x font size
   push(0x1d, 0x21, 0x00); // GS ! 0 (Normal 1x font size)
   push(0x1b, 0x45, 0x01); // Bold ON
-  pushText(sourceLabel + "\n\n");
+  const footerLine = officerName ? twoColumn(sourceLabel, officerName) : sourceLabel;
+  pushText(footerLine + "\n\n");
 
   // Reset font scaling & bold
   push(0x1d, 0x21, 0x00); // Normal size
   push(0x1b, 0x45, 0x00); // Bold OFF
   push(0x1b, 0x47, 0x00); // Double-strike OFF
 
-  // Feed & Cut
-  push(0x1b, 0x64, 0x03); // Feed 3 lines
+  // Feed & Cut (Strictly limited to 2 lines feed to respect 15cm paper limitation)
+  push(0x1b, 0x64, 0x02); // Feed 2 lines
   push(0x1d, 0x56, 0x42, 0x00); // GS V 66 0 (Cut paper)
 
   return new Uint8Array(bytes);
