@@ -41,6 +41,7 @@ export type DeliveryOrderData = {
   shippedAt?: string;
   receiptPhotoUrl?: string;
   trackingNumber?: string;
+  customerLocation?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
