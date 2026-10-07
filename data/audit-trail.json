@@ -1,5 +1,21 @@
 [
   {
+    "id": "870d2d0d-0a5c-418a-918e-8ff0899bd698",
+    "createdAt": "2026-10-07T13:31:48.154Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
     "id": "2c54d121-1729-4fce-b0d6-f2573ecad7c9",
     "createdAt": "2026-10-06T00:54:19.604Z",
     "userId": "unauthenticated",

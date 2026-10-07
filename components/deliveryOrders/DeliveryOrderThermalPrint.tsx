@@ -143,6 +143,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
   const rawOfficer = printUserName || detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
   const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
+  const customerLocation = (detail.sale?.customerLocation || detail.customerLocation || "").trim();
 
   useEffect(() => {
     const nav = typeof navigator !== "undefined" ? (navigator as unknown as BluetoothNavigator) : null;
@@ -346,9 +347,14 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
             line-height: 0.85 !important;
           }
           .print-jumbo-source {
-            font-size: 22pt !important;
+            font-size: 20pt !important;
             line-height: 0.85 !important;
             letter-spacing: 0.1em !important;
+          }
+          .print-customer-location {
+            font-size: 11pt !important;
+            line-height: 1 !important;
+            letter-spacing: 0.05em !important;
           }
           .print-officer-name {
             font-size: 11pt !important;
@@ -501,9 +507,9 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
               </span>
             </div>
 
-            {/* Kolom 3: Keterangan Asal (Bawah) & Nama Petugas DO di Ujung Tepi (Atas / Lingkaran Hijau) */}
+            {/* Kolom 3: Nama Petugas di Atas, Alamat Pengiriman di Tengah, SIP : AJ/MJ di Bawah */}
             <div className="flex-1 flex flex-col justify-between items-center py-2 pl-1 overflow-hidden">
-              {/* Paling Ujung Tepi (Atas / Sesuai Lingkaran Hijau - Font 1/2 Ukuran SIP) */}
+              {/* Paling Ujung Tepi (Atas / Nama Akun Pemencet Cetak - Font 1/2 Ukuran SIP) */}
               <div className="flex items-center justify-center min-h-[30px]">
                 {officerName ? (
                   <span
@@ -518,8 +524,23 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
                 ) : null}
               </div>
 
-              {/* Sisi Bawah: Keterangan Asal (SIP : AJ / SIP : MJ) */}
-              <div className="flex items-center justify-center">
+              {/* Sisi Tengah: Alamat Pengiriman Pelanggan */}
+              <div className="flex items-center justify-center my-auto overflow-hidden max-h-[220px]">
+                {customerLocation ? (
+                  <span
+                    className="print-customer-location font-semibold text-[10px] sm:text-xs text-black uppercase tracking-wide select-all text-center leading-tight line-clamp-3"
+                    style={{
+                      writingMode: "vertical-rl",
+                      transform: "rotate(180deg)"
+                    }}
+                  >
+                    {customerLocation}
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Ujung Bawah: Keterangan Asal (SIP : AJ / SIP : MJ) - Kembali ke Posisi Semula */}
+              <div className="flex items-center justify-center min-h-[30px]">
                 <span
                   className="print-jumbo-source font-black text-lg sm:text-xl text-black tracking-wider select-all whitespace-nowrap leading-none"
                   style={{

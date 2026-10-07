@@ -43,6 +43,29 @@ export function twoColumn(
 }
 
 /**
+ * Creates a line with center-aligned text (e.g. SIP : AJ/MJ) and right-aligned text (e.g. officer name)
+ */
+export function centerAndRight(
+  center: string,
+  right: string,
+  width = THERMAL_80MM_WIDTH
+): string {
+  if (!right) {
+    const leftPad = Math.max(0, Math.floor((width - center.length) / 2));
+    return " ".repeat(leftPad) + center;
+  }
+
+  const targetCenterStart = Math.floor((width - center.length) / 2);
+  const rightStart = width - right.length;
+  const maxCenterStart = rightStart - center.length - 1;
+  const actualCenterStart = Math.max(0, Math.min(targetCenterStart, maxCenterStart));
+  const actualCenterEnd = actualCenterStart + center.length;
+  const leftSpaces = " ".repeat(actualCenterStart);
+  const middleSpaces = " ".repeat(Math.max(1, rightStart - actualCenterEnd));
+  return leftSpaces + center + middleSpaces + right;
+}
+
+/**
  * Formats multi-line label-value pair
  */
 export function formatKeyValue(
@@ -97,11 +120,15 @@ export function getDeliveryOrderSourceLabel(detail: DeliveryOrderData): "SIP : M
 export function generateDeliveryOrderThermalText(detail: DeliveryOrderData, printUserName?: string): string {
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
+  const customerLocation = (detail.sale?.customerLocation || detail.customerLocation || "").trim().toUpperCase();
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
   const rawOfficer = printUserName || detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
   const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
 
-  const footerLine = officerName ? `${sourceLabel}   ${officerName}` : sourceLabel;
+  const footerLine = officerName ? centerAndRight(sourceLabel, officerName) : sourceLabel;
+  if (customerLocation) {
+    return `${invoiceNumber}\n${customerName}\n${customerLocation}\n${footerLine}\n`;
+  }
   return `${invoiceNumber}\n${customerName}\n${footerLine}\n`;
 }
 
@@ -124,6 +151,7 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData, printUser
 
   const invoiceNumber = detail.sale.transactionNumber || detail.doNumber;
   const customerName = (detail.sale.customerName || "CUSTOMER").toUpperCase();
+  const customerLocation = (detail.sale?.customerLocation || detail.customerLocation || "").trim().toUpperCase();
   const sourceLabel = getDeliveryOrderSourceLabel(detail);
   const rawOfficer = printUserName || detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
   const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
@@ -184,10 +212,17 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData, printUser
   push(0x1d, 0x21, custScale); // GS ! n
   pushText(customerName + "\n\n");
 
+  // Alamat Pengiriman Pelanggan (jika ada) - Ukuran normal 1x bold
+  if (customerLocation) {
+    push(0x1d, 0x21, 0x00); // Normal 1x
+    push(0x1b, 0x45, 0x01); // Bold ON
+    pushText(customerLocation + "\n\n");
+  }
+
   // 3rd Line: Source indicator & Officer Name at the far edge - Normal 1x font size
   push(0x1d, 0x21, 0x00); // GS ! 0 (Normal 1x font size)
   push(0x1b, 0x45, 0x01); // Bold ON
-  const footerLine = officerName ? twoColumn(sourceLabel, officerName) : sourceLabel;
+  const footerLine = officerName ? centerAndRight(sourceLabel, officerName) : sourceLabel;
   pushText(footerLine + "\n\n");
 
   // Reset font scaling & bold

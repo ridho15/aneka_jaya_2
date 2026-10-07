@@ -112,6 +112,24 @@ describe("Delivery Order UI Badges", () => {
     expect(html).toContain("📷 Resi");
     expect(html).toContain('href="https://storage.example.com/receipt-123.jpg"');
   });
+
+  it("renders tracking number and print account name beside receipt when printed", () => {
+    const printedSale: Sale = {
+      ...baseSale,
+      doStatus: "selesai",
+      doPackingStatus: "sudah",
+      doShippingStatus: "sudah",
+      doTrackingNumber: "TRK-8899",
+      doReceiptPhotoUrl: "https://storage.example.com/receipt-123.jpg",
+      isPrinted: true,
+      printedBy: "Nia"
+    };
+    const html = renderToStaticMarkup(<DeliveryOrderBadges sale={printedSale} />);
+    expect(html).toContain("Selesai");
+    expect(html).toContain("Resi: TRK-8899");
+    expect(html).toContain("📷 Resi");
+    expect(html).toContain("🖨️ Nia");
+  });
 });
 
 describe("Delivery Order Store Logic", () => {

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { formatSaleDotMatrix, toEscPosPrn } from "@/lib/print/dotMatrix";
 import { listAllRekeningAccounts } from "@/lib/business/masterData";
 import { salesRekeningLabel } from "@/lib/sales/rekening";
+import { recordSalesPrintLog } from "@/lib/sales/store";
 
 export async function GET(
   request: Request,
@@ -24,6 +25,10 @@ export async function GET(
       { success: false, message: "Transaksi penjualan tidak ditemukan." },
       { status: 404 },
     );
+
+  // Catat siapa yang memencet tombol cetak / mengakses print nota penjualan
+  const printUserName = user.name || user.id || "Petugas";
+  await recordSalesPrintLog(id, printUserName).catch(() => null);
   const rekeningNameSnapshot = salesRekeningLabel(
     sale,
     await listAllRekeningAccounts(),

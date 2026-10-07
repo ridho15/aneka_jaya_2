@@ -5,7 +5,8 @@ import {
   generateDeliveryOrderThermalText,
   generateDeliveryOrderEscPos,
   generateRawBtUrl,
-  getDeliveryOrderSourceLabel
+  getDeliveryOrderSourceLabel,
+  centerAndRight
 } from "@/lib/print/thermalEscpos";
 
 const mockDoData: DeliveryOrderData = {
@@ -88,6 +89,7 @@ describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
       // Verify exact raw values exist
       expect(text).toContain("INV-202610-0088");
       expect(text).toContain("TOKO MAJU JAYA ABADI");
+      expect(text).toContain("JL. INDUSTRI RAYA NO. 45, CIKARANG");
       expect(text).toContain("SIP : AJ");
       expect(text).toContain("PAK SUPARDI");
 
@@ -136,6 +138,9 @@ describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
 
       // Verify customer name is present
       expect(binaryString).toContain("TOKO MAJU JAYA ABADI");
+
+      // Verify customer location is present
+      expect(binaryString).toContain("JL. INDUSTRI RAYA NO. 45, CIKARANG");
 
       // Verify invoice number is present
       expect(binaryString).toContain("INV-202610-0088");
@@ -200,6 +205,32 @@ describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
       const base64Data = url.replace("rawbt:data:base64,", "");
       const decoded = atob(base64Data);
       expect(decoded).toContain("KASIR-01");
+    });
+  });
+
+  describe("centerAndRight", () => {
+    it("centers sourceLabel and places short officer name on the right edge", () => {
+      const line = centerAndRight("SIP : AJ", "NIA", 32);
+
+      expect(line.length).toBe(32);
+      expect(line.endsWith("NIA")).toBe(true);
+      // SIP : AJ should start at index 12 (exact center of 32 width)
+      expect(line.indexOf("SIP : AJ")).toBe(12);
+    });
+
+    it("centers sourceLabel and places longer officer name on the right edge cleanly", () => {
+      const line = centerAndRight("SIP : AJ", "AGUS SANTOSO", 32);
+
+      expect(line.length).toBe(32);
+      expect(line.endsWith("AGUS SANTOSO")).toBe(true);
+      expect(line).toContain("SIP : AJ");
+    });
+
+    it("centers sourceLabel when officer name is empty", () => {
+      const line = centerAndRight("SIP : AJ", "", 32);
+
+      expect(line.length).toBe(20); // 12 spaces + 8 chars
+      expect(line.indexOf("SIP : AJ")).toBe(12);
     });
   });
 });

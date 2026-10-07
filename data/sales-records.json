@@ -9,7 +9,7 @@
     "tipeNameSnapshot": "Walk In",
     "rekeningId": "cash-w",
     "rekeningNameSnapshot": "Kas Walk In",
-    "customerName": "Walk In",
+    "customerName": "Ali",
     "customerPhone": "082163256603",
     "customerLocation": "Toko",
     "shippingMethod": "di Tempat",
@@ -18,6 +18,12 @@
     "initialPaymentNotes": "",
     "isTestTransaction": false,
     "isDraft": false,
+    "doStatus": "selesai",
+    "doPackingStatus": "sudah",
+    "doShippingStatus": "sudah",
+    "doReceiptPhotoUrl": "https://example.com/receipt-ali.jpg",
+    "isPrinted": true,
+    "printedBy": "Nia",
     "items": [
       {
         "productRef": "AJKP45-4",

@@ -1206,3 +1206,74 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
   });
   return after;
 }
+
+export async function recordSalesPrintLog(
+  id: string,
+  printedBy: string,
+): Promise<{ isPrinted: boolean; printedBy: string; printedAt: string; printCount: number } | null> {
+  const cleanPrintedBy = printedBy.trim();
+  if (!cleanPrintedBy) return null;
+
+  const printedAt = new Date().toISOString();
+
+  if (isProductionMode()) {
+    const row = await prisma.salesRecord.findUnique({
+      where: { id },
+      select: { id: true, integrationMetadata: true },
+    });
+    if (!row) return null;
+
+    const existingMetadata = (row.integrationMetadata as Record<string, unknown>) || {};
+    const existingCount = typeof existingMetadata.print_count === "number"
+      ? existingMetadata.print_count
+      : existingMetadata.is_printed ? 1 : 0;
+    const printCount = existingCount + 1;
+
+    const updatedMetadata = {
+      ...existingMetadata,
+      is_printed: true,
+      printed_by: cleanPrintedBy,
+      printed_at: printedAt,
+      print_count: printCount,
+    };
+
+    await prisma.salesRecord.update({
+      where: { id },
+      data: {
+        integrationMetadata: updatedMetadata,
+      },
+    });
+
+    return {
+      isPrinted: true,
+      printedBy: cleanPrintedBy,
+      printedAt,
+      printCount,
+    };
+  }
+
+  const rows = await readJsonArray<Sale>(fileName);
+  const index = rows.findIndex((r) => r.id === id);
+  if (index >= 0) {
+    const current = rows[index];
+    const printCount = (current.printCount || (current.isPrinted ? 1 : 0)) + 1;
+    const updated: Sale = {
+      ...current,
+      isPrinted: true,
+      printedBy: cleanPrintedBy,
+      printedAt,
+      printCount,
+    };
+    rows[index] = updated;
+    await writeJsonArray(fileName, rows);
+    return {
+      isPrinted: true,
+      printedBy: cleanPrintedBy,
+      printedAt,
+      printCount,
+    };
+  }
+
+  return null;
+}
+

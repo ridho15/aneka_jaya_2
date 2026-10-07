@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDeliveryOrderDetail } from "@/lib/deliveryOrders/store";
+import { recordSalesPrintLog } from "@/lib/sales/store";
 import { DeliveryOrderThermalPrint } from "@/components/deliveryOrders/DeliveryOrderThermalPrint";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,11 @@ export default async function DeliveryOrderPrintPage({
 
   // Username/account user yang menekan tombol cetak pada DO
   const printUserName = resolvedSearchParams?.userName || user.name || user.id || "";
+
+  // Simpan catatan siapa yang mencetak ke sales record terkait jika ada
+  if (detail.salesRecordId && printUserName) {
+    await recordSalesPrintLog(detail.salesRecordId, printUserName).catch(() => null);
+  }
 
   return (
     <DeliveryOrderThermalPrint

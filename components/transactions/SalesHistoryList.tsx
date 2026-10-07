@@ -149,25 +149,44 @@ export function DeliveryStatusBadge({ status }: { status?: string }) {
 
 export function DeliveryOrderBadges({ sale }: { sale: Sale }) {
   const { label, className } = unifiedDeliveryStatus(sale);
+  const printOfficer = (sale.printedBy || "").trim();
 
   return (
-    <div data-testid="do-badges-container" className="mb-1 flex flex-wrap items-center gap-1.5">
+    <div data-testid="do-badges-container" className="mb-1 flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
       <span
         data-testid="do-status-badge"
         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold border shadow-xs ${className}`}
       >
         {label}
       </span>
+      {sale.doTrackingNumber && (
+        <span
+          data-testid="do-tracking-badge"
+          title={`Nomor Resi: ${sale.doTrackingNumber}`}
+          className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-700 border border-slate-200 shadow-2xs"
+        >
+          Resi: {sale.doTrackingNumber}
+        </span>
+      )}
       {sale.doReceiptPhotoUrl && (
         <a
           href={sale.doReceiptPhotoUrl}
           target="_blank"
           rel="noreferrer"
           title="Lihat Foto Resi Pengiriman"
-          className="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors"
+          className="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors shadow-2xs"
         >
           📷 Resi
         </a>
+      )}
+      {printOfficer && (
+        <span
+          data-testid="do-print-officer-badge"
+          title={`Dicetak oleh: ${printOfficer}${sale.printedAt ? ` pada ${sale.printedAt}` : ""}`}
+          className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-300 shadow-2xs"
+        >
+          🖨️ {printOfficer}
+        </span>
       )}
     </div>
   );
@@ -439,7 +458,7 @@ export function SalesHistoryList({
               {canViewTransactionNumber && (
                 <th className="px-5 py-3">No Transaksi</th>
               )}
-              <th className="px-5 py-3">Customer</th>
+              <th className="px-5 py-3 min-w-[180px]">Customer</th>
               <th className="px-5 py-3">Tipe</th>
               <th className="px-5 py-3">Pembayaran</th>
               <th className="px-5 py-3 text-right">Total</th>
@@ -517,7 +536,7 @@ export function SalesHistoryList({
                         {sale.transactionNumber || sale.id}
                       </td>
                     )}
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4 min-w-[180px]">
                       <DeliveryOrderBadges sale={sale} />
                       <div className="flex items-center gap-1.5 font-bold text-slate-900">
                         {sale.customerName}
