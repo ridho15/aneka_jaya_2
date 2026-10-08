@@ -369,6 +369,8 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
             align-items: center !important;
             justify-content: center !important;
             flex-shrink: 0 !important;
+            transform: rotate(-90deg) !important;
+            transform-origin: center center !important;
           }
           .print-qr-image {
             width: 68mm !important;
@@ -525,9 +527,15 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
             fontFamily: "'Arial Black', 'Impact', 'Trebuchet MS', 'Arial', sans-serif"
           }}
         >
-          {/* Bagian 1: QR Code 7x7 cm (Di Atas Rol / Sisi Kiri Saat Dibaca Mendatar - Opsi A) */}
+          {/* Bagian 1: QR Code 7x7 cm (Di Atas Rol / Sisi Kiri Saat Dibaca Mendatar - Diselaraskan Searah Teks) */}
           <div className="shrink-0 flex flex-col items-center justify-center border-b-2 border-dashed border-black/30 pb-2.5 print:border-b print:pb-1">
-            <div className="print-qr-section w-[220px] h-[220px] sm:w-[240px] sm:h-[240px] flex items-center justify-center bg-white p-1">
+            <div
+              className="print-qr-section w-[220px] h-[220px] sm:w-[240px] sm:h-[240px] flex items-center justify-center bg-white p-1"
+              style={{
+                transform: "rotate(-90deg)",
+                transformOrigin: "center center"
+              }}
+            >
               {qrDataUrl ? (
                 <img
                   src={qrDataUrl}
@@ -541,7 +549,13 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
                 </div>
               )}
             </div>
-            <div className="no-print mt-1 text-[10px] text-slate-500 font-semibold tracking-wider text-center">
+            <div
+              className="no-print mt-1 text-[10px] text-slate-500 font-semibold tracking-wider text-center"
+              style={{
+                writingMode: "vertical-rl",
+                transform: "rotate(180deg)"
+              }}
+            >
               QR CODE 7×7 CM · INFORMASI DO
             </div>
           </div>
