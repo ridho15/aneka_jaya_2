@@ -9,6 +9,10 @@ import {
   generateRawBtUrl,
   getDeliveryOrderSourceLabel
 } from "@/lib/print/thermalEscpos";
+import {
+  generateQrCodeDataUrl,
+  generateDeliveryOrderQrPayload
+} from "@/lib/print/qrGenerator";
 
 interface Props {
   detail: DeliveryOrderData;
@@ -132,6 +136,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
   const [isBluetoothPrinting, setIsBluetoothPrinting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [supportsBluetooth, setSupportsBluetooth] = useState<boolean>(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [bannerAlert, setBannerAlert] = useState<{
     type: "info" | "error" | "success";
     message: string;
@@ -144,6 +149,20 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
   const rawOfficer = printUserName || detail.assignedOfficers?.[0]?.userName || detail.assignedUserName || "";
   const officerName = rawOfficer.replace(/\s*\([^)]*\)/g, "").trim().toUpperCase();
   const customerLocation = (detail.sale?.customerLocation || detail.customerLocation || "").trim();
+
+  // Generate 7x7cm QR Code payload & image
+  useEffect(() => {
+    let isMounted = true;
+    const payload = generateDeliveryOrderQrPayload(detail, officerName);
+    generateQrCodeDataUrl(payload).then((url) => {
+      if (isMounted && url) {
+        setQrDataUrl(url);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [detail, officerName]);
 
   useEffect(() => {
     const nav = typeof navigator !== "undefined" ? (navigator as unknown as BluetoothNavigator) : null;
@@ -304,11 +323,11 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
 
   return (
     <div className="min-h-screen bg-slate-100/80 py-6 px-4 print:bg-white print:p-0">
-      {/* Print Styles for 80mm Roll (Effective printable width ~72mm, Max Length 15cm = 150mm) */}
+      {/* Print Styles for 80mm Roll (Effective printable width ~72mm, Max Length 22-24cm = 230mm) */}
       <style jsx global>{`
         @media print {
           @page {
-            size: 80mm 150mm;
+            size: 80mm 230mm;
             margin: 0mm !important;
           }
           html, body {
@@ -317,8 +336,8 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
             margin: 0 !important;
             padding: 0 !important;
             width: 100% !important;
-            height: 150mm !important;
-            max-height: 150mm !important;
+            height: 230mm !important;
+            max-height: 230mm !important;
             overflow: hidden !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -329,13 +348,40 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
           .thermal-slip-container {
             width: 72mm !important;
             max-width: 72mm !important;
-            height: 146mm !important;
-            max-height: 146mm !important;
+            height: 226mm !important;
+            max-height: 226mm !important;
             margin: 0 auto !important;
-            padding: 2mm 1mm !important;
+            padding: 1mm 1mm !important;
             box-shadow: none !important;
             border: none !important;
             border-radius: 0 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          .print-qr-section {
+            width: 70mm !important;
+            height: 70mm !important;
+            max-width: 70mm !important;
+            max-height: 70mm !important;
+            margin: 0 auto !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
+          }
+          .print-qr-image {
+            width: 68mm !important;
+            height: 68mm !important;
+            max-width: 68mm !important;
+            max-height: 68mm !important;
+            object-fit: contain !important;
+            image-rendering: pixelated !important;
+          }
+          .print-text-columns-section {
+            flex: 1 1 0% !important;
+            height: 152mm !important;
+            max-height: 152mm !important;
             overflow: hidden !important;
           }
           .print-jumbo-invoice {
@@ -380,7 +426,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
               Cetak DO Thermal
             </h1>
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-              80mm
+              80mm × 22-24cm
             </span>
           </div>
         </div>
@@ -459,12 +505,12 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
 
         {/* Technical Sub-info */}
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Format: 3 Kolom Vertikal</span>
+          <span>Format: QR (7×7cm) + 3 Kolom</span>
           <span>{officerName ? `Petugas: ${officerName}` : `Asal: ${sourceLabel}`}</span>
         </div>
       </div>
 
-      {/* Realistic 80mm Physical Thermal Paper Slip (Maks 15cm) */}
+      {/* Realistic 80mm Physical Thermal Paper Slip (Maks 22-24cm) */}
       <div className="max-w-[340px] mx-auto select-none print:select-auto transition-all duration-200">
         {/* Top Paper Tear Sawtooth Edge (Visual only, hidden on print) */}
         <div
@@ -472,15 +518,36 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
           className="no-print h-2.5 w-full bg-[linear-gradient(135deg,transparent_4px,#ffffff_0),linear-gradient(-135deg,transparent_4px,#ffffff_0)] bg-[size:10px_10px] bg-repeat-x"
         />
 
-        {/* Thermal Slip Body (Pure 1-Bit Monochrome, 15cm Max Height, Zero Overflow) */}
+        {/* Thermal Slip Body (Pure 1-Bit Monochrome, 22-24cm Height, Zero Overflow) */}
         <div
-          className="thermal-slip-container w-full h-[550px] max-h-[550px] overflow-hidden bg-white text-black px-4 py-4 shadow-md print:shadow-none print:p-0"
+          className="thermal-slip-container w-full h-[830px] max-h-[850px] overflow-hidden bg-white text-black px-3 py-3 shadow-md print:shadow-none print:p-0 flex flex-col justify-start"
           style={{
             fontFamily: "'Arial Black', 'Impact', 'Trebuchet MS', 'Arial', sans-serif"
           }}
         >
-          {/* 3 Kolom Vertikal: Kolom 1 (Invoice), Kolom 2 (Customer), Kolom 3 (Keterangan Asal & Petugas) */}
-          <div className="flex flex-row justify-around items-stretch h-full">
+          {/* Bagian 1: QR Code 7x7 cm (Di Atas Rol / Sisi Kiri Saat Dibaca Mendatar - Opsi A) */}
+          <div className="shrink-0 flex flex-col items-center justify-center border-b-2 border-dashed border-black/30 pb-2.5 print:border-b print:pb-1">
+            <div className="print-qr-section w-[220px] h-[220px] sm:w-[240px] sm:h-[240px] flex items-center justify-center bg-white p-1">
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt="QR Code Informasi DO"
+                  className="print-qr-image w-full h-full object-contain"
+                  style={{ imageRendering: "pixelated" }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 border border-slate-200 rounded">
+                  Memuat QR Code...
+                </div>
+              )}
+            </div>
+            <div className="no-print mt-1 text-[10px] text-slate-500 font-semibold tracking-wider text-center">
+              QR CODE 7×7 CM · INFORMASI DO
+            </div>
+          </div>
+
+          {/* Bagian 2: 3 Kolom Vertikal (Invoice, Customer, Petugas & Alamat & SIP) */}
+          <div className="print-text-columns-section flex-1 flex flex-row justify-around items-stretch pt-2 overflow-hidden">
             {/* Kolom 1: Nomor Invoice */}
             <div className="flex-[2.5] flex items-center justify-center border-r-2 border-dashed border-black/30 pr-1 overflow-hidden">
               <span

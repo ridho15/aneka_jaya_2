@@ -114,6 +114,42 @@ export function getDeliveryOrderSourceLabel(detail: DeliveryOrderData): "SIP : M
 }
 
 /**
+ * Builds clean, structured plain-text payload for Delivery Order QR Code.
+ * Format:
+ * INVOICE: 051026-33
+ * CUSTOMER: FIRMAN
+ * ALAMAT: MAKASSAR (if present)
+ * ASAL: SIP : AJ / SIP : MJ
+ * PETUGAS: NIA (if present)
+ */
+export function generateDeliveryOrderQrPayload(
+  detail: DeliveryOrderData,
+  officerName?: string
+): string {
+  const invoiceNumber = detail.sale?.transactionNumber || detail.doNumber;
+  const customerName = (detail.sale?.customerName || "CUSTOMER").toUpperCase();
+  const customerLocation = (detail.sale?.customerLocation || detail.customerLocation || "").trim().toUpperCase();
+  const sourceLabel = getDeliveryOrderSourceLabel(detail);
+
+  const lines: string[] = [
+    `INVOICE: ${invoiceNumber}`,
+    `CUSTOMER: ${customerName}`
+  ];
+
+  if (customerLocation) {
+    lines.push(`ALAMAT: ${customerLocation}`);
+  }
+
+  lines.push(`ASAL: ${sourceLabel}`);
+
+  if (officerName) {
+    lines.push(`PETUGAS: ${officerName.toUpperCase()}`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
  * Generates formatted minimal text representation for clipboard (Copy Text)
  * Invoice Number, Customer Name, and Source Indicator (SIP / MJ).
  */
@@ -164,6 +200,28 @@ export function generateDeliveryOrderEscPos(detail: DeliveryOrderData, printUser
 
   // 3. Center alignment
   push(0x1b, 0x61, 0x01); // ESC a 1 (Center align)
+
+  // 3a. Native Hardware ESC/POS QR Code (7x7 cm, Centered at the top of the roll - Opsi A)
+  const qrPayload = generateDeliveryOrderQrPayload(detail, officerName);
+  const qrBytes = encoder.encode(qrPayload);
+  const qrLen = qrBytes.length + 3;
+  const pL = qrLen & 0xff;
+  const pH = (qrLen >> 8) & 0xff;
+
+  // Set Model (Model 2: 0x32)
+  push(0x1d, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00);
+  // Set Module Size (0x08 = 8 dots per module, approx ~240-280 dots wide, crisp on 80mm roll)
+  push(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, 0x08);
+  // Set Error Correction Level M (0x31)
+  push(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31);
+  // Store Data
+  push(0x1d, 0x28, 0x6b, pL, pH, 0x31, 0x50, 0x30);
+  for (let i = 0; i < qrBytes.length; i++) {
+    push(qrBytes[i]);
+  }
+  // Print QR Code
+  push(0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30);
+  pushText("\n- - - - - - - - - - - - - - - -\n\n");
 
   // 4. Maximum Bold & Double-strike
   push(0x1b, 0x45, 0x01); // ESC E 1 (Bold ON)

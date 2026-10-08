@@ -163,6 +163,9 @@ describe("Delivery Order Thermal 80mm Printing (3-Column Vertical)", () => {
       // Verify GS ! (0x1D, 0x21) font scaling command
       expect(binaryString).toContain("\x1d\x21");
 
+      // Verify GS ( k (0x1D, 0x28, 0x6B) native ESC/POS QR Code command
+      expect(binaryString).toContain("\x1d\x28\x6b");
+
       // Verify Cut command at the end (GS V 66 0: 0x1D, 0x56, 0x42, 0x00)
       const lastBytes = bytes.slice(-4);
       expect(Array.from(lastBytes)).toEqual([0x1d, 0x56, 0x42, 0x00]);
