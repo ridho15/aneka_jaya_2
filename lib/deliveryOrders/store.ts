@@ -874,6 +874,53 @@ export async function completeDeliveryOrderShipping(
   });
 }
 
+export async function updateDeliveryOrderReceiptPhotos(
+  deliveryOrderId: string,
+  receiptPhotoUrl: string,
+  actor?: CurrentUser
+) {
+  return prisma.$transaction(async (tx) => {
+    const doRow = await tx.deliveryOrder.findUnique({
+      where: { id: deliveryOrderId }
+    });
+
+    if (!doRow) {
+      throw new Error("Delivery Order tidak ditemukan.");
+    }
+
+    const updated = await tx.deliveryOrder.update({
+      where: { id: deliveryOrderId },
+      data: {
+        receiptPhotoUrl: receiptPhotoUrl || null
+      },
+      include: { items: true }
+    });
+
+    if (doRow.salesRecordId) {
+      await tx.salesRecord.update({
+        where: { id: doRow.salesRecordId },
+        data: {
+          doReceiptPhotoUrl: receiptPhotoUrl || null
+        }
+      });
+    }
+
+    if (actor) {
+      await recordAudit({
+        entityType: "delivery_order",
+        entityId: deliveryOrderId,
+        action: "update",
+        afterValue: {
+          receiptPhotoUrl
+        },
+        reason: `Foto bukti pengiriman DO diperbarui oleh ${actor.name}`
+      });
+    }
+
+    return updated;
+  });
+}
+
 export async function listDeliveryOfficers() {
   // First try users with DELIVERY_DRIVER role
   const drivers = await prisma.user.findMany({

@@ -28,10 +28,31 @@ describe("DeliveryOrderProofUploader Component", () => {
       />
     );
 
-    expect(html).toContain("Preview Foto Bukti:");
+    expect(html).toContain("Tersimpan 1 foto");
+    expect(html).toContain("Foto #1");
     expect(html).toContain(testUrl);
-    expect(html).toContain("Lihat Foto Penuh");
+    expect(html).toContain("Lihat Penuh");
     expect(html).toContain("Hapus");
+  });
+
+  it("renders multiple photo cards when multiple URLs or JSON array string is provided", () => {
+    const photos = [
+      "https://example.com/uploads/bukti-1.jpg",
+      "https://example.com/uploads/bukti-2.jpg"
+    ];
+    const html = renderToStaticMarkup(
+      <DeliveryOrderProofUploader
+        receiptPhotoUrl={JSON.stringify(photos)}
+        onPhotoChange={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Tersimpan 2 foto");
+    expect(html).toContain("Foto #1");
+    expect(html).toContain("Foto #2");
+    expect(html).toContain("https://example.com/uploads/bukti-1.jpg");
+    expect(html).toContain("https://example.com/uploads/bukti-2.jpg");
+    expect(html).toContain("+ Tambah Foto");
   });
 
   it("disables action buttons and hides delete button when disabled is true", () => {

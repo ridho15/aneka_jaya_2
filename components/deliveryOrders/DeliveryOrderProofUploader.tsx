@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { compressImage } from "@/lib/utils/imageCompression";
+import { parseReceiptPhotos, serializeReceiptPhotos } from "@/lib/deliveryOrders/photos";
 
 interface DeliveryOrderProofUploaderProps {
   receiptPhotoUrl?: string;
+  receiptPhotoUrls?: string[];
   onPhotoChange: (url: string) => void;
+  onPhotosChange?: (urls: string[]) => void;
   onUploadingChange?: (uploading: boolean) => void;
   disabled?: boolean;
   showToast?: (message: string, type: "success" | "error" | "warning") => void;
@@ -13,7 +16,9 @@ interface DeliveryOrderProofUploaderProps {
 
 export function DeliveryOrderProofUploader({
   receiptPhotoUrl,
+  receiptPhotoUrls,
   onPhotoChange,
+  onPhotosChange,
   onUploadingChange,
   disabled = false,
   showToast
@@ -30,6 +35,21 @@ export function DeliveryOrderProofUploader({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  // Parse current list of photos from props
+  const photos = useMemo(() => {
+    if (receiptPhotoUrls && receiptPhotoUrls.length > 0) return receiptPhotoUrls;
+    return parseReceiptPhotos(receiptPhotoUrl);
+  }, [receiptPhotoUrl, receiptPhotoUrls]);
+
+  const updatePhotos = useCallback(
+    (nextPhotos: string[]) => {
+      const serialized = serializeReceiptPhotos(nextPhotos);
+      onPhotoChange(serialized);
+      onPhotosChange?.(nextPhotos);
+    },
+    [onPhotoChange, onPhotosChange]
+  );
 
   // Stop camera stream safely
   const stopCameraStream = useCallback(() => {
@@ -117,39 +137,63 @@ export function DeliveryOrderProofUploader({
     }
   };
 
-  // Process and upload file with compression
-  const processAndUploadFile = async (rawFile: File) => {
+  // Process and upload multiple files sequentially with compression
+  const processAndUploadFiles = async (rawFiles: File[]) => {
+    if (rawFiles.length === 0) return;
     setIsUploading(true);
     onUploadingChange?.(true);
-    setUploadStatusText("Mengoptimalkan foto...");
+
+    const uploadedUrls: string[] = [];
+    const total = rawFiles.length;
+
     try {
-      // 1. Client-side compression
-      const optimizedFile = await compressImage(rawFile, {
-        maxWidth: 1920,
-        maxHeight: 1920,
-        quality: 0.82
-      });
+      for (let i = 0; i < total; i++) {
+        const rawFile = rawFiles[i];
+        setUploadStatusText(
+          total > 1
+            ? `Mengunggah foto (${i + 1}/${total}): ${rawFile.name}...`
+            : "Mengoptimalkan foto bukti..."
+        );
 
-      // 2. Prepare FormData
-      setUploadStatusText("Mengunggah foto resi...");
-      const formData = new FormData();
-      formData.append("file", optimizedFile);
+        // 1. Client-side compression
+        const optimizedFile = await compressImage(rawFile, {
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 0.82
+        });
 
-      // 3. Send to API
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
+        // 2. Prepare FormData
+        const formData = new FormData();
+        formData.append("file", optimizedFile);
 
-      if (data.success && data.data?.url) {
-        onPhotoChange(data.data.url);
-        showToast?.("Foto bukti pengiriman berhasil disimpan.", "success");
+        // 3. Send to API
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+
+        if (data.success && data.data?.url) {
+          uploadedUrls.push(data.data.url);
+        } else {
+          console.error("Gagal mengunggah foto:", data.message);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        const nextPhotos = [...photos, ...uploadedUrls];
+        updatePhotos(nextPhotos);
+        showToast?.(
+          uploadedUrls.length === 1
+            ? "Foto bukti pengiriman berhasil ditambahkan."
+            : `${uploadedUrls.length} foto bukti pengiriman berhasil ditambahkan.`,
+          "success"
+        );
       } else {
-        showToast?.(data.message || "Gagal mengunggah foto resi.", "error");
+        showToast?.("Gagal mengunggah foto bukti.", "error");
       }
     } catch {
-      showToast?.("Terjadi kesalahan koneksi saat mengunggah foto resi.", "error");
+      showToast?.("Terjadi kesalahan koneksi saat mengunggah foto bukti.", "error");
     } finally {
       setIsUploading(false);
       onUploadingChange?.(false);
@@ -160,11 +204,11 @@ export function DeliveryOrderProofUploader({
     }
   };
 
-  // Handler for standard file inputs
+  // Handler for standard file inputs (Multi-select supported)
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await processAndUploadFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    await processAndUploadFiles(files);
   };
 
   // Handler for snapping photo in live webcam modal
@@ -206,7 +250,7 @@ export function DeliveryOrderProofUploader({
       setCapturedPreviewUrl(null);
     }
     setCapturedBlob(null);
-    await processAndUploadFile(file);
+    await processAndUploadFiles([file]);
   };
 
   // Retake photo in modal
@@ -230,8 +274,10 @@ export function DeliveryOrderProofUploader({
     setCameraError(null);
   };
 
-  const handleRemovePhoto = () => {
-    onPhotoChange("");
+  // Remove specific photo by index
+  const handleRemovePhotoAt = (index: number) => {
+    const nextPhotos = photos.filter((_, i) => i !== index);
+    updatePhotos(nextPhotos);
     showToast?.("Foto bukti pengiriman dihapus.", "warning");
   };
 
@@ -250,10 +296,11 @@ export function DeliveryOrderProofUploader({
         aria-label="Ambil Foto Kamera Native"
       />
 
-      {/* 2. File / Gallery picker input */}
+      {/* 2. File / Gallery picker input (Multiple enabled) */}
       <input
         ref={galleryInputRef}
         type="file"
+        multiple
         accept="image/*,.pdf"
         disabled={disabled || isUploading}
         onChange={handleFileInputChange}
@@ -261,18 +308,25 @@ export function DeliveryOrderProofUploader({
         aria-label="Upload File atau Galeri"
       />
 
-      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
-        Foto Resi / Bukti Pengiriman
-      </label>
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+          Foto Resi / Bukti Pengiriman {photos.length > 0 ? `(${photos.length} Foto)` : ""}
+        </label>
+        {photos.length > 0 && (
+          <span className="text-[11px] text-emerald-700 font-medium">
+            Tersimpan {photos.length} foto
+          </span>
+        )}
+      </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons (Always accessible to add photos anytime) */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Tombol Ambil Foto Kamera (Pintar: Langsung buka Webcam di Desktop, Kamera Native di HP) */}
+        {/* Tombol Ambil Foto Kamera */}
         <button
           type="button"
           onClick={handleSmartCameraClick}
           disabled={disabled || isUploading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors shadow-sm"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 transition-colors shadow-xs"
           title="Buka kamera perangkat untuk mengambil foto resi atau surat jalan"
         >
           <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -282,18 +336,18 @@ export function DeliveryOrderProofUploader({
           <span>Foto Kamera</span>
         </button>
 
-        {/* Tombol Unggah File / Galeri */}
+        {/* Tombol Unggah File / Galeri (Multi) */}
         <button
           type="button"
           onClick={() => galleryInputRef.current?.click()}
           disabled={disabled || isUploading}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-50 transition-colors"
-          title="Pilih gambar atau dokumen dari penyimpanan file perangkat"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-50 transition-colors shadow-2xs"
+          title="Pilih satu atau beberapa foto dari galeri/penyimpanan perangkat"
         >
           <svg className="w-4 h-4 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span>Pilih dari File</span>
+          <span>Pilih dari File (Multi)</span>
         </button>
       </div>
 
@@ -308,46 +362,75 @@ export function DeliveryOrderProofUploader({
         </div>
       )}
 
-      {/* Photo Preview Card */}
-      {receiptPhotoUrl ? (
-        <div className="mt-3 p-3 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-700">Preview Foto Bukti:</span>
-            <div className="flex items-center gap-2">
-              <a
-                href={receiptPhotoUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+      {/* Photo Gallery Grid */}
+      {photos.length > 0 ? (
+        <div className="space-y-2 pt-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {photos.map((photoUrl, idx) => (
+              <div
+                key={`${photoUrl}-${idx}`}
+                className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-2 shadow-2xs hover:border-slate-300 transition-all overflow-hidden"
               >
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                {/* Thumbnail Image Container */}
+                <div className="relative aspect-[4/3] w-full rounded-lg overflow-hidden bg-slate-100 border border-slate-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photoUrl}
+                    alt={`Foto Bukti #${idx + 1}`}
+                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                  <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-900/75 text-white backdrop-blur-xs">
+                    Foto #{idx + 1}
+                  </span>
+                </div>
+
+                {/* Card Action Bar */}
+                <div className="mt-2 flex items-center justify-between text-[11px] pt-0.5 border-t border-slate-100">
+                  <a
+                    href={photoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+                    title="Buka foto ukuran penuh di tab baru"
+                  >
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Lihat Penuh
+                  </a>
+
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhotoAt(idx)}
+                      className="inline-flex items-center gap-0.5 font-medium text-rose-600 hover:text-rose-700 hover:underline"
+                      title={`Hapus Foto #${idx + 1}`}
+                    >
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Hapus
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Quick Add Card Slot */}
+            {!disabled && (
+              <button
+                type="button"
+                onClick={handleSmartCameraClick}
+                disabled={isUploading}
+                className="flex aspect-[4/3] flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/60 p-2 text-center text-slate-500 hover:border-emerald-500 hover:bg-emerald-50/30 hover:text-emerald-700 transition-all cursor-pointer"
+                title="Ambil foto tambahan dengan kamera"
+              >
+                <svg className="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Lihat Foto Penuh
-              </a>
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={handleRemovePhoto}
-                  className="inline-flex items-center gap-0.5 text-[11px] font-medium text-rose-600 hover:text-rose-700 hover:underline"
-                >
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Hapus
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="relative group w-fit">
-            <a href={receiptPhotoUrl} target="_blank" rel="noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={receiptPhotoUrl}
-                alt="Foto Resi / Bukti Kirim"
-                className="h-36 max-h-48 w-auto max-w-full rounded-lg border border-slate-300 object-cover shadow-sm group-hover:opacity-95 transition-opacity"
-              />
-            </a>
+                <span className="text-[11px] font-semibold">+ Tambah Foto</span>
+              </button>
+            )}
           </div>
         </div>
       ) : (

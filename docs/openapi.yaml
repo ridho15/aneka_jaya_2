@@ -1388,6 +1388,54 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/delivery-orders/{id}/receipt-photos:
+    patch:
+      summary: Memperbarui atau menambahkan foto bukti pengiriman (multi-upload / foto susulan) pada DO.
+      description: Membutuhkan permission do.process.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                receiptPhotoUrl:
+                  type: string
+                  description: URL foto tunggal atau JSON array string multi-foto bukti pengiriman.
+      responses:
+        "200":
+          description: Foto bukti pengiriman DO berhasil diperbarui.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Memperbarui foto bukti pengiriman DO (alias untuk PATCH).
+      description: Membutuhkan permission do.process.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                receiptPhotoUrl:
+                  type: string
+      responses:
+        "200":
+          description: Foto bukti pengiriman DO berhasil diperbarui.
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /api/delivery-orders/sync:
     post:
       summary: Membuat atau menyinkronkan Surat Jalan (DO) dari transaksi penjualan.

@@ -507,7 +507,7 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
 
         {/* Technical Sub-info */}
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Format: QR (7×7cm) + 3 Kolom</span>
+          <span>Format: QR Code + 3 Kolom</span>
           <span>{officerName ? `Petugas: ${officerName}` : `Asal: ${sourceLabel}`}</span>
         </div>
       </div>
@@ -548,15 +548,6 @@ export function DeliveryOrderThermalPrint({ detail, autoPrint = false, printUser
                   Memuat QR Code...
                 </div>
               )}
-            </div>
-            <div
-              className="no-print mt-1 text-[10px] text-slate-500 font-semibold tracking-wider text-center"
-              style={{
-                writingMode: "vertical-rl",
-                transform: "rotate(180deg)"
-              }}
-            >
-              QR CODE 7×7 CM · INFORMASI DO
             </div>
           </div>
 

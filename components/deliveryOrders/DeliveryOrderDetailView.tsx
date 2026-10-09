@@ -50,6 +50,7 @@ export function DeliveryOrderDetailView({
   );
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isSavingPhotos, setIsSavingPhotos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [officerToRemove, setOfficerToRemove] = useState<{ id: string; name: string } | null>(null);
@@ -296,6 +297,34 @@ export function DeliveryOrderDetailView({
       showToast("Terjadi kesalahan jaringan saat memproses pengiriman.", "error");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveReceiptPhotos = async (newPhotoUrl?: string) => {
+    const photoToSave = typeof newPhotoUrl === "string" ? newPhotoUrl : receiptPhotoUrl;
+    setIsSavingPhotos(true);
+    try {
+      const res = await fetch(`/api/delivery-orders/${detail.id}/receipt-photos`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiptPhotoUrl: photoToSave })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDetail((prev) => ({
+          ...prev,
+          receiptPhotoUrl: photoToSave
+        }));
+        setReceiptPhotoUrl(photoToSave);
+        showToast("Foto bukti pengiriman berhasil disimpan.", "success");
+        router.refresh();
+      } else {
+        showToast(data.message || "Gagal menyimpan foto bukti pengiriman.", "error");
+      }
+    } catch {
+      showToast("Terjadi kesalahan koneksi saat menyimpan foto bukti.", "error");
+    } finally {
+      setIsSavingPhotos(false);
     }
   };
 
@@ -594,19 +623,50 @@ export function DeliveryOrderDetailView({
 
       {/* Proof of Delivery (Foto Resi) & Shipping Information */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">
-          Bukti Pengiriman (Foto Resi) & Catatan
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">
+            Bukti Pengiriman (Foto Resi) &amp; Catatan
+          </h2>
+          {canProcess && (detail.status === "selesai" || detail.status === "selesai_setengah") && (
+            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+              ✓ DO Selesai · Foto susulan didukung
+            </span>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Bukti Pengiriman (Kamera & File) */}
-          <DeliveryOrderProofUploader
-            receiptPhotoUrl={receiptPhotoUrl}
-            onPhotoChange={setReceiptPhotoUrl}
-            onUploadingChange={setIsUploading}
-            disabled={isSubmitting}
-            showToast={showToast}
-          />
+          <div className="space-y-2">
+            <DeliveryOrderProofUploader
+              receiptPhotoUrl={receiptPhotoUrl}
+              onPhotoChange={setReceiptPhotoUrl}
+              onUploadingChange={setIsUploading}
+              disabled={isSubmitting || isSavingPhotos}
+              showToast={showToast}
+            />
+
+            {canProcess && receiptPhotoUrl !== (detail.receiptPhotoUrl || "") && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 mt-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <span className="text-xs font-semibold text-amber-900">
+                    Perubahan foto bukti belum disimpan ke sistem.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSaveReceiptPhotos()}
+                  disabled={isSavingPhotos || isUploading}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>{isSavingPhotos ? "Menyimpan..." : "Simpan Foto Bukti"}</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Tracking number & notes */}
           <div className="space-y-3">

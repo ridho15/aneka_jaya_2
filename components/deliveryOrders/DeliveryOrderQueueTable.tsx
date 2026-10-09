@@ -6,6 +6,7 @@ import type { DeliveryOrderQueueItem } from "@/lib/deliveryOrders/types";
 import { formatJakartaDate } from "@/lib/date/jakarta";
 import { useToast } from "@/components/ui/ToastProvider";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { parseReceiptPhotos } from "@/lib/deliveryOrders/photos";
 
 type Officer = {
   id: string;
@@ -400,18 +401,23 @@ export function DeliveryOrderQueueTable({
                   >
                     {item.shippingStatus === "sudah" ? "Sudah" : "Belum"}
                   </span>
-                  {item.receiptPhotoUrl && (
-                    <div className="mt-1">
-                      <a
-                        href={item.receiptPhotoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-0.5 text-[10px] font-bold text-purple-700 hover:underline"
-                      >
-                        📷 Foto Resi
-                      </a>
-                    </div>
-                  )}
+                  {item.receiptPhotoUrl && (() => {
+                    const photos = parseReceiptPhotos(item.receiptPhotoUrl);
+                    if (photos.length === 0) return null;
+                    return (
+                      <div className="mt-1">
+                        <a
+                          href={photos[0]}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-0.5 text-[10px] font-bold text-purple-700 hover:underline"
+                          title={photos.length > 1 ? `${photos.length} foto bukti pengiriman tersimpan (klik untuk melihat foto pertama)` : "Lihat foto resi"}
+                        >
+                          📷 {photos.length > 1 ? `Foto Resi (${photos.length})` : "Foto Resi"}
+                        </a>
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="px-5 py-3.5 text-center whitespace-nowrap">
                   {getStatusBadge(item.status)}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Sale } from "@/lib/types/sales";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 import { formatJakartaDateTime } from "@/lib/date/jakarta";
+import { parseReceiptPhotos } from "@/lib/deliveryOrders/photos";
 
 type Props = {
   sales: Sale[];
@@ -168,17 +169,21 @@ export function DeliveryOrderBadges({ sale }: { sale: Sale }) {
           Resi: {sale.doTrackingNumber}
         </span>
       )}
-      {sale.doReceiptPhotoUrl && (
-        <a
-          href={sale.doReceiptPhotoUrl}
-          target="_blank"
-          rel="noreferrer"
-          title="Lihat Foto Resi Pengiriman"
-          className="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors shadow-2xs"
-        >
-          📷 Resi
-        </a>
-      )}
+      {sale.doReceiptPhotoUrl && (() => {
+        const photos = parseReceiptPhotos(sale.doReceiptPhotoUrl);
+        if (photos.length === 0) return null;
+        return (
+          <a
+            href={photos[0]}
+            target="_blank"
+            rel="noreferrer"
+            title={photos.length > 1 ? `${photos.length} foto bukti pengiriman tersimpan (klik untuk melihat foto pertama)` : "Lihat Foto Resi Pengiriman"}
+            className="inline-flex items-center gap-1 rounded bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors shadow-2xs"
+          >
+            📷 {photos.length > 1 ? `Resi (${photos.length})` : "Resi"}
+          </a>
+        );
+      })()}
       {printOfficer && (
         <span
           data-testid="do-print-officer-badge"
