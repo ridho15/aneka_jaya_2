@@ -37,6 +37,8 @@ export const penjualanSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
   isTestTransaction: z.boolean().optional(),
   isDraft: z.boolean().optional(),
+  clientRequestId: z.string().trim().max(100).optional(),
+  allowDuplicate: z.boolean().optional(),
   items: z.array(z.object({
     productRef: z.string().trim().min(1, "Kode atau nama barang wajib diisi").max(150),
     productId: z.string().trim().max(50).optional(),

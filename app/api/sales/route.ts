@@ -11,7 +11,14 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ success: false, message: "Mohon lengkapi data yang wajib diisi.", code: "VALIDATION", details: parsed.error.flatten() }, { status: 400 });
   try {
     const response = await createSale(parsed.data);
-    return NextResponse.json(response, { status: response.success ? 201 : 502 });
+    const status = response.success
+      ? (response.data && typeof response.data === "object" && "idempotentReplay" in response.data ? 200 : 201)
+      : response.code === "DUPLICATE_SUSPECTED" || response.code === "TRANSACTION_IN_FLIGHT"
+        ? 409
+        : response.code === "VALIDATION_ERROR"
+          ? 400
+          : 502;
+    return NextResponse.json(response, { status });
   } catch (error) {
     if (error instanceof MasterDataError) {
       return NextResponse.json({ success: false, message: error.message, code: error.code }, { status: 400 });

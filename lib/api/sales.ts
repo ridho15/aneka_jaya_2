@@ -21,6 +21,12 @@ import type { ManualSalesProduct } from "@/lib/types/sales";
 import { releaseSaleStock, stockReleaseErrorFrom } from "@/lib/api/stockReleases";
 import { syncErpSalesPayment } from "@/lib/api/salesPayments";
 import { jakartaTimestampFromLocal, transactionDateKey } from "@/lib/date/jakarta";
+import {
+  acquireSalesLock,
+  releaseSalesLock,
+  findExistingSaleByRequestId,
+  findSemanticDuplicateSale
+} from "@/lib/sales/deduplication";
 
 function serializeJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
@@ -737,123 +743,161 @@ async function persistErpSale(input: {
 }
 
 export async function createSale(input: PenjualanInput): Promise<ApiResponse<unknown>> {
-  const total = input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
-  const user = await getCurrentUser();
-  const tipe = await findTipe(input.tipeId);
-  const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
-  const initialRekening = input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0 && input.initialPaymentMethod
-    ? await resolveSalesRekening(input.initialPaymentMethod, tipe.id, input.initialPaymentRekeningId)
-    : undefined;
-  const isDraft = input.isDraft === true;
-  const approvalStatus: NonNullable<Sale["approvalStatus"]> = isDraft ? "draft" : "approved";
-  const isSyncEnabled = await isErpTransactionSyncEnabled();
-  const target = salesTargetForTypeCode(tipe.code, process.env, isSyncEnabled);
-  const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
-  const testReference = isTestTransaction ? `TEST-${tipe.code.toUpperCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
-  const customerName = testReference ? `[TEST ${tipe.code.toUpperCase()}] ${input.customerName}` : input.customerName;
-  const notes = [input.notes, testReference ? `Transaksi pengujian ${testReference}` : ""].filter(Boolean).join(" • ") || undefined;
-  const normalizedItems = normalizeManualSaleItems(input.items);
-  const preparedManualItems = await resolveManualProductsForSaleItems(normalizedItems);
-  if (!preparedManualItems.success) return preparedManualItems;
-  const effectiveItems = preparedManualItems.data;
-  const transactionAt = jakartaTimestampFromLocal(input.transactionAt || `${input.saleDate}T00:00`);
-  const saleDate = transactionDateKey(transactionAt);
-  const deliveryAt = input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
-  if (deliveryAt && deliveryAt < transactionAt) return failure("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi", "VALIDATION_ERROR");
-  const effectiveInput = { ...input, saleDate, transactionAt, deliveryAt, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, initialPaymentRekeningId: initialRekening?.id, initialPaymentRekeningNameSnapshot: initialRekening?.name };
+  const lockAcquired = acquireSalesLock(input.clientRequestId);
+  if (!lockAcquired) {
+    return failure(
+      "Transaksi sedang diproses oleh sistem. Mohon tunggu sejenak.",
+      "TRANSACTION_IN_FLIGHT"
+    );
+  }
 
-  const saleId = `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-  const erpReference = `SLM-${saleId}`;
+  try {
+    const existingSale = await findExistingSaleByRequestId(input.clientRequestId);
+    if (existingSale) {
+      return {
+        success: true,
+        data: { ...existingSale, target: "local", idempotentReplay: true }
+      };
+    }
 
-  let stockReleasedAt: string | undefined = undefined;
-  let stockReleaseStatus: Sale["stockReleaseStatus"] = "not_required";
-  let stockReleaseReference: string | undefined = undefined;
-
-  // Eksekusi pelepasan/pengurangan stok fisik ke Aneka Jaya (AJ) HANYA jika bukan draft
-  if (!isDraft) {
-    const stockResponse = await releaseSaleStock({
-      saleId,
-      saleDate,
-      erpReference,
-      sourceNumber: erpReference,
-      items: effectiveInput.items
-    });
-
-    if (!stockResponse.success) {
+    const semanticDuplicate = await findSemanticDuplicateSale(input);
+    if (semanticDuplicate) {
+      const duplicateTime = semanticDuplicate.createdAt
+        ? new Date(semanticDuplicate.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+        : "";
       return failure(
-        stockResponse.message || "Pengurangan stok di Aneka Jaya gagal.",
-        stockResponse.code || "ERP_STOCK_RELEASE_FAILED",
-        stockResponse.details
+        `Transaksi serupa terdeteksi baru saja dibuat (${semanticDuplicate.transactionNumber || semanticDuplicate.id}${duplicateTime ? ` pukul ${duplicateTime}` : ""}). Apakah Anda yakin ingin membuat transaksi baru lagi?`,
+        "DUPLICATE_SUSPECTED",
+        {
+          existingSaleId: semanticDuplicate.id,
+          existingTransactionNumber: semanticDuplicate.transactionNumber || semanticDuplicate.id,
+          existingCreatedAt: semanticDuplicate.createdAt,
+          existingTotal: semanticDuplicate.total
+        }
       );
     }
 
-    stockReleasedAt = new Date().toISOString();
-    stockReleaseStatus = stockResponse.data.status === "already_released" ? "already_released" : "released";
-    stockReleaseReference = stockResponse.data.releaseReference;
-  }
+    const total = input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
+    const user = await getCurrentUser();
+    const tipe = await findTipe(input.tipeId);
+    const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
+    const initialRekening = input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0 && input.initialPaymentMethod
+      ? await resolveSalesRekening(input.initialPaymentMethod, tipe.id, input.initialPaymentRekeningId)
+      : undefined;
+    const isDraft = input.isDraft === true;
+    const approvalStatus: NonNullable<Sale["approvalStatus"]> = isDraft ? "draft" : "approved";
+    const isSyncEnabled = await isErpTransactionSyncEnabled();
+    const target = salesTargetForTypeCode(tipe.code, process.env, isSyncEnabled);
+    const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
+    const testReference = isTestTransaction ? `TEST-${tipe.code.toUpperCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
+    const customerName = testReference ? `[TEST ${tipe.code.toUpperCase()}] ${input.customerName}` : input.customerName;
+    const notes = [input.notes, testReference ? `Transaksi pengujian ${testReference}` : ""].filter(Boolean).join(" • ") || undefined;
+    const normalizedItems = normalizeManualSaleItems(input.items);
+    const preparedManualItems = await resolveManualProductsForSaleItems(normalizedItems);
+    if (!preparedManualItems.success) return preparedManualItems;
+    const effectiveItems = preparedManualItems.data;
+    const transactionAt = jakartaTimestampFromLocal(input.transactionAt || `${input.saleDate}T00:00`);
+    const saleDate = transactionDateKey(transactionAt);
+    const deliveryAt = input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
+    if (deliveryAt && deliveryAt < transactionAt) return failure("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi", "VALIDATION_ERROR");
+    const effectiveInput = { ...input, saleDate, transactionAt, deliveryAt, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, initialPaymentRekeningId: initialRekening?.id, initialPaymentRekeningNameSnapshot: initialRekening?.name };
 
-  const sale: Sale = {
-    id: saleId,
-    ...effectiveInput,
-    tipeId: tipe.id,
-    tipeCodeSnapshot: tipe.code,
-    tipeNameSnapshot: tipe.name,
-    total,
-    approvalStatus,
-    syncTarget: "local",
-    syncStatus: "local",
-    stockReleaseStatus,
-    stockReleaseReference,
-    stockReleasedAt,
-    erpPaymentStatus: "not_required",
-    testReference,
-    isTestTransaction,
-    createdByUserId: user.id,
-    createdByNameSnapshot: user.name,
-    createdByRoleSnapshot: user.role,
-    createdAt: new Date().toISOString()
-  };
+    const saleId = `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    const erpReference = `SLM-${saleId}`;
 
-  const tempoInput = !isDraft && approvalStatus === "approved" && input.paymentMethod === "Tempo"
-    ? {
-        salesId: sale.id,
-        tipeId: tipe.id,
-        tipeCodeSnapshot: tipe.code,
-        tipeNameSnapshot: tipe.name,
-        customerName: input.customerName,
-        originalAmount: total,
-        transactionDate: saleDate,
-        dueDate: input.dueDate || saleDate,
-        initialPayment: {
-          amount: input.initialPaymentAmount,
-          method: input.initialPaymentMethod,
-          rekeningId: initialRekening?.id,
-          rekeningNameSnapshot: initialRekening?.name,
-          notes: input.initialPaymentNotes
-        }
+    let stockReleasedAt: string | undefined = undefined;
+    let stockReleaseStatus: Sale["stockReleaseStatus"] = "not_required";
+    let stockReleaseReference: string | undefined = undefined;
+
+    // Eksekusi pelepasan/pengurangan stok fisik ke Aneka Jaya (AJ) HANYA jika bukan draft
+    if (!isDraft) {
+      const stockResponse = await releaseSaleStock({
+        saleId,
+        saleDate,
+        erpReference,
+        sourceNumber: erpReference,
+        items: effectiveInput.items
+      });
+
+      if (!stockResponse.success) {
+        return failure(
+          stockResponse.message || "Pengurangan stok di Aneka Jaya gagal.",
+          stockResponse.code || "ERP_STOCK_RELEASE_FAILED",
+          stockResponse.details
+        );
       }
-    : undefined;
 
-  if (tempoInput) await saveSalesRecord(sale, { tempo: tempoInput });
-  else await saveSalesRecord(sale);
-  if (!isDraft) {
-    await createDeliveryOrderForSale(sale.id).catch((err) => {
-      console.error("[DO] Failed to create delivery order for sale:", err);
+      stockReleasedAt = new Date().toISOString();
+      stockReleaseStatus = stockResponse.data.status === "already_released" ? "already_released" : "released";
+      stockReleaseReference = stockResponse.data.releaseReference;
+    }
+
+    const sale: Sale = {
+      id: saleId,
+      ...effectiveInput,
+      externalReference: input.clientRequestId || undefined,
+      tipeId: tipe.id,
+      tipeCodeSnapshot: tipe.code,
+      tipeNameSnapshot: tipe.name,
+      total,
+      approvalStatus,
+      syncTarget: "local",
+      syncStatus: "local",
+      stockReleaseStatus,
+      stockReleaseReference,
+      stockReleasedAt,
+      erpPaymentStatus: "not_required",
+      testReference,
+      isTestTransaction,
+      createdByUserId: user.id,
+      createdByNameSnapshot: user.name,
+      createdByRoleSnapshot: user.role,
+      createdAt: new Date().toISOString()
+    };
+
+    const tempoInput = !isDraft && approvalStatus === "approved" && input.paymentMethod === "Tempo"
+      ? {
+          salesId: sale.id,
+          tipeId: tipe.id,
+          tipeCodeSnapshot: tipe.code,
+          tipeNameSnapshot: tipe.name,
+          customerName: input.customerName,
+          originalAmount: total,
+          transactionDate: saleDate,
+          dueDate: input.dueDate || saleDate,
+          initialPayment: {
+            amount: input.initialPaymentAmount,
+            method: input.initialPaymentMethod,
+            rekeningId: initialRekening?.id,
+            rekeningNameSnapshot: initialRekening?.name,
+            notes: input.initialPaymentNotes
+          }
+        }
+      : undefined;
+
+    if (tempoInput) await saveSalesRecord(sale, { tempo: tempoInput });
+    else await saveSalesRecord(sale);
+    if (!isDraft) {
+      await createDeliveryOrderForSale(sale.id).catch((err) => {
+        console.error("[DO] Failed to create delivery order for sale:", err);
+      });
+    }
+    if (!isDraft && process.env.NEXT_PUBLIC_APP_MODE !== "production" && tempoInput) await createTempoReceivable(tempoInput);
+    if (!isDraft && approvalStatus === "approved" && input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0) {
+      await syncInitialTempoPaymentForSale(sale.id);
+    }
+    await recordAudit({
+      entityType: "sales",
+      entityId: sale.id,
+      action: "create",
+      afterValue: sale,
+      reason: isDraft
+        ? "Draft Penjualan SLM disimpan (belum potong stok AJ)"
+        : `Invoice Penjualan SLM • Stok AJ terpotong (${stockReleaseReference}) • ${approvalStatus} • ${input.paymentMethod}`
     });
-  }
-  if (!isDraft && process.env.NEXT_PUBLIC_APP_MODE !== "production" && tempoInput) await createTempoReceivable(tempoInput);
-  if (!isDraft && approvalStatus === "approved" && input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0) {
-    await syncInitialTempoPaymentForSale(sale.id);
-  }
-  await recordAudit({
-    entityType: "sales",
-    entityId: sale.id,
-    action: "create",
-    afterValue: sale,
-    reason: isDraft
-      ? "Draft Penjualan SLM disimpan (belum potong stok AJ)"
-      : `Invoice Penjualan SLM • Stok AJ terpotong (${stockReleaseReference}) • ${approvalStatus} • ${input.paymentMethod}`
-  });
 
-  return { success: true, data: { ...sale, target: "local" } };
+    return { success: true, data: { ...sale, target: "local" } };
+  } finally {
+    releaseSalesLock(input.clientRequestId);
+  }
 }

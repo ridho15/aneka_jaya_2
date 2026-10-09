@@ -592,6 +592,8 @@ export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreat
         erpPaymentAttemptedAt: sale.erpPaymentAttemptedAt ? new Date(sale.erpPaymentAttemptedAt) : undefined,
         testReference: sale.testReference,
         isTestTransaction: sale.isTestTransaction || false,
+        source: sale.source || "SLM",
+        externalReference: sale.externalReference || null,
         createdByUserId: sale.createdByUserId || "system",
         createdByNameSnapshot: sale.createdByNameSnapshot || "System",
         createdByRoleSnapshot: (sale.createdByRoleSnapshot || "OWNER") as Role,

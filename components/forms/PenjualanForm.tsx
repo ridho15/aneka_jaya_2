@@ -18,6 +18,7 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product } from "@/lib/types/product";
 import type { StockItem } from "@/lib/types/stock";
@@ -232,6 +233,21 @@ export function PenjualanForm({
   });
   const productSearchControllerRef = useRef<AbortController>();
   const productSearchRequestRef = useRef(0);
+  const isSubmittingRef = useRef(false);
+  const [clientRequestId, setClientRequestId] = useState<string>(() =>
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `REQ-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  );
+  const [duplicateSuspectModal, setDuplicateSuspectModal] = useState<{
+    isOpen: boolean;
+    message: string;
+    existingSaleId?: string;
+    existingTransactionNumber?: string;
+    existingTotal?: number;
+    existingCreatedAt?: string;
+    pendingPayload?: PenjualanInput;
+  }>({ isOpen: false, message: "" });
   const defaultDateTimes = initialSaleDateTimes(sale);
   const [submitMode, setSubmitMode] = useState<"final" | "draft">(sale?.approvalStatus === "draft" ? "draft" : "final");
   const {
@@ -785,172 +801,205 @@ export function PenjualanForm({
     }
   }, [cashWalkInRekening, filteredRekenings, getValues, initialPaymentAmount, initialPaymentMethod, paymentMethod, setValue]);
 
+  const handleProceedDuplicate = async () => {
+    if (!duplicateSuspectModal.pendingPayload) return;
+    const pending = duplicateSuspectModal.pendingPayload;
+    setDuplicateSuspectModal({ isOpen: false, message: "" });
+    const freshRequestId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `REQ-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    setClientRequestId(freshRequestId);
+    await submit({
+      ...pending,
+      allowDuplicate: true,
+      clientRequestId: freshRequestId,
+    });
+  };
+
   const submit = async (data: PenjualanInput) => {
-    setNotice(undefined);
-    setCreatedSale(undefined);
-    if (!dependenciesReady) {
-      setNotice({
-        type: "error",
-        message:
-          "Form belum siap. Pastikan produk, tipe pembukuan, dan rekening telah tersedia.",
-      });
-      return;
-    }
-    // if (!selectedProductsReady) {
-    //   setNotice({
-    //     type: "error",
-    //     message:
-    //       "Pilih barang dari ERP atau lengkapi data barang manual untuk dibuat di ERP.",
-    //   });
-    //   return;
-    // }
-    const isDraft = submitMode === "draft" || Boolean(data.isDraft);
-    const isFinalizingDraft = isEdit && sale?.approvalStatus === "draft" && !isDraft;
-    const finalTransactionAt = isFinalizingDraft
-      ? (data.transactionAt && data.transactionAt !== defaultDateTimes.transactionAt ? data.transactionAt : nowJakarta())
-      : data.transactionAt;
-    const finalSaleDate = finalTransactionAt ? finalTransactionAt.slice(0, 10) : data.saleDate;
-    const finalDeliveryAt = isFinalizingDraft && (!deliveryTouchedRef.current || data.shippingMethod === "di Tempat" || (data.deliveryAt && data.deliveryAt < (finalTransactionAt || "")))
-      ? finalTransactionAt
-      : data.deliveryAt;
-    const payload: PenjualanInput = {
-      ...data,
-      isDraft,
-      transactionAt: finalTransactionAt,
-      saleDate: finalSaleDate,
-      deliveryAt: finalDeliveryAt,
-      items: data.items.map((item) => ({
-        ...item,
-        discount: itemDiscountAmount(item),
-      })),
-    };
-    const response = await fetch(
-      isEdit && sale
-        ? `/api/sales/${encodeURIComponent(sale.id)}`
-        : "/api/sales",
-      {
-        method: isEdit ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      },
-    );
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-      if (!isEdit && !isDraft) localStorage.setItem(draftKey, JSON.stringify(data));
-      setNotice({
-        type: "error",
-        message:
-          result.message ||
-          (isEdit
-            ? "Data gagal diperbarui."
-            : "Data gagal diproses."),
-      });
-      return;
-    }
-    if (isEdit) {
-      setNotice({
-        type: "success",
-        message: isDraft
-          ? "Draft penjualan berhasil diperbarui."
-          : "Transaksi penjualan berhasil difinalisasi & stok telah dipotong.",
-      });
-      setTimeout(() => router.push(isDraft ? "/penjualan/draft" : "/penjualan"), 700);
-      return;
-    }
-    localStorage.removeItem(draftKey);
-    if (isDraft) {
-      setNotice({
-        type: "success",
-        message: "Draft penjualan berhasil disimpan. Stok gudang belum dipotong.",
-      });
-      setTimeout(() => router.push("/penjualan/draft"), 800);
-      return;
-    }
-    if (result.data?.id) {
-      const createdId = String(result.data.id);
-      setCreatedSale({
-        id: createdId,
-        transactionNumber: result.data.transactionNumber,
-        approvalStatus: result.data.approvalStatus,
-        target: result.data.target,
-        syncStatus: result.data.syncStatus,
-        stockReleaseStatus: result.data.stockReleaseStatus,
-        stockReleaseError: result.data.stockReleaseError,
-        erpPaymentStatus: result.data.erpPaymentStatus,
-        erpPaymentError: result.data.erpPaymentError,
-        retryable: result.data.retryable === true,
-        testReference: result.data.testReference,
-        erpReference: result.data.erpReference,
-        paymentMethod: result.data.paymentMethod || data.paymentMethod,
-      });
-      setTimeout(() => {
-        router.push(`/penjualan/${encodeURIComponent(createdId)}/invoice?created=1`);
-      }, 600);
-    }
-    const defaultRek =
-      cashWalkInRekening ??
-      (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
-    const nextTransactionAt = nowJakarta();
-    deliveryTouchedRef.current = false;
-    reset({
-      saleDate: nextTransactionAt.slice(0, 10),
-      transactionAt: nextTransactionAt,
-      deliveryAt: nextTransactionAt,
-      tipeId: defaultTipe?.id || "",
-      tipeCodeSnapshot: defaultTipe?.code || "",
-      tipeNameSnapshot: defaultTipe?.name || "",
-      rekeningId: defaultRek?.id || "",
-      rekeningNameSnapshot: defaultRek?.name || "",
-      customerName: "Walk In",
-      customerPhone: "",
-      customerLocation: "Toko",
-      shippingMethod: "di Tempat",
-      paymentMethod: "Cash",
-      items: [
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    try {
+      setNotice(undefined);
+      setCreatedSale(undefined);
+      if (!dependenciesReady) {
+        setNotice({
+          type: "error",
+          message:
+            "Form belum siap. Pastikan produk, tipe pembukuan, dan rekening telah tersedia.",
+        });
+        return;
+      }
+      const isDraft = submitMode === "draft" || Boolean(data.isDraft);
+      const isFinalizingDraft = isEdit && sale?.approvalStatus === "draft" && !isDraft;
+      const finalTransactionAt = isFinalizingDraft
+        ? (data.transactionAt && data.transactionAt !== defaultDateTimes.transactionAt ? data.transactionAt : nowJakarta())
+        : data.transactionAt;
+      const finalSaleDate = finalTransactionAt ? finalTransactionAt.slice(0, 10) : data.saleDate;
+      const finalDeliveryAt = isFinalizingDraft && (!deliveryTouchedRef.current || data.shippingMethod === "di Tempat" || (data.deliveryAt && data.deliveryAt < (finalTransactionAt || "")))
+        ? finalTransactionAt
+        : data.deliveryAt;
+      const payload: PenjualanInput = {
+        ...data,
+        isDraft,
+        transactionAt: finalTransactionAt,
+        saleDate: finalSaleDate,
+        deliveryAt: finalDeliveryAt,
+        clientRequestId: data.clientRequestId || clientRequestId,
+        allowDuplicate: Boolean(data.allowDuplicate),
+        items: data.items.map((item) => ({
+          ...item,
+          discount: itemDiscountAmount(item),
+        })),
+      };
+      const response = await fetch(
+        isEdit && sale
+          ? `/api/sales/${encodeURIComponent(sale.id)}`
+          : "/api/sales",
         {
-          productRef: "",
-          productId: undefined,
-          productInputMode: "erp",
-          quantity: 1,
-          unitPrice: 0,
-          discount: 0,
+          method: isEdit ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         },
-      ],
-    });
-    const isRetryableErp =
-      result.data?.target === "erp" &&
-      (result.data?.retryable === true ||
-        result.data?.syncStatus === "failed" ||
-        result.data?.stockReleaseStatus === "failed" ||
-        result.data?.erpPaymentStatus === "failed" ||
-        result.data?.erpPaymentStatus === "pending");
-    const isSyncedErp =
-      result.data?.target === "erp" &&
-      result.data?.syncStatus === "synced" &&
-      result.data?.erpReference;
-    setNotice({
-      type: isRetryableErp ? "error" : "success",
-      message: isRetryableErp
-        ? result.data?.syncStatus === "synced" &&
-          result.data?.stockReleaseStatus === "failed"
-          ? `Invoice terkirim ke ${EXTERNAL_ERP_NAME}, tetapi release stok gagal. Silakan cek ERP Sync.`
-          : result.data?.syncStatus === "synced" &&
-            result.data?.stockReleaseStatus === "released" &&
-            (result.data?.erpPaymentStatus === "failed" ||
-              result.data?.erpPaymentStatus === "pending")
-            ? `Invoice terkirim dan stok released, tetapi payment ERP perlu dicek di ERP Sync.`
-            : `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
-        : isSyncedErp
-          ? result.data?.stockReleaseStatus === "released"
-            ? result.data?.erpPaymentStatus === "paid" ||
-              result.data?.erpPaymentStatus === "partial"
-              ? `Invoice terkirim, stok released, dan payment tercatat di ${EXTERNAL_ERP_NAME}.`
-              : `Invoice terkirim dan stok berhasil direlease di ${EXTERNAL_ERP_NAME}.`
-            : `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.`
-          : result.data?.approvalStatus === "pending_approval"
-            ? "Data berhasil disimpan dan menunggu approval."
-            : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.`,
-    });
+      );
+      const result = await response.json().catch(() => ({ success: false, message: "Terjadi kesalahan respons dari server." }));
+      if (!response.ok || !result.success) {
+        if (result.code === "DUPLICATE_SUSPECTED") {
+          setDuplicateSuspectModal({
+            isOpen: true,
+            message: result.message || "Transaksi dengan data serupa terdeteksi baru saja dibuat.",
+            existingSaleId: result.details?.existingSaleId,
+            existingTransactionNumber: result.details?.existingTransactionNumber,
+            existingTotal: result.details?.existingTotal,
+            existingCreatedAt: result.details?.existingCreatedAt,
+            pendingPayload: payload,
+          });
+          return;
+        }
+        if (!isEdit && !isDraft) localStorage.setItem(draftKey, JSON.stringify(data));
+        setNotice({
+          type: "error",
+          message:
+            result.message ||
+            (isEdit
+              ? "Data gagal diperbarui."
+              : "Data gagal diproses."),
+        });
+        return;
+      }
+      setClientRequestId(
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `REQ-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+      );
+      if (isEdit) {
+        setNotice({
+          type: "success",
+          message: isDraft
+            ? "Draft penjualan berhasil diperbarui."
+            : "Transaksi penjualan berhasil difinalisasi & stok telah dipotong.",
+        });
+        setTimeout(() => router.push(isDraft ? "/penjualan/draft" : "/penjualan"), 700);
+        return;
+      }
+      localStorage.removeItem(draftKey);
+      if (isDraft) {
+        setNotice({
+          type: "success",
+          message: "Draft penjualan berhasil disimpan. Stok gudang belum dipotong.",
+        });
+        setTimeout(() => router.push("/penjualan/draft"), 800);
+        return;
+      }
+      if (result.data?.id) {
+        const createdId = String(result.data.id);
+        setCreatedSale({
+          id: createdId,
+          transactionNumber: result.data.transactionNumber,
+          approvalStatus: result.data.approvalStatus,
+          target: result.data.target,
+          syncStatus: result.data.syncStatus,
+          stockReleaseStatus: result.data.stockReleaseStatus,
+          stockReleaseError: result.data.stockReleaseError,
+          erpPaymentStatus: result.data.erpPaymentStatus,
+          erpPaymentError: result.data.erpPaymentError,
+          retryable: result.data.retryable === true,
+          testReference: result.data.testReference,
+          erpReference: result.data.erpReference,
+          paymentMethod: result.data.paymentMethod || data.paymentMethod,
+        });
+        setTimeout(() => {
+          router.push(`/penjualan/${encodeURIComponent(createdId)}/invoice?created=1`);
+        }, 600);
+      }
+      const defaultRek =
+        cashWalkInRekening ??
+        (defaultTipe ? rekeningForTipe(defaultTipe.id)[0] : undefined);
+      const nextTransactionAt = nowJakarta();
+      deliveryTouchedRef.current = false;
+      reset({
+        saleDate: nextTransactionAt.slice(0, 10),
+        transactionAt: nextTransactionAt,
+        deliveryAt: nextTransactionAt,
+        tipeId: defaultTipe?.id || "",
+        tipeCodeSnapshot: defaultTipe?.code || "",
+        tipeNameSnapshot: defaultTipe?.name || "",
+        rekeningId: defaultRek?.id || "",
+        rekeningNameSnapshot: defaultRek?.name || "",
+        customerName: "Walk In",
+        customerPhone: "",
+        customerLocation: "Toko",
+        shippingMethod: "di Tempat",
+        paymentMethod: "Cash",
+        items: [
+          {
+            productRef: "",
+            productId: undefined,
+            productInputMode: "erp",
+            quantity: 1,
+            unitPrice: 0,
+            discount: 0,
+          },
+        ],
+      });
+      const isRetryableErp =
+        result.data?.target === "erp" &&
+        (result.data?.retryable === true ||
+          result.data?.syncStatus === "failed" ||
+          result.data?.stockReleaseStatus === "failed" ||
+          result.data?.erpPaymentStatus === "failed" ||
+          result.data?.erpPaymentStatus === "pending");
+      const isSyncedErp =
+        result.data?.target === "erp" &&
+        result.data?.syncStatus === "synced" &&
+        result.data?.erpReference;
+      setNotice({
+        type: isRetryableErp ? "error" : "success",
+        message: isRetryableErp
+          ? result.data?.syncStatus === "synced" &&
+            result.data?.stockReleaseStatus === "failed"
+            ? `Invoice terkirim ke ${EXTERNAL_ERP_NAME}, tetapi release stok gagal. Silakan cek ERP Sync.`
+            : result.data?.syncStatus === "synced" &&
+              result.data?.stockReleaseStatus === "released" &&
+              (result.data?.erpPaymentStatus === "failed" ||
+                result.data?.erpPaymentStatus === "pending")
+              ? `Invoice terkirim dan stok released, tetapi payment ERP perlu dicek di ERP Sync.`
+              : `Transaksi tersimpan, tetapi belum terkirim ke ${EXTERNAL_ERP_NAME}. Silakan cek ERP Sync.`
+          : isSyncedErp
+            ? result.data?.stockReleaseStatus === "released"
+              ? result.data?.erpPaymentStatus === "paid" ||
+                result.data?.erpPaymentStatus === "partial"
+                ? `Invoice terkirim, stok released, dan payment tercatat di ${EXTERNAL_ERP_NAME}.`
+                : `Invoice terkirim dan stok berhasil direlease di ${EXTERNAL_ERP_NAME}.`
+              : `Data penjualan berhasil dikirim ke ${EXTERNAL_ERP_NAME}.`
+            : result.data?.approvalStatus === "pending_approval"
+              ? "Data berhasil disimpan dan menunggu approval."
+              : `Data penjualan berhasil disimpan di sistem ${APP_BRAND_NAME}.`,
+      });
+    } finally {
+      isSubmittingRef.current = false;
+    }
   };
 
   const onInvalid = (fieldErrors: FieldErrors<PenjualanInput>) => {
@@ -1825,6 +1874,7 @@ export function PenjualanForm({
               )}
               <Button
                 type="submit"
+                disabled={isSubmitting || !dependenciesReady || !selectedProductsReady}
                 onClick={() => {
                   setValue("isDraft", false);
                   setSubmitMode("final");
@@ -1837,30 +1887,41 @@ export function PenjualanForm({
                     }
                   }
                 }}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting && submitMode === "final"
-                  ? "Menyimpan & Memotong Stok..."
-                  : isEdit && sale?.approvalStatus === "draft"
-                    ? "✓ Finalkan & Simpan Penjualan"
-                    : isEdit
-                      ? "Simpan Perubahan"
-                      : "Simpan Penjualan (Potong Stok)"}
+                {isSubmitting && submitMode === "final" ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Menyimpan &amp; Memotong Stok...
+                  </span>
+                ) : isEdit && sale?.approvalStatus === "draft" ? (
+                  "✓ Finalkan & Simpan Penjualan"
+                ) : isEdit ? (
+                  "Simpan Perubahan"
+                ) : (
+                  "Simpan Penjualan (Potong Stok)"
+                )}
               </Button>
               <Button
                 type="submit"
                 variant="secondary"
+                disabled={isSubmitting || !dependenciesReady}
                 onClick={() => {
                   setValue("isDraft", true);
                   setSubmitMode("draft");
                 }}
-                className="w-full border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold"
+                className="w-full border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting && submitMode === "draft"
-                  ? "Menyimpan Draft..."
-                  : isEdit && sale?.approvalStatus === "draft"
-                    ? "Perbarui Draft"
-                    : "✎ Simpan Draft (Tanpa Potong Stok)"}
+                {isSubmitting && submitMode === "draft" ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-amber-800 border-t-transparent" />
+                    Menyimpan Draft...
+                  </span>
+                ) : isEdit && sale?.approvalStatus === "draft" ? (
+                  "Perbarui Draft"
+                ) : (
+                  "✎ Simpan Draft (Tanpa Potong Stok)"
+                )}
               </Button>
             </div>
             {!dependenciesReady && (
@@ -1886,6 +1947,58 @@ export function PenjualanForm({
         Jaya ERP. Transaksi non-AJ tetap lokal, tetapi produk manual tetap
         disinkronkan ke ERP.
       </p>
+
+      <ConfirmationModal
+        isOpen={duplicateSuspectModal.isOpen}
+        title="Peringatan Transaksi Kembar / Duplikat"
+        variant="warning"
+        confirmLabel="Ya, Tetap Simpan Transaksi Baru"
+        cancelLabel="Batal & Periksa Nota"
+        onCancel={() => setDuplicateSuspectModal({ isOpen: false, message: "" })}
+        onConfirm={handleProceedDuplicate}
+        isLoading={isSubmitting}
+      >
+        <div className="space-y-3 text-sm text-slate-700">
+          <p className="font-medium text-amber-900 bg-amber-50 border border-amber-200 p-3 rounded-xl leading-relaxed">
+            {duplicateSuspectModal.message}
+          </p>
+          <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs space-y-1">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Nomor Nota Sebelumnya:</span>
+              <span className="font-semibold text-slate-800">{duplicateSuspectModal.existingTransactionNumber || "-"}</span>
+            </div>
+            {duplicateSuspectModal.existingTotal !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Total Transaksi:</span>
+                <span className="font-semibold text-slate-800">{rupiah(duplicateSuspectModal.existingTotal)}</span>
+              </div>
+            )}
+            {duplicateSuspectModal.existingCreatedAt && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Waktu Dibuat:</span>
+                <span className="font-semibold text-slate-800">
+                  {new Date(duplicateSuspectModal.existingCreatedAt).toLocaleString("id-ID")}
+                </span>
+              </div>
+            )}
+          </div>
+          {duplicateSuspectModal.existingSaleId && (
+            <div className="pt-1">
+              <a
+                href={`/penjualan/${duplicateSuspectModal.existingSaleId}/invoice`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-sky-600 hover:text-sky-800 hover:underline inline-flex items-center gap-1 font-medium"
+              >
+                🔍 Buka &amp; Periksa Invoice Sebelumnya di Tab Baru ↗
+              </a>
+            </div>
+          )}
+          <p className="text-xs text-slate-500 italic">
+            Jika ini adalah transaksi baru yang memang memiliki rincian sama, tekan &quot;Ya, Tetap Simpan Transaksi Baru&quot;. Jika Anda tidak sengaja mengklik ganda atau menginput nota yang sama, tekan &quot;Batal &amp; Periksa Nota&quot;.
+          </p>
+        </div>
+      </ConfirmationModal>
     </form>
   );
 }
