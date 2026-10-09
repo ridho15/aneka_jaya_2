@@ -10,6 +10,7 @@ import type {
   ShippingStatus
 } from "./types";
 import { recordAudit } from "@/lib/audit/store";
+import { parseReceiptPhotos } from "./photos";
 
 export type ListDeliveryOrdersFilter = {
   status?: string;
@@ -804,6 +805,12 @@ export async function completeDeliveryOrderShipping(
       throw new Error("Pilih setidaknya satu barang yang dikirim.");
     }
 
+    const resolvedPhoto = input.receiptPhotoUrl || doRow.receiptPhotoUrl;
+    const validPhotos = parseReceiptPhotos(resolvedPhoto);
+    if (validPhotos.length === 0) {
+      throw new Error("Foto bukti pengiriman wajib dilampirkan sebelum memproses pengiriman DO.");
+    }
+
     const totalItems = doRow.items.length;
     const shippedCount = input.shippedItemIds.length;
     const isFullShipment = shippedCount >= totalItems;
@@ -833,7 +840,7 @@ export async function completeDeliveryOrderShipping(
         shippedByUserId: actor?.id || "system",
         shippedByNameSnapshot: actor?.name || "System",
         shippedAt: now,
-        receiptPhotoUrl: input.receiptPhotoUrl || doRow.receiptPhotoUrl,
+        receiptPhotoUrl: resolvedPhoto,
         trackingNumber: input.trackingNumber || doRow.trackingNumber,
         notes: input.notes !== undefined ? input.notes : doRow.notes
       },
@@ -847,7 +854,7 @@ export async function completeDeliveryOrderShipping(
         doStatus: status,
         doPackingStatus: packingStatus,
         doShippingStatus: shippingStatus,
-        doReceiptPhotoUrl: input.receiptPhotoUrl || doRow.receiptPhotoUrl,
+        doReceiptPhotoUrl: resolvedPhoto,
         doTrackingNumber: input.trackingNumber || doRow.trackingNumber
       }
     });
@@ -863,7 +870,7 @@ export async function completeDeliveryOrderShipping(
           shippingStatus,
           shippedCount,
           totalItems,
-          receiptPhotoUrl: input.receiptPhotoUrl,
+          receiptPhotoUrl: resolvedPhoto,
           trackingNumber: input.trackingNumber
         },
         reason: `Pengiriman DO diproses: ${status === "selesai" ? "Selesai (Semua Barang)" : "Selesai Setengah (Sebagian Barang)"} oleh ${actor.name}`

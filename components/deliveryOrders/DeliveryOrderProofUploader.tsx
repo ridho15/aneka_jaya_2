@@ -11,6 +11,8 @@ interface DeliveryOrderProofUploaderProps {
   onPhotosChange?: (urls: string[]) => void;
   onUploadingChange?: (uploading: boolean) => void;
   disabled?: boolean;
+  required?: boolean;
+  hasError?: boolean;
   showToast?: (message: string, type: "success" | "error" | "warning") => void;
 }
 
@@ -21,6 +23,8 @@ export function DeliveryOrderProofUploader({
   onPhotosChange,
   onUploadingChange,
   disabled = false,
+  required = false,
+  hasError = false,
   showToast
 }: DeliveryOrderProofUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
@@ -309,12 +313,12 @@ export function DeliveryOrderProofUploader({
       />
 
       <div className="flex items-center justify-between">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Foto Resi / Bukti Pengiriman {photos.length > 0 ? `(${photos.length} Foto)` : ""}
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+          Foto Resi / Bukti Pengiriman {required ? <span className="text-rose-600 font-bold ml-0.5">* Wajib</span> : ""} {photos.length > 0 ? `(${photos.length} Foto)` : ""}
         </label>
         {photos.length > 0 && (
           <span className="text-[11px] text-emerald-700 font-medium">
-            Tersimpan {photos.length} foto
+            ✓ Tersimpan {photos.length} foto
           </span>
         )}
       </div>
@@ -434,9 +438,30 @@ export function DeliveryOrderProofUploader({
           </div>
         </div>
       ) : (
-        <p className="text-xs text-slate-400">
-          Belum ada foto bukti pengiriman. Gunakan kamera langsung atau upload dari file.
-        </p>
+        <div
+          className={`p-3 rounded-lg border text-xs transition-colors ${
+            hasError
+              ? "bg-rose-50/80 border-rose-300 text-rose-800"
+              : required
+              ? "bg-amber-50/50 border-amber-200 text-amber-800"
+              : "bg-slate-50 border-slate-200 text-slate-500"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {hasError ? (
+              <span className="font-bold text-rose-700">⚠️ Wajib:</span>
+            ) : required ? (
+              <span className="font-semibold text-amber-700">Perhatian:</span>
+            ) : null}
+            <span>
+              {hasError
+                ? "Foto bukti fisik (resi / serah terima barang) wajib dilampirkan sebelum memproses pengiriman. Gunakan kamera langsung atau upload dari file."
+                : required
+                ? "Belum ada foto bukti pengiriman. Wajib dilampirkan minimal 1 foto sebelum barang dapat dikirim."
+                : "Belum ada foto bukti pengiriman. Gunakan kamera langsung atau upload dari file."}
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Live Camera Viewfinder Modal */}

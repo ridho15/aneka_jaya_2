@@ -234,7 +234,11 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
 
     const result = await completeDeliveryOrderShipping(
       "do-partial",
-      { shippedItemIds: ["item-1"], notes: "Kirim parsial" },
+      {
+        shippedItemIds: ["item-1"],
+        receiptPhotoUrl: "https://cloud.aneka-jaya.local/storage/resi-parsial.jpg",
+        notes: "Kirim parsial"
+      },
       { id: "driver-1", name: "Pak Supardi", role: "DELIVERY_DRIVER" } as any
     );
 
@@ -246,7 +250,8 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
       data: expect.objectContaining({
         doStatus: "selesai_setengah",
         doPackingStatus: "sudah",
-        doShippingStatus: "sudah"
+        doShippingStatus: "sudah",
+        doReceiptPhotoUrl: "https://cloud.aneka-jaya.local/storage/resi-parsial.jpg"
       })
     });
   });

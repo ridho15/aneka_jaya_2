@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { DeliveryOrderData } from "@/lib/deliveryOrders/types";
 import { formatJakartaDate } from "@/lib/date/jakarta";
+import { parseReceiptPhotos } from "@/lib/deliveryOrders/photos";
 
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
@@ -56,6 +57,8 @@ export function DeliveryOrderDetailView({
   const [officerToRemove, setOfficerToRemove] = useState<{ id: string; name: string } | null>(null);
   const [isRemovingOfficer, setIsRemovingOfficer] = useState(false);
   const [isShipConfirmOpen, setIsShipConfirmOpen] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  const photoSectionRef = useRef<HTMLDivElement>(null);
 
   const isOwner = currentUserRole === "OWNER";
   const canInvite = canAssign || currentUserRole === "DELIVERY_DRIVER";
@@ -251,6 +254,21 @@ export function DeliveryOrderDetailView({
       showToast("Pilih setidaknya satu barang untuk dikirim.", "warning");
       return;
     }
+
+    if (isUploading) {
+      showToast("Mohon tunggu hingga proses unggah foto bukti selesai.", "warning");
+      return;
+    }
+
+    const photos = parseReceiptPhotos(receiptPhotoUrl);
+    if (photos.length === 0) {
+      setPhotoError(true);
+      showToast("Foto bukti pengiriman (resi/barang) wajib dilampirkan sebelum memproses pengiriman.", "error");
+      photoSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    setPhotoError(false);
     setIsShipConfirmOpen(true);
   };
 
@@ -622,11 +640,21 @@ export function DeliveryOrderDetailView({
       </div>
 
       {/* Proof of Delivery (Foto Resi) & Shipping Information */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <div
+        ref={photoSectionRef}
+        className={`rounded-xl border bg-white p-5 shadow-sm space-y-4 transition-all ${
+          photoError ? "border-rose-400 ring-2 ring-rose-200" : "border-slate-200"
+        }`}
+      >
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">
-            Bukti Pengiriman (Foto Resi) &amp; Catatan
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">
+              Bukti Pengiriman (Foto Resi / Barang)
+            </h2>
+            <span className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+              * Wajib
+            </span>
+          </div>
           {canProcess && (detail.status === "selesai" || detail.status === "selesai_setengah") && (
             <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
               ✓ DO Selesai · Foto susulan didukung
@@ -639,10 +667,15 @@ export function DeliveryOrderDetailView({
           <div className="space-y-2">
             <DeliveryOrderProofUploader
               receiptPhotoUrl={receiptPhotoUrl}
-              onPhotoChange={setReceiptPhotoUrl}
+              onPhotoChange={(url) => {
+                setReceiptPhotoUrl(url);
+                if (url) setPhotoError(false);
+              }}
               onUploadingChange={setIsUploading}
               disabled={isSubmitting || isSavingPhotos}
               showToast={showToast}
+              required={true}
+              hasError={photoError}
             />
 
             {canProcess && receiptPhotoUrl !== (detail.receiptPhotoUrl || "") && (
@@ -751,9 +784,19 @@ export function DeliveryOrderDetailView({
         isOpen={isShipConfirmOpen}
         title="Konfirmasi Pengiriman Barang"
         message={
-          selectedItemIds.length >= detail.items.length
-            ? `Konfirmasi pengiriman untuk SEMUA barang (${selectedItemIds.length} item) ke customer ${detail.sale.customerName}? Status Surat Jalan dan Penjualan akan otomatis diselesaikan.`
-            : `Konfirmasi pengiriman SEBAGIAN (${selectedItemIds.length} dari ${detail.items.length} item) ke customer ${detail.sale.customerName}? Status Surat Jalan akan menjadi "Selesai Sebagian".`
+          <div className="space-y-3">
+            <p>
+              {selectedItemIds.length >= detail.items.length
+                ? `Konfirmasi pengiriman untuk SEMUA barang (${selectedItemIds.length} item) ke customer ${detail.sale.customerName}? Status Surat Jalan dan Penjualan akan otomatis diselesaikan.`
+                : `Konfirmasi pengiriman SEBAGIAN (${selectedItemIds.length} dari ${detail.items.length} item) ke customer ${detail.sale.customerName}? Status Surat Jalan akan menjadi "Selesai Sebagian".`}
+            </p>
+            <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+              <span className="font-bold text-emerald-600">✓</span>
+              <span className="font-medium">
+                Foto bukti pengiriman terlampir ({parseReceiptPhotos(receiptPhotoUrl).length} foto).
+              </span>
+            </div>
+          </div>
         }
         confirmText={
           selectedItemIds.length >= detail.items.length

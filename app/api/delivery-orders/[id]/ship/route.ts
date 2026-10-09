@@ -33,6 +33,10 @@ export async function POST(
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memproses pengiriman DO.";
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    const isValidationError =
+      message.includes("Foto bukti pengiriman wajib dilampirkan") ||
+      message.includes("Pilih setidaknya satu barang");
+    const status = isValidationError ? 422 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }

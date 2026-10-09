@@ -238,7 +238,8 @@ describe("Delivery Order Store Logic", () => {
     const result = await completeDeliveryOrderShipping(
       "do-100",
       {
-        shippedItemIds: ["do-item-1"]
+        shippedItemIds: ["do-item-1"],
+        receiptPhotoUrl: "https://example.com/resi-parsial.jpg"
       },
       { id: "user-1", name: "Driver 1", role: "DELIVERY_DRIVER" } as any
     );
@@ -251,9 +252,39 @@ describe("Delivery Order Store Logic", () => {
       data: expect.objectContaining({
         doStatus: "selesai_setengah",
         doPackingStatus: "sudah",
-        doShippingStatus: "sudah"
+        doShippingStatus: "sudah",
+        doReceiptPhotoUrl: "https://example.com/resi-parsial.jpg"
       })
     });
+  });
+
+  it("rejects shipping when receiptPhotoUrl is missing or empty", async () => {
+    const { prisma } = await import("@/lib/db/prisma");
+    const { completeDeliveryOrderShipping } = await import("@/lib/deliveryOrders/store");
+
+    const mockDo = {
+      id: "do-100",
+      salesRecordId: "sale-100",
+      items: [{ id: "do-item-1" }]
+    };
+
+    (prisma.deliveryOrder.findFirst as any).mockResolvedValue(mockDo);
+
+    await expect(
+      completeDeliveryOrderShipping(
+        "do-100",
+        { shippedItemIds: ["do-item-1"] },
+        { id: "user-1", name: "Driver 1", role: "DELIVERY_DRIVER" } as any
+      )
+    ).rejects.toThrow("Foto bukti pengiriman wajib dilampirkan sebelum memproses pengiriman DO.");
+
+    await expect(
+      completeDeliveryOrderShipping(
+        "do-100",
+        { shippedItemIds: ["do-item-1"], receiptPhotoUrl: "" },
+        { id: "user-1", name: "Driver 1", role: "DELIVERY_DRIVER" } as any
+      )
+    ).rejects.toThrow("Foto bukti pengiriman wajib dilampirkan sebelum memproses pengiriman DO.");
   });
 
   it("strictly masks financial/pricing fields in getDeliveryOrderDetail", async () => {

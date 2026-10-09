@@ -5,7 +5,11 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => {
   const deliveryOrder = {
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     update: vi.fn()
+  };
+  const deliveryOrderItem = {
+    updateMany: vi.fn()
   };
   const salesRecord = {
     update: vi.fn()
@@ -13,12 +17,14 @@ const mocks = vi.hoisted(() => {
 
   const tx = {
     deliveryOrder,
+    deliveryOrderItem,
     salesRecord
   };
 
   return {
     tx,
     deliveryOrder,
+    deliveryOrderItem,
     salesRecord,
     prisma: {
       ...tx,
@@ -39,8 +45,9 @@ vi.mock("@/lib/auth/session", () => ({
   getCurrentUser: mocks.getCurrentUser
 }));
 
-import { updateDeliveryOrderReceiptPhotos } from "@/lib/deliveryOrders/store";
+import { updateDeliveryOrderReceiptPhotos, completeDeliveryOrderShipping } from "@/lib/deliveryOrders/store";
 import { PATCH, POST } from "@/app/api/delivery-orders/[id]/receipt-photos/route";
+import { POST as shipPOST } from "@/app/api/delivery-orders/[id]/ship/route";
 
 describe("Delivery Order Receipt Photos Store & API", () => {
   beforeEach(() => {
@@ -178,6 +185,103 @@ describe("Delivery Order Receipt Photos Store & API", () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.success).toBe(true);
+    });
+  });
+
+  describe("Mandatory Delivery Order Photo on Shipping", () => {
+    it("rejects completeDeliveryOrderShipping when receiptPhotoUrl is empty or not provided", async () => {
+      mocks.deliveryOrder.findFirst.mockResolvedValue({
+        id: "do-200",
+        salesRecordId: "sale-200",
+        status: "belum_selesai",
+        receiptPhotoUrl: null,
+        items: [{ id: "item-1" }, { id: "item-2" }]
+      });
+
+      await expect(
+        completeDeliveryOrderShipping(
+          "do-200",
+          { shippedItemIds: ["item-1"] },
+          { id: "driver-1", name: "Driver", role: "DELIVERY_DRIVER" } as any
+        )
+      ).rejects.toThrow("Foto bukti pengiriman wajib dilampirkan sebelum memproses pengiriman DO.");
+
+      await expect(
+        completeDeliveryOrderShipping(
+          "do-200",
+          { shippedItemIds: ["item-1"], receiptPhotoUrl: "" },
+          { id: "driver-1", name: "Driver", role: "DELIVERY_DRIVER" } as any
+        )
+      ).rejects.toThrow("Foto bukti pengiriman wajib dilampirkan sebelum memproses pengiriman DO.");
+    });
+
+    it("rejects POST /api/delivery-orders/[id]/ship with 422 when receiptPhotoUrl is missing", async () => {
+      mocks.getCurrentRole.mockResolvedValue("DELIVERY_DRIVER");
+      mocks.getCurrentUser.mockResolvedValue({
+        id: "driver-1",
+        name: "Driver",
+        role: "DELIVERY_DRIVER"
+      });
+
+      mocks.deliveryOrder.findFirst.mockResolvedValue({
+        id: "do-200",
+        salesRecordId: "sale-200",
+        status: "belum_selesai",
+        receiptPhotoUrl: null,
+        items: [{ id: "item-1" }]
+      });
+
+      const req = new Request("http://localhost/api/delivery-orders/do-200/ship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shippedItemIds: ["item-1"] })
+      });
+
+      const res = await shipPOST(req, { params: Promise.resolve({ id: "do-200" }) });
+      expect(res.status).toBe(422);
+      const data = await res.json();
+      expect(data.success).toBe(false);
+      expect(data.message).toContain("Foto bukti pengiriman wajib dilampirkan");
+    });
+
+    it("accepts POST /api/delivery-orders/[id]/ship with 200 when receiptPhotoUrl is valid", async () => {
+      mocks.getCurrentRole.mockResolvedValue("DELIVERY_DRIVER");
+      mocks.getCurrentUser.mockResolvedValue({
+        id: "driver-1",
+        name: "Driver",
+        role: "DELIVERY_DRIVER"
+      });
+
+      const mockDo = {
+        id: "do-200",
+        salesRecordId: "sale-200",
+        status: "belum_selesai",
+        receiptPhotoUrl: null,
+        items: [{ id: "item-1" }]
+      };
+      mocks.deliveryOrder.findFirst.mockResolvedValue(mockDo);
+      mocks.deliveryOrder.update.mockResolvedValue({
+        ...mockDo,
+        status: "selesai",
+        receiptPhotoUrl: "https://example.com/resi-foto.jpg",
+        items: [{ id: "item-1", isShipped: true }]
+      });
+      mocks.salesRecord.update.mockResolvedValue({ id: "sale-200" });
+
+      const req = new Request("http://localhost/api/delivery-orders/do-200/ship", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shippedItemIds: ["item-1"],
+          receiptPhotoUrl: "https://example.com/resi-foto.jpg"
+        })
+      });
+
+      const res = await shipPOST(req, { params: Promise.resolve({ id: "do-200" }) });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.data.status).toBe("selesai");
     });
   });
 });
