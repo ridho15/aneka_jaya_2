@@ -453,8 +453,11 @@ export function DeliveryOrderDetailView({
           </div>
           <div>
             <span className="block text-xs font-semibold text-slate-400">Ekspedisi / Metode Kirim</span>
-            <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-800 mt-1">
-              ⛟ {detail.sale.shippingMethod || "Reguler / Ambil"}
+            <span className="inline-flex items-center gap-1.5 rounded bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-800 mt-1">
+              <svg className="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8h4.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a2 2 0 104 0m-10 0a2 2 0 104 0" />
+              </svg>
+              <span>{detail.sale.shippingMethod || "Reguler / Ambil"}</span>
             </span>
             {detail.sale.deliveryAt && (
               <div className="mt-1 text-xs text-slate-500">
@@ -464,9 +467,17 @@ export function DeliveryOrderDetailView({
           </div>
           <div className="sm:col-span-2 lg:col-span-1">
             <span className="block text-xs font-semibold text-slate-400">Alamat Lengkap / Lokasi Pengiriman</span>
-            <span className="text-sm font-medium text-slate-800 break-words leading-relaxed">
-              📍 {detail.sale.customerLocation || <span className="text-slate-400 italic">Alamat: —</span>}
-            </span>
+            {detail.sale.customerLocation ? (
+              <span className="inline-flex items-start gap-1.5 text-sm font-medium text-slate-800 break-words leading-relaxed mt-0.5">
+                <svg className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>{detail.sale.customerLocation}</span>
+              </span>
+            ) : (
+              <span className="text-xs text-slate-400 italic mt-1 block">Alamat belum dicantumkan</span>
+            )}
           </div>
         </div>
 
@@ -508,15 +519,22 @@ export function DeliveryOrderDetailView({
                   key={ao.userId}
                   className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-800 border border-blue-200"
                 >
-                  <span>👤 {ao.userName}</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>{ao.userName}</span>
+                  </span>
                   {canInvite && (
                     <button
                       type="button"
                       onClick={() => handleRemoveOfficer(ao.userId)}
-                      className="rounded-full hover:bg-blue-200 p-0.5 text-blue-600 hover:text-rose-600 font-bold transition-colors"
+                      className="rounded-full hover:bg-blue-200 p-0.5 text-blue-600 hover:text-rose-600 transition-colors"
                       title="Hapus petugas dari DO ini"
                     >
-                      ✕
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   )}
                 </div>
@@ -659,8 +677,11 @@ export function DeliveryOrderDetailView({
                       <div className="mt-0.5 text-xs text-slate-500">SKU: {item.productRef}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                        📍 {item.rackNameSnapshot || item.warehouseNameSnapshot || "Gudang Utama"}
+                      <span className="inline-flex items-center gap-1.5 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                        <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <span>{item.rackNameSnapshot || item.warehouseNameSnapshot || "Gudang Utama"}</span>
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-slate-900">
@@ -705,8 +726,11 @@ export function DeliveryOrderDetailView({
             </span>
           </div>
           {canProcess && (detail.status === "selesai" || detail.status === "selesai_setengah") && (
-            <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-              ✓ DO Selesai · Foto susulan didukung
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+              <svg className="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>DO Selesai · Foto susulan didukung</span>
             </span>
           )}
         </div>
@@ -730,7 +754,7 @@ export function DeliveryOrderDetailView({
             {canProcess && receiptPhotoUrl !== (detail.receiptPhotoUrl || "") && (
               <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 mt-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                   <span className="text-xs font-semibold text-amber-900">
                     Perubahan foto bukti belum disimpan ke sistem.
                   </span>
@@ -800,10 +824,12 @@ export function DeliveryOrderDetailView({
           >
             {isSubmitting ? (
               "Memproses..."
+            ) : selectedItemIds.length === 0 ? (
+              "Pilih Barang untuk Dikirim"
             ) : selectedItemIds.length >= detail.items.length ? (
-              "✓ Kirim Semua Barang (Status Selesai)"
+              "Kirim Semua Barang (Status Selesai)"
             ) : (
-              `✓ Kirim ${selectedItemIds.length} Barang (Status Selesai Setengah)`
+              `Kirim ${selectedItemIds.length} Barang (Status Selesai Setengah)`
             )}
           </button>
         </div>
@@ -840,7 +866,9 @@ export function DeliveryOrderDetailView({
                 : `Konfirmasi pengiriman SEBAGIAN (${selectedItemIds.length} dari ${detail.items.length} item) ke customer ${detail.sale.customerName}? Status Surat Jalan akan menjadi "Selesai Sebagian".`}
             </p>
             <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
-              <span className="font-bold text-emerald-600">✓</span>
+              <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
               <span className="font-medium">
                 Foto bukti pengiriman terlampir ({parseReceiptPhotos(receiptPhotoUrl).length} foto).
               </span>

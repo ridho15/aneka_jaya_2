@@ -1857,7 +1857,9 @@ export function PenjualanForm({
               {isDraftEdit && publishBlockingReasons.length > 0 && (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 shadow-xs mb-3">
                   <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1.5">
-                    <span className="text-base leading-none">⚠️</span>
+                    <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
                     <span>Penyebab Draft Belum Dapat Dipublish ({publishBlockingReasons.length}):</span>
                   </div>
                   <ul className="list-disc pl-4 space-y-1 text-amber-900">
@@ -1895,7 +1897,7 @@ export function PenjualanForm({
                     Menyimpan &amp; Memotong Stok...
                   </span>
                 ) : isEdit && sale?.approvalStatus === "draft" ? (
-                  "✓ Finalkan & Simpan Penjualan"
+                  "Finalkan & Simpan Penjualan"
                 ) : isEdit ? (
                   "Simpan Perubahan"
                 ) : (
@@ -1920,7 +1922,7 @@ export function PenjualanForm({
                 ) : isEdit && sale?.approvalStatus === "draft" ? (
                   "Perbarui Draft"
                 ) : (
-                  "✎ Simpan Draft (Tanpa Potong Stok)"
+                  "Simpan Draft (Tanpa Potong Stok)"
                 )}
               </Button>
             </div>
@@ -1988,9 +1990,12 @@ export function PenjualanForm({
                 href={`/penjualan/${duplicateSuspectModal.existingSaleId}/invoice`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-sky-600 hover:text-sky-800 hover:underline inline-flex items-center gap-1 font-medium"
+                className="text-xs text-sky-600 hover:text-sky-800 hover:underline inline-flex items-center gap-1.5 font-medium"
               >
-                🔍 Buka &amp; Periksa Invoice Sebelumnya di Tab Baru ↗
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                <span>Buka &amp; Periksa Invoice Sebelumnya di Tab Baru</span>
               </a>
             </div>
           )}

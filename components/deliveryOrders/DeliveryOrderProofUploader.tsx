@@ -317,8 +317,11 @@ export function DeliveryOrderProofUploader({
           Foto Resi / Bukti Pengiriman {required ? <span className="text-rose-600 font-bold ml-0.5">* Wajib</span> : ""} {photos.length > 0 ? `(${photos.length} Foto)` : ""}
         </label>
         {photos.length > 0 && (
-          <span className="text-[11px] text-emerald-700 font-medium">
-            ✓ Tersimpan {photos.length} foto
+          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
+            <svg className="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Tersimpan {photos.length} foto</span>
           </span>
         )}
       </div>
@@ -449,7 +452,12 @@ export function DeliveryOrderProofUploader({
         >
           <div className="flex items-center gap-2">
             {hasError ? (
-              <span className="font-bold text-rose-700">⚠️ Wajib:</span>
+              <span className="inline-flex items-center gap-1 font-bold text-rose-700">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>Wajib:</span>
+              </span>
             ) : required ? (
               <span className="font-semibold text-amber-700">Perhatian:</span>
             ) : null}
@@ -470,15 +478,18 @@ export function DeliveryOrderProofUploader({
           <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
                 <h3 className="text-sm font-bold text-slate-800">Kamera Bukti Pengiriman</h3>
               </div>
               <button
                 type="button"
                 onClick={handleCloseCameraModal}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                title="Tutup kamera"
               >
-                ✕
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 

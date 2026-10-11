@@ -109,7 +109,7 @@ describe("Delivery Order UI Badges", () => {
     expect(html).toContain("Selesai");
     expect(html).not.toContain("Packing:");
     expect(html).not.toContain("Kirim:");
-    expect(html).toContain("📷 Resi");
+    expect(html).toContain("Resi");
     expect(html).toContain('href="https://storage.example.com/receipt-123.jpg"');
   });
 
@@ -127,8 +127,8 @@ describe("Delivery Order UI Badges", () => {
     const html = renderToStaticMarkup(<DeliveryOrderBadges sale={printedSale} />);
     expect(html).toContain("Selesai");
     expect(html).toContain("Resi: TRK-8899");
-    expect(html).toContain("📷 Resi");
-    expect(html).toContain("🖨️ Nia");
+    expect(html).toContain("Resi");
+    expect(html).toContain("Nia");
   });
 });
 
