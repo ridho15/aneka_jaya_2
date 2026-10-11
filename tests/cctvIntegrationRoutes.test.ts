@@ -5,7 +5,7 @@ import { POST as lookupPost } from "@/app/api/cctv/labels/lookup/route";
 import { POST as syncPost } from "@/app/api/cctv/labels/sync/route";
 import { prisma } from "@/lib/db/prisma";
 
-const TOKEN = "cctv-slm-token-2026";
+const TOKEN = process.env.CCTV_INTEGRATION_TOKEN || "cctv-slm-token-2026";
 
 describe("CCTV Integration Routes", () => {
   let sampleSales: any;
