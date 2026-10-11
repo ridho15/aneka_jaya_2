@@ -2138,4 +2138,106 @@ paths:
           description: Data laporan finance atau file Excel.
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/cctv/labels/lookup:
+    post:
+      summary: Lookup invoice dan customer dari sistem CCTV SLM.
+      description: Otorisasi menggunakan Bearer token CCTV_INTEGRATION_TOKEN. Mencocokkan nomor invoice atau ID transaksi di tabel SalesRecord dan DeliveryOrder.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - invoice_number
+              properties:
+                invoice_number:
+                  type: string
+                  example: "061026-23"
+                customer_name:
+                  type: string
+                  example: "TK HANSEL ASK"
+                source_label:
+                  type: string
+                  example: "Aneka Jaya"
+      responses:
+        "200":
+          description: Hasil pencarian data invoice.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matched:
+                    type: boolean
+                  reference:
+                    type: string
+                    nullable: true
+                  invoice_number:
+                    type: string
+                  customer_name:
+                    type: string
+                  delivery_order_id:
+                    type: string
+                    nullable: true
+                  packing_status:
+                    type: string
+        "401":
+          description: Unauthorized token.
+  /api/cctv/labels/sync:
+    post:
+      summary: Sinkronisasi status packing dan bukti foto dari CCTV SLM.
+      description: Otorisasi menggunakan Bearer token CCTV_INTEGRATION_TOKEN. Mengubah status packing DeliveryOrder dan SalesRecord menjadi sudah saat event packing_completed.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cctv_label_id:
+                  type: integer
+                  example: 14
+                invoice_number:
+                  type: string
+                  example: "061026-23"
+                customer_name:
+                  type: string
+                  example: "TK HANSEL ASK"
+                source_label:
+                  type: string
+                  example: "Aneka Jaya"
+                slm_reference:
+                  type: string
+                  example: "id-sales-record"
+                event_type:
+                  type: string
+                  example: "packing_completed"
+                packing_completed_at:
+                  type: string
+                  format: date-time
+                evidence_url:
+                  type: string
+                  example: "https://cctvslm.playgo.id/labels/14"
+      responses:
+        "200":
+          description: Sinkronisasi packing berhasil disimpan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  saved:
+                    type: boolean
+                  packing_status:
+                    type: string
+        "401":
+          description: Unauthorized token.
+        "404":
+          description: Data transaksi tidak ditemukan.
+
 
