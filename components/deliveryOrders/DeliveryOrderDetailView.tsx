@@ -415,6 +415,18 @@ export function DeliveryOrderDetailView({
           >
             Packing: {detail.packingStatus === "sudah" ? "Sudah" : "Belum"}
           </span>
+          {detail.packedByNameSnapshot?.toLowerCase().includes("cctv") && (
+            <span
+              data-testid="cctv-auto-packing-badge"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200"
+              title={`Dipacking otomatis oleh Kamera CCTV pada ${detail.packedAt ? formatJakartaDate(detail.packedAt) : "-"}`}
+            >
+              <svg className="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              CCTV Auto-Packing
+            </span>
+          )}
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold ${
               detail.shippingStatus === "sudah"
@@ -426,6 +438,7 @@ export function DeliveryOrderDetailView({
           </span>
         </div>
       </div>
+
 
 
       {/* Customer & Expedition Information Card (STRICTLY MASKED: NO PRICES) */}
@@ -513,7 +526,43 @@ export function DeliveryOrderDetailView({
             )}
           </div>
         </div>
+
+        {/* Packing Verification Information */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-700">Status Packing:</span>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded font-bold ${
+                detail.packingStatus === "sudah"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {detail.packingStatus === "sudah" ? "Sudah Packing" : "Belum Packing"}
+            </span>
+            {detail.packedByNameSnapshot?.toLowerCase().includes("cctv") && (
+              <span
+                data-testid="cctv-verified-badge"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200"
+              >
+                <svg className="w-3 h-3 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Terverifikasi CCTV
+              </span>
+            )}
+          </div>
+          {detail.packingStatus === "sudah" && (
+            <div className="text-slate-500 text-[11px]">
+              Oleh: <span className="font-medium text-slate-700">{detail.packedByNameSnapshot || "Petugas"}</span>
+              {detail.packedAt && (
+                <span className="ml-1.5 text-slate-400">({formatJakartaDate(detail.packedAt)})</span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
 
       {/* Zero items alert banner */}
       {detail.items.length === 0 && (

@@ -112,7 +112,23 @@ describe("CCTV Integration Routes", () => {
       expect(updated?.doPackingStatus).toBe("sudah");
       if (updated?.deliveryOrder) {
         expect(updated.deliveryOrder.packingStatus).toBe("sudah");
+        expect(updated.deliveryOrder.packedByNameSnapshot).toBe("CCTV Auto-Packing");
+
+        // Verifikasi entri Audit Trail
+        const audit = await prisma.auditLog.findFirst({
+          where: {
+            entityType: "delivery_order",
+            entityId: updated.deliveryOrder.id,
+            action: "cctv_packing_sync"
+          },
+          orderBy: { createdAt: "desc" }
+        });
+        expect(audit).toBeDefined();
+        expect(audit?.userNameSnapshot).toBe("CCTV Auto-Packing");
+        expect(audit?.userRoleSnapshot).toBe("OWNER");
       }
     });
   });
 });
+
+

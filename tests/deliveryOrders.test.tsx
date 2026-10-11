@@ -561,4 +561,52 @@ describe("DeliveryOrderDetailView UI", () => {
     expect(ownerHtml).toContain("DO-2026-100");
     expect(ownerHtml).toContain("TRX-100");
   });
+
+  it("renders CCTV Auto-Packing badge and verification strip when packed by CCTV", () => {
+    const cctvDetail: DeliveryOrderData = {
+      ...sampleDetail,
+      packingStatus: "sudah",
+      packedByNameSnapshot: "CCTV Auto-Packing",
+      packedAt: "2026-10-11T10:05:00Z"
+    };
+
+    const html = renderToStaticMarkup(
+      <DeliveryOrderDetailView
+        initialDetail={cctvDetail}
+        officers={sampleOfficers}
+        canAssign={false}
+        canProcess={true}
+        currentUserRole="OWNER"
+      />
+    );
+
+    expect(html).toContain("CCTV Auto-Packing");
+    expect(html).toContain("Terverifikasi CCTV");
+    expect(html).toContain("data-testid=\"cctv-auto-packing-badge\"");
+    expect(html).toContain("data-testid=\"cctv-verified-badge\"");
+  });
+
+  it("does not render CCTV Auto-Packing badge when packed manually by regular staff", () => {
+    const manualDetail: DeliveryOrderData = {
+      ...sampleDetail,
+      packingStatus: "sudah",
+      packedByNameSnapshot: "Budi Gudang",
+      packedAt: "2026-10-11T10:05:00Z"
+    };
+
+    const html = renderToStaticMarkup(
+      <DeliveryOrderDetailView
+        initialDetail={manualDetail}
+        officers={sampleOfficers}
+        canAssign={false}
+        canProcess={true}
+        currentUserRole="OWNER"
+      />
+    );
+
+    expect(html).not.toContain("data-testid=\"cctv-auto-packing-badge\"");
+    expect(html).not.toContain("data-testid=\"cctv-verified-badge\"");
+    expect(html).toContain("Budi Gudang");
+  });
 });
+

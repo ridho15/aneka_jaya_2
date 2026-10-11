@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { recordAudit } from "@/lib/audit/store";
 
 const CCTV_TOKEN = process.env.CCTV_INTEGRATION_TOKEN || "cctv-slm-token-2026";
 
@@ -80,6 +81,12 @@ export async function POST(request: Request) {
 
     // Update Delivery Order jika ada
     if (sales.deliveryOrder) {
+      const beforeDO = {
+        packingStatus: sales.deliveryOrder.packingStatus,
+        packedAt: sales.deliveryOrder.packedAt,
+        packedByNameSnapshot: sales.deliveryOrder.packedByNameSnapshot,
+      };
+
       await prisma.deliveryOrder.update({
         where: { id: sales.deliveryOrder.id },
         data: {
@@ -89,6 +96,33 @@ export async function POST(request: Request) {
           receiptPhotoUrl: evidence_url ? String(evidence_url) : sales.deliveryOrder.receiptPhotoUrl
         }
       });
+
+      if (isPacked) {
+        await prisma.auditLog.create({
+          data: {
+            id: crypto.randomUUID(),
+            entityType: "delivery_order",
+            entityId: sales.deliveryOrder.id,
+            action: "cctv_packing_sync",
+            beforeValue: beforeDO,
+            afterValue: {
+              packingStatus: "sudah",
+              packedAt: packedDate,
+              packedByNameSnapshot: "CCTV Auto-Packing",
+              receiptPhotoUrl: evidence_url ? String(evidence_url) : sales.deliveryOrder.receiptPhotoUrl,
+              cctvLabelId: cctv_label_id ? Number(cctv_label_id) : null,
+            },
+            userId: "integration:cctv",
+            userNameSnapshot: "CCTV Auto-Packing",
+            userRoleSnapshot: "OWNER",
+            reason: cctv_label_id
+              ? `Konfirmasi packing otomatis dari kamera CCTV (Label #${cctv_label_id})`
+              : "Konfirmasi packing otomatis dari kamera CCTV"
+
+          }
+        });
+      }
+
     }
 
     // Update status packing di SalesRecord
