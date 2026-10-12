@@ -2179,6 +2179,13 @@ paths:
                     type: string
                   customer_name:
                     type: string
+                  customer_matched:
+                    type: boolean
+                    description: Status apakah nama customer OCR cocok dengan database ERP.
+                  note:
+                    type: string
+                    nullable: true
+                    description: Catatan perbedaan OCR jika customer tidak cocok persis.
                   delivery_order_id:
                     type: string
                     nullable: true
@@ -2189,16 +2196,51 @@ paths:
   /api/cctv/labels/sync:
     post:
       summary: Sinkronisasi status packing dan bukti foto dari CCTV SLM.
-      description: Otorisasi menggunakan Bearer token CCTV_INTEGRATION_TOKEN. Mengubah status packing DeliveryOrder dan SalesRecord menjadi sudah saat event packing_completed.
+      description: Otorisasi menggunakan Bearer token CCTV_INTEGRATION_TOKEN. Mengubah status packing DeliveryOrder dan SalesRecord menjadi sudah saat event packing_completed. Mendukung upload berkas fisik screenshot langsung.
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                screenshot:
+                  type: string
+                  format: binary
+                  description: Berkas gambar screenshot langsung dari kamera CCTV.
+                cctv_label_id:
+                  type: integer
+                  example: 14
+                invoice_number:
+                  type: string
+                  example: "061026-23"
+                customer_name:
+                  type: string
+                  example: "TK HANSEL ASK"
+                source_label:
+                  type: string
+                  example: "Aneka Jaya"
+                slm_reference:
+                  type: string
+                  example: "id-sales-record"
+                event_type:
+                  type: string
+                  example: "packing_completed"
+                packing_completed_at:
+                  type: string
+                  format: date-time
+                evidence_url:
+                  type: string
+                  example: "https://cctvslm.playgo.id/labels/14"
           application/json:
             schema:
               type: object
               properties:
+                screenshot:
+                  type: string
+                  description: URL gambar atau data URI base64 screenshot packing.
                 cctv_label_id:
                   type: integer
                   example: 14
@@ -2235,6 +2277,13 @@ paths:
                     type: boolean
                   packing_status:
                     type: string
+                  cctv_label_id:
+                    type: integer
+                    nullable: true
+                  receipt_photo_url:
+                    type: string
+                    nullable: true
+                    description: URL bukti foto yang tersimpan di disk lokal ERP atau fallback URL eksternal.
         "401":
           description: Unauthorized token.
         "404":

@@ -23,25 +23,36 @@ export async function POST(request: Request) {
 
     const { invoice_number, customer_name, source_label, integration_marker } = body;
 
-    if (!invoice_number || typeof invoice_number !== "string") {
+    if (!invoice_number || typeof invoice_number !== "string" || !invoice_number.trim()) {
       return NextResponse.json({ error: "invoice_number is required" }, { status: 400 });
     }
 
     const trimmedInvoice = invoice_number.trim();
 
-    // Cari SalesRecord berdasarkan transactionNumber atau ID
-    const sales = await prisma.salesRecord.findFirst({
+    // 1. Cari SalesRecord: prioritaskan exact match terlebih dahulu
+    let sales = await prisma.salesRecord.findFirst({
       where: {
         OR: [
           { transactionNumber: trimmedInvoice },
-          { id: trimmedInvoice },
-          { transactionNumber: { contains: trimmedInvoice, mode: "insensitive" } }
+          { id: trimmedInvoice }
         ]
       },
       include: {
         deliveryOrder: true
       }
     });
+
+    // 2. Fallback pencarian substring hanya jika panjang invoice >= 4 karakter
+    if (!sales && trimmedInvoice.length >= 4) {
+      sales = await prisma.salesRecord.findFirst({
+        where: {
+          transactionNumber: { contains: trimmedInvoice, mode: "insensitive" }
+        },
+        include: {
+          deliveryOrder: true
+        }
+      });
+    }
 
     if (!sales) {
       return NextResponse.json({
@@ -50,18 +61,17 @@ export async function POST(request: Request) {
       }, { status: 200 });
     }
 
-    // Jika customer_name diberikan, periksa kecocokan customer
+    // Periksa kecocokan customer secara lunak (informational, non-blocking)
+    let customerMatched = true;
+    let note: string | undefined = undefined;
+
     if (customer_name && typeof customer_name === "string" && customer_name.trim()) {
       const targetCustomer = customer_name.trim().toLowerCase();
       const actualCustomer = (sales.customerName || "").trim().toLowerCase();
       const isMatch = actualCustomer.includes(targetCustomer) || targetCustomer.includes(actualCustomer);
+      customerMatched = isMatch;
       if (!isMatch) {
-        // Customer berbeda
-        return NextResponse.json({
-          matched: false,
-          reference: null,
-          note: `Customer tidak cocok: terbaca '${customer_name}', aktual '${sales.customerName}'`
-        }, { status: 200 });
+        note = `Customer OCR berbeda: terbaca '${customer_name.trim()}', aktual '${sales.customerName || "-"}'`;
       }
     }
 
@@ -70,6 +80,8 @@ export async function POST(request: Request) {
       reference: sales.id,
       invoice_number: sales.transactionNumber || sales.id,
       customer_name: sales.customerName,
+      customer_matched: customerMatched,
+      ...(note ? { note } : {}),
       delivery_order_id: sales.deliveryOrder?.id || null,
       packing_status: sales.deliveryOrder?.packingStatus || sales.doPackingStatus || "belum"
     }, { status: 200 });
