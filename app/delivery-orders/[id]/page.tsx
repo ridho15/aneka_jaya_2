@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDeliveryOrderDetail, listDeliveryOfficers } from "@/lib/deliveryOrders/store";
+import { getCctvDetectionForSales } from "@/lib/cctv/store";
 import { DeliveryOrderDetailView } from "@/components/deliveryOrders/DeliveryOrderDetailView";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,22 @@ export default async function DeliveryOrderDetailPage({
     notFound();
   }
 
-  const officers = await listDeliveryOfficers();
+  const [officers, cctvDetectionRaw] = await Promise.all([
+    listDeliveryOfficers(),
+    getCctvDetectionForSales(
+      detail.salesRecordId,
+      detail.sale?.transactionNumber || undefined
+    ).catch(() => null),
+  ]);
+
+  const cctvDetection = cctvDetectionRaw || (detail.packingStatus === "sudah" ? {
+    invoiceNumber: detail.sale?.transactionNumber || detail.doNumber,
+    customerName: detail.sale?.customerName,
+    packingStatus: "completed",
+    packingCompletedAt: detail.packedAt || detail.createdAt,
+    screenshotPhotoUrl: detail.receiptPhotoUrl || null,
+  } : null);
+
   const canAssign = can(user.role, "do.assign");
   const canProcess = can(user.role, "do.process");
 
@@ -45,6 +61,7 @@ export default async function DeliveryOrderDetailPage({
         <DeliveryOrderDetailView
           initialDetail={detail}
           officers={officers}
+          cctvDetection={cctvDetection as any}
           canAssign={canAssign}
           canProcess={canProcess}
           currentUserRole={user.role}

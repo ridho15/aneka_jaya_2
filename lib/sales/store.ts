@@ -145,6 +145,7 @@ export type SalesRecordFilters = {
   rekening?: string;
   approvalStatus?: string;
   syncStatus?: string;
+  cctvStatus?: string;
 };
 export type SalesRecordScope = {
   createdByUserId?: string;
@@ -181,7 +182,7 @@ function appendSalesWhereAnd(where: Prisma.SalesRecordWhereInput, condition: Pri
   where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), condition];
 }
 
-function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = {}): Prisma.SalesRecordWhereInput {
+export function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = {}): Prisma.SalesRecordWhereInput {
   const where: Prisma.SalesRecordWhereInput = {};
   if (scope.createdByUserId) {
     if (scope.includeSources && scope.includeSources.length > 0) {
@@ -218,6 +219,13 @@ function buildSalesWhere(filters: SalesRecordFilters, scope: SalesRecordScope = 
   }
   if (filters.approvalStatus) where.approvalStatus = filters.approvalStatus;
   if (filters.syncStatus) where.syncStatus = filters.syncStatus;
+  if (filters.cctvStatus && filters.cctvStatus !== "all") {
+    if (filters.cctvStatus === "detected" || filters.cctvStatus === "ya") {
+      where.doPackingStatus = "sudah";
+    } else if (filters.cctvStatus === "undetected" || filters.cctvStatus === "tidak") {
+      where.doPackingStatus = { not: "sudah" };
+    }
+  }
   const keyword = filters.keyword?.trim();
   if (keyword) {
     const keywordOr: Prisma.SalesRecordWhereInput[] = [
@@ -261,6 +269,13 @@ export function filterSalesRecordsInMemory(sales: Sale[], filters: SalesRecordFi
     }
     if (filters.approvalStatus && (sale.approvalStatus || "approved") !== filters.approvalStatus) return false;
     if (filters.syncStatus && (sale.syncStatus || "local") !== filters.syncStatus) return false;
+    if (filters.cctvStatus && filters.cctvStatus !== "all") {
+      const isDetected = sale.doPackingStatus === "sudah";
+      const wantDetected = filters.cctvStatus === "detected" || filters.cctvStatus === "ya";
+      const wantUndetected = filters.cctvStatus === "undetected" || filters.cctvStatus === "tidak";
+      if (wantDetected && !isDetected) return false;
+      if (wantUndetected && isDetected) return false;
+    }
     if (keyword) {
       const itemsHaystack = (sale.items || []).map((i) => i.productRef).join(" ");
       const haystack = [

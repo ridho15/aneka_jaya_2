@@ -45,7 +45,8 @@ function filtersFromParams(params: SearchParams): SalesRecordFilters {
     paymentMethod: valueOf(params, "paymentMethod") || undefined,
     rekening: valueOf(params, "rekening") || undefined,
     approvalStatus: valueOf(params, "approvalStatus") || undefined,
-    syncStatus: valueOf(params, "syncStatus") || undefined
+    syncStatus: valueOf(params, "syncStatus") || undefined,
+    cctvStatus: valueOf(params, "cctvStatus") || undefined
   };
 }
 
@@ -59,6 +60,12 @@ function rekeningFilterLabel(rekenings: RekeningAccount[], value?: string) {
   return rekening ? rekeningLabel(rekening) : value;
 }
 
+function cctvStatusLabel(value?: string) {
+  if (value === "detected" || value === "ya") return "CCTV: Terdeteksi (Ya)";
+  if (value === "undetected" || value === "tidak") return "CCTV: Belum (Tidak)";
+  return null;
+}
+
 function activeFilterLabels(params: SearchParams, rekenings: RekeningAccount[]) {
   return [
     valueOf(params, "from") ? `Dari ${valueOf(params, "from")}` : null,
@@ -68,7 +75,8 @@ function activeFilterLabels(params: SearchParams, rekenings: RekeningAccount[]) 
     valueOf(params, "paymentMethod") ? `Pembayaran: ${valueOf(params, "paymentMethod")}` : null,
     valueOf(params, "rekening") ? `Rekening: ${rekeningFilterLabel(rekenings, valueOf(params, "rekening"))}` : null,
     valueOf(params, "approvalStatus") ? `Approval: ${valueOf(params, "approvalStatus")}` : null,
-    valueOf(params, "syncStatus") ? `ERP: ${valueOf(params, "syncStatus")}` : null
+    valueOf(params, "syncStatus") ? `ERP: ${valueOf(params, "syncStatus")}` : null,
+    cctvStatusLabel(valueOf(params, "cctvStatus"))
   ].filter(Boolean) as string[];
 }
 
@@ -109,8 +117,8 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
         activeFilters={activeFilters}
         emptyText="Filter aktif: semua transaksi."
         className="mb-5"
-        formClassName="grid gap-3 md:grid-cols-4 xl:grid-cols-8"
-        actionsClassName="md:col-span-4 xl:col-span-8"
+        formClassName="grid gap-3 md:grid-cols-3 xl:grid-cols-9"
+        actionsClassName="md:col-span-3 xl:col-span-9"
       >
         <label className="text-sm font-medium text-slate-700">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
         <label className="text-sm font-medium text-slate-700">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
@@ -120,6 +128,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
         <label className="text-sm font-medium text-slate-700">Rekening / bank<Select name="rekening" defaultValue={valueOf(params, "rekening") || ""} className="mt-1"><option value="">Semua</option>{activeRekeningOptions.map((item) => <option key={item.id} value={item.id}>{rekeningLabel(item)}</option>)}</Select></label>
         <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{approvalStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
         <label className="text-sm font-medium text-slate-700">ERP Sync<Select name="syncStatus" defaultValue={valueOf(params, "syncStatus") || ""} className="mt-1"><option value="">Semua</option>{syncStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">Status CCTV<Select name="cctvStatus" defaultValue={valueOf(params, "cctvStatus") || ""} className="mt-1"><option value="">Semua</option><option value="detected">Terdeteksi (Ya)</option><option value="undetected">Belum (Tidak)</option></Select></label>
       </ResponsiveFilterPanel>
 
       <section className="aj-surface">

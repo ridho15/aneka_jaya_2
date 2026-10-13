@@ -264,6 +264,29 @@ export async function POST(request: Request) {
       });
     }
 
+    // Catat ke CctvDetectionLog
+    await prisma.cctvDetectionLog.create({
+      data: {
+        cctvLabelId: cctv_label_id ? Number(cctv_label_id) : null,
+        invoiceNumber: cleanInvoice || null,
+        customerName: customer_name ? String(customer_name) : (sales.customerName || null),
+        sourceLabel: source_label ? String(source_label) : null,
+        slmReference: cleanRef || sales.id,
+        salesRecordId: sales.id,
+        deliveryOrderId: sales.deliveryOrder?.id || null,
+        eventType: event_type || "packing_completed",
+        severity: "info",
+        packingStatus: isPacked ? "completed" : "in_progress",
+        matchStatus: "matched",
+        packingCompletedAt: isPacked ? packedDate : null,
+        evidenceUrl: evidence_url ? String(evidence_url) : null,
+        screenshotPhotoUrl: resolvedPhotoUrl,
+        notes: cctv_label_id
+          ? `Sync label CCTV #${cctv_label_id}`
+          : "Sync label CCTV",
+      }
+    });
+
     return NextResponse.json({
       saved: true,
       sales_record_id: sales.id,

@@ -14,3 +14,5 @@ playwright-report/
 
 # Runtime data files (persisted in PostgreSQL)
 data/stock-alert-logs.json
+scratch/
+

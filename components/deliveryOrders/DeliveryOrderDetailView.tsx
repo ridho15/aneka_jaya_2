@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { DeliveryOrderProofUploader } from "./DeliveryOrderProofUploader";
+import { CctvPackingWidget, type CctvDetectionData } from "@/components/cctv/CctvPackingWidget";
 
 type Officer = {
   id: string;
@@ -22,6 +23,7 @@ type Officer = {
 type Props = {
   initialDetail: DeliveryOrderData;
   officers: Officer[];
+  cctvDetection?: CctvDetectionData | null;
   canAssign: boolean;
   canProcess: boolean;
   currentUserRole: string;
@@ -31,6 +33,7 @@ type Props = {
 export function DeliveryOrderDetailView({
   initialDetail,
   officers,
+  cctvDetection,
   canAssign,
   canProcess,
   currentUserRole,
@@ -580,6 +583,14 @@ export function DeliveryOrderDetailView({
           )}
         </div>
       </div>
+
+      {/* Verifikasi Meja Packing CCTV */}
+      <CctvPackingWidget
+        detection={cctvDetection}
+        fallbackReceiptPhoto={receiptPhotoUrl || detail.receiptPhotoUrl}
+        title="Verifikasi Meja Packing CCTV (Surat Jalan)"
+        subtitle="Dokumentasi fisik paket & visual AI Vision sebelum diserahkan ke kurir / ekspedisi"
+      />
 
 
       {/* Zero items alert banner */}

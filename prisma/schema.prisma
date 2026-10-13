@@ -240,6 +240,7 @@ model SalesRecord {
   items                 SalesRecordItem[]
   integrationAttempts   IntegrationStageAttempt[]
   deliveryOrder         DeliveryOrder?
+  cctvDetections        CctvDetectionLog[]
 
   @@index([saleDate])
   @@index([transactionNumber])
@@ -554,5 +555,38 @@ model DeliveryOrderAssignee {
   @@unique([deliveryOrderId, userId])
   @@index([deliveryOrderId])
   @@index([userId])
+}
+
+model CctvDetectionLog {
+  id                 String       @id @default(cuid())
+  cctvLabelId        Int?
+  invoiceNumber      String?
+  customerName       String?
+  sourceLabel        String?
+  slmReference       String?
+  salesRecordId      String?
+  salesRecord        SalesRecord? @relation(fields: [salesRecordId], references: [id], onDelete: SetNull)
+  deliveryOrderId    String?
+  cameraId           Int?
+  cameraName         String?
+  cameraLocation     String?
+  eventType          String       @default("packing_completed")
+  severity           String       @default("info")
+  packingStatus      String       @default("completed")
+  matchStatus        String       @default("matched")
+  firstSeenAt        DateTime?
+  packingCompletedAt DateTime?
+  evidenceUrl        String?
+  screenshotPhotoUrl String?
+  rawPayload         Json?
+  notes              String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([invoiceNumber])
+  @@index([salesRecordId])
+  @@index([cameraName])
+  @@index([eventType])
+  @@index([createdAt])
 }
 

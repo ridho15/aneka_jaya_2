@@ -1,0 +1,498 @@
+import "server-only";
+import { prisma } from "@/lib/db/prisma";
+import { getCctvSystemStatus } from "@/lib/cctv/client";
+
+export interface ListCctvFilter {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  eventType?: string;
+  cameraName?: string;
+  matchStatus?: string;
+  from?: string;
+  to?: string;
+}
+
+export async function listCctvDetectionsPaginated(filter: ListCctvFilter) {
+  const page = Math.max(1, Number(filter.page) || 1);
+  const pageSize = Math.max(5, Math.min(100, Number(filter.pageSize) || 20));
+  const skip = (page - 1) * pageSize;
+
+  const where: any = {};
+
+  if (filter.eventType && filter.eventType !== "all") {
+    where.eventType = filter.eventType;
+  }
+
+  if (filter.matchStatus && filter.matchStatus !== "all") {
+    where.matchStatus = filter.matchStatus;
+  }
+
+  if (filter.cameraName && filter.cameraName !== "all") {
+    where.cameraName = { contains: filter.cameraName, mode: "insensitive" };
+  }
+
+  if (filter.search && filter.search.trim()) {
+    const s = filter.search.trim();
+    where.OR = [
+      { invoiceNumber: { contains: s, mode: "insensitive" } },
+      { customerName: { contains: s, mode: "insensitive" } },
+      { cameraName: { contains: s, mode: "insensitive" } },
+      { sourceLabel: { contains: s, mode: "insensitive" } },
+      { notes: { contains: s, mode: "insensitive" } },
+    ];
+  }
+
+  if (filter.from || filter.to) {
+    where.createdAt = {};
+    if (filter.from) {
+      const fromDate = new Date(`${filter.from}T00:00:00+07:00`);
+      if (!isNaN(fromDate.getTime())) {
+        where.createdAt.gte = fromDate;
+      }
+    }
+    if (filter.to) {
+      const toDate = new Date(`${filter.to}T23:59:59+07:00`);
+      if (!isNaN(toDate.getTime())) {
+        where.createdAt.lte = toDate;
+      }
+    }
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.cctvDetectionLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+      include: {
+        salesRecord: {
+          select: {
+            id: true,
+            transactionNumber: true,
+            customerName: true,
+            total: true,
+            doPackingStatus: true,
+          },
+        },
+      },
+    }),
+    prisma.cctvDetectionLog.count({ where }),
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export async function getCctvStats() {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const [totalToday, totalPackedToday, totalAnomaliesToday, byStoreRaw, byCameraRaw] =
+    await Promise.all([
+      prisma.cctvDetectionLog.count({
+        where: { createdAt: { gte: startOfDay } },
+      }),
+      prisma.cctvDetectionLog.count({
+        where: {
+          createdAt: { gte: startOfDay },
+          eventType: "packing_completed",
+        },
+      }),
+      prisma.cctvDetectionLog.count({
+        where: {
+          createdAt: { gte: startOfDay },
+          eventType: "anomaly",
+        },
+      }),
+      prisma.cctvDetectionLog.groupBy({
+        by: ["sourceLabel"],
+        where: {
+          createdAt: { gte: startOfDay },
+          sourceLabel: { not: null },
+        },
+        _count: { id: true },
+      }),
+      prisma.cctvDetectionLog.groupBy({
+        by: ["cameraName"],
+        where: {
+          createdAt: { gte: startOfDay },
+          cameraName: { not: null },
+        },
+        _count: { id: true },
+      }),
+    ]);
+
+  const byStore: Record<string, number> = {};
+  for (const s of byStoreRaw) {
+    if (s.sourceLabel) byStore[s.sourceLabel] = s._count.id;
+  }
+
+  const byCamera: Record<string, number> = {};
+  for (const c of byCameraRaw) {
+    if (c.cameraName) byCamera[c.cameraName] = c._count.id;
+  }
+
+  // Coba ambil data kamera live dari CCTV VPS
+  const liveSystem = await getCctvSystemStatus().catch(() => null);
+
+  return {
+    today: {
+      totalDetections: totalToday,
+      totalPacked: totalPackedToday,
+      totalAnomalies: totalAnomaliesToday,
+      byStore,
+      byCamera,
+    },
+    liveSystem,
+  };
+}
+
+export async function getCctvDetectionForSales(salesRecordId: string, invoiceNumber?: string) {
+  if (!salesRecordId && !invoiceNumber) return null;
+
+  return prisma.cctvDetectionLog.findFirst({
+    where: {
+      OR: [
+        ...(salesRecordId ? [{ salesRecordId }] : []),
+        ...(invoiceNumber ? [{ invoiceNumber }] : []),
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export interface CctvOutboundReportFilter {
+  page?: number;
+  pageSize?: number;
+  from?: string;
+  to?: string;
+  cameraName?: string;
+  sourceLabel?: string;
+  search?: string;
+}
+
+export async function listCctvCameraNames(): Promise<string[]> {
+  const groups = await prisma.cctvDetectionLog.groupBy({
+    by: ["cameraName"],
+    where: { cameraName: { not: null } },
+  });
+  return groups.map((g) => g.cameraName).filter((c): c is string => Boolean(c));
+}
+
+export async function getCctvOutboundReport(filter: CctvOutboundReportFilter) {
+  const page = Math.max(1, Number(filter.page) || 1);
+  const pageSize = Math.max(5, Math.min(100, Number(filter.pageSize) || 20));
+  const skip = (page - 1) * pageSize;
+
+  const where: any = {
+    eventType: "packing_completed",
+  };
+
+  if (filter.cameraName && filter.cameraName !== "all") {
+    where.cameraName = { contains: filter.cameraName, mode: "insensitive" };
+  }
+
+  if (filter.sourceLabel && filter.sourceLabel !== "all") {
+    where.sourceLabel = { contains: filter.sourceLabel, mode: "insensitive" };
+  }
+
+  if (filter.search && filter.search.trim()) {
+    const s = filter.search.trim();
+    where.OR = [
+      { invoiceNumber: { contains: s, mode: "insensitive" } },
+      { customerName: { contains: s, mode: "insensitive" } },
+      { notes: { contains: s, mode: "insensitive" } },
+      {
+        salesRecord: {
+          OR: [
+            { customerName: { contains: s, mode: "insensitive" } },
+            { transactionNumber: { contains: s, mode: "insensitive" } },
+          ],
+        },
+      },
+    ];
+  }
+
+  if (filter.from || filter.to) {
+    where.createdAt = {};
+    if (filter.from) {
+      const fromDate = new Date(`${filter.from}T00:00:00+07:00`);
+      if (!isNaN(fromDate.getTime())) {
+        where.createdAt.gte = fromDate;
+      }
+    }
+    if (filter.to) {
+      const toDate = new Date(`${filter.to}T23:59:59+07:00`);
+      if (!isNaN(toDate.getTime())) {
+        where.createdAt.lte = toDate;
+      }
+    }
+  }
+
+  const [items, total, allDetectedLogs] = await Promise.all([
+    prisma.cctvDetectionLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+      include: {
+        salesRecord: {
+          select: {
+            id: true,
+            transactionNumber: true,
+            customerName: true,
+            customerLocation: true,
+            shippingMethod: true,
+            total: true,
+            doPackingStatus: true,
+            doShippingStatus: true,
+            items: {
+              select: {
+                id: true,
+                productRef: true,
+                productId: true,
+                manualProduct: true,
+                quantity: true,
+                unitSnapshot: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.cctvDetectionLog.count({ where }),
+    prisma.cctvDetectionLog.findMany({
+      where,
+      select: {
+        id: true,
+        cameraName: true,
+        salesRecord: {
+          select: {
+            items: {
+              select: {
+                quantity: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  let totalSkusDispatched = 0;
+  const cameraCounts: Record<string, number> = {};
+
+  for (const log of allDetectedLogs) {
+    if (log.cameraName) {
+      cameraCounts[log.cameraName] = (cameraCounts[log.cameraName] || 0) + 1;
+    }
+    if (log.salesRecord?.items) {
+      for (const it of log.salesRecord.items) {
+        totalSkusDispatched += Number(it.quantity) || 0;
+      }
+    }
+  }
+
+  let topCamera = "—";
+  let maxCount = 0;
+  for (const [cam, count] of Object.entries(cameraCounts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      topCamera = cam;
+    }
+  }
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    summary: {
+      totalOutboundPackages: total,
+      totalSkusDispatched,
+      topCamera,
+      cameraCounts,
+    },
+  };
+}
+
+export async function getCctvDashboardSummary() {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const [totalPackedToday, totalDetectionsToday, totalAnomaliesToday, recentPacked, liveSystem] =
+    await Promise.all([
+      prisma.cctvDetectionLog.count({
+        where: {
+          createdAt: { gte: startOfDay },
+          eventType: "packing_completed",
+        },
+      }),
+      prisma.cctvDetectionLog.count({
+        where: { createdAt: { gte: startOfDay } },
+      }),
+      prisma.cctvDetectionLog.count({
+        where: {
+          createdAt: { gte: startOfDay },
+          OR: [
+            { eventType: "anomaly" },
+            { matchStatus: "unmatched" },
+            { matchStatus: "review" },
+          ],
+        },
+      }),
+      prisma.cctvDetectionLog.findMany({
+        where: {
+          eventType: "packing_completed",
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: {
+          salesRecord: {
+            select: {
+              id: true,
+              transactionNumber: true,
+              customerName: true,
+              total: true,
+            },
+          },
+        },
+      }),
+      getCctvSystemStatus().catch(() => null),
+    ]);
+
+  return {
+    today: {
+      totalPacked: totalPackedToday,
+      totalDetections: totalDetectionsToday,
+      totalAnomalies: totalAnomaliesToday,
+    },
+    recentPacked,
+    liveSystem,
+  };
+}
+
+export interface CctvAnomaliesFilter {
+  page?: number;
+  pageSize?: number;
+  from?: string;
+  to?: string;
+  search?: string;
+  cameraName?: string;
+}
+
+export async function getCctvAnomaliesReport(filter: CctvAnomaliesFilter) {
+  const page = Math.max(1, Number(filter.page) || 1);
+  const pageSize = Math.max(5, Math.min(100, Number(filter.pageSize) || 20));
+  const skip = (page - 1) * pageSize;
+
+  const where: any = {
+    OR: [
+      { eventType: "anomaly" },
+      { matchStatus: "unmatched" },
+      { matchStatus: "review" },
+    ],
+  };
+
+  if (filter.cameraName && filter.cameraName !== "all") {
+    where.cameraName = { contains: filter.cameraName, mode: "insensitive" };
+  }
+
+  if (filter.search && filter.search.trim()) {
+    const s = filter.search.trim();
+    where.AND = [
+      {
+        OR: [
+          { invoiceNumber: { contains: s, mode: "insensitive" } },
+          { customerName: { contains: s, mode: "insensitive" } },
+          { notes: { contains: s, mode: "insensitive" } },
+        ],
+      },
+    ];
+  }
+
+  if (filter.from || filter.to) {
+    where.createdAt = {};
+    if (filter.from) {
+      const fromDate = new Date(`${filter.from}T00:00:00+07:00`);
+      if (!isNaN(fromDate.getTime())) {
+        where.createdAt.gte = fromDate;
+      }
+    }
+    if (filter.to) {
+      const toDate = new Date(`${filter.to}T23:59:59+07:00`);
+      if (!isNaN(toDate.getTime())) {
+        where.createdAt.lte = toDate;
+      }
+    }
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.cctvDetectionLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    prisma.cctvDetectionLog.count({ where }),
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export async function getCctvCamerasReport() {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const [allTimeGroupBy, todayGroupBy, liveSystem] = await Promise.all([
+    prisma.cctvDetectionLog.groupBy({
+      by: ["cameraName"],
+      where: { cameraName: { not: null } },
+      _count: { id: true },
+      _max: { createdAt: true },
+    }),
+    prisma.cctvDetectionLog.groupBy({
+      by: ["cameraName"],
+      where: {
+        cameraName: { not: null },
+        createdAt: { gte: startOfDay },
+      },
+      _count: { id: true },
+    }),
+    getCctvSystemStatus().catch(() => null),
+  ]);
+
+  const todayCountMap: Record<string, number> = {};
+  for (const t of todayGroupBy) {
+    if (t.cameraName) todayCountMap[t.cameraName] = t._count.id;
+  }
+
+  const cameras = allTimeGroupBy
+    .filter((g): g is typeof g & { cameraName: string } => Boolean(g.cameraName))
+    .map((g) => ({
+      name: g.cameraName,
+      totalAllTime: g._count.id,
+      totalToday: todayCountMap[g.cameraName] || 0,
+      lastSeenAt: g._max.createdAt,
+      isOnline: liveSystem?.cameras?.some((c) => c.name.toLowerCase() === g.cameraName.toLowerCase() && c.status === "online") ?? true,
+    }));
+
+  return {
+    cameras,
+    liveSystem,
+  };
+}
+

@@ -152,8 +152,22 @@ export const NAV_LINKS: NavLink[] = [
     category: "PUSAT LAPORAN",
     ownerOnly: true,
   },
+  {
+    href: "/reports/cctv",
+    label: "Laporan Pengawasan CCTV",
+    icon: "▣",
+    permission: "reports.view",
+    category: "PUSAT LAPORAN",
+  },
 
   // SISTEM & MONITORING
+  {
+    href: "/cctv-monitoring",
+    label: "Monitoring CCTV",
+    icon: "◉",
+    permission: "audit.view",
+    category: "SISTEM & MONITORING",
+  },
   {
     href: "/erp-sync",
     label: "ERP Sync",
@@ -228,6 +242,8 @@ export function isNavLinkActive(pathname: string, href: string) {
     (href === "/barang" && pathname.startsWith("/barang")) ||
     (href === "/tempo" && pathname.startsWith("/tempo")) ||
     (href === "/settings" && pathname.startsWith("/settings")) ||
+    (href === "/cctv-monitoring" && pathname.startsWith("/cctv-monitoring")) ||
+    (href === "/reports/cctv" && pathname.startsWith("/reports/cctv")) ||
     (href === "/reports/customers" && pathname.startsWith("/reports/customers")) ||
     (href === "/reports/products" && pathname.startsWith("/reports/products")) ||
     (href === "/reports/stocks" && pathname.startsWith("/reports/stocks")) ||

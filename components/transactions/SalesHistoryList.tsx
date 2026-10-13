@@ -200,6 +200,18 @@ export function DeliveryOrderBadges({ sale }: { sale: Sale }) {
           <span>{printOfficer}</span>
         </span>
       )}
+      {sale.doPackingStatus === "sudah" && (
+        <span
+          data-testid="cctv-packing-badge"
+          title="Telah diverifikasi dan selesai dibungkus oleh CCTV"
+          className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200 shadow-2xs"
+        >
+          <svg className="w-3 h-3 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <span>CCTV Packed</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -319,7 +331,7 @@ export function SalesHistoryList({
   canViewTransactionNumber,
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
-  const columnCount = canViewTransactionNumber ? 11 : 10;
+  const columnCount = canViewTransactionNumber ? 12 : 11;
   const toggle = (id: string) =>
     setExpandedSaleId((current) => nextExpandedSaleId(current, id));
 
@@ -378,6 +390,11 @@ export function SalesHistoryList({
                   tone={statusTone(sale.approvalStatus || "approved")}
                 />
                 {stockReleaseBadge(sale)}
+                {sale.doPackingStatus === "sudah" ? (
+                  <Badge value="CCTV: Ya" tone="green" />
+                ) : (
+                  <Badge value="CCTV: Tidak" tone="slate" />
+                )}
               </div>
               <dl className="mt-3 grid gap-2 text-sm text-slate-600">
                 {canViewTransactionNumber && (
@@ -390,6 +407,23 @@ export function SalesHistoryList({
                     </dd>
                   </div>
                 )}
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Terdeteksi CCTV
+                  </dt>
+                  <dd className="mt-0.5 font-medium">
+                    {sale.doPackingStatus === "sudah" ? (
+                      <span className="text-emerald-700 font-bold flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Ya (Packing Selesai)</span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 font-normal">— Tidak</span>
+                    )}
+                  </dd>
+                </div>
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                     Lokasi
@@ -476,6 +510,7 @@ export function SalesHistoryList({
               <th className="px-5 py-3 text-right">Total</th>
               <th className="px-5 py-3">Approval</th>
               <th className="px-5 py-3">Stok Gudang AJ</th>
+              <th className="px-5 py-3">Terdeteksi CCTV</th>
               <th className="px-5 py-3">Pembuat</th>
             </tr>
           </thead>
@@ -592,6 +627,18 @@ export function SalesHistoryList({
                     </td>
                     <td className="px-5 py-4">
                       {stockReleaseBadge(sale)}
+                    </td>
+                    <td className="px-5 py-4">
+                      {sale.doPackingStatus === "sudah" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                          Ya
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                          Tidak
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-slate-600">
                       {sale.createdByNameSnapshot || "—"}

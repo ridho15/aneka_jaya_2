@@ -10,6 +10,8 @@ import { listAllRekeningAccounts } from "@/lib/business/masterData";
 import { salesRekeningLabel } from "@/lib/sales/rekening";
 import { getSalesRecordForUser } from "@/lib/sales/access";
 import { prisma } from "@/lib/db/prisma";
+import { CctvPackingWidget } from "@/components/cctv/CctvPackingWidget";
+import { getCctvDetectionForSales } from "@/lib/cctv/store";
 
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
@@ -57,17 +59,21 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
   const canManage = can(role, "penjualan.manage");
   const canViewTransactionNumber = role === "OWNER";
 
-  const deliveryOrderRow = await prisma.deliveryOrder.findUnique({
-    where: { salesRecordId: sale.id },
-    select: {
-      id: true,
-      doNumber: true,
-      status: true,
-      packingStatus: true,
-      shippingStatus: true,
-      items: { select: { id: true } }
-    }
-  }).catch(() => null);
+  const [deliveryOrderRow, cctvDetection] = await Promise.all([
+    prisma.deliveryOrder.findUnique({
+      where: { salesRecordId: sale.id },
+      select: {
+        id: true,
+        doNumber: true,
+        status: true,
+        packingStatus: true,
+        shippingStatus: true,
+        receiptPhotoUrl: true,
+        items: { select: { id: true } }
+      }
+    }).catch(() => null),
+    getCctvDetectionForSales(sale.id, sale.transactionNumber || undefined).catch(() => null)
+  ]);
 
   const deliveryOrderSummary = deliveryOrderRow
     ? {
@@ -79,6 +85,14 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         itemCount: deliveryOrderRow.items.length
       }
     : null;
+
+  const cctvData = cctvDetection || (sale.doPackingStatus === "sudah" ? {
+    invoiceNumber: sale.transactionNumber || sale.id,
+    customerName: sale.customerName,
+    packingStatus: "completed",
+    packingCompletedAt: sale.deliveryAt || sale.transactionAt || sale.saleDate,
+    screenshotPhotoUrl: deliveryOrderRow?.receiptPhotoUrl || null,
+  } : null);
 
   return (
     <AppShell>
@@ -99,6 +113,12 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           )}
         </div>
       </div>
+
+      {/* Widget Verifikasi Meja Packing CCTV */}
+      <CctvPackingWidget
+        detection={cctvData as any}
+        fallbackReceiptPhoto={deliveryOrderRow?.receiptPhotoUrl}
+      />
 
       <div className="grid gap-5 lg:grid-cols-2 mb-5">
         {/* Card 1: Informasi Transaksi & Pelanggan */}

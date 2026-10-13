@@ -55,8 +55,18 @@ describe("SalesHistoryList", () => {
     const ownerHtml = renderToStaticMarkup(<SalesHistoryList sales={[]} canManage={false} canViewTransactionNumber />);
     const otherHtml = renderToStaticMarkup(<SalesHistoryList sales={[]} canManage={false} canViewTransactionNumber={false} />);
 
-    expect(ownerHtml).toContain('colSpan="11"');
-    expect(otherHtml).toContain('colSpan="10"');
+    expect(ownerHtml).toContain('colSpan="12"');
+    expect(otherHtml).toContain('colSpan="11"');
+  });
+
+  it("renders Terdeteksi CCTV column header and detection status badges", () => {
+    const saleDetected: Sale = { ...sale, id: "sale-cctv-yes", doPackingStatus: "sudah" };
+    const saleNotDetected: Sale = { ...sale, id: "sale-cctv-no", doPackingStatus: "belum" };
+
+    const html = renderToStaticMarkup(<SalesHistoryList sales={[saleDetected, saleNotDetected]} canManage={false} canViewTransactionNumber />);
+    expect(html).toContain("Terdeteksi CCTV");
+    expect(html).toContain("Ya");
+    expect(html).toContain("Tidak");
   });
 
   it("renders direct Detail, Cetak, Edit, and Batal buttons without Lainnya dropdown menu", () => {

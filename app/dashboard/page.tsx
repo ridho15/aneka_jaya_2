@@ -24,6 +24,8 @@ import { getOperationalProfitSetting } from "@/lib/settings/profit";
 import { listTempoPaymentReversals, listTempoPayments } from "@/lib/tempo/store";
 import { getStockInventoryReport } from "@/lib/reports/stockReports";
 import { SupervisorStockDashboard } from "@/components/dashboard/SupervisorStockDashboard";
+import { CctvDashboardWidget } from "@/components/dashboard/CctvDashboardWidget";
+import { getCctvDashboardSummary } from "@/lib/cctv/store";
 
 export const dynamic = "force-dynamic";
 
@@ -137,11 +139,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   const monthStr = jakartaMonthKey();
   const paymentPeriod = paymentPeriodFromParams(params, monthStr);
   const allSales = await listSalesRecords();
-  const [allExpenses, allRekenings, allTempoPayments, allTempoReversals] = await Promise.all([
+  const isOwner = role === "OWNER";
+  const [allExpenses, allRekenings, allTempoPayments, allTempoReversals, cctvSummary] = await Promise.all([
     listExpenseRecords(),
     listRekeningAccounts(),
     listTempoPayments(),
-    listTempoPaymentReversals()
+    listTempoPaymentReversals(),
+    isOwner ? getCctvDashboardSummary().catch(() => null) : Promise.resolve(null),
   ]);
   const canViewOperationalProfit = can(role, "settings.profit.manage");
   const rekeningLabels = rekeningLabelMap(allRekenings);
@@ -209,6 +213,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
           <KpiCard testId="dashboard-kpi-operational-nett-profit" label="Nett Profit Operasional" value={formatDashboardMoney(operationalProfit.nettProfit)} change="Gross Profit - pengeluaran bulanan" tone={operationalProfit.nettProfit >= 0 ? "green" : "orange"} />
         </div>
       </section>}
+
+      {cctvSummary && <CctvDashboardWidget summary={cctvSummary} />}
 
       <ResponsiveFilterPanel
         title="Filter dashboard"
