@@ -264,9 +264,8 @@ describe("CCTV DEEP VERIFICATION - UNHAPPY PATH & ADVERSARIAL TESTING", () => {
     it("renders gracefully when detection object is an empty object {}", () => {
       const html = renderToStaticMarkup(<CctvPackingWidget detection={{} as any} />);
       expect(html).toContain("Verifikasi Meja Packing CCTV");
-      expect(html).toContain("Terdeteksi CCTV: Ya");
-      expect(html).toContain("Meja Packing Utama");
-      expect(html).toContain("Foto paket belum tersinkron");
+      expect(html).toContain("Terdeteksi CCTV: Tidak");
+      expect(html).toContain("Belum Terdeteksi CCTV Meja Packing");
     });
 
     it("escapes malicious XSS payloads in customerName and cameraName", () => {
@@ -303,13 +302,14 @@ describe("CCTV DEEP VERIFICATION - UNHAPPY PATH & ADVERSARIAL TESTING", () => {
       expect(html).toContain("Terdeteksi CCTV: Ya");
     });
 
-    it("handles fallbackReceiptPhoto with comma-separated URLs or whitespace", () => {
+    it("handles null detection honestly without falsely claiming CCTV detection on manual receipt photos", () => {
       const multiPhotos = "https://test.com/photo1.jpg, https://test.com/photo2.jpg";
       const html = renderToStaticMarkup(
         <CctvPackingWidget detection={null} fallbackReceiptPhoto={multiPhotos} />
       );
 
-      expect(html).toContain("Terdeteksi CCTV: Ya");
+      expect(html).toContain("Terdeteksi CCTV: Tidak");
+      expect(html).toContain("Belum Terdeteksi CCTV Meja Packing");
     });
   });
 

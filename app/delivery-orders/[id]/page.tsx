@@ -44,13 +44,7 @@ export default async function DeliveryOrderDetailPage({
     ).catch(() => null),
   ]);
 
-  const cctvDetection = cctvDetectionRaw || (detail.packingStatus === "sudah" ? {
-    invoiceNumber: detail.sale?.transactionNumber || detail.doNumber,
-    customerName: detail.sale?.customerName,
-    packingStatus: "completed",
-    packingCompletedAt: detail.packedAt || detail.createdAt,
-    screenshotPhotoUrl: detail.receiptPhotoUrl || null,
-  } : null);
+  const cctvDetection = cctvDetectionRaw;
 
   const canAssign = can(user.role, "do.assign");
   const canProcess = can(user.role, "do.process");

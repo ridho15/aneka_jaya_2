@@ -205,7 +205,6 @@ export async function POST(request: Request) {
     // Prioritaskan file foto yang tersimpan lokal di ERP, lalu fallback ke evidence_url
     const resolvedPhotoUrl = uploadedScreenshotUrl
       || (evidence_url ? String(evidence_url) : null)
-      || sales.deliveryOrder?.receiptPhotoUrl
       || null;
 
     // Update Delivery Order jika ada
@@ -222,7 +221,7 @@ export async function POST(request: Request) {
           packingStatus: isPacked ? "sudah" : sales.deliveryOrder.packingStatus,
           packedAt: isPacked ? (sales.deliveryOrder.packedAt || packedDate) : sales.deliveryOrder.packedAt,
           packedByNameSnapshot: isPacked ? (sales.deliveryOrder.packedByNameSnapshot || "CCTV Auto-Packing") : sales.deliveryOrder.packedByNameSnapshot,
-          receiptPhotoUrl: resolvedPhotoUrl
+          receiptPhotoUrl: resolvedPhotoUrl || sales.deliveryOrder.receiptPhotoUrl
         }
       });
 

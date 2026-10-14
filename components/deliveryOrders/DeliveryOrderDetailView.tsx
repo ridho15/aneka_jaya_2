@@ -587,7 +587,6 @@ export function DeliveryOrderDetailView({
       {/* Verifikasi Meja Packing CCTV */}
       <CctvPackingWidget
         detection={cctvDetection}
-        fallbackReceiptPhoto={receiptPhotoUrl || detail.receiptPhotoUrl}
         title="Verifikasi Meja Packing CCTV (Surat Jalan)"
         subtitle="Dokumentasi fisik paket & visual AI Vision sebelum diserahkan ke kurir / ekspedisi"
       />

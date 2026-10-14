@@ -158,6 +158,6 @@ describe("CCTV Outbound Report & Verification Widget (Step 4 & 5)", () => {
 
     expect(html).toContain("Terdeteksi CCTV: Tidak");
     expect(html).toContain("Belum Terdeteksi CCTV Meja Packing");
-    expect(html).toContain("Menunggu Packing");
+    expect(html).toContain("Menunggu Sinyal CCTV");
   });
 });

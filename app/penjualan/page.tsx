@@ -61,8 +61,8 @@ function rekeningFilterLabel(rekenings: RekeningAccount[], value?: string) {
 }
 
 function cctvStatusLabel(value?: string) {
-  if (value === "detected" || value === "ya") return "CCTV: Terdeteksi (Ya)";
-  if (value === "undetected" || value === "tidak") return "CCTV: Belum (Tidak)";
+  if (value === "detected" || value === "ya") return "Packing DO: Sudah";
+  if (value === "undetected" || value === "tidak") return "Packing DO: Belum";
   return null;
 }
 
@@ -128,7 +128,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
         <label className="text-sm font-medium text-slate-700">Rekening / bank<Select name="rekening" defaultValue={valueOf(params, "rekening") || ""} className="mt-1"><option value="">Semua</option>{activeRekeningOptions.map((item) => <option key={item.id} value={item.id}>{rekeningLabel(item)}</option>)}</Select></label>
         <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{approvalStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
         <label className="text-sm font-medium text-slate-700">ERP Sync<Select name="syncStatus" defaultValue={valueOf(params, "syncStatus") || ""} className="mt-1"><option value="">Semua</option>{syncStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
-        <label className="text-sm font-medium text-slate-700">Status CCTV<Select name="cctvStatus" defaultValue={valueOf(params, "cctvStatus") || ""} className="mt-1"><option value="">Semua</option><option value="detected">Terdeteksi (Ya)</option><option value="undetected">Belum (Tidak)</option></Select></label>
+        <label className="text-sm font-medium text-slate-700">Status Packing (DO)<Select name="cctvStatus" defaultValue={valueOf(params, "cctvStatus") || ""} className="mt-1"><option value="">Semua</option><option value="detected">Sudah Dipacking</option><option value="undetected">Belum Dipacking</option></Select></label>
       </ResponsiveFilterPanel>
 
       <section className="aj-surface">

@@ -86,13 +86,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
       }
     : null;
 
-  const cctvData = cctvDetection || (sale.doPackingStatus === "sudah" ? {
-    invoiceNumber: sale.transactionNumber || sale.id,
-    customerName: sale.customerName,
-    packingStatus: "completed",
-    packingCompletedAt: sale.deliveryAt || sale.transactionAt || sale.saleDate,
-    screenshotPhotoUrl: deliveryOrderRow?.receiptPhotoUrl || null,
-  } : null);
+  const cctvData = cctvDetection;
 
   return (
     <AppShell>
@@ -117,7 +111,6 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
       {/* Widget Verifikasi Meja Packing CCTV */}
       <CctvPackingWidget
         detection={cctvData as any}
-        fallbackReceiptPhoto={deliveryOrderRow?.receiptPhotoUrl}
       />
 
       <div className="grid gap-5 lg:grid-cols-2 mb-5">

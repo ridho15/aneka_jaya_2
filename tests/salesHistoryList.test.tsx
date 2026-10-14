@@ -59,14 +59,15 @@ describe("SalesHistoryList", () => {
     expect(otherHtml).toContain('colSpan="11"');
   });
 
-  it("renders Terdeteksi CCTV column header and detection status badges", () => {
+  it("renders Status Packing column header and DO packing status badges", () => {
     const saleDetected: Sale = { ...sale, id: "sale-cctv-yes", doPackingStatus: "sudah" };
     const saleNotDetected: Sale = { ...sale, id: "sale-cctv-no", doPackingStatus: "belum" };
 
     const html = renderToStaticMarkup(<SalesHistoryList sales={[saleDetected, saleNotDetected]} canManage={false} canViewTransactionNumber />);
-    expect(html).toContain("Terdeteksi CCTV");
-    expect(html).toContain("Ya");
-    expect(html).toContain("Tidak");
+    expect(html).toContain("Status Packing");
+    expect(html).toContain("Sudah");
+    expect(html).toContain("Belum");
+    expect(html).toContain("Dipacking");
   });
 
   it("renders direct Detail, Cetak, Edit, and Batal buttons without Lainnya dropdown menu", () => {
