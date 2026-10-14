@@ -2288,5 +2288,74 @@ paths:
           description: Unauthorized token.
         "404":
           description: Data transaksi tidak ditemukan.
+  /api/cctv/events:
+    post:
+      summary: Webhook penerima event real-time dari CCTV SLM AI Checker.
+      description: Otorisasi menggunakan Bearer token atau header X-CCTV-Token. Menangani event packing_completed, anomaly, camera_offline, dan event operasional CCTV lainnya.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event_type
+              properties:
+                event_id:
+                  type: string
+                  example: "evt-12345"
+                event_type:
+                  type: string
+                  example: "packing_completed"
+                severity:
+                  type: string
+                  example: "info"
+                title:
+                  type: string
+                message:
+                  type: string
+                occurred_at:
+                  type: string
+                  format: date-time
+                evidence_url:
+                  type: string
+                clip_url:
+                  type: string
+                camera:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    location:
+                      type: string
+                data:
+                  type: object
+      responses:
+        "200":
+          description: Event berhasil diterima dan diproses.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  received_id:
+                    type: string
+                    nullable: true
+                  event_type:
+                    type: string
+        "400":
+          description: Payload event tidak valid.
+        "401":
+          description: Token webhook tidak valid atau tidak disertakan.
+        "500":
+          description: Kesalahan internal server.
+
 
 

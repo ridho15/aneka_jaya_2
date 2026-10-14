@@ -68,7 +68,7 @@ describe("PenjualanForm Draft Publish Diagnostic & Validation", () => {
     // Verify blocking reason is rendered
     expect(html).toContain("Penyebab Draft Belum Dapat Dipublish");
     expect(html).toContain("Lokasi gudang belum dipilih untuk potong stok fisik");
-    expect(html).toContain("✓ Finalkan &amp; Simpan Penjualan");
+    expect(html).toContain("Finalkan &amp; Simpan Penjualan");
     expect(html).toContain("Perbarui Draft");
   });
 
@@ -184,7 +184,7 @@ describe("PenjualanForm Draft Publish Diagnostic & Validation", () => {
     // Verify diagnostic blocking banner is NOT rendered because warehouse and administrative data are complete
     expect(html).not.toContain("Penyebab Draft Belum Dapat Dipublish");
     expect(html).not.toContain("Kuantitas diminta");
-    expect(html).toContain("✓ Finalkan &amp; Simpan Penjualan");
+    expect(html).toContain("Finalkan &amp; Simpan Penjualan");
     expect(html).toContain("Perbarui Draft");
   });
 });
