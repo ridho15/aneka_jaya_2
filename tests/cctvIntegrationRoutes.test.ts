@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { POST as lookupPost } from "@/app/api/cctv/labels/lookup/route";
@@ -394,6 +394,32 @@ describe("CCTV Integration Routes", () => {
       if (existsSync(localFilePath)) {
         await unlink(localFilePath);
       }
+
+      await prisma.cctvDetectionLog.deleteMany({
+        where: { screenshotPhotoUrl: data.receipt_photo_url }
+      }).catch(() => {});
     });
+  });
+
+  afterAll(async () => {
+    if (sampleSales?.id) {
+      await prisma.deliveryOrder.updateMany({
+        where: { salesRecordId: sampleSales.id },
+        data: { receiptPhotoUrl: sampleSales.deliveryOrder?.receiptPhotoUrl ?? null }
+      }).catch(() => {});
+      await prisma.salesRecord.updateMany({
+        where: { id: sampleSales.id },
+        data: { doReceiptPhotoUrl: sampleSales.doReceiptPhotoUrl ?? null }
+      }).catch(() => {});
+    }
+    await prisma.cctvDetectionLog.deleteMany({
+      where: {
+        OR: [
+          { evidenceUrl: { contains: "playgo.id" } },
+          { screenshotPhotoUrl: { startsWith: "/uploads/receipts/cctv-pack-" } },
+          { cctvLabelId: { in: [101, 102, 999] } }
+        ]
+      }
+    }).catch(() => {});
   });
 });

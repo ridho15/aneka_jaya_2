@@ -47,6 +47,42 @@ export interface CctvDashboardSummaryData {
   cameraStreams?: CctvCameraStream[];
 }
 
+function CctvThumbnail({
+  src,
+  alt,
+  className,
+  fallbackSize = "h-9 w-9",
+  iconSize = "w-4 h-4",
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  fallbackSize?: string;
+  iconSize?: string;
+}) {
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <div className={`flex ${fallbackSize} shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-300`}>
+        <svg className={iconSize} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setError(true)}
+    />
+  );
+}
+
 export function CctvDashboardWidget({
   summary,
   cameraStreams,
@@ -236,11 +272,12 @@ export function CctvDashboardWidget({
                               subtitle={`${item.cameraName || "Meja Packing"} • ${formatJakartaDateTime(item.createdAt)}`}
                               trigger={
                                 <div className="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-200 cursor-pointer">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
+                                  <CctvThumbnail
                                     src={photo}
                                     alt="Foto"
                                     className="h-full w-full object-cover"
+                                    fallbackSize="h-9 w-9"
+                                    iconSize="w-4 h-4"
                                   />
                                 </div>
                               }
@@ -383,10 +420,12 @@ export function CctvDashboardWidget({
                             trigger={
                               <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-200 shadow-2xs cursor-pointer group relative">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
+                                <CctvThumbnail
                                   src={photo}
                                   alt="Bukti Foto"
                                   className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                  fallbackSize="h-12 w-12"
+                                  iconSize="w-5 h-5"
                                 />
                                 <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
                                   <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">

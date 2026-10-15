@@ -1,6 +1,19 @@
 import "server-only";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { prisma } from "@/lib/db/prisma";
 import { getCctvSystemStatus } from "@/lib/cctv/client";
+
+function sanitizeLocalPhotoUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("/uploads/")) {
+    const fullPath = join(process.cwd(), "public", url);
+    if (!existsSync(fullPath)) {
+      return null;
+    }
+  }
+  return url;
+}
 
 export interface ListCctvFilter {
   page?: number;
@@ -368,13 +381,27 @@ export async function getCctvDashboardSummary() {
       getCctvSystemStatus().catch(() => null),
     ]);
 
+  const serializedRecentPacked = recentPacked.map((item) => ({
+    ...item,
+    screenshotPhotoUrl: sanitizeLocalPhotoUrl(item.screenshotPhotoUrl),
+    evidenceUrl: sanitizeLocalPhotoUrl(item.evidenceUrl),
+    salesRecord: item.salesRecord
+      ? {
+          id: item.salesRecord.id,
+          transactionNumber: item.salesRecord.transactionNumber,
+          customerName: item.salesRecord.customerName,
+          total: item.salesRecord.total != null ? Number(item.salesRecord.total) : 0,
+        }
+      : null,
+  }));
+
   return {
     today: {
       totalPacked: totalPackedToday,
       totalDetections: totalDetectionsToday,
       totalAnomalies: totalAnomaliesToday,
     },
-    recentPacked,
+    recentPacked: serializedRecentPacked,
     liveSystem,
   };
 }

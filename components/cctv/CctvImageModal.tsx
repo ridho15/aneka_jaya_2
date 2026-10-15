@@ -16,6 +16,7 @@ export function CctvImageModal({
   trigger,
 }: CctvImageModalProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   return (
     <>
@@ -60,12 +61,27 @@ export function CctvImageModal({
 
             {/* Content / Image */}
             <div className="p-4 flex flex-col items-center justify-center bg-slate-900/5 max-h-[75vh] overflow-auto">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl}
-                alt={title}
-                className="max-h-[68vh] w-auto max-w-full rounded-xl object-contain shadow-md border border-slate-200"
-              />
+              {imageError ? (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 mb-3 shadow-2xs">
+                    <svg className="w-7 h-7 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">Foto Bukti Tidak Tersedia</p>
+                  <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                    File gambar fisik pada server CCTV belum tersedia atau tautan telah kedaluwarsa.
+                  </p>
+                </div>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={imageUrl}
+                  alt={title}
+                  className="max-h-[68vh] w-auto max-w-full rounded-xl object-contain shadow-md border border-slate-200"
+                  onError={() => setImageError(true)}
+                />
+              )}
             </div>
 
             {/* Footer */}

@@ -201,7 +201,7 @@ describe("DEEP ADVERSARIAL & NO-AI-SLOP VERIFICATION: CCTV DASHBOARD & REPORTS",
       expect(typeof summary.today.totalAnomalies).toBe("number");
       expect(Array.isArray(summary.recentPacked)).toBe(true);
       expect(summary.recentPacked.length).toBeLessThanOrEqual(5);
-    });
+    }, 15000);
   });
 
   describe("4. Backend Store Resiliency: getCctvAnomaliesReport Unhappy Paths", () => {

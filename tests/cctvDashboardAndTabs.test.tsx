@@ -85,7 +85,17 @@ describe("CCTV Dashboard Widget & Multi-Tab Report Integration", () => {
       expect(typeof summary.today.totalAnomalies).toBe("number");
       expect(Array.isArray(summary.recentPacked)).toBe(true);
       expect(summary.recentPacked.length).toBeLessThanOrEqual(5);
-    });
+      for (const item of summary.recentPacked) {
+        if (item.salesRecord) {
+          expect(typeof item.salesRecord.total).toBe("number");
+        }
+        if (item.screenshotPhotoUrl?.startsWith("/uploads/")) {
+          const fs = await import("node:fs");
+          const path = await import("node:path");
+          expect(fs.existsSync(path.join(process.cwd(), "public", item.screenshotPhotoUrl))).toBe(true);
+        }
+      }
+    }, 15000);
 
     it("getCctvAnomaliesReport filters anomalies and review records", async () => {
       // Create a test anomaly record

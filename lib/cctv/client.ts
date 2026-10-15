@@ -61,7 +61,7 @@ async function cctvFetch<T>(endpoint: string, options?: RequestInit): Promise<T 
   const url = `${CCTV_BASE_URL.replace(/\/+$/, "")}/${endpoint.replace(/^\/+/, "")}`;
   try {
     const res = await fetch(url, {
-      signal: options?.signal || AbortSignal.timeout(5000),
+      signal: options?.signal || AbortSignal.timeout(2500),
       ...options,
       headers: {
         Authorization: `Bearer ${CCTV_TOKEN}`,
