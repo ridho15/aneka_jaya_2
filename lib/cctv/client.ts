@@ -34,7 +34,9 @@ export interface CctvCameraStatus {
   status: "online" | "offline";
   detector_ready: boolean;
   last_seen_at?: string;
+  lastSeenAt?: string;
   fresh: boolean;
+  fps?: number;
 }
 
 export interface CctvSystemStatusResponse {

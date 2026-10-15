@@ -1,5 +1,37 @@
 [
   {
+    "id": "a05cadb3-5d80-448e-8d4e-b26f768b7401",
+    "createdAt": "2026-10-15T07:39:13.246Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
+    "id": "7676a519-3ec1-40cd-882c-36ac32cc5849",
+    "createdAt": "2026-10-15T07:27:32.005Z",
+    "userId": "unauthenticated",
+    "userNameSnapshot": "Viewer",
+    "userRoleSnapshot": "VIEWER",
+    "entityType": "product",
+    "entityId": "QA-SLM-001",
+    "action": "create",
+    "afterValue": {
+      "sku": "QA-SLM-001",
+      "name": "QA Product",
+      "source": "sales_manual_product"
+    },
+    "reason": "Produk ERP dibuat otomatis dari transaksi SLM"
+  },
+  {
     "id": "7dff6077-e51f-4a00-9f40-0314411600ff",
     "createdAt": "2026-10-14T08:20:16.408Z",
     "userId": "unauthenticated",

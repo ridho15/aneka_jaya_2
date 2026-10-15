@@ -2356,6 +2356,38 @@ paths:
           description: Token webhook tidak valid atau tidak disertakan.
         "500":
           description: Kesalahan internal server.
+  /api/cctv/stream/{cameraId}:
+    get:
+      summary: Mengambil konfigurasi dan metadata live streaming kamera CCTV tertentu.
+      description: Dibatasi secara ketat hanya untuk sesi Super Admin (Owner). Mengembalikan data streaming, URL, tipe protokol, dan status kamera.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identifier atau nama kamera pengawasan meja packing.
+      responses:
+        "200":
+          description: Data streaming kamera berhasil dimuat.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  camera:
+                    type: object
+                  systemStatus:
+                    type: string
+                  serverTime:
+                    type: string
+        "403":
+          description: Akses ditolak karena bukan Super Admin (Owner).
+        "404":
+          description: Kamera dengan ID tersebut tidak ditemukan.
+
 
 
 

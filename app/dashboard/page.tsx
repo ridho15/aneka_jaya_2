@@ -26,6 +26,7 @@ import { getStockInventoryReport } from "@/lib/reports/stockReports";
 import { SupervisorStockDashboard } from "@/components/dashboard/SupervisorStockDashboard";
 import { CctvDashboardWidget } from "@/components/dashboard/CctvDashboardWidget";
 import { getCctvDashboardSummary } from "@/lib/cctv/store";
+import { getConfiguredCameraStreams } from "@/lib/cctv/streams";
 
 export const dynamic = "force-dynamic";
 
@@ -214,7 +215,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
         </div>
       </section>}
 
-      {cctvSummary && <CctvDashboardWidget summary={cctvSummary} />}
+      {cctvSummary && (
+        <CctvDashboardWidget
+          summary={cctvSummary}
+          cameraStreams={isOwner ? getConfiguredCameraStreams(cctvSummary.liveSystem?.cameras) : []}
+        />
+      )}
 
       <ResponsiveFilterPanel
         title="Filter dashboard"
