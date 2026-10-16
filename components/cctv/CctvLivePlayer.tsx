@@ -27,6 +27,7 @@ export function CameraCell({
 
   const cellRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
   const hlsRef = useRef<any>(null);
 
   const cleanupStream = useCallback(() => {
@@ -105,14 +106,9 @@ export function CameraCell({
           setConnectionStatus("error");
           setErrorMessage("Browser tidak mendukung HLS.");
         }
-      } else if (streamType === "mjpeg" || streamUrl.includes("video_feed")) {
-        videoEl.src = streamUrl;
-        videoEl
-          .play()
-          .then(() => setConnectionStatus("live"))
-          .catch(() => {
-            setConnectionStatus("live");
-          });
+      } else if (streamType === "mjpeg" || streamUrl.includes("video_feed") || streamUrl.includes("/live")) {
+        // MJPEG didukung secara native via tag img
+        setConnectionStatus("live");
       } else {
         videoEl.src = streamUrl;
         videoEl
@@ -195,17 +191,26 @@ export function CameraCell({
   };
 
   const takeSnapshot = () => {
+    const isMjpeg = camera.streamType === "mjpeg" || Boolean(camera.streamUrl?.includes("/live"));
     const video = videoRef.current;
-    if (!video) return;
+    const img = imgRef.current;
+    const media = isMjpeg ? img : video;
+    if (!media) return;
 
     try {
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
+      const width = isMjpeg
+        ? ((media as HTMLImageElement).naturalWidth || 1280)
+        : ((media as HTMLVideoElement).videoWidth || 1280);
+      const height = isMjpeg
+        ? ((media as HTMLImageElement).naturalHeight || 720)
+        : ((media as HTMLVideoElement).videoHeight || 720);
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
 
       if (ctx) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(media, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/png");
 
         const link = document.createElement("a");
@@ -280,6 +285,21 @@ export function CameraCell({
             title={`Pantauan ${camera.name}`}
             className="h-full w-full border-0"
             allow="autoplay; fullscreen; picture-in-picture"
+          />
+        ) : isPlaying && (camera.streamType === "mjpeg" || Boolean(camera.streamUrl?.includes("/live"))) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            ref={imgRef}
+            src={camera.streamUrl || ""}
+            alt={`Pantauan ${camera.name}`}
+            className={`h-full w-full object-contain ${
+              isPlaying && connectionStatus === "live" ? "block" : "hidden"
+            }`}
+            onLoad={() => setConnectionStatus("live")}
+            onError={() => {
+              setConnectionStatus("offline");
+              setErrorMessage("Sinyal kamera offline.");
+            }}
           />
         ) : (
           <video

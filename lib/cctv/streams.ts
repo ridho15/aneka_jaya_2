@@ -28,6 +28,9 @@ export function detectStreamType(url?: string | null): CctvStreamType {
   if (lower.includes("whep") || lower.startsWith("webrtc://") || lower.includes("/webrtc")) {
     return "webrtc";
   }
+  if (lower.includes("/embed") || lower.includes("live-embed") || lower.includes(".html")) {
+    return "iframe";
+  }
   if (
     lower.includes("video_feed") ||
     lower.includes("mjpeg") ||
@@ -36,10 +39,28 @@ export function detectStreamType(url?: string | null): CctvStreamType {
   ) {
     return "mjpeg";
   }
-  if (lower.includes("/embed") || lower.includes("live-embed") || lower.includes(".html")) {
-    return "iframe";
-  }
   return "auto";
+}
+
+/**
+ * Helper untuk menentukan URL stream kamera yang aman (HTTPS)
+ * Mencegah Mixed Content di browser dengan mem-proxy stream jika URL belum HTTPS.
+ */
+export function resolveCameraStreamUrl(
+  cameraId: string | number,
+  envOverrideUrl?: string | null,
+  directFallbackUrl?: string
+): string {
+  // 1. Jika ada override URL dari .env dan sudah menggunakan HTTPS, pakai langsung
+  if (envOverrideUrl && envOverrideUrl.startsWith("https://")) {
+    return envOverrideUrl;
+  }
+  // 2. Jika secara eksplisit dikonfigurasi untuk menggunakan direct stream URL
+  if (process.env.CCTV_USE_DIRECT_STREAM === "true") {
+    return envOverrideUrl || directFallbackUrl || `/api/cctv/stream/${cameraId}/live`;
+  }
+  // 3. Default aman (Bebas Mixed Content): salurkan lewat HTTPS proxy Next.js internal
+  return `/api/cctv/stream/${cameraId}/live`;
 }
 
 /**
@@ -58,22 +79,19 @@ export function getConfiguredCameraStreams(
   const baseUrl = DEFAULT_CCTV_BASE_URL.replace(/\/+$/, "");
 
   // URL override per kamera dari .env
-  const cam1Url = process.env.CCTV_STREAM_URL_CAM1 || `${baseUrl}/stream/camera1`;
-  const cam2Url = process.env.CCTV_STREAM_URL_CAM2 || `${baseUrl}/stream/camera2`;
-  const cam3Url = process.env.CCTV_STREAM_URL_CAM3 || `${baseUrl}/stream/camera3`;
+  const cam1Url = process.env.CCTV_STREAM_URL_CAM1;
+  const cam2Url = process.env.CCTV_STREAM_URL_CAM2;
+  const cam3Url = process.env.CCTV_STREAM_URL_CAM3;
   const embedUrl = process.env.CCTV_EMBED_URL || "https://cctvslm.playgo.id/live-embed";
 
   // Jika ada live cameras yang dilaporkan oleh CCTV VPS API
   if (liveCameras && liveCameras.length > 0) {
     return liveCameras.map((cam, index) => {
-      let streamUrl = cam1Url;
-      if (index === 1) streamUrl = cam2Url;
-      else if (index >= 2) streamUrl = cam3Url;
-
-      // Jika URL spesifik belum diset per-cam, bangun URL default berdasarkan ID kamera
-      if (!process.env[`CCTV_STREAM_URL_CAM${index + 1}`]) {
-        streamUrl = `${baseUrl}/cameras/${cam.id}/stream`;
-      }
+      const envCamUrl =
+        process.env[`CCTV_STREAM_URL_CAM${cam.id}`] ||
+        (index === 0 ? cam1Url : index === 1 ? cam2Url : cam3Url);
+      const directFallbackUrl = `${baseUrl}/cameras/${cam.id}/stream`;
+      const streamUrl = resolveCameraStreamUrl(cam.id, envCamUrl, directFallbackUrl);
 
       const streamType =
         globalStreamType !== "auto" ? globalStreamType : detectStreamType(streamUrl);
@@ -93,13 +111,16 @@ export function getConfiguredCameraStreams(
   }
 
   // Fallback kamera default jika API VPS belum memberikan daftar kamera spesifik
+  const defaultCam1Stream = resolveCameraStreamUrl("cam-1", cam1Url, `${baseUrl}/stream/camera1`);
+  const defaultCam2Stream = resolveCameraStreamUrl("cam-2", cam2Url, `${baseUrl}/stream/camera2`);
+
   return [
     {
       id: "cam-1",
       name: "Meja Packing 1",
       location: "Meja Packing Utama Gudang",
-      streamType: globalStreamType !== "auto" ? globalStreamType : detectStreamType(cam1Url),
-      streamUrl: cam1Url,
+      streamType: globalStreamType !== "auto" ? globalStreamType : detectStreamType(defaultCam1Stream),
+      streamUrl: defaultCam1Stream,
       embedUrl,
       isOnline: false,
       fps: 3,
@@ -108,8 +129,8 @@ export function getConfiguredCameraStreams(
       id: "cam-2",
       name: "Meja Packing 2",
       location: "Meja Packing Sekunder / Dus",
-      streamType: globalStreamType !== "auto" ? globalStreamType : detectStreamType(cam2Url),
-      streamUrl: cam2Url,
+      streamType: globalStreamType !== "auto" ? globalStreamType : detectStreamType(defaultCam2Stream),
+      streamUrl: defaultCam2Stream,
       embedUrl,
       isOnline: false,
       fps: 3,

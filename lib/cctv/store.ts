@@ -4,16 +4,41 @@ import { join } from "node:path";
 import { prisma } from "@/lib/db/prisma";
 import { getCctvSystemStatus } from "@/lib/cctv/client";
 
-function sanitizeLocalPhotoUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  if (url.startsWith("/uploads/")) {
-    const fullPath = join(process.cwd(), "public", url);
+export function sanitizeCctvEvidenceUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  // 1. Jika URL lokal /uploads/
+  if (trimmed.startsWith("/uploads/")) {
+    const fullPath = join(process.cwd(), "public", trimmed);
     if (!existsSync(fullPath)) {
       return null;
     }
+    return trimmed;
   }
-  return url;
+
+  // 2. Jika URL sudah mengarah ke proxy internal Next.js
+  if (trimmed.startsWith("/api/cctv/evidence")) {
+    return trimmed;
+  }
+
+  // 3. Jika URL adalah URL internal VPS atau localhost (misal http://localhost:8000/..., http://127.0.0.1:8000/..., http://31.97.51.194:8000/...)
+  // atau path relatif seperti /labels/34
+  if (
+    trimmed.includes("localhost:8000") ||
+    trimmed.includes("127.0.0.1:8000") ||
+    trimmed.includes("31.97.51.194:8000") ||
+    trimmed.startsWith("/labels/") ||
+    trimmed.startsWith("/api/v1/slm/evidence")
+  ) {
+    return `/api/cctv/evidence?url=${encodeURIComponent(trimmed)}`;
+  }
+
+  return trimmed;
 }
+
+export const sanitizeLocalPhotoUrl = sanitizeCctvEvidenceUrl;
 
 export interface ListCctvFilter {
   page?: number;
@@ -93,8 +118,20 @@ export async function listCctvDetectionsPaginated(filter: ListCctvFilter) {
     prisma.cctvDetectionLog.count({ where }),
   ]);
 
+  const mappedItems = items.map((it) => ({
+    ...it,
+    screenshotPhotoUrl:
+      sanitizeCctvEvidenceUrl(it.screenshotPhotoUrl) ||
+      sanitizeCctvEvidenceUrl(it.evidenceUrl) ||
+      (it.cctvLabelId ? `/api/cctv/evidence?labelId=${it.cctvLabelId}` : null),
+    evidenceUrl:
+      sanitizeCctvEvidenceUrl(it.evidenceUrl) ||
+      sanitizeCctvEvidenceUrl(it.screenshotPhotoUrl) ||
+      (it.cctvLabelId ? `/api/cctv/evidence?labelId=${it.cctvLabelId}` : null),
+  }));
+
   return {
-    items,
+    items: mappedItems,
     total,
     page,
     pageSize,
@@ -321,8 +358,20 @@ export async function getCctvOutboundReport(filter: CctvOutboundReportFilter) {
     }
   }
 
+  const mappedItems = items.map((it) => ({
+    ...it,
+    screenshotPhotoUrl:
+      sanitizeCctvEvidenceUrl(it.screenshotPhotoUrl) ||
+      sanitizeCctvEvidenceUrl(it.evidenceUrl) ||
+      (it.cctvLabelId ? `/api/cctv/evidence?labelId=${it.cctvLabelId}` : null),
+    evidenceUrl:
+      sanitizeCctvEvidenceUrl(it.evidenceUrl) ||
+      sanitizeCctvEvidenceUrl(it.screenshotPhotoUrl) ||
+      (it.cctvLabelId ? `/api/cctv/evidence?labelId=${it.cctvLabelId}` : null),
+  }));
+
   return {
-    items,
+    items: mappedItems,
     total,
     page,
     pageSize,
@@ -383,8 +432,14 @@ export async function getCctvDashboardSummary() {
 
   const serializedRecentPacked = recentPacked.map((item) => ({
     ...item,
-    screenshotPhotoUrl: sanitizeLocalPhotoUrl(item.screenshotPhotoUrl),
-    evidenceUrl: sanitizeLocalPhotoUrl(item.evidenceUrl),
+    screenshotPhotoUrl:
+      sanitizeCctvEvidenceUrl(item.screenshotPhotoUrl) ||
+      sanitizeCctvEvidenceUrl(item.evidenceUrl) ||
+      (item.cctvLabelId ? `/api/cctv/evidence?labelId=${item.cctvLabelId}` : null),
+    evidenceUrl:
+      sanitizeCctvEvidenceUrl(item.evidenceUrl) ||
+      sanitizeCctvEvidenceUrl(item.screenshotPhotoUrl) ||
+      (item.cctvLabelId ? `/api/cctv/evidence?labelId=${item.cctvLabelId}` : null),
     salesRecord: item.salesRecord
       ? {
           id: item.salesRecord.id,
@@ -471,8 +526,20 @@ export async function getCctvAnomaliesReport(filter: CctvAnomaliesFilter) {
     prisma.cctvDetectionLog.count({ where }),
   ]);
 
+  const mappedItems = items.map((it) => ({
+    ...it,
+    screenshotPhotoUrl:
+      sanitizeCctvEvidenceUrl(it.screenshotPhotoUrl) ||
+      sanitizeCctvEvidenceUrl(it.evidenceUrl) ||
+      (it.cctvLabelId ? `/api/cctv/evidence?labelId=${it.cctvLabelId}` : null),
+    evidenceUrl:
+      sanitizeCctvEvidenceUrl(it.evidenceUrl) ||
+      sanitizeCctvEvidenceUrl(it.screenshotPhotoUrl) ||
+      (it.cctvLabelId ? `/api/cctv/evidence?labelId=${it.cctvLabelId}` : null),
+  }));
+
   return {
-    items,
+    items: mappedItems,
     total,
     page,
     pageSize,

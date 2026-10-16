@@ -1,9 +1,9 @@
 import "server-only";
 
-const CCTV_BASE_URL =
+export const CCTV_BASE_URL =
   process.env.CCTV_BASE_URL || "http://31.97.51.194:8000";
 
-const CCTV_TOKEN =
+export const CCTV_TOKEN =
   process.env.SLM_API_TOKEN ||
   process.env.CCTV_API_TOKEN ||
   process.env.CCTV_INTEGRATION_TOKEN ||
