@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CCTV_BASE_URL, CCTV_TOKEN } from "@/lib/cctv/client";
-import { getCurrentRole } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +9,13 @@ export async function GET(
   { params }: { params: Promise<{ cameraId: string }> }
 ) {
   // Autentikasi: pastikan user terautentikasi (atau token internal)
-  const role = await getCurrentRole();
+  const user = await getCurrentUser();
   const tokenHeader = req.headers.get("x-cctv-token");
-  if (role === "UNAUTHENTICATED" && tokenHeader !== CCTV_TOKEN) {
+  const isAuthorized =
+    tokenHeader === CCTV_TOKEN ||
+    user.id !== "unauthenticated";
+
+  if (!isAuthorized) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
