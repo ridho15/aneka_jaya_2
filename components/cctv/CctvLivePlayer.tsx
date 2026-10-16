@@ -1,43 +1,34 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { CctvCameraStream, CctvStreamType } from "@/lib/cctv/streams";
+import type { CctvCameraStream } from "@/lib/cctv/streams";
 
-interface CctvLivePlayerProps {
-  cameras: CctvCameraStream[];
-  initialCameraId?: string | number;
+interface CameraCellProps {
+  camera: CctvCameraStream;
   autoPlay?: boolean;
-  className?: string;
+  onExpand?: () => void;
+  isFocused?: boolean;
 }
 
-export function CctvLivePlayer({
-  cameras,
-  initialCameraId,
-  autoPlay = false,
-  className = "",
-}: CctvLivePlayerProps) {
-  const activeCameras = cameras && cameras.length > 0 ? cameras : [];
-  const [selectedId, setSelectedId] = useState<string | number>(
-    initialCameraId ?? (activeCameras[0]?.id || "cam-1")
-  );
+export function CameraCell({
+  camera,
+  autoPlay = true,
+  onExpand,
+  isFocused = false,
+}: CameraCellProps) {
   const [isPlaying, setIsPlaying] = useState<boolean>(autoPlay);
   const [isMuted, setIsMuted] = useState<boolean>(true);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [snapshotSuccess, setSnapshotSuccess] = useState<boolean>(false);
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "live" | "error" | "offline"
   >("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [snapshotSuccess, setSnapshotSuccess] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const cellRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<any>(null);
 
-  const currentCamera =
-    activeCameras.find((c) => String(c.id) === String(selectedId)) ||
-    activeCameras[0];
-
-  // Bersihkan player instance sebelumnya
   const cleanupStream = useCallback(() => {
     if (hlsRef.current) {
       try {
@@ -54,18 +45,16 @@ export function CctvLivePlayer({
     }
   }, []);
 
-  // Inisialisasi stream player
   const startStream = useCallback(async () => {
-    if (!currentCamera) return;
+    if (!camera) return;
 
     setErrorMessage(null);
     setConnectionStatus("connecting");
     cleanupStream();
 
-    const streamUrl = currentCamera.streamUrl;
-    const streamType = currentCamera.streamType;
+    const streamUrl = camera.streamUrl;
+    const streamType = camera.streamType;
 
-    // Jika streamType adalah iframe, tidak perlu binding ke HTML5 video
     if (streamType === "iframe") {
       setConnectionStatus("live");
       return;
@@ -73,7 +62,7 @@ export function CctvLivePlayer({
 
     if (!streamUrl) {
       setConnectionStatus("offline");
-      setErrorMessage("URL siaran kamera belum dikonfigurasi.");
+      setErrorMessage("URL siaran belum dikonfigurasi.");
       return;
     }
 
@@ -81,7 +70,6 @@ export function CctvLivePlayer({
     if (!videoEl) return;
 
     try {
-      // Protokol HLS (.m3u8)
       if (streamType === "hls" || streamUrl.includes(".m3u8")) {
         const HlsModule = (await import("hls.js")).default;
         if (HlsModule.isSupported()) {
@@ -104,7 +92,7 @@ export function CctvLivePlayer({
           hls.on(HlsModule.Events.ERROR, (_event: any, data: any) => {
             if (data.fatal) {
               setConnectionStatus("offline");
-              setErrorMessage("Sinyal HLS kamera offline atau terputus.");
+              setErrorMessage("Sinyal kamera offline.");
             }
           });
         } else if (videoEl.canPlayType("application/vnd.apple.mpegurl")) {
@@ -115,39 +103,31 @@ export function CctvLivePlayer({
             .catch(() => setConnectionStatus("idle"));
         } else {
           setConnectionStatus("error");
-          setErrorMessage("Browser tidak mendukung pemutaran protokol HLS.");
+          setErrorMessage("Browser tidak mendukung HLS.");
         }
-      }
-      // Protokol MJPEG / Direct HTTP Stream
-      else if (streamType === "mjpeg" || streamUrl.includes("video_feed")) {
+      } else if (streamType === "mjpeg" || streamUrl.includes("video_feed")) {
         videoEl.src = streamUrl;
         videoEl
           .play()
           .then(() => setConnectionStatus("live"))
           .catch(() => {
-            // MJPEG seringkali stream gambar berkelanjutan
+            setConnectionStatus("live");
+          });
+      } else {
+        videoEl.src = streamUrl;
+        videoEl
+          .play()
+          .then(() => setConnectionStatus("live"))
+          .catch(() => {
             setConnectionStatus("live");
           });
       }
-      // Protokol Standar / Fallback
-      else {
-        videoEl.src = streamUrl;
-        videoEl
-          .play()
-          .then(() => setConnectionStatus("live"))
-          .catch(() => {
-            setConnectionStatus("offline");
-            setErrorMessage("Kamera fisik sedang standby atau offline.");
-          });
-      }
     } catch (err: any) {
-      console.warn("CCTV player connection issue:", err);
-      setConnectionStatus("offline");
-      setErrorMessage("Kamera fisik sedang standby atau offline.");
+      setConnectionStatus("error");
+      setErrorMessage(err?.message || "Gagal memutar video.");
     }
-  }, [currentCamera, cleanupStream]);
+  }, [camera, cleanupStream]);
 
-  // Efek ganti kamera atau play/pause
   useEffect(() => {
     if (isPlaying) {
       startStream();
@@ -155,27 +135,25 @@ export function CctvLivePlayer({
       cleanupStream();
       setConnectionStatus("idle");
     }
-
     return () => {
       cleanupStream();
     };
-  }, [isPlaying, selectedId, startStream, cleanupStream]);
+  }, [isPlaying, camera.streamUrl, startStream, cleanupStream]);
 
-  // Optimasi Bandwidth: IntersectionObserver & Page Visibility API
+  // Observer untuk auto-pause saat sel kamera di luar viewport
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const el = cellRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
 
-    // 1. Observer saat viewport keluar layar
+    let wasPlayingBeforeHidden = isPlaying;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        const entry = entries[0];
-        if (entry && !entry.isIntersecting && isPlaying) {
-          // Pause sementara saat discroll jauh keluar layar
-          if (videoRef.current) {
-            videoRef.current.pause();
-          }
-        } else if (entry && entry.isIntersecting && isPlaying) {
+        const [entry] = entries;
+        if (!entry.isIntersecting && isPlaying) {
+          wasPlayingBeforeHidden = true;
+          if (videoRef.current) videoRef.current.pause();
+        } else if (entry.isIntersecting && wasPlayingBeforeHidden) {
           if (videoRef.current && videoRef.current.paused) {
             videoRef.current.play().catch(() => {});
           }
@@ -184,38 +162,11 @@ export function CctvLivePlayer({
       { threshold: 0.15 }
     );
 
-    observer.observe(container);
-
-    // 2. Observer saat tab browser disembunyikan/minimize
-    const handleVisibilityChange = () => {
-      if (document.hidden && isPlaying) {
-        if (videoRef.current) videoRef.current.pause();
-      } else if (!document.hidden && isPlaying) {
-        if (videoRef.current && videoRef.current.paused) {
-          videoRef.current.play().catch(() => {});
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
+    observer.observe(el);
     return () => {
       observer.disconnect();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isPlaying]);
-
-  // Fullscreen Change Listener
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    };
-  }, []);
 
   const togglePlay = () => {
     setIsPlaying((prev) => !prev);
@@ -229,13 +180,14 @@ export function CctvLivePlayer({
   };
 
   const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
-
+    if (!cellRef.current) return;
     try {
       if (!document.fullscreenElement) {
-        await containerRef.current.requestFullscreen();
+        await cellRef.current.requestFullscreen();
+        setIsFullscreen(true);
       } else {
         await document.exitFullscreen();
+        setIsFullscreen(false);
       }
     } catch (err) {
       console.warn("Fullscreen request failed:", err);
@@ -257,7 +209,9 @@ export function CctvLivePlayer({
         const dataUrl = canvas.toDataURL("image/png");
 
         const link = document.createElement("a");
-        const filename = `cctv-snapshot-${currentCamera?.name || "camera"}-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
+        const filename = `cctv-${camera.name.toLowerCase().replace(/\s+/g, "-")}-${new Date()
+          .toISOString()
+          .replace(/[:.]/g, "-")}.png`;
         link.download = filename;
         link.href = dataUrl;
         document.body.appendChild(link);
@@ -274,79 +228,60 @@ export function CctvLivePlayer({
 
   return (
     <div
-      ref={containerRef}
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl ${className}`}
+      ref={cellRef}
+      className={`flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs transition-all hover:border-slate-300 ${
+        isFocused ? "w-full" : ""
+      }`}
     >
-      {/* Bar Navigasi Multi-Kamera */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800/80 bg-slate-900/90 px-3.5 py-2.5 backdrop-blur-sm gap-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {activeCameras.map((cam) => {
-            const isSelected = String(cam.id) === String(selectedId);
-            return (
-              <button
-                key={cam.id}
-                type="button"
-                onClick={() => {
-                  setSelectedId(cam.id);
-                  setErrorMessage(null);
-                }}
-                className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                  isSelected
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    cam.isOnline
-                      ? "bg-emerald-300 animate-pulse"
-                      : isSelected
-                      ? "bg-emerald-200"
-                      : "bg-slate-500"
-                  }`}
-                />
-                <span>{cam.name}</span>
-              </button>
-            );
-          })}
+      {/* Header Sel Kamera */}
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={`h-2 w-2 rounded-full shrink-0 ${
+              camera.isOnline ? "bg-emerald-500" : "bg-slate-300"
+            }`}
+          />
+          <span className="font-bold text-slate-800 truncate" title={camera.name}>
+            {camera.name}
+          </span>
+          <span className="hidden xl:inline-block text-[10px] text-slate-400 truncate">
+            {camera.location || "Meja Packing"}
+          </span>
         </div>
 
-        {/* Status Indikator Live & Resolusi */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {isPlaying && connectionStatus === "live" ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              LIVE
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Aktif
             </span>
           ) : isPlaying && connectionStatus === "connecting" ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-bold text-amber-400 border border-amber-500/30">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-              Menyambungkan
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Menghubungkan
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-0.5 text-[11px] font-medium text-slate-400 border border-slate-700">
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-200">
               Standby
             </span>
           )}
 
-          <span className="hidden sm:inline-block rounded-md bg-slate-800/80 px-2 py-0.5 font-mono text-[10px] text-slate-400">
-            {currentCamera?.streamType?.toUpperCase() || "HLS"} • 1080p
+          <span className="rounded bg-white border border-slate-200 px-1.5 py-0.5 font-mono text-[9px] text-slate-400">
+            {camera.streamType?.toUpperCase() || "HLS"}
           </span>
         </div>
       </div>
 
-      {/* Frame Tampilan Video / Screen Area */}
+      {/* Frame Video / Screen Area */}
       <div className="relative aspect-video w-full bg-slate-950 flex items-center justify-center overflow-hidden select-none">
-        {/* Iframe View jika tipe iframe */}
-        {isPlaying && currentCamera?.streamType === "iframe" && currentCamera.embedUrl ? (
+        {isPlaying && camera.streamType === "iframe" && camera.embedUrl ? (
           <iframe
-            src={currentCamera.embedUrl}
-            title={`Live Stream ${currentCamera.name}`}
+            src={camera.embedUrl}
+            title={`Pantauan ${camera.name}`}
             className="h-full w-full border-0"
             allow="autoplay; fullscreen; picture-in-picture"
           />
         ) : (
-          /* HTML5 Video Element */
           <video
             ref={videoRef}
             className={`h-full w-full object-contain ${
@@ -354,257 +289,289 @@ export function CctvLivePlayer({
             }`}
             playsInline
             muted={isMuted}
-            preload="none"
+            autoPlay={autoPlay}
+            preload="auto"
           />
         )}
 
-        {/* Layar Standby / Offline State */}
+        {/* Layar Siaga / Offline (Light Surveillance UI) */}
         {(!isPlaying || connectionStatus !== "live") && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 p-6 text-center">
-            {/* Background grid motif subtle */}
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
-
-            <div className="relative z-10 flex flex-col items-center max-w-sm">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-400 mb-3 shadow-inner">
-                {connectionStatus === "connecting" ? (
-                  <svg
-                    className="w-7 h-7 animate-spin text-emerald-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8H4z"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-7 h-7 text-slate-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                    />
-                  </svg>
-                )}
-              </div>
-
-              <h4 className="text-sm font-bold text-slate-200">
-                {currentCamera?.name || "Kamera Meja Packing"}
-              </h4>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {currentCamera?.location || "Area Meja Packing Gudang"}
-              </p>
-
-              {errorMessage && (
-                <p className="mt-2 text-[11px] font-medium text-amber-400 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">
-                  {errorMessage}
-                </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 mb-2 shadow-2xs">
+              {connectionStatus === "connecting" ? (
+                <svg className="w-5 h-5 animate-spin text-emerald-600" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
               )}
-
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition shadow-md active:scale-95"
-                >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  <span>{isPlaying ? "Coba Sambungkan Lagi" : "Mulai Siaran Live"}</span>
-                </button>
-
-                <a
-                  href="https://cctvslm.playgo.id"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition"
-                >
-                  <span>Web CCTV SLM</span>
-                  <span className="text-slate-500">↗</span>
-                </a>
-              </div>
             </div>
+
+            <p className="text-xs font-bold text-slate-800">{camera.name}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{camera.location || "Meja Packing Gudang"}</p>
+
+            {errorMessage ? (
+              <p className="mt-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                {errorMessage}
+              </p>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 transition shadow-2xs active:scale-95"
+            >
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <span>{isPlaying ? "Sambungkan Ulang" : "Buka Pantauan Kamera"}</span>
+            </button>
           </div>
         )}
 
-        {/* Notifikasi Toast Snapshot Berhasil */}
+        {/* Notifikasi Toast Snapshot */}
         {snapshotSuccess && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xl animate-fade-in">
-            <svg
-              className="w-4 h-4 text-emerald-100"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M5 13l4 4L19 7"
-              />
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white shadow-md border border-emerald-600 animate-fade-in">
+            <svg className="w-3.5 h-3.5 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
-            <span>Tangkapan layar frame CCTV berhasil disimpan!</span>
+            <span>Foto tersimpan</span>
           </div>
         )}
       </div>
 
-      {/* Kontrol Player Bawah (Glassmorphic Bar) */}
-      <div className="flex items-center justify-between border-t border-slate-800/80 bg-slate-900/90 px-4 py-2.5 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          {/* Tombol Play / Pause */}
+      {/* Toolbar Kontrol Bawah Sel */}
+      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/70 px-2.5 py-1.5 text-slate-600">
+        <div className="flex items-center gap-1.5">
+          {/* Tombol Play/Pause */}
           <button
             type="button"
             onClick={togglePlay}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition active:scale-95 shadow-sm"
-            title={isPlaying ? "Hentikan Siaran" : "Putar Siaran"}
+            className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition shadow-2xs"
+            title={isPlaying ? "Jeda Feed" : "Putar Feed"}
           >
             {isPlaying ? (
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
               </svg>
             ) : (
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
           </button>
 
-          {/* Tombol Mute / Unmute */}
+          {/* Tombol Audio */}
           <button
             type="button"
             onClick={toggleMute}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white transition"
-            title={isMuted ? "Aktifkan Suara" : "Matikan Suara"}
+            className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition shadow-2xs"
+            title={isMuted ? "Aktifkan Audio" : "Senyapkan"}
           >
             {isMuted ? (
-              <svg
-                className="w-4 h-4 text-slate-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
-                />
+              <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
               </svg>
             ) : (
-              <svg
-                className="w-4 h-4 text-emerald-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                />
+              <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
               </svg>
             )}
           </button>
-
-          <span className="text-xs text-slate-400 font-medium">
-            {isPlaying
-              ? "Siaran Aktif (On-Demand)"
-              : "Siaran Dijeda (Hemat Bandwidth)"}
-          </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Tombol Snapshot / Tangkapan Frame */}
+        <div className="flex items-center gap-1.5">
+          {/* Tombol Snapshot */}
           <button
             type="button"
             onClick={takeSnapshot}
             disabled={!isPlaying || connectionStatus !== "live"}
-            className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition disabled:opacity-40 disabled:pointer-events-none"
-            title="Ambil Foto Frame Saat Ini"
+            className="flex h-7 items-center gap-1 rounded border border-slate-200 bg-white px-2 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 transition shadow-2xs disabled:opacity-40"
+            title="Ambil Cuplikan Foto"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.75}
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.75}
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-              />
+            <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span className="hidden sm:inline">Foto Frame</span>
+            <span>Foto Frame</span>
           </button>
 
-          {/* Tombol Fullscreen */}
+          {/* Tombol Perbesar / Fokus */}
+          {onExpand ? (
+            <button
+              type="button"
+              onClick={onExpand}
+              className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition shadow-2xs"
+              title={isFocused ? "Kembali ke Grid" : "Fokus Kamera Ini"}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </button>
+          ) : null}
+
+          {/* Tombol Fullscreen Layar Penuh */}
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white transition"
-            title={isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
+            className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 transition shadow-2xs"
+            title="Layar Penuh"
           >
-            {isFullscreen ? (
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            ) : (
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                />
-              </svg>
-            )}
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+            </svg>
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface CctvLivePlayerProps {
+  cameras: CctvCameraStream[];
+  initialCameraId?: string | number;
+  autoPlay?: boolean;
+  className?: string;
+  defaultViewMode?: "grid" | "focus";
+}
+
+export function CctvLivePlayer({
+  cameras,
+  initialCameraId,
+  autoPlay = true,
+  className = "",
+  defaultViewMode = "grid",
+}: CctvLivePlayerProps) {
+  const activeCameras = cameras && cameras.length > 0 ? cameras : [];
+  const [viewMode, setViewMode] = useState<"grid" | "focus">(defaultViewMode);
+  const [focusedId, setFocusedId] = useState<string | number>(
+    initialCameraId ?? (activeCameras[0]?.id || "cam-1")
+  );
+
+  const focusedCamera =
+    activeCameras.find((c) => String(c.id) === String(focusedId)) ||
+    activeCameras[0];
+
+  return (
+    <div
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-800 shadow-xs ${className}`}
+    >
+      {/* Bar Atas Multi-Kamera */}
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 bg-slate-50/90 px-4 py-2.5 gap-2">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span>{activeCameras.length} Kamera CCTV Terhubung</span>
+          </span>
+          <span className="hidden sm:inline-block text-xs text-slate-500">
+            {viewMode === "grid" ? "Tampilan 3-Channel Grid" : `Fokus: ${focusedCamera?.name || "Kamera"}`}
+          </span>
+        </div>
+
+        {/* Tombol Pengalih Mode: Grid 3 Kamera vs Fokus 1 Kamera */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setViewMode("grid")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all shadow-2xs border ${
+              viewMode === "grid"
+                ? "bg-white text-emerald-800 border-slate-300 shadow-xs"
+                : "border-transparent text-slate-600 hover:bg-slate-200/60"
+            }`}
+            title="Tampilkan ke-3 kamera sekaligus"
+          >
+            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+            <span>Grid 3 Kamera</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode("focus")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all shadow-2xs border ${
+              viewMode === "focus"
+                ? "bg-white text-emerald-800 border-slate-300 shadow-xs"
+                : "border-transparent text-slate-600 hover:bg-slate-200/60"
+            }`}
+            title="Tampilkan 1 kamera terpilih secara besar"
+          >
+            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            <span>Fokus 1 Kamera</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Konten Pemutar: Mode Grid (3 Kamera) atau Mode Fokus (1 Kamera Besar) */}
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 p-3.5 bg-slate-100/40">
+          {activeCameras.map((cam) => (
+            <CameraCell
+              key={cam.id}
+              camera={cam}
+              autoPlay={autoPlay}
+              onExpand={() => {
+                setFocusedId(cam.id);
+                setViewMode("focus");
+              }}
+            />
+          ))}
+          {activeCameras.length === 0 && (
+            <div className="col-span-full py-8 text-center text-xs text-slate-400">
+              Tidak ada feed kamera yang terkonfigurasi.
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Mode Fokus */
+        <div className="flex flex-col p-3.5 bg-slate-100/40 gap-3">
+          {/* Sub-selector kamera dalam mode fokus */}
+          <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-1.5">
+              {activeCameras.map((cam) => {
+                const isSelected = String(cam.id) === String(focusedId);
+                return (
+                  <button
+                    key={cam.id}
+                    type="button"
+                    onClick={() => setFocusedId(cam.id)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition shadow-2xs border ${
+                      isSelected
+                        ? "bg-white text-emerald-800 border-slate-300 shadow-xs"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-white"
+                    }`}
+                  >
+                    {cam.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className="text-xs font-semibold text-emerald-700 hover:underline shrink-0"
+            >
+              ← Kembali ke Grid 3 Kamera
+            </button>
+          </div>
+
+          {focusedCamera ? (
+            <CameraCell
+              camera={focusedCamera}
+              autoPlay={autoPlay}
+              isFocused={true}
+              onExpand={() => setViewMode("grid")}
+            />
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

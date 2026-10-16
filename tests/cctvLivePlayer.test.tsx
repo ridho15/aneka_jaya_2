@@ -97,14 +97,40 @@ describe("CCTV Live Streaming Player & Dashboard Integration", () => {
       },
     ];
 
-    it("renders camera switcher tabs, standby screen, and control bar", () => {
+    it("renders multi-camera grid layout simultaneously with mode switcher and light theme", () => {
       const html = renderToStaticMarkup(<CctvLivePlayer cameras={mockCameras} />);
 
+      // Verifikasi kedua kamera muncul bersamaan di DOM (Multi-Camera Grid)
       expect(html).toContain("Meja Packing 1");
       expect(html).toContain("Meja Packing 2");
-      expect(html).toContain("Mulai Siaran Live");
+      expect(html).toContain("2 Kamera CCTV Terhubung");
+      expect(html).toContain("Grid 3 Kamera");
+      expect(html).toContain("Fokus 1 Kamera");
       expect(html).toContain("Foto Frame");
-      expect(html).toContain("Standby");
+      expect(html).toContain("autoplay");
+      expect(html).toContain("bg-white");
+      expect(html).toContain("border-slate-200");
+    });
+
+    it("renders standby button when autoplay is disabled", () => {
+      const html = renderToStaticMarkup(
+        <CctvLivePlayer cameras={mockCameras} autoPlay={false} />
+      );
+
+      expect(html).toContain("Buka Pantauan Kamera");
+    });
+
+    it("renders focused mode with return to grid button", () => {
+      const html = renderToStaticMarkup(
+        <CctvLivePlayer
+          cameras={mockCameras}
+          defaultViewMode="focus"
+          initialCameraId="cam-2"
+        />
+      );
+
+      expect(html).toContain("Kembali ke Grid 3 Kamera");
+      expect(html).toContain("Meja Sekunder Gudang");
     });
 
     it("strictly contains zero raw tacky emojis and only clean SVG icons", () => {
@@ -120,7 +146,7 @@ describe("CCTV Live Streaming Player & Dashboard Integration", () => {
   });
 
   describe("3. CctvDashboardWidget Integration with Live Player", () => {
-    it("renders integrated live player alongside KPI cards in split view", () => {
+    it("renders integrated live player alongside KPI cards in full-width surveillance view", () => {
       const html = renderToStaticMarkup(
         <CctvDashboardWidget
           summary={{
@@ -132,8 +158,8 @@ describe("CCTV Live Streaming Player & Dashboard Integration", () => {
       );
 
       expect(html).toContain("Pengawasan Meja Packing CCTV");
-      expect(html).toContain("Sembunyikan Siaran");
-      expect(html).toContain("Mulai Siaran Live");
+      expect(html).toContain("Sembunyikan Pantauan");
+      expect(html).toContain("Grid 3 Kamera");
       expect(html).toContain("Selesai Packing");
       expect(html).toContain("Total Deteksi Meja");
       expect(html).toContain("Belum ada paket yang dipacking hari ini");
