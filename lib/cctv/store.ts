@@ -40,6 +40,44 @@ export function sanitizeCctvEvidenceUrl(url: string | null | undefined): string 
 
 export const sanitizeLocalPhotoUrl = sanitizeCctvEvidenceUrl;
 
+export function parseDateFilterRange(from?: string, to?: string): { gte?: Date; lte?: Date } | null {
+  if (!from && !to) return null;
+  const range: { gte?: Date; lte?: Date } = {};
+  if (from) {
+    const fromDate = new Date(`${from}T00:00:00+07:00`);
+    if (!isNaN(fromDate.getTime())) {
+      range.gte = fromDate;
+    }
+  }
+  if (to) {
+    const toDate = new Date(`${to}T23:59:59+07:00`);
+    if (!isNaN(toDate.getTime())) {
+      range.lte = toDate;
+    }
+  }
+  if (!range.gte && !range.lte) return null;
+  return range;
+}
+
+export function getPackingDateCondition(range: { gte?: Date; lte?: Date }) {
+  return {
+    OR: [
+      { packingCompletedAt: range },
+      { packingCompletedAt: null, createdAt: range },
+    ],
+  };
+}
+
+export function getActivityDateCondition(range: { gte?: Date; lte?: Date }) {
+  return {
+    OR: [
+      { packingCompletedAt: range },
+      { firstSeenAt: range },
+      { packingCompletedAt: null, firstSeenAt: null, createdAt: range },
+    ],
+  };
+}
+
 export interface ListCctvFilter {
   page?: number;
   pageSize?: number;
@@ -81,26 +119,18 @@ export async function listCctvDetectionsPaginated(filter: ListCctvFilter) {
     ];
   }
 
-  if (filter.from || filter.to) {
-    where.createdAt = {};
-    if (filter.from) {
-      const fromDate = new Date(`${filter.from}T00:00:00+07:00`);
-      if (!isNaN(fromDate.getTime())) {
-        where.createdAt.gte = fromDate;
-      }
-    }
-    if (filter.to) {
-      const toDate = new Date(`${filter.to}T23:59:59+07:00`);
-      if (!isNaN(toDate.getTime())) {
-        where.createdAt.lte = toDate;
-      }
-    }
+  const dateRange = parseDateFilterRange(filter.from, filter.to);
+  if (dateRange) {
+    where.AND = [
+      ...(where.AND || []),
+      getActivityDateCondition(dateRange),
+    ];
   }
 
   const [items, total] = await Promise.all([
     prisma.cctvDetectionLog.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ packingCompletedAt: "desc" }, { createdAt: "desc" }],
       skip,
       take: pageSize,
       include: {
@@ -142,37 +172,42 @@ export async function listCctvDetectionsPaginated(filter: ListCctvFilter) {
 export async function getCctvStats() {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+  const todayRange = { gte: startOfDay, lte: endOfDay };
+  const todayPackingCond = getPackingDateCondition(todayRange);
+  const todayActivityCond = getActivityDateCondition(todayRange);
 
   const [totalToday, totalPackedToday, totalAnomaliesToday, byStoreRaw, byCameraRaw] =
     await Promise.all([
       prisma.cctvDetectionLog.count({
-        where: { createdAt: { gte: startOfDay } },
+        where: todayActivityCond,
       }),
       prisma.cctvDetectionLog.count({
         where: {
-          createdAt: { gte: startOfDay },
           eventType: "packing_completed",
+          ...todayPackingCond,
         },
       }),
       prisma.cctvDetectionLog.count({
         where: {
-          createdAt: { gte: startOfDay },
           eventType: "anomaly",
+          ...todayActivityCond,
         },
       }),
       prisma.cctvDetectionLog.groupBy({
         by: ["sourceLabel"],
         where: {
-          createdAt: { gte: startOfDay },
           sourceLabel: { not: null },
+          ...todayActivityCond,
         },
         _count: { id: true },
       }),
       prisma.cctvDetectionLog.groupBy({
         by: ["cameraName"],
         where: {
-          createdAt: { gte: startOfDay },
           cameraName: { not: null },
+          ...todayActivityCond,
         },
         _count: { id: true },
       }),
@@ -269,26 +304,18 @@ export async function getCctvOutboundReport(filter: CctvOutboundReportFilter) {
     ];
   }
 
-  if (filter.from || filter.to) {
-    where.createdAt = {};
-    if (filter.from) {
-      const fromDate = new Date(`${filter.from}T00:00:00+07:00`);
-      if (!isNaN(fromDate.getTime())) {
-        where.createdAt.gte = fromDate;
-      }
-    }
-    if (filter.to) {
-      const toDate = new Date(`${filter.to}T23:59:59+07:00`);
-      if (!isNaN(toDate.getTime())) {
-        where.createdAt.lte = toDate;
-      }
-    }
+  const dateRange = parseDateFilterRange(filter.from, filter.to);
+  if (dateRange) {
+    where.AND = [
+      ...(where.AND || []),
+      getPackingDateCondition(dateRange),
+    ];
   }
 
   const [items, total, allDetectedLogs] = await Promise.all([
     prisma.cctvDetectionLog.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ packingCompletedAt: "desc" }, { createdAt: "desc" }],
       skip,
       take: pageSize,
       include: {
@@ -388,33 +415,38 @@ export async function getCctvOutboundReport(filter: CctvOutboundReportFilter) {
 export async function getCctvDashboardSummary() {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+  const todayRange = { gte: startOfDay, lte: endOfDay };
+  const todayPackingCond = getPackingDateCondition(todayRange);
+  const todayActivityCond = getActivityDateCondition(todayRange);
 
   const [totalPackedToday, totalDetectionsToday, totalAnomaliesToday, recentPacked, liveSystem] =
     await Promise.all([
       prisma.cctvDetectionLog.count({
         where: {
-          createdAt: { gte: startOfDay },
           eventType: "packing_completed",
+          ...todayPackingCond,
         },
       }),
       prisma.cctvDetectionLog.count({
-        where: { createdAt: { gte: startOfDay } },
+        where: todayActivityCond,
       }),
       prisma.cctvDetectionLog.count({
         where: {
-          createdAt: { gte: startOfDay },
           OR: [
             { eventType: "anomaly" },
             { matchStatus: "unmatched" },
             { matchStatus: "review" },
           ],
+          AND: [todayActivityCond],
         },
       }),
       prisma.cctvDetectionLog.findMany({
         where: {
           eventType: "packing_completed",
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ packingCompletedAt: "desc" }, { createdAt: "desc" }],
         take: 5,
         include: {
           salesRecord: {
@@ -500,26 +532,18 @@ export async function getCctvAnomaliesReport(filter: CctvAnomaliesFilter) {
     ];
   }
 
-  if (filter.from || filter.to) {
-    where.createdAt = {};
-    if (filter.from) {
-      const fromDate = new Date(`${filter.from}T00:00:00+07:00`);
-      if (!isNaN(fromDate.getTime())) {
-        where.createdAt.gte = fromDate;
-      }
-    }
-    if (filter.to) {
-      const toDate = new Date(`${filter.to}T23:59:59+07:00`);
-      if (!isNaN(toDate.getTime())) {
-        where.createdAt.lte = toDate;
-      }
-    }
+  const dateRange = parseDateFilterRange(filter.from, filter.to);
+  if (dateRange) {
+    where.AND = [
+      ...(where.AND || []),
+      getActivityDateCondition(dateRange),
+    ];
   }
 
   const [items, total] = await Promise.all([
     prisma.cctvDetectionLog.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ firstSeenAt: "desc" }, { createdAt: "desc" }],
       skip,
       take: pageSize,
     }),
@@ -550,19 +574,23 @@ export async function getCctvAnomaliesReport(filter: CctvAnomaliesFilter) {
 export async function getCctvCamerasReport() {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+  const todayRange = { gte: startOfDay, lte: endOfDay };
+  const todayActivityCond = getActivityDateCondition(todayRange);
 
   const [allTimeGroupBy, todayGroupBy, liveSystem] = await Promise.all([
     prisma.cctvDetectionLog.groupBy({
       by: ["cameraName"],
       where: { cameraName: { not: null } },
       _count: { id: true },
-      _max: { createdAt: true },
+      _max: { packingCompletedAt: true, createdAt: true },
     }),
     prisma.cctvDetectionLog.groupBy({
       by: ["cameraName"],
       where: {
         cameraName: { not: null },
-        createdAt: { gte: startOfDay },
+        ...todayActivityCond,
       },
       _count: { id: true },
     }),
@@ -580,7 +608,7 @@ export async function getCctvCamerasReport() {
       name: g.cameraName,
       totalAllTime: g._count.id,
       totalToday: todayCountMap[g.cameraName] || 0,
-      lastSeenAt: g._max.createdAt,
+      lastSeenAt: g._max.packingCompletedAt || g._max.createdAt,
       isOnline: liveSystem?.cameras?.some((c) => c.name.toLowerCase() === g.cameraName.toLowerCase() && c.status === "online") ?? true,
     }));
 

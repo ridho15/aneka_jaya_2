@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import crypto from "node:crypto";
+import { fetchSnapshotCaptureDate } from "@/lib/cctv/client";
 
 const CCTV_TOKEN =
   process.env.SLM_API_TOKEN ||
@@ -106,8 +107,48 @@ export async function POST(request: Request) {
   try {
 
     const { event_id, event_type, severity, title, message, occurred_at, camera, data } = payload;
-    const eventTime = occurred_at ? new Date(occurred_at) : new Date();
-    const safeEventTime = isNaN(eventTime.getTime()) ? new Date() : eventTime;
+
+    // Prioritaskan timestamp fisik penangkapan kamera/deteksi label:
+    // 1. packing_completed_at spesifik
+    // 2. detected_at / captured_at / label_created_at / created_at dari data CCTV
+    // 3. Header Last-Modified dari URL snapshot bukti (jika tersedia)
+    // 4. occurred_at payload
+    // 5. Fallback ke new Date()
+    let physicalCaptureDate: Date | null = null;
+    const rawCandidateTime =
+      data?.packing_completed_at ||
+      (data as any)?.detected_at ||
+      (data as any)?.captured_at ||
+      (data as any)?.label_created_at ||
+      (data as any)?.created_at;
+
+    if (rawCandidateTime) {
+      const parsed = new Date(String(rawCandidateTime));
+      if (!isNaN(parsed.getTime())) {
+        physicalCaptureDate = parsed;
+      }
+    }
+
+    if (!physicalCaptureDate) {
+      const candidateEvidenceUrl =
+        data?.evidence_url ? String(data.evidence_url) :
+        payload.evidence_url ? String(payload.evidence_url) : null;
+      const snapshotDate = await fetchSnapshotCaptureDate(candidateEvidenceUrl, data?.label_id);
+      if (snapshotDate) {
+        physicalCaptureDate = snapshotDate;
+      }
+    }
+
+    if (!physicalCaptureDate && occurred_at) {
+      const parsed = new Date(occurred_at);
+      if (!isNaN(parsed.getTime())) {
+        physicalCaptureDate = parsed;
+      }
+    }
+
+    const safePhysicalTime = physicalCaptureDate || new Date();
+    const eventTime = occurred_at ? new Date(occurred_at) : safePhysicalTime;
+    const safeEventTime = isNaN(eventTime.getTime()) ? safePhysicalTime : eventTime;
 
     switch (event_type) {
       case "packing_completed": {
@@ -127,10 +168,7 @@ export async function POST(request: Request) {
             include: { deliveryOrder: true },
           });
 
-          const packedDate = data?.packing_completed_at
-            ? new Date(String(data.packing_completed_at))
-            : safeEventTime;
-          const safePackedDate = isNaN(packedDate.getTime()) ? safeEventTime : packedDate;
+          const safePackedDate = safePhysicalTime;
 
           if (sales) {
             // 1. Update status packing di SalesRecord
@@ -203,7 +241,7 @@ export async function POST(request: Request) {
               severity: severity || "info",
               packingStatus: "completed",
               matchStatus: sales ? "matched" : "unmatched",
-              firstSeenAt: safeEventTime,
+              firstSeenAt: safePhysicalTime,
               packingCompletedAt: safePackedDate,
               evidenceUrl: resolvedEvidenceUrl,
               screenshotPhotoUrl: resolvedEvidenceUrl,
@@ -265,7 +303,8 @@ export async function POST(request: Request) {
             severity: severity || "critical",
             packingStatus: "anomaly",
             matchStatus: "review",
-            firstSeenAt: safeEventTime,
+            firstSeenAt: safePhysicalTime,
+            packingCompletedAt: safePhysicalTime,
             evidenceUrl: resolvedEvidenceUrl,
             rawPayload: payload as any,
             notes: (data?.reason as string) || message || title || "Anomali terdeteksi di area packing CCTV",

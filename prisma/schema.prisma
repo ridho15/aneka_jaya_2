@@ -588,5 +588,7 @@ model CctvDetectionLog {
   @@index([cameraName])
   @@index([eventType])
   @@index([createdAt])
+  @@index([packingCompletedAt])
+  @@index([firstSeenAt])
 }
 

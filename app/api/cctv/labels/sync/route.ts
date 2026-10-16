@@ -4,6 +4,7 @@ import { recordAudit } from "@/lib/audit/store";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fetchSnapshotCaptureDate } from "@/lib/cctv/client";
 
 const CCTV_TOKEN = process.env.CCTV_INTEGRATION_TOKEN || "cctv-slm-token-2026";
 
@@ -194,13 +195,30 @@ export async function POST(request: Request) {
     }
 
     const isPacked = event_type === "packing_completed" || Boolean(packing_completed_at);
-    let packedDate = new Date();
+
+    // Prioritaskan timestamp fisik penangkapan kamera/deteksi label:
+    // 1. packing_completed_at
+    // 2. Header Last-Modified dari URL snapshot bukti (jika tersedia)
+    // 3. Fallback ke new Date()
+    let physicalDate: Date | null = null;
     if (packing_completed_at) {
       const parsed = new Date(String(packing_completed_at));
       if (!isNaN(parsed.getTime())) {
-        packedDate = parsed;
+        physicalDate = parsed;
       }
     }
+
+    if (!physicalDate && (evidence_url || cctv_label_id)) {
+      const snapshotDate = await fetchSnapshotCaptureDate(
+        evidence_url ? String(evidence_url) : null,
+        cctv_label_id ? Number(cctv_label_id) : null
+      );
+      if (snapshotDate) {
+        physicalDate = snapshotDate;
+      }
+    }
+
+    const packedDate = physicalDate || new Date();
 
     // Prioritaskan file foto yang tersimpan lokal di ERP, lalu fallback ke evidence_url
     const resolvedPhotoUrl = uploadedScreenshotUrl
@@ -277,6 +295,7 @@ export async function POST(request: Request) {
         severity: "info",
         packingStatus: isPacked ? "completed" : "in_progress",
         matchStatus: "matched",
+        firstSeenAt: packedDate,
         packingCompletedAt: isPacked ? packedDate : null,
         evidenceUrl: evidence_url ? String(evidence_url) : null,
         screenshotPhotoUrl: resolvedPhotoUrl,

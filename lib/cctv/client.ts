@@ -113,16 +113,56 @@ export async function getCctvPackingSummary(date?: string): Promise<CctvPackingS
 }
 
 /**
- * Mengambil daftar log event terbaru dari CCTV SLM (dapat difilter berdasarkan type & limit)
+ * Mengambil timestamp fisik penangkapan gambar bukti dari header Last-Modified server CCTV.
  */
-export async function getCctvEvents(params?: {
-  limit?: number;
-  type?: "packing_completed" | "anomaly" | string;
-}): Promise<any[] | null> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.type) searchParams.set("type", params.type);
-  const qs = searchParams.toString();
-  return cctvFetch<any[]>(`api/v1/slm/events${qs ? `?${qs}` : ""}`);
+export async function fetchSnapshotCaptureDate(
+  evidenceUrl?: string | null,
+  labelId?: number | string | null
+): Promise<Date | null> {
+  let targetUrl: string | null = null;
+  if (evidenceUrl && typeof evidenceUrl === "string") {
+    const trimmed = evidenceUrl.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      targetUrl = trimmed;
+    } else if (trimmed.startsWith("/")) {
+      targetUrl = `${CCTV_BASE_URL.replace(/\/+$/, "")}/${trimmed.replace(/^\/+/, "")}`;
+    }
+  }
+
+  if (!targetUrl && labelId) {
+    targetUrl = `${CCTV_BASE_URL.replace(/\/+$/, "")}/api/v1/slm/evidence/label-snapshot/${labelId}`;
+  }
+
+  if (!targetUrl) return null;
+
+  try {
+    const parsed = new URL(targetUrl);
+    if (!parsed.searchParams.has("token")) {
+      parsed.searchParams.set("token", CCTV_TOKEN);
+    }
+    const res = await fetch(parsed.toString(), {
+      method: "HEAD",
+      headers: {
+        Authorization: `Bearer ${CCTV_TOKEN}`,
+        "X-CCTV-Token": CCTV_TOKEN,
+        "X-SLM-Token": CCTV_TOKEN,
+      },
+      signal: AbortSignal.timeout(1500),
+    });
+
+    if (res.ok) {
+      const lastModified = res.headers.get("last-modified");
+      if (lastModified) {
+        const d = new Date(lastModified);
+        if (!isNaN(d.getTime())) {
+          return d;
+        }
+      }
+    }
+  } catch {
+    // Non-blocking fallback
+  }
+
+  return null;
 }
 
