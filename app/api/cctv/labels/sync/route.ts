@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fetchSnapshotCaptureDate } from "@/lib/cctv/client";
+import { sanitizeReceiptPhotoUrl } from "@/lib/deliveryOrders/photos";
 
 const CCTV_TOKEN = process.env.CCTV_INTEGRATION_TOKEN || "cctv-slm-token-2026";
 
@@ -220,10 +221,11 @@ export async function POST(request: Request) {
 
     const packedDate = physicalDate || new Date();
 
-    // Prioritaskan file foto yang tersimpan lokal di ERP, lalu fallback ke evidence_url
-    const resolvedPhotoUrl = uploadedScreenshotUrl
+    // Prioritaskan file foto yang tersimpan lokal di ERP, lalu fallback ke evidence_url ter-proxy
+    const rawPhoto = uploadedScreenshotUrl
       || (evidence_url ? String(evidence_url) : null)
       || null;
+    const resolvedPhotoUrl = sanitizeReceiptPhotoUrl(rawPhoto) || rawPhoto;
 
     // Update Delivery Order jika ada
     if (sales.deliveryOrder) {

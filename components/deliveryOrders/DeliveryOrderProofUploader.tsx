@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { compressImage } from "@/lib/utils/imageCompression";
-import { parseReceiptPhotos, serializeReceiptPhotos } from "@/lib/deliveryOrders/photos";
+import { parseReceiptPhotos, serializeReceiptPhotos, sanitizeReceiptPhotoUrl } from "@/lib/deliveryOrders/photos";
 
 interface DeliveryOrderProofUploaderProps {
   receiptPhotoUrl?: string;
@@ -42,7 +42,9 @@ export function DeliveryOrderProofUploader({
 
   // Parse current list of photos from props
   const photos = useMemo(() => {
-    if (receiptPhotoUrls && receiptPhotoUrls.length > 0) return receiptPhotoUrls;
+    if (receiptPhotoUrls && receiptPhotoUrls.length > 0) {
+      return receiptPhotoUrls.map((p) => sanitizeReceiptPhotoUrl(p) || p);
+    }
     return parseReceiptPhotos(receiptPhotoUrl);
   }, [receiptPhotoUrl, receiptPhotoUrls]);
 

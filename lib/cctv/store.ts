@@ -241,15 +241,43 @@ export async function getCctvStats() {
 export async function getCctvDetectionForSales(salesRecordId: string, invoiceNumber?: string) {
   if (!salesRecordId && !invoiceNumber) return null;
 
-  return prisma.cctvDetectionLog.findFirst({
-    where: {
-      OR: [
-        ...(salesRecordId ? [{ salesRecordId }] : []),
-        ...(invoiceNumber ? [{ invoiceNumber }] : []),
-      ],
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // 1. Prioritaskan pencarian pasti berbasis salesRecordId
+  let log = salesRecordId
+    ? await prisma.cctvDetectionLog.findFirst({
+        where: { salesRecordId },
+        orderBy: [{ packingCompletedAt: "desc" }, { createdAt: "desc" }],
+      })
+    : null;
+
+  // 2. Fallback ke invoiceNumber HANYA jika belum ditemukan dan nomor invoice valid (panjang >= 3)
+  if (!log && invoiceNumber && invoiceNumber.trim().length >= 3) {
+    const cleanInv = invoiceNumber.trim();
+    log = await prisma.cctvDetectionLog.findFirst({
+      where: {
+        OR: [
+          { invoiceNumber: cleanInv },
+          { slmReference: cleanInv },
+        ],
+        matchStatus: { in: ["matched", "review"] },
+      },
+      orderBy: [{ packingCompletedAt: "desc" }, { createdAt: "desc" }],
+    });
+  }
+
+  if (!log) return null;
+
+  // 3. Sanitasi URL bukti agar otomatis melewati proxy internal HTTPS bebas dari Mixed Content
+  return {
+    ...log,
+    screenshotPhotoUrl:
+      sanitizeCctvEvidenceUrl(log.screenshotPhotoUrl) ||
+      sanitizeCctvEvidenceUrl(log.evidenceUrl) ||
+      (log.cctvLabelId ? `/api/cctv/evidence?labelId=${log.cctvLabelId}` : null),
+    evidenceUrl:
+      sanitizeCctvEvidenceUrl(log.evidenceUrl) ||
+      sanitizeCctvEvidenceUrl(log.screenshotPhotoUrl) ||
+      (log.cctvLabelId ? `/api/cctv/evidence?labelId=${log.cctvLabelId}` : null),
+  };
 }
 
 export interface CctvOutboundReportFilter {

@@ -4,6 +4,28 @@
  * and new multi-URL JSON array strings.
  */
 
+export function sanitizeReceiptPhotoUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("/api/cctv/evidence")) {
+    return trimmed;
+  }
+
+  if (
+    trimmed.includes("localhost:8000") ||
+    trimmed.includes("127.0.0.1:8000") ||
+    trimmed.includes("31.97.51.194:8000") ||
+    trimmed.startsWith("/labels/") ||
+    trimmed.startsWith("/api/v1/slm/evidence")
+  ) {
+    return `/api/cctv/evidence?url=${encodeURIComponent(trimmed)}`;
+  }
+
+  return trimmed;
+}
+
 export function parseReceiptPhotos(
   raw: string | string[] | null | undefined
 ): string[] {
@@ -11,8 +33,8 @@ export function parseReceiptPhotos(
 
   if (Array.isArray(raw)) {
     return raw
-      .map((item) => (typeof item === "string" ? item.trim() : ""))
-      .filter((url) => Boolean(url));
+      .map((item) => (typeof item === "string" ? sanitizeReceiptPhotoUrl(item) : ""))
+      .filter((url): url is string => Boolean(url));
   }
 
   const trimmed = raw.trim();
@@ -24,8 +46,8 @@ export function parseReceiptPhotos(
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
         return parsed
-          .map((item) => (typeof item === "string" ? item.trim() : ""))
-          .filter((url) => Boolean(url));
+          .map((item) => (typeof item === "string" ? sanitizeReceiptPhotoUrl(item) : ""))
+          .filter((url): url is string => Boolean(url));
       }
     } catch {
       // Fallback to single string if JSON parse fails
@@ -33,7 +55,8 @@ export function parseReceiptPhotos(
   }
 
   // Single URL string fallback
-  return [trimmed];
+  const sanitized = sanitizeReceiptPhotoUrl(trimmed);
+  return sanitized ? [sanitized] : [];
 }
 
 export function serializeReceiptPhotos(photos: string[]): string {
