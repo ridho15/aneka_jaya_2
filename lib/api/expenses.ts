@@ -149,6 +149,7 @@ export async function createExpense(input: PengeluaranInput & { approvalStatus?:
     rekeningId: rekening.id,
     rekeningNameSnapshot: rekening.name,
     attachmentUrl: input.attachmentUrl || undefined,
+    notes: input.notes || undefined,
     approvalStatus,
     erpSyncTarget: target === "erp" ? "erp" : "local",
     createdByUserId: user.id,

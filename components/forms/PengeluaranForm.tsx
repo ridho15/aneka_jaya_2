@@ -604,9 +604,9 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [] }: P
         rekeningName={rekeningNameSnapshot}
         employeeName={selectedEmployee?.name}
         vendorName={vendorName}
-        salaryPeriod={salaryPeriod}
+        salaryPeriod={salaryPeriod || undefined}
         salaryPaymentType={salaryPaymentType}
-        purpose={purpose}
+        purpose={purpose || undefined}
         coaId={coaId}
         coaNameSnapshot={coaNameSnapshot}
       />

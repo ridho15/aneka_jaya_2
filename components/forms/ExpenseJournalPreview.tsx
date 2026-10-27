@@ -10,9 +10,9 @@ interface Props {
   rekeningName?: string;
   employeeName?: string;
   vendorName?: string;
-  salaryPeriod?: string;
+  salaryPeriod?: string | null;
   salaryPaymentType?: "EXPENSE" | "PAYABLE";
-  purpose?: string;
+  purpose?: string | null;
   coaId?: string;
   coaNameSnapshot?: string;
 }
