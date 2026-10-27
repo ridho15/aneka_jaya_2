@@ -205,6 +205,7 @@ export function EmployeeSubledgerView({
       {/* Repayment Modal */}
       {isRepaymentModalOpen && (
         <LoanRepaymentModal
+          key={`${employee.id}-${activeLoans.map((l) => `${l.id}:${l.remainingAmount}`).join(",")}`}
           employeeId={employee.id}
           employeeName={employee.name}
           activeLoans={activeLoanOptions}

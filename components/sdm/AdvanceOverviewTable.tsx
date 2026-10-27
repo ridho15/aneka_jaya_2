@@ -217,6 +217,7 @@ export function AdvanceOverviewTable({ loans, rekenings, canManage }: Props) {
       {/* Advance Settlement Modal */}
       {selectedLoanForSettlement && (
         <AdvanceSettlementModal
+          key={selectedLoanForSettlement.id}
           loan={selectedLoanForSettlement}
           rekenings={rekenings}
           isOpen={Boolean(selectedLoanForSettlement)}

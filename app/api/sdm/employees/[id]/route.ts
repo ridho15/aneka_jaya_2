@@ -35,8 +35,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const body = await request.json().catch(() => null);
   const parsed = employeeSchema.safeParse(body);
   if (!parsed.success) {
+    const errorDetails = Object.entries(parsed.error.flatten().fieldErrors)
+      .map(([field, msgs]) => `${field}: ${(msgs || []).join(", ")}`)
+      .join("; ");
     return NextResponse.json(
-      { success: false, message: "Data karyawan tidak valid.", errors: parsed.error.flatten() },
+      {
+        success: false,
+        message: `Data karyawan tidak valid${errorDetails ? `: ${errorDetails}` : "."}`,
+        errors: parsed.error.flatten()
+      },
       { status: 400 }
     );
   }

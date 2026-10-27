@@ -26,17 +26,17 @@ export const pengeluaranSchema = z.object({
   coaNameSnapshot: z.string().trim().min(1, "COA wajib dipilih").default("Kas"),
   category: z.string().trim().max(100).default("Beban operasional"),
   categoryCode: z.enum(["operational_expense", "goods_purchase", "employee_loan", "operational_advance", "salary"]).default("operational_expense"),
-  employeeId: z.string().trim().optional().or(z.literal("")),
-  salaryPeriod: z.string().trim().regex(/^\d{4}-\d{2}$/, "Format periode gaji harus YYYY-MM").optional().or(z.literal("")),
+  employeeId: z.string().trim().nullish().or(z.literal("")),
+  salaryPeriod: z.string().trim().regex(/^\d{4}-\d{2}$/, "Format periode gaji harus YYYY-MM").nullish().or(z.literal("")),
   salaryPaymentType: z.enum(["EXPENSE", "PAYABLE"]).default("EXPENSE"),
-  dueDate: z.string().optional().or(z.literal("")),
-  purpose: z.string().trim().max(500).optional().or(z.literal("")),
+  dueDate: z.string().nullish().or(z.literal("")),
+  purpose: z.string().trim().max(500).nullish().or(z.literal("")),
   vendorName: z.string().trim().min(1, "Nama vendor atau penerima wajib diisi").max(150),
   description: z.string().trim().min(1, "Deskripsi wajib diisi").max(1000),
   amount: z.coerce.number().positive("Jumlah harus lebih dari 0"),
   paymentMethod: z.string().trim().min(1, "Metode pembayaran wajib diisi").max(80),
-  attachmentUrl: z.string().refine((value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value), "URL lampiran tidak valid").optional().or(z.literal("")),
-  notes: z.string().trim().max(1000).optional()
+  attachmentUrl: z.string().refine((value) => !value || value.startsWith("/") || /^https?:\/\//i.test(value), "URL lampiran tidak valid").nullish().or(z.literal("")),
+  notes: z.string().trim().max(1000).nullish().or(z.literal(""))
 }).superRefine((data, ctx) => {
   if (data.categoryCode === "employee_loan") {
     if (!data.employeeId) {

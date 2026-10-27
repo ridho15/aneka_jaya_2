@@ -4,6 +4,11 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => {
   const txMock: any = {};
+  txMock.employee = {
+    findUnique: vi.fn(),
+    update: vi.fn(),
+    create: vi.fn()
+  };
   txMock.employeeLoan = {
     findUnique: vi.fn(),
     update: vi.fn(),
@@ -26,8 +31,10 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/lib/db/prisma", () => ({ prisma: mocks.prisma }));
+vi.mock("@/lib/audit/store", () => ({ recordAudit: vi.fn() }));
 
 import { recordLoanRepayment, recordAdvanceSettlement } from "@/lib/sdm/loanStore";
+import { updateEmployee } from "@/lib/sdm/employeeStore";
 import type { Role } from "@/lib/auth/roles";
 
 describe("SDM LoanStore - Repayment and Settlement Business Logic", () => {
@@ -285,6 +292,92 @@ describe("SDM LoanStore - Repayment and Settlement Business Logic", () => {
 
       expect(result.loan.status).toBe("SETTLED");
       expect(result.loan.remainingAmount).toBe(0);
+    });
+  });
+
+  describe("EmployeeStore - Business Rules No-Happy Path", () => {
+    it("rejects update when employee does not exist in database", async () => {
+      mocks.prisma.employee.findUnique.mockResolvedValue(null);
+
+      await expect(
+        updateEmployee(
+          "nonexistent-emp",
+          {
+            name: "Budi",
+            position: "Staff",
+            department: "Operasional",
+            isActive: true
+          },
+          actor
+        )
+      ).rejects.toThrow("Karyawan tidak ditemukan.");
+    });
+
+    it("rejects circular hierarchy when an employee is set as their own manager", async () => {
+      mocks.prisma.employee.findUnique.mockResolvedValue({
+        id: "emp-self",
+        name: "Budi",
+        position: "Manager",
+        department: "Operasional"
+      });
+
+      await expect(
+        updateEmployee(
+          "emp-self",
+          {
+            name: "Budi",
+            position: "Manager",
+            department: "Operasional",
+            managerId: "emp-self", // Self-manager violation
+            isActive: true
+          },
+          actor
+        )
+      ).rejects.toThrow("Karyawan tidak dapat menjadi atasan untuk dirinya sendiri.");
+    });
+
+    it("successfully updates employee with valid data and nullish optional fields", async () => {
+      mocks.prisma.employee.findUnique.mockResolvedValue({
+        id: "emp-valid",
+        name: "Budi Santoso",
+        position: "Staff",
+        department: "Operasional"
+      });
+
+      mocks.prisma.employee.update.mockResolvedValue({
+        id: "emp-valid",
+        name: "Budi Santoso Senior",
+        position: "Senior Staff",
+        department: "Operasional",
+        managerId: null,
+        nik: null,
+        isActive: true,
+        bankName: null,
+        bankAccountNumber: null,
+        notes: null
+      });
+
+      mocks.prisma.auditLog.create.mockResolvedValue({ id: "audit-emp" });
+
+      const updated = await updateEmployee(
+        "emp-valid",
+        {
+          name: "Budi Santoso Senior",
+          position: "Senior Staff",
+          department: "Operasional",
+          managerId: null,
+          nik: null,
+          isActive: true
+        },
+        actor
+      );
+
+      expect(updated.name).toBe("Budi Santoso Senior");
+      expect(mocks.prisma.employee.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "emp-valid" }
+        })
+      );
     });
   });
 });

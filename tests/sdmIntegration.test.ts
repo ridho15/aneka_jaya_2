@@ -140,10 +140,36 @@ describe("SDM Phase 1 - Validation & Data Schemas", () => {
     expect(invalidResult.success).toBe(false);
   });
 
-  it("validates employee master data schema", () => {
-    const invalid = employeeSchema.safeParse({ name: "" });
-    expect(invalid.success).toBe(false);
+  it("validates employee master data schema and supports nullish optional fields from UI", () => {
+    // No-happy path: empty name
+    const invalidEmpty = employeeSchema.safeParse({ name: "" });
+    expect(invalidEmpty.success).toBe(false);
 
+    // No-happy path: whitespace-only required fields
+    const invalidWhitespace = employeeSchema.safeParse({
+      name: "   ",
+      position: "   ",
+      department: "   "
+    });
+    expect(invalidWhitespace.success).toBe(false);
+    if (!invalidWhitespace.success) {
+      const errors = invalidWhitespace.error.flatten().fieldErrors;
+      expect(errors.name).toBeDefined();
+      expect(errors.position).toBeDefined();
+      expect(errors.department).toBeDefined();
+    }
+
+    // No-happy path: character overflow
+    const invalidOverflow = employeeSchema.safeParse({
+      name: "A".repeat(125),
+      position: "Staff",
+      department: "Keuangan",
+      nik: "1".repeat(55),
+      notes: "C".repeat(505)
+    });
+    expect(invalidOverflow.success).toBe(false);
+
+    // Happy path: complete data
     const valid = employeeSchema.safeParse({
       name: "Ahmad Dahlan",
       position: "Staff Keuangan",
@@ -152,6 +178,24 @@ describe("SDM Phase 1 - Validation & Data Schemas", () => {
       bankAccountNumber: "1234567890"
     });
     expect(valid.success).toBe(true);
+
+    // No-happy path / edge case fix: nullish fields sent by modal form when optional fields are empty
+    const validWithNulls = employeeSchema.safeParse({
+      name: "Siti Rahma",
+      position: "Staff Gudang",
+      department: "Logistik",
+      nik: null,
+      managerId: null,
+      bankName: null,
+      bankAccountNumber: null,
+      notes: null
+    });
+    expect(validWithNulls.success).toBe(true);
+    if (validWithNulls.success) {
+      expect(validWithNulls.data.nik).toBeNull();
+      expect(validWithNulls.data.managerId).toBeNull();
+      expect(validWithNulls.data.isActive).toBe(true);
+    }
   });
 
   it("validates loan repayment schema and enforces payroll notes for potong gaji", () => {
