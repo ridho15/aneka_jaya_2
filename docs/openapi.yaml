@@ -2387,7 +2387,395 @@ paths:
           description: Akses ditolak karena bukan Super Admin (Owner).
         "404":
           description: Kamera dengan ID tersebut tidak ditemukan.
-
-
-
-
+  /api/cctv/stream/{cameraId}/live:
+    get:
+      summary: Stream relay HLS/WebRTC kamera CCTV
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stream live kamera
+  /api/cctv/evidence:
+    get:
+      summary: Ambil bukti foto/video CCTV berdasarkan transaksi atau packing
+      responses:
+        "200":
+          description: Daftar rekaman bukti CCTV
+  /api/jobs/cleanup-cctv-storage:
+    post:
+      summary: Cron job untuk pembersihan rekaman CCTV kedaluwarsa
+      responses:
+        "200":
+          description: Pembersihan selesai
+  /api/accounting/accounts:
+    get:
+      summary: Daftar akun perkiraan (Chart of Accounts)
+      responses:
+        "200":
+          description: Daftar akun
+    post:
+      summary: Tambah akun perkiraan baru
+      responses:
+        "201":
+          description: Akun berhasil ditambahkan
+  /api/accounting/accounts/{id}:
+    get:
+      summary: Detail akun perkiraan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail akun
+    put:
+      summary: Perbarui akun perkiraan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Akun berhasil diperbarui
+    delete:
+      summary: Hapus akun perkiraan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Akun berhasil dihapus
+  /api/accounting/journals:
+    get:
+      summary: Daftar jurnal umum akuntansi
+      responses:
+        "200":
+          description: Daftar jurnal
+    post:
+      summary: Buat jurnal manual berpasangan (Double-Entry)
+      responses:
+        "201":
+          description: Jurnal berhasil dibukukan
+  /api/accounting/journals/{id}:
+    get:
+      summary: Detail entri jurnal dan baris debit/kredit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail jurnal
+  /api/accounting/journals/{id}/reverse:
+    post:
+      summary: Balikkan entri jurnal (Reversal)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Jurnal pembalik berhasil diterbitkan
+  /api/accounting/ledger:
+    get:
+      summary: Buku besar (General Ledger) akun perkiraan
+      responses:
+        "200":
+          description: Mutasi dan saldo berjalan buku besar
+  /api/accounting/trial-balance:
+    get:
+      summary: Neraca Saldo (Trial Balance) dan verifikasi equilibrium
+      responses:
+        "200":
+          description: Laporan neraca saldo
+  /api/accounting/periods:
+    get:
+      summary: Daftar status periode akuntansi (Lock/Open)
+      responses:
+        "200":
+          description: Status periode
+    post:
+      summary: Tutup buku periode akuntansi (Lock Period)
+      responses:
+        "200":
+          description: Periode berhasil dikunci
+  /api/accounting/periods/{id}/reopen:
+    post:
+      summary: Buka kembali periode akuntansi yang terkunci
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Periode berhasil dibuka kembali
+  /api/accounting/rates:
+    get:
+      summary: Riwayat kurs valas (USD/RMB)
+      responses:
+        "200":
+          description: Daftar kurs valas
+    post:
+      summary: Simpan / update kurs valas harian
+      responses:
+        "200":
+          description: Kurs berhasil disimpan
+  /api/accounting/reconciliation:
+    get:
+      summary: Laporan rekonsiliasi subledger vs general ledger dan review historis
+      responses:
+        "200":
+          description: Laporan rekonsiliasi
+    post:
+      summary: Reklasifikasi pengeluaran historis terkonfirmasi
+      responses:
+        "200":
+          description: Pengeluaran berhasil direklasifikasi
+  /api/purchasing/orders:
+    get:
+      summary: Daftar pesanan pembelian (Purchase Orders)
+      responses:
+        "200":
+          description: Daftar PO
+    post:
+      summary: Buat pesanan pembelian baru (PO)
+      responses:
+        "201":
+          description: PO berhasil dibuat
+  /api/purchasing/orders/{id}:
+    get:
+      summary: Detail pesanan pembelian
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail PO
+  /api/purchasing/receipts:
+    get:
+      summary: Daftar penerimaan barang (Goods Receipts)
+      responses:
+        "200":
+          description: Daftar penerimaan barang
+    post:
+      summary: Catat penerimaan barang dari supplier
+      responses:
+        "201":
+          description: Penerimaan barang berhasil dicatat
+  /api/purchasing/invoices:
+    get:
+      summary: Daftar faktur pembelian supplier (Purchase Invoices)
+      responses:
+        "200":
+          description: Daftar faktur pembelian
+    post:
+      summary: Terbitkan faktur pembelian dengan landed cost
+      responses:
+        "201":
+          description: Faktur pembelian berhasil diterbitkan
+  /api/purchasing/invoices/{id}:
+    get:
+      summary: Detail faktur pembelian
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail faktur
+  /api/purchasing/payments:
+    get:
+      summary: Riwayat pembayaran faktur pembelian valas / IDR
+      responses:
+        "200":
+          description: Riwayat pembayaran
+    post:
+      summary: Catat pembayaran faktur supplier dengan perhitungan laba/rugi kurs
+      responses:
+        "201":
+          description: Pembayaran berhasil diproses
+  /api/purchasing/forex-preview:
+    get:
+      summary: Pratinjau perhitungan selisih kurs pembayaran valas
+      responses:
+        "200":
+          description: Pratinjau selisih kurs
+  /api/purchasing/suppliers:
+    get:
+      summary: Daftar supplier / vendor pembelian
+      responses:
+        "200":
+          description: Daftar supplier
+    post:
+      summary: Tambah master data supplier baru
+      responses:
+        "201":
+          description: Supplier berhasil ditambahkan
+  /api/purchasing/suppliers/{id}:
+    get:
+      summary: Detail supplier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail supplier
+  /api/sales/returns:
+    get:
+      summary: Daftar retur penjualan
+      responses:
+        "200":
+          description: Daftar retur
+    post:
+      summary: Buat draft retur penjualan
+      responses:
+        "201":
+          description: Draft retur berhasil dibuat
+  /api/sales/returns/{id}/post:
+    post:
+      summary: Posting jurnal retur penjualan dan kurangi piutang/kembalikan kas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Retur penjualan berhasil diposting
+  /api/reports/balance-sheet:
+    get:
+      summary: Laporan Neraca Keuangan (Balance Sheet)
+      responses:
+        "200":
+          description: Laporan neraca
+  /api/reports/income-statement:
+    get:
+      summary: Laporan Laba Rugi (Income Statement)
+      responses:
+        "200":
+          description: Laporan laba rugi
+  /api/sdm/employees:
+    get:
+      summary: Daftar master data karyawan
+      responses:
+        "200":
+          description: Daftar karyawan
+    post:
+      summary: Tambah data karyawan baru
+      responses:
+        "201":
+          description: Karyawan berhasil ditambahkan
+  /api/sdm/employees/{id}:
+    get:
+      summary: Detail profil, riwayat kasbon, uang muka, dan gaji karyawan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detail karyawan
+    put:
+      summary: Perbarui data karyawan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Data berhasil diperbarui
+  /api/sdm/hierarchy:
+    get:
+      summary: Struktur hierarki pelaporan dan atasan karyawan
+      responses:
+        "200":
+          description: Hierarki SDM
+  /api/sdm/org-tree:
+    get:
+      summary: Bagan organisasi visual dinamis
+      responses:
+        "200":
+          description: Bagan organisasi
+  /api/sdm/loans:
+    get:
+      summary: Daftar subledger kasbon pribadi dan uang muka operasional karyawan
+      responses:
+        "200":
+          description: Daftar pinjaman dan uang muka
+  /api/sdm/loans/{id}/repay:
+    post:
+      summary: Catat pelunasan kasbon karyawan (Transfer / Tunai / Potong Gaji)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Pelunasan berhasil dicatat
+  /api/sdm/loans/{id}/settle:
+    post:
+      summary: Pertanggungjawaban uang muka operasional dengan nota riil
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Pertanggungjawaban berhasil dicatat
+  /api/sdm/salaries:
+    get:
+      summary: Riwayat pembayaran gaji karyawan per periode
+      responses:
+        "200":
+          description: Riwayat penggajian
+  /api/sdm/savings:
+    get:
+      summary: Daftar akun simpanan sukarela karyawan
+      responses:
+        "200":
+          description: Daftar simpanan
+  /api/sdm/savings/transactions:
+    get:
+      summary: Riwayat mutasi setor / tarik simpanan karyawan
+      responses:
+        "200":
+          description: Mutasi simpanan
+    post:
+      summary: Catat transaksi setoran atau penarikan simpanan sukarela
+      responses:
+        "201":
+          description: Transaksi simpanan berhasil dicatat

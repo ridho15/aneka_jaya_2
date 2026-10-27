@@ -20,6 +20,9 @@ const PROTECTED: Array<{ path: string; permission: Parameters<typeof can>[1] }> 
   { path: "/barang", permission: "stock.view" },
   { path: "/stok-barang", permission: "stock.view" },
   { path: "/delivery-orders", permission: "do.view" },
+  { path: "/sdm", permission: "sdm.view" },
+  { path: "/akuntansi", permission: "accounting.view" },
+  { path: "/pembelian", permission: "purchasing.view" },
 ];
 
 export function proxy(request: NextRequest) {

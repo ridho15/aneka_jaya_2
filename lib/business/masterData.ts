@@ -19,6 +19,10 @@ export type RekeningAccount = {
   isCash?: boolean;
   isActive?: boolean;
   tipeIds: string[];
+  currency?: string;
+  openingBalanceValas?: number;
+  openingBalanceDate?: string;
+  openingRate?: number;
 };
 
 export const CASH_WALK_IN_REKENING_ID = "cash-w";
@@ -107,7 +111,11 @@ export async function listRekeningAccounts(): Promise<RekeningAccount[]> {
     erpCoaId: row.erpCoaId || undefined,
     erpCoaNameSnapshot: row.erpCoaNameSnapshot || undefined,
     isCash: row.bankName === "Cash",
-    tipeIds: row.tipeLinks.map((link) => link.bookkeepingTypeId)
+    tipeIds: row.tipeLinks.map((link) => link.bookkeepingTypeId),
+    currency: row.currency || "IDR",
+    openingBalanceValas: Number(row.openingBalanceValas || 0),
+    openingBalanceDate: row.openingBalanceDate ? row.openingBalanceDate.toISOString() : undefined,
+    openingRate: Number(row.openingRate || 1)
   }));
 }
 
@@ -129,7 +137,11 @@ export async function listAllRekeningAccounts(): Promise<RekeningAccount[]> {
     erpCoaNameSnapshot: row.erpCoaNameSnapshot || undefined,
     isCash: row.bankName === "Cash",
     isActive: row.isActive,
-    tipeIds: row.tipeLinks.map((link) => link.bookkeepingTypeId)
+    tipeIds: row.tipeLinks.map((link) => link.bookkeepingTypeId),
+    currency: row.currency || "IDR",
+    openingBalanceValas: Number(row.openingBalanceValas || 0),
+    openingBalanceDate: row.openingBalanceDate ? row.openingBalanceDate.toISOString() : undefined,
+    openingRate: Number(row.openingRate || 1)
   }));
 }
 
@@ -145,7 +157,11 @@ export async function saveRekeningAccounts(rows: RekeningAccount[]): Promise<voi
           bankName: row.bank,
           erpCoaId: row.erpCoaId,
           erpCoaNameSnapshot: row.erpCoaNameSnapshot,
-          isActive: row.isActive ?? true
+          isActive: row.isActive ?? true,
+          currency: row.currency || "IDR",
+          openingBalanceValas: row.openingBalanceValas ?? 0,
+          openingBalanceDate: row.openingBalanceDate ? new Date(row.openingBalanceDate) : null,
+          openingRate: row.openingRate ?? 1
         },
         update: {
           name: row.name,
@@ -153,7 +169,11 @@ export async function saveRekeningAccounts(rows: RekeningAccount[]): Promise<voi
           bankName: row.bank,
           erpCoaId: row.erpCoaId,
           erpCoaNameSnapshot: row.erpCoaNameSnapshot,
-          isActive: row.isActive ?? true
+          isActive: row.isActive ?? true,
+          currency: row.currency || "IDR",
+          openingBalanceValas: row.openingBalanceValas ?? 0,
+          openingBalanceDate: row.openingBalanceDate ? new Date(row.openingBalanceDate) : null,
+          openingRate: row.openingRate ?? 1
         }
       });
       await tx.rekeningAccountBookkeepingType.deleteMany({ where: { rekeningAccountId: row.id } });

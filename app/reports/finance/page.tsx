@@ -240,36 +240,48 @@ export default async function FinanceReportsPage({
       </form>
 
       {/* Stat Cards Ringkasan Eksekutif */}
-      <div className="grid gap-5 md:grid-cols-3">
-        <section className="aj-surface p-6">
-          <p className="text-sm text-slate-500">Open Tempo saat ini</p>
-          <p className="mt-2 text-3xl font-black tracking-tight">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="aj-surface p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Open Tempo saat ini</p>
+          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">
             {rupiah(summary.openTempoTotal)}
           </p>
-          <p className="mt-4 text-sm text-slate-600">
+          <p className="mt-3 text-xs text-slate-500">
             {summary.openTempo.length} piutang aktif. Tidak mengikuti filter bulan.
           </p>
         </section>
-        <section className="aj-surface p-6">
-          <p className="text-sm text-slate-500">Pembayaran Tempo bulan ini</p>
-          <p className="mt-2 text-3xl font-black tracking-tight">
+
+        <section className="aj-surface p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Pembayaran Tempo bulan ini</p>
+          <p className="mt-2 text-2xl font-black tracking-tight text-emerald-700">
             {rupiah(summary.tempoPaymentTotal)}
           </p>
-          <p className="mt-4 text-sm text-slate-600">
-            {summary.tempoPayments.length} pembayaran, dikurangi{" "}
-            {summary.tempoReversals.length} reversal sebesar{" "}
-            {rupiah(summary.tempoReversalTotal)}.
+          <p className="mt-3 text-xs text-slate-500">
+            {summary.tempoPayments.length} pembayaran ({summary.tempoReversals.length} reversal: {rupiah(summary.tempoReversalTotal)}).
           </p>
         </section>
-        <section className="aj-surface p-6">
-          <p className="text-sm text-slate-500">Pengeluaran approved bulan ini</p>
-          <p className="mt-2 text-3xl font-black tracking-tight">
-            {rupiah(summary.approvedExpenseTotal)}
+
+        <section className="aj-surface p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Beban Operasional bulan ini</p>
+          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+            {rupiah(summary.operationalExpenseTotal ?? summary.approvedExpenseTotal)}
           </p>
-          <p className="mt-4 text-sm text-slate-600">
-            {summary.approvedExpenses.length} pengeluaran approved. Pending/rejected tidak
-            masuk.
+          <p className="mt-3 text-xs text-slate-500">
+            Beban usaha operasional perusahaan (beban laba rugi).
           </p>
+        </section>
+
+        <section className="aj-surface p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Kasbon Karyawan Dicairkan</p>
+          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">
+            {rupiah(summary.kasbonDisbursedTotal ?? 0)}
+          </p>
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <span className="text-slate-500">Aset Piutang</span>
+            <Link href="/sdm/kasbon" className="font-semibold text-emerald-700 hover:underline">
+              SDM Kasbon →
+            </Link>
+          </div>
         </section>
       </div>
 
@@ -650,6 +662,11 @@ export default async function FinanceReportsPage({
                     <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                       {row.category}
                     </span>
+                    {row.categoryCode === "employee_loan" && (
+                      <span className="ml-1 inline-block rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
+                        Piutang
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-3.5 font-semibold text-slate-900">{row.vendorName}</td>
                   <td className="px-5 py-3.5 max-w-xs truncate text-xs text-slate-500">

@@ -9,13 +9,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("global navigation", () => {
-  it("filters visible links by role and never exposes deferred purchase navigation", () => {
+  it("filters visible links by role and protects purchasing navigation", () => {
     const ownerLinks = visibleNavLinks("OWNER");
     const viewerLinks = visibleNavLinks("VIEWER");
 
     expect(ownerLinks.some((link) => link.href === "/settings")).toBe(true);
     expect(viewerLinks.some((link) => link.href === "/settings")).toBe(false);
-    expect(ownerLinks.some((link) => link.href.startsWith("/pembelian"))).toBe(false);
+    expect(viewerLinks.some((link) => link.href.startsWith("/pembelian"))).toBe(false);
+    expect(ownerLinks.some((link) => link.href.startsWith("/pembelian"))).toBe(true);
   });
 
   it("shows exactly the sales and delivery order menus to Admin", () => {
@@ -23,6 +24,7 @@ describe("global navigation", () => {
       ["/penjualan/input", "Input Penjualan"],
       ["/penjualan", "Riwayat Penjualan"],
       ["/penjualan/draft", "Draft Penjualan"],
+      ["/penjualan/retur", "Retur Penjualan"],
       ["/delivery-orders", "Delivery Order (DO)"],
     ]);
   });
@@ -46,7 +48,6 @@ describe("global navigation", () => {
     expect(html).toContain('aria-controls="mobile-navigation-drawer"');
     expect(html).not.toContain('aria-label="Tutup menu"');
     expect(html).not.toContain('href="/penjualan"');
-    expect(html).not.toContain("/pembelian");
   });
 
   it("keeps desktop sidebar available only on large breakpoints", () => {
@@ -60,7 +61,6 @@ describe("global navigation", () => {
     expect(html).toContain("PUSAT LAPORAN");
     expect(html).toContain("SISTEM &amp; MONITORING");
     expect(html).not.toContain("overflow-x-auto");
-    expect(html).not.toContain("/pembelian");
   });
 
   it("groups navigation into categories and excludes redundant inputs for Super Admin", () => {
@@ -69,6 +69,8 @@ describe("global navigation", () => {
     expect(groups.map((g) => g.category)).toEqual([
       "MENU UTAMA",
       "OPERASIONAL & TRANSAKSI",
+      "AKUNTANSI & BUKU BESAR",
+      "SDM & PERSONALIA",
       "PUSAT LAPORAN",
       "SISTEM & MONITORING",
     ]);

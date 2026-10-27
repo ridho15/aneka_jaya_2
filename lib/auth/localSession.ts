@@ -1,7 +1,7 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import { ROLES, type Role } from "./roles";
+import { ROLES, ROLE_COOKIE, type Role } from "./roles";
 
 export const LOCAL_SESSION_COOKIE = "aneka_jaya_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
@@ -60,9 +60,25 @@ export function readSessionToken(token?: string | null): SessionPayload | null {
   return decodePayload(payload);
 }
 
-export async function setLocalSessionCookie(externalId: string) {
+export async function setLocalSessionCookie(externalId: string, role?: Role) {
   const cookieStore = await cookies();
   cookieStore.set(LOCAL_SESSION_COOKIE, createSessionToken(externalId), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDS
+  });
+  if (role) {
+    cookieStore.set(ROLE_COOKIE, role, {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: SESSION_TTL_SECONDS
+    });
+  }
+  cookieStore.set("aneka_jaya_erp_token", `local-session-${externalId}`, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

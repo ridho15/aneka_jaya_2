@@ -71,7 +71,7 @@ export async function loginWithPassword(input: unknown) {
       lastLoginAt: new Date()
     }
   });
-  await setLocalSessionCookie(user.externalId);
+  await setLocalSessionCookie(user.externalId, user.role);
   await recordLoginAudit(user);
 
   return {

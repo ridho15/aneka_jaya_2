@@ -12,6 +12,7 @@ import { getSalesRecordForUser } from "@/lib/sales/access";
 import { prisma } from "@/lib/db/prisma";
 import { CctvPackingWidget } from "@/components/cctv/CctvPackingWidget";
 import { getCctvDetectionForSales } from "@/lib/cctv/store";
+import { SalesReturnModal } from "@/components/sales/SalesReturnModal";
 
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
@@ -55,11 +56,8 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const sale = await getSalesRecordForUser(id, user);
   if (!sale) notFound();
-  const rekeningLabel = salesRekeningLabel(sale, await listAllRekeningAccounts());
-  const canManage = can(role, "penjualan.manage");
-  const canViewTransactionNumber = role === "OWNER";
-
-  const [deliveryOrderRow, cctvDetection] = await Promise.all([
+  const [allRekenings, deliveryOrderRow, cctvDetection, salesAccounting] = await Promise.all([
+    listAllRekeningAccounts(),
     prisma.deliveryOrder.findUnique({
       where: { salesRecordId: sale.id },
       select: {
@@ -72,8 +70,37 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
         items: { select: { id: true } }
       }
     }).catch(() => null),
-    getCctvDetectionForSales(sale.id, sale.transactionNumber || undefined).catch(() => null)
+    getCctvDetectionForSales(sale.id, sale.transactionNumber || undefined).catch(() => null),
+    prisma.salesRecord.findUnique({
+      where: { id: sale.id },
+      select: {
+        journalEntryId: true,
+        journalEntry: {
+          select: { id: true, journalNumber: true, status: true, totalDebit: true }
+        },
+        cogsJournalEntryId: true,
+        cogsJournalEntry: {
+          select: { id: true, journalNumber: true, status: true, totalDebit: true }
+        },
+        returns: {
+          select: {
+            id: true,
+            returnNumber: true,
+            returnDate: true,
+            status: true,
+            refundMethod: true,
+            subtotalAmount: true,
+            totalCostPrice: true,
+            journalEntry: { select: { journalNumber: true, status: true } }
+          },
+          orderBy: { returnDate: "desc" }
+        }
+      }
+    }).catch(() => null)
   ]);
+  const rekeningLabel = salesRekeningLabel(sale, allRekenings);
+  const canManage = can(role, "penjualan.manage");
+  const canViewTransactionNumber = role === "OWNER";
 
   const deliveryOrderSummary = deliveryOrderRow
     ? {
@@ -102,6 +129,24 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
             {sale.paymentMethod === "Tempo" ? "Lihat / Simpan Nota Tempo" : "Lihat / Simpan Invoice"}
           </Link>
           <Link href={`/print/sales/${sale.id}/continuous`} className="rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs transition-colors">Cetak Nota</Link>
+          {sale.approvalStatus === "approved" && sale.source !== "MJ" && (
+            <SalesReturnModal
+              salesRecordId={sale.id}
+              transactionNumber={sale.transactionNumber || undefined}
+              customerName={sale.customerName}
+              isTempo={sale.paymentMethod === "Tempo"}
+              rekenings={allRekenings.map((r) => ({ id: r.id, name: r.name }))}
+              items={sale.items.map((it) => ({
+                id: (it as any).id,
+                productRef: it.productRef,
+                productName: it.manualProduct?.name || it.productRef,
+                quantity: it.quantity,
+                unit: it.unitSnapshot || "PCS",
+                unitPrice: it.unitPrice,
+                unitCostPrice: it.manualProduct?.costPrice || 0
+              }))}
+            />
+          )}
           {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && (
             <Link href={`/penjualan/${sale.id}/edit`} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Edit</Link>
           )}
@@ -206,6 +251,64 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           )}
         </section>
       </div>
+
+      {/* Card 2.5: Integrasi Akuntansi & Buku Jurnal */}
+      <section className="aj-surface mb-5 p-5 border-l-4 border-blue-500">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+            Integrasi Akuntansi & Buku Jurnal (Double-Entry)
+          </h3>
+          <Link href="/akuntansi/jurnal" className="text-xs font-bold text-blue-600 hover:underline">
+            Buku Jurnal Umum →
+          </Link>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Jurnal Penjualan / Pendapatan</p>
+            <div className="mt-1">
+              {salesAccounting?.journalEntry ? (
+                <Link
+                  href={`/akuntansi/jurnal?keyword=${salesAccounting.journalEntry.journalNumber}`}
+                  className="inline-flex items-center gap-1.5 font-mono text-sm font-bold text-blue-700 hover:underline"
+                >
+                  <span>{salesAccounting.journalEntry.journalNumber}</span>
+                  <Badge value={salesAccounting.journalEntry.status} tone="green" />
+                </Link>
+              ) : (
+                <span className="text-xs text-slate-400">Belum dibukukan (Menunggu Approval)</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Jurnal HPP & Persediaan</p>
+            <div className="mt-1">
+              {salesAccounting?.cogsJournalEntry ? (
+                <Link
+                  href={`/akuntansi/jurnal?keyword=${salesAccounting.cogsJournalEntry.journalNumber}`}
+                  className="inline-flex items-center gap-1.5 font-mono text-sm font-bold text-blue-700 hover:underline"
+                >
+                  <span>{salesAccounting.cogsJournalEntry.journalNumber}</span>
+                  <Badge value={salesAccounting.cogsJournalEntry.status} tone="green" />
+                </Link>
+              ) : (
+                <span className="text-xs text-slate-400">Belum dibukukan / Non-Stok</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Status Retur Penjualan</p>
+            <div className="mt-1">
+              {salesAccounting?.returns && salesAccounting.returns.length > 0 ? (
+                <Link href="/penjualan/retur" className="text-xs font-bold text-amber-700 hover:underline">
+                  {salesAccounting.returns.length} Retur Tercatat ({rupiah(salesAccounting.returns.reduce((sum, r) => sum + Number(r.subtotalAmount), 0))})
+                </Link>
+              ) : (
+                <span className="text-xs text-slate-400">Tidak ada retur</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Card 3: Integrasi Stok Gudang Aneka Jaya (AJ ERP) */}
       <section className="aj-surface mb-5 p-5 border-l-4 border-emerald-500">

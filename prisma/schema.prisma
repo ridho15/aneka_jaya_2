@@ -34,6 +34,18 @@ enum TempoStatus {
   written_off
 }
 
+enum LoanType {
+  KASBON
+  UANG_MUKA
+}
+
+enum LoanStatus {
+  ACTIVE
+  PAID
+  SETTLED
+  CANCELLED
+}
+
 model User {
   id               String    @id
   externalId       String    @unique
@@ -241,6 +253,11 @@ model SalesRecord {
   integrationAttempts   IntegrationStageAttempt[]
   deliveryOrder         DeliveryOrder?
   cctvDetections        CctvDetectionLog[]
+  journalEntryId        String?
+  journalEntry          JournalEntry?             @relation("SalesInvoiceJournal", fields: [journalEntryId], references: [id], onDelete: SetNull)
+  cogsJournalEntryId    String?
+  cogsJournalEntry      JournalEntry?             @relation("SalesCogsJournal", fields: [cogsJournalEntryId], references: [id], onDelete: SetNull)
+  returns               SalesReturn[]
 
   @@index([saleDate])
   @@index([transactionNumber])
@@ -258,6 +275,8 @@ model SalesRecord {
   @@index([integrationClientId])
   @@index([integrationProcessingMode])
   @@index([customerSyncStatus])
+  @@index([journalEntryId])
+  @@index([cogsJournalEntryId])
 }
 
 model IntegrationClient {
@@ -359,10 +378,22 @@ model RekeningAccount {
   bankName      String?
   erpCoaId      String?
   erpCoaNameSnapshot String?
+  accountId     String?
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  currency      String   @default("IDR")
+  openingBalanceValas Decimal @default(0) @db.Decimal(18, 4)
+  openingBalanceDate DateTime?
+  openingRate   Decimal  @default(1) @db.Decimal(18, 4)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   tipeLinks     RekeningAccountBookkeepingType[]
+  purchasePayments PurchasePayment[]
+  landedCostPayments LandedCostItem[]
+  salesReturns       SalesReturn[]
+  savingsTransactions EmployeeSavingsTransaction[]
+
+  @@index([accountId])
 }
 
 model SalesRecordItem {
@@ -418,10 +449,143 @@ model ExpenseRecord {
   createdByRoleSnapshot Role
   createdAt             DateTime
 
+  categoryCode          String    @default("operational_expense")
+  employeeId            String?
+  employee              Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  salaryPeriod          String?
+  dueDate               DateTime?
+  purpose               String?
+  postingStatus         String    @default("unposted")
+  journalEntryId        String?
+  employeeLoans         EmployeeLoan[]
+  salaryPayments        EmployeeSalaryPayment[]
+
   @@index([expenseDate])
   @@index([approvalStatus])
   @@index([erpSyncTarget, erpSyncStatus])
   @@index([erpSyncAttemptedAt])
+  @@index([categoryCode])
+  @@index([employeeId])
+  @@index([salaryPeriod])
+}
+
+model Employee {
+  id                    String                  @id @default(cuid())
+  nik                   String?                 @unique
+  name                  String
+  position              String
+  department            String
+  managerId             String?
+  manager               Employee?               @relation("EmployeeHierarchy", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates          Employee[]              @relation("EmployeeHierarchy")
+  isActive              Boolean                 @default(true)
+  bankName              String?
+  bankAccountNumber     String?
+  notes                 String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  expenseRecords        ExpenseRecord[]
+  loans                 EmployeeLoan[]
+  loanPayments          EmployeeLoanPayment[]
+  salaryPayments        EmployeeSalaryPayment[]
+  savingsAccount        EmployeeSavings?
+
+  @@index([isActive])
+  @@index([department])
+  @@index([managerId])
+}
+
+model EmployeeLoan {
+  id                    String                        @id @default(cuid())
+  employeeId            String
+  employee              Employee                      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  expenseRecordId       String
+  expenseRecord         ExpenseRecord                 @relation(fields: [expenseRecordId], references: [id], onDelete: Cascade)
+  loanType              LoanType
+  amount                Decimal                       @db.Decimal(18, 2)
+  paidAmount            Decimal                       @default(0) @db.Decimal(18, 2)
+  remainingAmount       Decimal                       @db.Decimal(18, 2)
+  disbursedDate         DateTime
+  dueDate               DateTime?
+  purpose               String
+  status                LoanStatus                    @default(ACTIVE)
+  notes                 String?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+
+  payments              EmployeeLoanPayment[]
+  settlement            OperationalAdvanceSettlement?
+
+  @@index([employeeId])
+  @@index([expenseRecordId])
+  @@index([loanType, status])
+  @@index([dueDate])
+}
+
+model EmployeeLoanPayment {
+  id                    String              @id @default(cuid())
+  loanId                String
+  loan                  EmployeeLoan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  employeeId            String
+  employee              Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  paymentDate           DateTime
+  amount                Decimal             @db.Decimal(18, 2)
+  paymentMethod         String
+  rekeningId            String?
+  rekeningNameSnapshot  String?
+  payrollReference      String?
+  notes                 String?
+  attachmentUrl         String?
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime            @default(now())
+
+  @@index([loanId])
+  @@index([employeeId])
+  @@index([paymentDate])
+}
+
+model OperationalAdvanceSettlement {
+  id                     String        @id @default(cuid())
+  loanId                 String        @unique
+  loan                   EmployeeLoan  @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  settlementDate         DateTime
+  actualExpenseAmount    Decimal       @db.Decimal(18, 2)
+  refundAmount           Decimal       @default(0) @db.Decimal(18, 2)
+  refundRekeningId       String?
+  refundRekeningSnapshot String?
+  notes                  String?
+  attachmentUrl          String?
+  createdByUserId        String
+  createdByNameSnapshot  String
+  createdAt              DateTime      @default(now())
+
+  @@index([settlementDate])
+}
+
+model EmployeeSalaryPayment {
+  id                    String        @id @default(cuid())
+  employeeId            String
+  employee              Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  expenseRecordId       String
+  expenseRecord         ExpenseRecord @relation(fields: [expenseRecordId], references: [id], onDelete: Cascade)
+  periodMonth           String
+  paymentDate           DateTime
+  amountPaid            Decimal       @db.Decimal(18, 2)
+  rekeningId            String
+  rekeningNameSnapshot  String
+  paymentMethod         String
+  attachmentUrl         String?
+  notes                 String?
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime      @default(now())
+
+  @@index([employeeId])
+  @@index([expenseRecordId])
+  @@index([periodMonth])
+  @@index([paymentDate])
 }
 
 model RekeningAccountBookkeepingType {
@@ -592,3 +756,484 @@ model CctvDetectionLog {
   @@index([firstSeenAt])
 }
 
+// =====================================================================
+// FASE 2: AKUNTANSI, JURNAL, BUKU BESAR & COA
+// =====================================================================
+
+enum AccountCategory {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  REVERSED
+}
+
+model Account {
+  id            String          @id @default(cuid())
+  code          String          @unique
+  name          String
+  category      AccountCategory
+  normalBalance NormalBalance
+  description   String?
+  isActive      Boolean         @default(true)
+  isSystem      Boolean         @default(false)
+  sortOrder     Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  journalLines  JournalLine[]
+  rekenings     RekeningAccount[]
+
+  @@index([category])
+  @@index([isActive])
+  @@index([code])
+}
+
+model JournalEntry {
+  id                    String        @id @default(cuid())
+  journalNumber         String        @unique
+  entryDate             DateTime
+  sourceType            String        // EXPENSE | SALES | LOAN_REPAYMENT | ADVANCE_SETTLEMENT | MANUAL
+  sourceId              String?
+  postingType           String        // DISBURSEMENT | REPAYMENT | SETTLEMENT | ACCRUAL | MANUAL | REVERSAL
+  tipeId                String?
+  tipeCodeSnapshot      String?
+  description           String
+  status                JournalStatus @default(POSTED)
+  totalDebit            Decimal       @db.Decimal(18, 2)
+  totalCredit           Decimal       @db.Decimal(18, 2)
+  isReversal            Boolean       @default(false)
+  reversalOfJournalId   String?       @unique
+  reversedByJournalId   String?       @unique
+  reversalReason        String?
+  attachmentUrl         String?
+  createdByUserId       String
+  createdByNameSnapshot String
+  postedAt              DateTime      @default(now())
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  lines                 JournalLine[]
+  purchaseInvoice       PurchaseInvoice?
+  landedCostItem        LandedCostItem?
+  purchasePayment       PurchasePayment?
+  salesInvoiceRecords   SalesRecord[] @relation("SalesInvoiceJournal")
+  salesCogsRecords      SalesRecord[] @relation("SalesCogsJournal")
+  salesReturns          SalesReturn[]
+  savingsTransactions   EmployeeSavingsTransaction[]
+
+  @@unique([sourceType, sourceId, postingType])
+  @@index([entryDate])
+  @@index([sourceType, sourceId])
+  @@index([status])
+  @@index([tipeId])
+}
+
+model JournalLine {
+  id                  String        @id @default(cuid())
+  journalEntryId      String
+  journalEntry        JournalEntry  @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  accountId           String
+  account             Account       @relation(fields: [accountId], references: [id])
+  accountCodeSnapshot String
+  accountNameSnapshot String
+  debit               Decimal       @default(0) @db.Decimal(18, 2)
+  credit              Decimal       @default(0) @db.Decimal(18, 2)
+  memo                String?
+  sortOrder           Int           @default(0)
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
+
+model AccountingPeriod {
+  periodKey             String    @id // format "YYYY-MM"
+  isClosed              Boolean   @default(false)
+  closedAt              DateTime?
+  closedByUserId        String?
+  closedByNameSnapshot  String?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+// =====================================================================
+// FASE 3: PEMBELIAN VALAS, MULTI-CURRENCY & LANDED COST
+// =====================================================================
+
+enum RateType {
+  BOOKING
+  BANK_ACTUAL
+  TAX_KMK
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PARTIAL_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum PurchaseInvoiceStatus {
+  DRAFT
+  POSTED
+  PARTIAL_PAID
+  PAID
+  CANCELLED
+}
+
+enum LandedCostType {
+  FREIGHT
+  CUSTOMS_DUTY
+  IMPORT_TAX_PPN
+  IMPORT_TAX_PPH22
+  INSURANCE
+  HANDLING
+  OTHER
+}
+
+enum LandedCostAllocationMethod {
+  BY_VALUE
+  BY_QUANTITY
+}
+
+model CurrencyRate {
+  id            String    @id @default(cuid())
+  currency      String    // "USD", "RMB", etc.
+  rateDate      DateTime
+  rateType      RateType  // BOOKING, BANK_ACTUAL, TAX_KMK
+  rate          Decimal   @db.Decimal(18, 4)
+  source        String?   // "BI", "BCA", "KMK"
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([currency, rateDate, rateType])
+  @@index([currency, rateDate])
+}
+
+model Supplier {
+  id               String            @id @default(cuid())
+  code             String            @unique
+  name             String
+  country          String            @default("ID")
+  currency         String            @default("IDR")
+  contactPerson    String?
+  phone            String?
+  email            String?
+  address          String?
+  taxId            String?
+  paymentTermsDays Int               @default(30)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  purchaseOrders   PurchaseOrder[]
+  purchaseInvoices PurchaseInvoice[]
+  purchasePayments PurchasePayment[]
+
+  @@index([code])
+  @@index([name])
+}
+
+model PurchaseOrder {
+  id                     String              @id @default(cuid())
+  poNumber               String              @unique
+  supplierId             String
+  supplier               Supplier            @relation(fields: [supplierId], references: [id])
+  orderDate              DateTime
+  expectedDeliveryDate   DateTime?
+  currency               String              @default("USD")
+  exchangeRate           Decimal             @default(1) @db.Decimal(18, 4)
+  subtotalOriginal       Decimal             @default(0) @db.Decimal(18, 4)
+  subtotalIdr            Decimal             @default(0) @db.Decimal(18, 2)
+  totalTaxIdr            Decimal             @default(0) @db.Decimal(18, 2)
+  totalAmountOriginal    Decimal             @default(0) @db.Decimal(18, 4)
+  totalAmountIdr         Decimal             @default(0) @db.Decimal(18, 2)
+  status                 PurchaseOrderStatus @default(DRAFT)
+  notes                  String?
+  createdByUserId        String
+  createdByNameSnapshot  String
+  approvedByUserId       String?
+  approvedByNameSnapshot String?
+  approvedAt             DateTime?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  items                  PurchaseOrderItem[]
+  receipts               PurchaseReceipt[]
+  invoices               PurchaseInvoice[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderDate])
+}
+
+model PurchaseOrderItem {
+  id                  String                @id @default(cuid())
+  purchaseOrderId     String
+  purchaseOrder       PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  itemCode            String
+  itemName            String
+  unit                String                @default("PCS")
+  quantity            Decimal               @db.Decimal(18, 2)
+  receivedQuantity    Decimal               @default(0) @db.Decimal(18, 2)
+  unitPriceOriginal   Decimal               @db.Decimal(18, 4)
+  unitPriceIdr        Decimal               @db.Decimal(18, 2)
+  totalAmountOriginal Decimal               @db.Decimal(18, 4)
+  totalAmountIdr      Decimal               @db.Decimal(18, 2)
+  notes               String?
+  sortOrder           Int                   @default(0)
+
+  receiptItems        PurchaseReceiptItem[]
+
+  @@index([purchaseOrderId])
+}
+
+model PurchaseReceipt {
+  id                     String                @id @default(cuid())
+  grnNumber              String                @unique
+  purchaseOrderId        String
+  purchaseOrder          PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
+  receiptDate            DateTime
+  warehouseName          String                @default("Gudang Utama")
+  notes                  String?
+  receivedByUserId       String
+  receivedByNameSnapshot String
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  items                  PurchaseReceiptItem[]
+
+  @@index([purchaseOrderId])
+  @@index([receiptDate])
+}
+
+model PurchaseReceiptItem {
+  id                  String            @id @default(cuid())
+  purchaseReceiptId   String
+  purchaseReceipt     PurchaseReceipt   @relation(fields: [purchaseReceiptId], references: [id], onDelete: Cascade)
+  purchaseOrderItemId String
+  purchaseOrderItem   PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+  itemCode            String
+  itemName            String
+  unit                String
+  quantityReceived    Decimal           @db.Decimal(18, 2)
+  notes               String?
+
+  @@index([purchaseReceiptId])
+  @@index([purchaseOrderItemId])
+}
+
+model PurchaseInvoice {
+  id                    String                @id @default(cuid())
+  invoiceNumber         String                @unique
+  supplierInvoiceNumber String
+  purchaseOrderId       String?
+  purchaseOrder         PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id])
+  supplierId            String
+  supplier              Supplier              @relation(fields: [supplierId], references: [id])
+  invoiceDate           DateTime
+  dueDate               DateTime
+  currency              String                @default("USD")
+  exchangeRate          Decimal               @db.Decimal(18, 4)
+  subtotalOriginal      Decimal               @db.Decimal(18, 4)
+  subtotalIdr           Decimal               @db.Decimal(18, 2)
+  landedCostTotalIdr    Decimal               @default(0) @db.Decimal(18, 2)
+  totalAmountOriginal   Decimal               @db.Decimal(18, 4)
+  totalAmountIdr        Decimal               @db.Decimal(18, 2)
+  totalPaidOriginal     Decimal               @default(0) @db.Decimal(18, 4)
+  totalPaidIdr          Decimal               @default(0) @db.Decimal(18, 2)
+  status                PurchaseInvoiceStatus @default(DRAFT)
+  notes                 String?
+  journalEntryId        String?               @unique
+  journalEntry          JournalEntry?         @relation(fields: [journalEntryId], references: [id])
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  landedCosts           LandedCostItem[]
+  payments              PurchasePayment[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([invoiceDate])
+}
+
+model LandedCostItem {
+  id                 String                     @id @default(cuid())
+  purchaseInvoiceId  String
+  purchaseInvoice    PurchaseInvoice            @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  costType           LandedCostType
+  isCreditableTax    Boolean                    @default(false)
+  description        String
+  vendorName         String?
+  originalCurrency   String                     @default("IDR")
+  originalAmount     Decimal                    @db.Decimal(18, 4)
+  exchangeRate       Decimal                    @default(1) @db.Decimal(18, 4)
+  amountIdr          Decimal                    @db.Decimal(18, 2)
+  allocationMethod   LandedCostAllocationMethod @default(BY_VALUE)
+  paymentAccountId   String?
+  paymentAccount     RekeningAccount?           @relation(fields: [paymentAccountId], references: [id])
+  notes              String?
+  journalEntryId     String?                    @unique
+  journalEntry       JournalEntry?              @relation(fields: [journalEntryId], references: [id])
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  @@index([purchaseInvoiceId])
+  @@index([costType])
+}
+
+model PurchasePayment {
+  id                    String          @id @default(cuid())
+  paymentNumber         String          @unique
+  purchaseInvoiceId     String
+  purchaseInvoice       PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id])
+  supplierId            String
+  supplier              Supplier        @relation(fields: [supplierId], references: [id])
+  paymentDate           DateTime
+  rekeningAccountId     String
+  rekeningAccount       RekeningAccount @relation(fields: [rekeningAccountId], references: [id])
+  currency              String
+  amountPaidOriginal    Decimal         @db.Decimal(18, 4)
+  paymentRate           Decimal         @db.Decimal(18, 4)
+  invoiceRate           Decimal         @db.Decimal(18, 4)
+  settledPayableIdr     Decimal         @db.Decimal(18, 2)
+  totalPaidIdr          Decimal         @db.Decimal(18, 2)
+  forexDiffIdr          Decimal         @db.Decimal(18, 2)
+  forexAccountCode      String
+  notes                 String?
+  journalEntryId        String?         @unique
+  journalEntry          JournalEntry?   @relation(fields: [journalEntryId], references: [id])
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([purchaseInvoiceId])
+  @@index([supplierId])
+  @@index([rekeningAccountId])
+  @@index([paymentDate])
+}
+
+enum SalesReturnStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum SalesReturnRefundMethod {
+  REDUCE_RECEIVABLE
+  REFUND_CASH
+}
+
+model SalesReturn {
+  id                    String                   @id @default(cuid())
+  returnNumber          String                   @unique
+  salesRecordId         String
+  salesRecord           SalesRecord              @relation(fields: [salesRecordId], references: [id], onDelete: Restrict)
+  returnDate            DateTime
+  customerName          String
+  refundMethod          SalesReturnRefundMethod  @default(REDUCE_RECEIVABLE)
+  rekeningAccountId     String?
+  rekeningAccount       RekeningAccount?         @relation(fields: [rekeningAccountId], references: [id], onDelete: SetNull)
+  subtotalAmount        Decimal                  @db.Decimal(18, 2)
+  totalCostPrice        Decimal                  @default(0) @db.Decimal(18, 2)
+  status                SalesReturnStatus        @default(DRAFT)
+  notes                 String?
+  journalEntryId        String?
+  journalEntry          JournalEntry?            @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  items                 SalesReturnItem[]
+
+  @@index([salesRecordId])
+  @@index([returnDate])
+  @@index([status])
+  @@index([rekeningAccountId])
+  @@index([journalEntryId])
+}
+
+model SalesReturnItem {
+  id                    String       @id @default(cuid())
+  salesReturnId         String
+  salesReturn           SalesReturn  @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  salesRecordItemId     String?
+  productRef            String
+  productName           String
+  unit                  String       @default("PCS")
+  quantity              Decimal      @db.Decimal(18, 2)
+  unitPrice             Decimal      @db.Decimal(18, 2)
+  unitCostPrice         Decimal      @default(0) @db.Decimal(18, 2)
+  totalAmount           Decimal      @db.Decimal(18, 2)
+  totalCost             Decimal      @default(0) @db.Decimal(18, 2)
+  reason                String?
+
+  @@index([salesReturnId])
+  @@index([productRef])
+}
+
+enum SavingsTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum SavingsTransactionSource {
+  DIRECT_CASH
+  SALARY_DEDUCTION
+  MANUAL_ADJUSTMENT
+}
+
+model EmployeeSavings {
+  id                    String                       @id @default(cuid())
+  employeeId            String                       @unique
+  employee              Employee                     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  accountNumber         String                       @unique
+  balance               Decimal                      @default(0) @db.Decimal(18, 2)
+  isActive              Boolean                      @default(true)
+  notes                 String?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  transactions          EmployeeSavingsTransaction[]
+
+  @@index([employeeId])
+}
+
+model EmployeeSavingsTransaction {
+  id                    String                   @id @default(cuid())
+  savingsAccountId      String
+  savingsAccount        EmployeeSavings          @relation(fields: [savingsAccountId], references: [id], onDelete: Cascade)
+  transactionDate       DateTime
+  type                  SavingsTransactionType
+  source                SavingsTransactionSource @default(DIRECT_CASH)
+  amount                Decimal                  @db.Decimal(18, 2)
+  balanceAfter          Decimal                  @db.Decimal(18, 2)
+  rekeningAccountId     String?
+  rekeningAccount       RekeningAccount?         @relation(fields: [rekeningAccountId], references: [id], onDelete: SetNull)
+  journalEntryId        String?
+  journalEntry          JournalEntry?            @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  notes                 String?
+  createdByUserId       String
+  createdByNameSnapshot String
+  createdAt             DateTime                 @default(now())
+
+  @@index([savingsAccountId])
+  @@index([transactionDate])
+}

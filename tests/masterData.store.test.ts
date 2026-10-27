@@ -61,8 +61,17 @@ describe("master data normalized persistence", () => {
       }
     ]);
 
-    await expect(listRekeningAccounts()).resolves.toEqual([
-      { id: "cash-w", bank: "Cash", name: "Cash W", accountNumber: "-", isCash: true, tipeIds: ["W"] }
+    const accounts = await listRekeningAccounts();
+    expect(accounts).toEqual([
+      expect.objectContaining({
+        id: "cash-w",
+        bank: "Cash",
+        name: "Cash W",
+        accountNumber: "-",
+        isCash: true,
+        tipeIds: ["W"],
+        currency: "IDR"
+      })
     ]);
     expect(mocks.prisma.rekeningAccount.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { isActive: true } }));
   });

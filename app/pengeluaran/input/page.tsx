@@ -2,12 +2,17 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PengeluaranForm } from "@/components/forms/PengeluaranForm";
 import { listBookkeepingTypes, listRekeningAccounts } from "@/lib/business/masterData";
 import { requirePermission } from "@/lib/auth/requirePermission";
+import { listEmployees } from "@/lib/sdm/employeeStore";
 
 export const dynamic = "force-dynamic";
 
 export default async function InputPengeluaranPage() {
   await requirePermission("pengeluaran.create");
-  const [tipes, rekenings] = await Promise.all([listBookkeepingTypes(), listRekeningAccounts()]);
+  const [tipes, rekenings, employees] = await Promise.all([
+    listBookkeepingTypes(),
+    listRekeningAccounts(),
+    listEmployees({ isActive: true })
+  ]);
   return (
     <AppShell>
       <div className="mb-7">
@@ -15,7 +20,7 @@ export default async function InputPengeluaranPage() {
         <h2 className="aj-page-title text-3xl font-bold">Input Pengeluaran</h2>
         <p className="mt-2 text-sm text-slate-600">Catat pengeluaran perusahaan beserta bukti pembayarannya.</p>
       </div>
-      <PengeluaranForm tipes={tipes} rekenings={rekenings} />
+      <PengeluaranForm tipes={tipes} rekenings={rekenings} employees={employees} />
     </AppShell>
   );
 }

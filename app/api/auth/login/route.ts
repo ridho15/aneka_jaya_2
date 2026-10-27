@@ -11,7 +11,17 @@ export async function POST(request: Request) {
 
   try {
     const input = await request.json().catch(() => null);
-    const data = provider === "anika_erp" ? await loginWithAnikaErp(input) : await loginWithPassword(input);
+    let data;
+    try {
+      data = await loginWithPassword(input);
+    } catch (localErr: any) {
+      console.error("[login route] localErr:", localErr?.message, localErr);
+      if (provider === "anika_erp") {
+        data = await loginWithAnikaErp(input);
+      } else {
+        throw localErr;
+      }
+    }
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return NextResponse.json(

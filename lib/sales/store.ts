@@ -13,6 +13,7 @@ import { cancelStockRelease, nextRevisionReference, releaseSaleStock } from "@/l
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
 import { createTempoReceivableInTransaction, syncTempoReceivableOnSalesEdit, syncTempoReceivableOnSalesEditInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
 import { createDeliveryOrderForSale, syncDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
+import { postSalesInvoiceJournal, postSalesCogsJournal, reverseSalesJournals } from "@/lib/sales/postingHooks";
 
 const fileName = "sales-records.json";
 const isProductionMode = () => process.env.NEXT_PUBLIC_APP_MODE === "production";
@@ -637,6 +638,16 @@ export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreat
         id: sale.createdByUserId || "system", name: sale.createdByNameSnapshot || "System", role: (sale.createdByRoleSnapshot || "OWNER") as Role
       });
     });
+
+    if (sale.approvalStatus === "approved") {
+      await postSalesInvoiceJournal(sale.id).catch((err) => {
+        console.error("[JOURNAL] Failed to post sales invoice journal on save:", err);
+      });
+      await postSalesCogsJournal(sale.id).catch((err) => {
+        console.error("[JOURNAL] Failed to post sales COGS journal on save:", err);
+      });
+    }
+
     return;
   }
   const rows = await readJsonArray<Sale>(fileName);
@@ -670,6 +681,12 @@ export async function updateSalesApprovalStatus(id: string, approvalStatus: Sale
     if (row && approvalStatus === "approved") {
       await createDeliveryOrderForSale(id).catch((err) => {
         console.error("[DO] Failed to create delivery order on approval:", err);
+      });
+      await postSalesInvoiceJournal(id).catch((err) => {
+        console.error("[JOURNAL] Failed to post sales invoice journal on approval:", err);
+      });
+      await postSalesCogsJournal(id).catch((err) => {
+        console.error("[JOURNAL] Failed to post sales COGS journal on approval:", err);
       });
     }
     return row ? toSale(row) : null;
@@ -788,6 +805,9 @@ async function cancelPrismaSaleAtomically(id: string, before: Sale, cleanReason:
     if (erpCancellation?.stockReversalStatus) await tx.auditLog.create({ data: { id: crypto.randomUUID(), entityType: "stock_release", entityId: before.stockReleaseReference || id, action: "reverse", beforeValue: serializeJson({ status: before.stockReleaseStatus, reference: before.stockReleaseReference }), afterValue: serializeJson({ status: erpCancellation.stockReversalStatus, reversalReference: erpCancellation.reversalReference }), userId: actor.id, userNameSnapshot: actor.name, userRoleSnapshot: actor.role, reason: cleanReason } });
     const after = toSale(row);
     await tx.auditLog.create({ data: { id: crypto.randomUUID(), entityType: "sales", entityId: id, action: "cancel", beforeValue: serializeJson(before), afterValue: serializeJson(erpCancellation ? { ...after, erpCancellation } : after), userId: actor.id, userNameSnapshot: actor.name, userRoleSnapshot: actor.role, reason: cleanReason } });
+    await reverseSalesJournals(id, { id: actor.id, name: actor.name, role: actor.role }, cleanReason).catch((err) => {
+      console.warn(`[REVERSAL] Gagal membalik jurnal penjualan ${id}:`, err);
+    });
     return after;
   });
 }

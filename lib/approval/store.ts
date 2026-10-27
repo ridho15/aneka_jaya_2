@@ -11,6 +11,7 @@ import { createTempoReceivable, createTempoReceivableInTransaction } from "@/lib
 import { prisma } from "@/lib/db/prisma";
 import { ApprovalStatus as PrismaApprovalStatus, type Prisma } from "@prisma/client";
 import { type ApprovalAction, isApprovalAction, validateApprovalTransition } from "./validation";
+import { postExpenseJournal, reverseExpenseJournal } from "@/lib/accounting/postingHooks";
 
 export type ApprovalStatus = "draft" | "pending_approval" | "approved" | "rejected" | "cancelled";
 export type ApprovalModule = "penjualan" | "pengeluaran" | "pembelian" | "stock" | "rekening_reset";
@@ -203,7 +204,7 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
   const user = await getCurrentUser();
   if (!can(user.role, "approval.approve")) throw new ApprovalForbiddenError();
   if (isProductionMode()) {
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const row = await tx.approvalRequest.findUnique({ where: { id } });
       if (!row) throw new Error("Approval tidak ditemukan.");
       const before = toApprovalRequest(row);
@@ -260,6 +261,13 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
             ? { approvalStatus: expenseStatus, erpSyncStatus: "not_required", erpSyncError: "Pengeluaran ditolak approval." }
             : { approvalStatus: expenseStatus, expenseDate: now }
         }).catch(() => null);
+
+        if (after.status === "rejected" && typeof tx.employeeLoan?.updateMany === "function") {
+          await tx.employeeLoan.updateMany({
+            where: { expenseRecordId: after.entityId },
+            data: { status: "CANCELLED" }
+          }).catch(() => null);
+        }
       }
       await tx.auditLog.create({
         data: {
@@ -277,6 +285,20 @@ export async function updateApprovalStatus(id: string, action: ApprovalAction, r
       });
       return after;
     });
+
+    if (result.module === "pengeluaran") {
+      if (result.status === "approved") {
+        await postExpenseJournal(result.entityId, user).catch((err) => {
+          console.error("[Auto-Journal Approval Error]", err);
+        });
+      } else if (result.status === "rejected") {
+        await reverseExpenseJournal(result.entityId, reason || "Ditolak approval", user).catch((err) => {
+          console.error("[Auto-Journal Reversal Error]", err);
+        });
+      }
+    }
+
+    return result;
   }
   const rows = await readJsonArray<ApprovalRequest>(fileName);
   const index = rows.findIndex((row) => row.id === id);

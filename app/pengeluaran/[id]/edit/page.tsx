@@ -5,13 +5,19 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { getExpenseRecord } from "@/lib/expenses/store";
 import { listBookkeepingTypes, listRekeningAccounts } from "@/lib/business/masterData";
+import { listEmployees } from "@/lib/sdm/employeeStore";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditPengeluaranPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePermission("pengeluaran.manage");
   const { id } = await params;
-  const [expense, tipes, rekenings] = await Promise.all([getExpenseRecord(id), listBookkeepingTypes(), listRekeningAccounts()]);
+  const [expense, tipes, rekenings, employees] = await Promise.all([
+    getExpenseRecord(id),
+    listBookkeepingTypes(),
+    listRekeningAccounts(),
+    listEmployees({ isActive: true })
+  ]);
   if (!expense) notFound();
   const isCancelled = expense.approvalStatus === "cancelled";
 
@@ -29,7 +35,7 @@ export default async function EditPengeluaranPage({ params }: { params: Promise<
       {isCancelled ? (
         <ErrorState message="Pengeluaran yang sudah dibatalkan tidak dapat diedit." />
       ) : (
-        <PengeluaranForm expense={expense} tipes={tipes} rekenings={rekenings} />
+        <PengeluaranForm expense={expense} tipes={tipes} rekenings={rekenings} employees={employees} />
       )}
     </AppShell>
   );

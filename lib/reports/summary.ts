@@ -29,6 +29,12 @@ export type FinanceReportSummary = {
   tempoReversalTotal: number;
   approvedExpenses: Expense[];
   approvedExpenseTotal: number;
+  operationalExpenses?: Expense[];
+  operationalExpenseTotal?: number;
+  kasbonDisbursed?: Expense[];
+  kasbonDisbursedTotal?: number;
+  salaryExpenses?: Expense[];
+  salaryExpenseTotal?: number;
 };
 
 const finalTempoStatuses = ["paid", "cancelled", "written_off"];
@@ -115,6 +121,10 @@ export function buildFinanceReportSummary(input: {
   const tempoReversals = (input.reversals || []).filter((row) => row.reversalDate.startsWith(input.month));
   const approvedExpenses = input.expenses.filter((row) => row.approvalStatus === "approved" && row.expenseDate.startsWith(input.month));
 
+  const kasbonDisbursed = approvedExpenses.filter((row) => row.categoryCode === "employee_loan" || row.categoryCode === "operational_advance");
+  const salaryExpenses = approvedExpenses.filter((row) => row.categoryCode === "salary");
+  const operationalExpenses = approvedExpenses.filter((row) => row.categoryCode !== "employee_loan" && row.categoryCode !== "operational_advance" && row.categoryCode !== "salary");
+
   return {
     month: input.month,
     openTempo,
@@ -124,6 +134,12 @@ export function buildFinanceReportSummary(input: {
     tempoReversals,
     tempoReversalTotal: tempoReversals.reduce((sum, row) => sum + row.amount, 0),
     approvedExpenses,
-    approvedExpenseTotal: approvedExpenses.reduce((sum, row) => sum + row.amount, 0)
+    approvedExpenseTotal: approvedExpenses.reduce((sum, row) => sum + row.amount, 0),
+    operationalExpenses,
+    operationalExpenseTotal: operationalExpenses.reduce((sum, row) => sum + row.amount, 0),
+    kasbonDisbursed,
+    kasbonDisbursedTotal: kasbonDisbursed.reduce((sum, row) => sum + row.amount, 0),
+    salaryExpenses,
+    salaryExpenseTotal: salaryExpenses.reduce((sum, row) => sum + row.amount, 0)
   };
 }

@@ -72,7 +72,7 @@ describe("local credentials login", () => {
       redirectTo: "/dashboard"
     });
 
-    expect(mocks.setLocalSessionCookie).toHaveBeenCalledWith("owner");
+    expect(mocks.setLocalSessionCookie).toHaveBeenCalledWith("owner", "OWNER");
     expect(mocks.state.user?.failedLoginCount).toBe(0);
     expect(mocks.prisma.auditLog.create).toHaveBeenCalled();
   });

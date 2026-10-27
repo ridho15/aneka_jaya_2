@@ -9,6 +9,7 @@ import { rekeningForTipe } from "@/lib/business/masterData";
 import { syncErpSalesPayment } from "@/lib/api/salesPayments";
 import { jakartaDateKey } from "@/lib/date/jakarta";
 import { calculateTempoMetricsSummary, type TempoMetricsSummary } from "./summary";
+import { postTempoPaymentJournal, reverseTempoPaymentJournal } from "./postingHooks";
 
 export type TempoStatus = "open" | "paid" | "partial_paid" | "overdue" | "cancelled" | "written_off";
 
@@ -815,9 +816,19 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
         }
       });
       return { receivable: after, payment: paymentResult };
-    });
+    }, { maxWait: 15000, timeout: 30000 });
     const syncedPayment = await syncTempoPaymentToErp(result.receivable, result.payment);
-    return { receivable: result.receivable, payment: syncedPayment };
+    const finalPayment = syncedPayment || result.payment;
+    try {
+      await postTempoPaymentJournal(finalPayment, {
+        id: user.id,
+        name: user.name,
+        role: user.role
+      });
+    } catch (journalErr) {
+      console.error("[payTempo] Gagal mem-posting jurnal pelunasan tempo:", journalErr);
+    }
+    return { receivable: result.receivable, payment: finalPayment };
   }
   const rows = await readJsonArray<TempoReceivable>(receivableFile);
   const index = rows.findIndex((row) => row.id === id);
@@ -839,7 +850,201 @@ export async function payTempo(id: string, input: Omit<TempoPayment, "id" | "tem
   payments.unshift(payment);
   await writeJsonArray(paymentFile, payments);
   await recordAudit({ entityType: "tempo", entityId: id, action: after.status === "paid" ? "mark_paid" : "partial_paid", beforeValue: before, afterValue: { receivable: after, payment }, reason: `Pembayaran Tempo ${input.paymentMethod}` });
+  try {
+    await postTempoPaymentJournal(payment, {
+      id: user.id,
+      name: user.name,
+      role: user.role
+    });
+  } catch (journalErr) {
+    console.error("[payTempo JSON] Gagal mem-posting jurnal pelunasan tempo:", journalErr);
+  }
   return { receivable: after, payment };
+}
+
+export async function reverseTempoPayment(
+  paymentId: string,
+  reason: string
+): Promise<{ payment: TempoPayment; reversal: TempoPaymentReversal }> {
+  const user = await getCurrentUser();
+  if (!can(user.role, "tempo.mark_paid") && !can(user.role, "penjualan.manage")) {
+    throw new Error("Tidak punya akses membatalkan pembayaran Tempo.");
+  }
+  const cleanReason = reason.trim();
+  if (!cleanReason) throw new Error("Alasan pembatalan pembayaran wajib diisi.");
+
+  const pRow = await prisma.tempoPayment.findUnique({ where: { id: paymentId } });
+  if (isProductionMode() || pRow) {
+    const { payment, reversal } = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const p = await tx.tempoPayment.findUnique({ where: { id: paymentId } });
+      if (!p) throw new Error("Pembayaran Tempo tidak ditemukan.");
+      const receivable = await tx.tempoReceivable.findUnique({ where: { id: p.tempoReceivableId } });
+      if (!receivable) throw new Error("Piutang Tempo tidak ditemukan.");
+
+      const amount = Number(p.amountPaid);
+      const newPaid = Math.max(0, Number(receivable.paidAmount) - amount);
+      const newRemaining = Number(receivable.remainingAmount) + amount;
+      const newStatus: TempoStatus = newPaid <= 0 ? "open" : "partial_paid";
+
+      await tx.tempoReceivable.update({
+        where: { id: receivable.id },
+        data: {
+          paidAmount: newPaid,
+          remainingAmount: newRemaining,
+          status: newStatus,
+          updatedAt: new Date()
+        }
+      });
+
+      const revRecord = await tx.tempoPaymentReversal.create({
+        data: {
+          id: `TPR-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+          tempoPaymentId: paymentId,
+          reversalDate: new Date(),
+          amount: amount,
+          reason: cleanReason,
+          erpStatus: "pending",
+          createdByUserId: user.id,
+          createdByNameSnapshot: user.name,
+          createdAt: new Date()
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          id: crypto.randomUUID(),
+          entityType: "tempo",
+          entityId: receivable.id,
+          action: "reversal",
+          beforeValue: serializeJson({ receivable, payment: p }),
+          afterValue: serializeJson({ newPaid, newRemaining, newStatus, reversal: revRecord }),
+          userId: user.id,
+          userNameSnapshot: user.name,
+          userRoleSnapshot: user.role,
+          reason: cleanReason
+        }
+      });
+
+      return { payment: toTempoPayment(p), reversal: toTempoPaymentReversal(revRecord) };
+    }, { maxWait: 15000, timeout: 30000 });
+
+    try {
+      await reverseTempoPaymentJournal(payment.id, {
+        id: user.id,
+        name: user.name,
+        role: user.role
+      }, cleanReason);
+    } catch (journalErr) {
+      console.error("[reverseTempoPayment] Gagal reverse jurnal:", journalErr);
+    }
+
+    return { payment, reversal };
+  }
+
+  // JSON fallback
+  const payments = await readJsonArray<TempoPayment>(paymentFile);
+  const pIndex = payments.findIndex((p) => p.id === paymentId);
+  if (pIndex < 0) throw new Error("Pembayaran Tempo tidak ditemukan.");
+  const p = payments[pIndex];
+
+  const receivables = await readJsonArray<TempoReceivable>(receivableFile);
+  const rIndex = receivables.findIndex((r) => r.id === p.tempoReceivableId);
+  if (rIndex >= 0) {
+    const r = receivables[rIndex];
+    const amount = Number(p.amountPaid);
+    const newPaid = Math.max(0, r.paidAmount - amount);
+    const newRemaining = r.remainingAmount + amount;
+    const newStatus: TempoStatus = newPaid <= 0 ? "open" : "partial_paid";
+    receivables[rIndex] = { ...r, paidAmount: newPaid, remainingAmount: newRemaining, status: newStatus, updatedAt: new Date().toISOString() };
+    await writeJsonArray(receivableFile, receivables);
+  }
+
+  const reversal: TempoPaymentReversal = {
+    id: `TPR-${Date.now()}`,
+    tempoPaymentId: paymentId,
+    reversalDate: jakartaDateKey(new Date()),
+    amount: Number(p.amountPaid),
+    reason: cleanReason,
+    erpStatus: "pending",
+    createdByUserId: user.id,
+    createdByNameSnapshot: user.name,
+    createdAt: new Date().toISOString()
+  };
+
+  const reversals = await readJsonArray<TempoPaymentReversal>(reversalFile);
+  reversals.unshift(reversal);
+  await writeJsonArray(reversalFile, reversals);
+
+  try {
+    await reverseTempoPaymentJournal(paymentId, {
+      id: user.id,
+      name: user.name,
+      role: user.role
+    }, cleanReason);
+  } catch (journalErr) {
+    console.error("[reverseTempoPayment JSON] Gagal reverse jurnal:", journalErr);
+  }
+
+  return { payment: p, reversal };
+}
+
+export async function applySalesReturnToTempo(
+  salesRecordId: string,
+  returnAmount: number,
+  actor: { id: string; name: string; role: Role }
+): Promise<TempoReceivable | null> {
+  if (isProductionMode() || (typeof prisma?.tempoReceivable?.findFirst === "function")) {
+    const row = await prisma.tempoReceivable.findFirst({
+      where: { salesId: salesRecordId }
+    });
+    if (!row) return null;
+
+    const before = toTempoReceivable(row);
+    if (finalStatuses.includes(before.status) && before.status !== "paid") return null;
+
+    const newRemaining = Math.max(0, before.remainingAmount - returnAmount);
+    const newStatus: TempoStatus = newRemaining <= 0 ? "paid" : (before.paidAmount > 0 ? "partial_paid" : "open");
+
+    const updated = await prisma.tempoReceivable.update({
+      where: { id: row.id },
+      data: {
+        remainingAmount: newRemaining,
+        status: newStatus,
+        updatedAt: new Date()
+      }
+    });
+
+    const after = toTempoReceivable(updated);
+
+    await prisma.auditLog.create({
+      data: {
+        id: crypto.randomUUID(),
+        entityType: "tempo",
+        entityId: row.id,
+        action: "return_reduction",
+        beforeValue: serializeJson(before),
+        afterValue: serializeJson(after),
+        userId: actor.id,
+        userNameSnapshot: actor.name,
+        userRoleSnapshot: actor.role,
+        reason: `Pengurangan piutang akibat retur penjualan Rp ${returnAmount.toLocaleString("id-ID")}`
+      }
+    }).catch(() => null);
+
+    return after;
+  }
+
+  // JSON fallback
+  const rows = await readJsonArray<TempoReceivable>(receivableFile);
+  const index = rows.findIndex((r) => r.salesId === salesRecordId);
+  if (index < 0) return null;
+  const before = rows[index];
+  const newRemaining = Math.max(0, before.remainingAmount - returnAmount);
+  const newStatus: TempoStatus = newRemaining <= 0 ? "paid" : (before.paidAmount > 0 ? "partial_paid" : "open");
+  const after: TempoReceivable = { ...before, remainingAmount: newRemaining, status: newStatus, updatedAt: new Date().toISOString() };
+  rows[index] = after;
+  await writeJsonArray(receivableFile, rows);
+  return after;
 }
 
 export async function cancelTempo(id: string, reason: string): Promise<TempoReceivable> {

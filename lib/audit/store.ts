@@ -9,11 +9,14 @@ import type { Prisma } from "@prisma/client";
 
 export type AuditEntityType =
   | "sales" | "expense" | "purchase" | "product" | "stock" | "rekening" | "tipe" | "coa" | "user"
-  | "tempo" | "approval" | "erp_sync" | "whatsapp_report" | "stock_alert" | "rekening_reset" | "app_setting" | "delivery_order";
+  | "tempo" | "approval" | "erp_sync" | "whatsapp_report" | "stock_alert" | "rekening_reset" | "app_setting" | "delivery_order"
+  | "employee" | "employee_loan" | "employee_loan_payment" | "advance_settlement"
+  | "employee_savings";
 
 export type AuditAction =
   | "create" | "update" | "approve" | "reject" | "archive" | "disable" | "enable" | "mark_paid"
-  | "partial_paid" | "cancel" | "write_off" | "reset" | "send_whatsapp" | "retry_sync" | "login" | "logout";
+  | "partial_paid" | "cancel" | "write_off" | "reset" | "send_whatsapp" | "retry_sync" | "login" | "logout"
+  | "assign_supervisor" | "deposit" | "withdrawal";
 
 export type AuditLog = {
   id: string;

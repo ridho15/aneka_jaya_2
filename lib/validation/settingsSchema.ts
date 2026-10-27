@@ -24,14 +24,22 @@ export const rekeningCreateSchema = z.object({
   accountNumber: z.string().trim().max(80).optional(),
   erpCoaId: z.string().trim().max(80).optional(),
   erpCoaNameSnapshot: z.string().trim().max(120).optional(),
-  tipeIds: z.array(z.string().trim().min(1).max(80)).optional()
+  tipeIds: z.array(z.string().trim().min(1).max(80)).optional(),
+  currency: z.string().trim().min(2).max(10).optional(),
+  openingBalanceValas: z.number().min(0).optional(),
+  openingBalanceDate: z.string().optional(),
+  openingRate: z.number().positive().optional()
 }).transform((value) => ({
   bank: value.bank,
   name: value.name,
   accountNumber: value.accountNumber || "-",
   erpCoaId: value.erpCoaId || undefined,
   erpCoaNameSnapshot: value.erpCoaNameSnapshot || undefined,
-  tipeIds: value.tipeIds || []
+  tipeIds: value.tipeIds || [],
+  currency: value.currency?.toUpperCase() || "IDR",
+  openingBalanceValas: value.openingBalanceValas || 0,
+  openingBalanceDate: value.openingBalanceDate || undefined,
+  openingRate: value.openingRate || 1
 }));
 
 export const rekeningUpdateSchema = z.object({
@@ -42,7 +50,11 @@ export const rekeningUpdateSchema = z.object({
   erpCoaId: z.string().trim().max(80).optional(),
   erpCoaNameSnapshot: z.string().trim().max(120).optional(),
   isActive: z.boolean().optional(),
-  tipeIds: z.array(z.string().trim().min(1).max(80)).optional()
+  tipeIds: z.array(z.string().trim().min(1).max(80)).optional(),
+  currency: z.string().trim().min(2).max(10).optional(),
+  openingBalanceValas: z.number().min(0).optional(),
+  openingBalanceDate: z.string().optional(),
+  openingRate: z.number().positive().optional()
 });
 
 const phoneRegex = /^\+?[0-9]{8,16}$/;
