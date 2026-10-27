@@ -20,11 +20,11 @@ export default async function IncomeStatementPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <p className="mb-1 text-xs font-bold uppercase tracking-[0.13em] text-emerald-400">
+        <p className="mb-1 text-xs font-bold uppercase tracking-[0.13em] text-emerald-700">
           PUSAT LAPORAN KEUANGAN
         </p>
         <h2 className="aj-page-title text-3xl font-bold">Laporan Laba Rugi (P&L)</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-slate-500">
           Kalkulasi pendapatan bersih, harga pokok penjualan riil (COGS), beban operasional, serta laba/rugi bersih berbasis double-entry.
         </p>
       </div>

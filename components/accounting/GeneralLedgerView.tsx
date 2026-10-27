@@ -86,7 +86,7 @@ export function GeneralLedgerView({
                   setSelectedAccountId(e.target.value);
                   fetchLedger(e.target.value, startDate, endDate);
                 }}
-                className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-hidden"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-none"
               >
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
@@ -104,7 +104,7 @@ export function GeneralLedgerView({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-hidden"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-none"
               />
             </div>
 
@@ -116,7 +116,7 @@ export function GeneralLedgerView({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-hidden"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-none"
               />
             </div>
           </div>
@@ -181,7 +181,7 @@ export function GeneralLedgerView({
           <div className="flex items-center gap-3">
             <span className="font-mono text-base font-bold text-slate-900">{report.account.code}</span>
             <span className="text-sm font-semibold text-slate-800">— {report.account.name}</span>
-            <span className="rounded-xs bg-slate-200/70 px-2 py-0.5 text-[11px] font-bold text-slate-700 uppercase">
+            <span className="rounded bg-slate-200/70 px-2 py-0.5 text-[11px] font-bold text-slate-700 uppercase">
               {report.account.category}
             </span>
           </div>
@@ -209,7 +209,7 @@ export function GeneralLedgerView({
                 <td className="py-2.5 px-4 font-mono">{formatJakartaDate(report.period.startDate)}</td>
                 <td className="py-2.5 px-4 font-mono text-slate-400">-</td>
                 <td className="py-2.5 px-4">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-bold bg-slate-200 text-slate-800">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">
                     SALDO AWAL
                   </span>
                 </td>

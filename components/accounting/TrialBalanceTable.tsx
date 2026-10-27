@@ -92,7 +92,7 @@ export function TrialBalanceTable({ initialReport }: Props) {
                   : "PERINGATAN: NERACA SALDO TIDAK SEIMBANG"}
               </span>
               <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-xs text-xs font-semibold ${
+                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
                   report.isEquilibrium
                     ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                     : "bg-red-100 text-red-800 border border-red-300"
@@ -129,7 +129,7 @@ export function TrialBalanceTable({ initialReport }: Props) {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-hidden"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-none"
               />
             </div>
 
@@ -141,7 +141,7 @@ export function TrialBalanceTable({ initialReport }: Props) {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-hidden"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-none"
               />
             </div>
 
@@ -168,7 +168,7 @@ export function TrialBalanceTable({ initialReport }: Props) {
                   type="checkbox"
                   checked={hideZero}
                   onChange={(e) => setHideZero(e.target.checked)}
-                  className="rounded-xs border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                 />
                 Sembunyikan Akun Saldo Nol
               </label>
@@ -225,7 +225,7 @@ export function TrialBalanceTable({ initialReport }: Props) {
                     </td>
                     <td className="py-2.5 px-4 border-r border-slate-100">
                       <span className="font-semibold text-slate-900">{acc.name}</span>
-                      <span className="ml-2 text-[10px] font-mono uppercase text-slate-500 bg-slate-100 px-1 py-0.5 rounded-xs">
+                      <span className="ml-2 text-[10px] font-mono uppercase text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
                         {acc.category}
                       </span>
                     </td>

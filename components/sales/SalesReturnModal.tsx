@@ -171,7 +171,7 @@ export function SalesReturnModal({
                     type="date"
                     value={returnDate}
                     onChange={(e) => setReturnDate(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                     required
                   />
                 </div>
@@ -182,7 +182,7 @@ export function SalesReturnModal({
                   <select
                     value={refundMethod}
                     onChange={(e) => setRefundMethod(e.target.value as any)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   >
                     {isTempo && <option value="REDUCE_RECEIVABLE">Potong Piutang Tempo (Kredit)</option>}
                     <option value="REFUND_CASH">Pengembalian Kas/Bank (Refund)</option>
@@ -199,7 +199,7 @@ export function SalesReturnModal({
                   <select
                     value={rekeningAccountId}
                     onChange={(e) => setRekeningAccountId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                   >
                     {rekenings.map((r) => (
                       <option key={r.id} value={r.id}>{r.name}</option>
@@ -263,7 +263,7 @@ export function SalesReturnModal({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Keterangan tambahan retur penjualan..."
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 

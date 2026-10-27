@@ -90,7 +90,7 @@ export function JournalDetailModal({ journal, onClose, onJournalReversed }: Prop
             <div className="flex items-center gap-2">
               <span className="font-mono text-sm font-bold text-slate-800">{journal.entryNumber}</span>
               <span
-                className={`inline-flex items-center rounded-xs px-2 py-0.5 text-xs font-semibold ${
+                className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${
                   journal.status === "POSTED"
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                     : "bg-amber-50 text-amber-800 border border-amber-200"
@@ -115,7 +115,7 @@ export function JournalDetailModal({ journal, onClose, onJournalReversed }: Prop
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Metadata Grid */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-xs border border-slate-200 bg-slate-50/50 p-4 text-xs">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded border border-slate-200 bg-slate-50/50 p-4 text-xs">
             <div>
               <p className="font-semibold text-slate-500 uppercase">Tipe Sumber</p>
               <p className="mt-1 font-mono font-medium text-slate-900">{journal.sourceType}</p>
@@ -131,7 +131,7 @@ export function JournalDetailModal({ journal, onClose, onJournalReversed }: Prop
           </div>
 
           {journal.status === "REVERSED" && (
-            <div className="rounded-xs border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
+            <div className="rounded border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
               <p className="font-bold">Informasi Pembalikan (Reversal):</p>
               <p className="mt-1">
                 Jurnal ini telah dibalik pada {journal.reversedAt ? formatJakartaDate(journal.reversedAt) : "-"}.
@@ -141,7 +141,7 @@ export function JournalDetailModal({ journal, onClose, onJournalReversed }: Prop
           )}
 
           {/* Lines Table */}
-          <div className="border border-slate-200 rounded-xs overflow-hidden">
+          <div className="border border-slate-200 rounded overflow-hidden">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-100 text-slate-700 font-semibold uppercase tracking-wider border-b border-slate-200">
                 <tr>
@@ -190,7 +190,7 @@ export function JournalDetailModal({ journal, onClose, onJournalReversed }: Prop
 
           {/* Reversal Confirmation Form */}
           {showReverseConfirm && (
-            <div className="rounded-xs border border-red-200 bg-red-50/50 p-4 space-y-3">
+            <div className="rounded border border-red-200 bg-red-50/50 p-4 space-y-3">
               <p className="text-xs font-bold text-red-900 uppercase">
                 Konfirmasi Pembalikan Jurnal (Reversal)
               </p>
@@ -204,7 +204,7 @@ export function JournalDetailModal({ journal, onClose, onJournalReversed }: Prop
                   value={reversalReason}
                   onChange={(e) => setReversalReason(e.target.value)}
                   placeholder="Misal: Salah input akun beban atau transaksi dibatalkan..."
-                  className="mt-1 block w-full rounded-xs border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-red-500 focus:outline-hidden"
+                  className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-red-500 focus:outline-none"
                 />
               </label>
               <div className="flex justify-end gap-2 pt-1">

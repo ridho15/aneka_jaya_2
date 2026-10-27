@@ -66,17 +66,17 @@ export function JournalOverviewTable({ initialJournals, accounts }: Props) {
   const getSourceBadge = (type: string) => {
     switch (type) {
       case "EXPENSE":
-        return <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Pengeluaran</span>;
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Pengeluaran</span>;
       case "SDM_LOAN":
-        return <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Kasbon / UM</span>;
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Kasbon / UM</span>;
       case "SDM_SETTLEMENT":
-        return <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">Realisasi UM</span>;
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">Realisasi UM</span>;
       case "SDM_SALARY":
-        return <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">Gaji SDM</span>;
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">Gaji SDM</span>;
       case "MANUAL":
-        return <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">Manual</span>;
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">Manual</span>;
       default:
-        return <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">{type}</span>;
+        return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200">{type}</span>;
     }
   };
 
@@ -207,7 +207,7 @@ export function JournalOverviewTable({ initialJournals, accounts }: Props) {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span
-                          className={`inline-flex items-center rounded-xs px-2 py-0.5 text-[11px] font-semibold ${
+                          className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold ${
                             j.status === "POSTED"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : "bg-amber-50 text-amber-800 border border-amber-200"

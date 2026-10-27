@@ -50,10 +50,10 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
   return (
     <div className="space-y-6">
       {/* Filter & Action Bar - Hidden on print */}
-      <div className="aj-surface p-4 border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
+      <div className="aj-surface p-4 border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Per Tanggal (As of Date)
             </label>
             <Input
@@ -65,7 +65,7 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Tipe Pembukuan
             </label>
             <Select
@@ -97,14 +97,14 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
       <div
         className={`rounded-md border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
           report.isBalanced
-            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-            : "border-rose-500/40 bg-rose-500/10 text-rose-400"
+            ? "border-emerald-500/40 bg-emerald-50 text-emerald-800"
+            : "border-rose-500/40 bg-rose-50 text-rose-800"
         }`}
       >
         <div className="flex items-center gap-3">
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
-              report.isBalanced ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+              report.isBalanced ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
             }`}
           >
             {report.isBalanced ? "✓" : "!"}
@@ -115,14 +115,14 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
                 ? "NERACA SEIMBANG (EQUILIBRIUM DOUBLE-ENTRY SEMPURNA)"
                 : "PERINGATAN: NERACA TIDAK SEIMBANG"}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-[11px] text-slate-500 mt-0.5">
               Persamaan Akuntansi: Total Aset = Total Liabilitas + Total Ekuitas
             </p>
           </div>
         </div>
 
         <div className="text-right">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">Selisih: </span>
+          <span className="text-xs font-semibold uppercase text-slate-500">Selisih: </span>
           <span className="font-mono font-bold text-sm tabular-nums">
             {formatCurrency(report.difference)}
           </span>
@@ -130,16 +130,16 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
       </div>
 
       {/* Main Financial Statement Document */}
-      <div className="aj-surface border border-border p-8 print:p-0 print:border-none shadow-sm max-w-5xl mx-auto">
+      <div className="aj-surface border border-slate-200 p-8 print:p-0 print:border-none shadow-sm max-w-5xl mx-auto">
         {/* Document Header */}
-        <div className="text-center border-b border-border pb-6 mb-6">
-          <h1 className="text-lg font-bold tracking-wider text-foreground uppercase">
+        <div className="text-center border-b border-slate-200 pb-6 mb-6">
+          <h1 className="text-lg font-bold tracking-wider text-slate-900 uppercase">
             PT SURYA LOGAM MULIA
           </h1>
-          <h2 className="text-xl font-bold tracking-tight text-foreground uppercase mt-1">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 uppercase mt-1">
             LAPORAN POSISI KEUANGAN (NERACA)
           </h2>
-          <p className="text-xs text-muted-foreground mt-1 font-mono">
+          <p className="text-xs text-slate-500 mt-1 font-mono">
             Posisi Per Tanggal: {report.asOfDate}
           </p>
         </div>
@@ -149,22 +149,22 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
           {/* KOLOM KIRI: ASET (AKTIVA) */}
           <div className="space-y-6">
             <div>
-              <div className="flex justify-between items-center bg-muted/50 px-3 py-1.5 font-bold uppercase tracking-wider text-foreground border-b border-border text-[11px]">
+              <div className="flex justify-between items-center bg-slate-100 px-3 py-1.5 font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 text-[11px]">
                 <span>ASET (AKTIVA)</span>
                 <span>NOMINAL (IDR)</span>
               </div>
 
               {/* ASET LANCAR */}
               <div className="mt-3">
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 px-3">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 px-3">
                   Aset Lancar (Current Assets)
                 </p>
-                <div className="divide-y divide-border/40 px-3 py-1">
+                <div className="divide-y divide-slate-200 px-3 py-1">
                   {report.assets.currentAssets.length === 0 ? (
-                    <div className="py-2 text-muted-foreground italic">Tidak ada saldo aset lancar.</div>
+                    <div className="py-2 text-slate-500 italic">Tidak ada saldo aset lancar.</div>
                   ) : (
                     report.assets.currentAssets.map((line) => (
-                      <div key={line.id} className="flex justify-between py-1.5 text-foreground">
+                      <div key={line.id} className="flex justify-between py-1.5 text-slate-900">
                         <span>
                           {line.code} {line.name}
                         </span>
@@ -173,9 +173,9 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
                     ))
                   )}
 
-                  <div className="flex justify-between py-2 font-bold text-foreground border-t border-border mt-1">
+                  <div className="flex justify-between py-2 font-bold text-slate-900 border-t border-slate-200 mt-1">
                     <span>Subtotal Aset Lancar</span>
-                    <span className="tabular-nums font-mono text-emerald-400">
+                    <span className="tabular-nums font-mono text-emerald-700">
                       {formatCurrency(report.assets.totalCurrentAssets)}
                     </span>
                   </div>
@@ -184,15 +184,15 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
 
               {/* ASET TETAP */}
               <div className="mt-4">
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 px-3">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 px-3">
                   Aset Tetap (Fixed Assets)
                 </p>
-                <div className="divide-y divide-border/40 px-3 py-1">
+                <div className="divide-y divide-slate-200 px-3 py-1">
                   {report.assets.fixedAssets.length === 0 ? (
-                    <div className="py-2 text-muted-foreground italic">Tidak ada saldo aset tetap.</div>
+                    <div className="py-2 text-slate-500 italic">Tidak ada saldo aset tetap.</div>
                   ) : (
                     report.assets.fixedAssets.map((line) => (
-                      <div key={line.id} className="flex justify-between py-1.5 text-foreground">
+                      <div key={line.id} className="flex justify-between py-1.5 text-slate-900">
                         <span>
                           {line.code} {line.name}
                         </span>
@@ -201,7 +201,7 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
                     ))
                   )}
 
-                  <div className="flex justify-between py-2 font-bold text-foreground border-t border-border mt-1">
+                  <div className="flex justify-between py-2 font-bold text-slate-900 border-t border-slate-200 mt-1">
                     <span>Subtotal Aset Tetap</span>
                     <span className="tabular-nums font-mono">
                       {formatCurrency(report.assets.totalFixedAssets)}
@@ -211,9 +211,9 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
               </div>
 
               {/* TOTAL ASET */}
-              <div className="rounded border border-border/80 bg-muted/40 p-3 mt-6 flex justify-between items-center text-sm font-bold">
-                <span className="uppercase tracking-wider text-foreground">TOTAL ASET</span>
-                <span className="tabular-nums font-mono text-emerald-400 text-base">
+              <div className="rounded border border-slate-200 bg-slate-100 p-3 mt-6 flex justify-between items-center text-sm font-bold">
+                <span className="uppercase tracking-wider text-slate-900">TOTAL ASET</span>
+                <span className="tabular-nums font-mono text-emerald-700 text-base">
                   {formatCurrency(report.assets.totalAssets)}
                 </span>
               </div>
@@ -223,22 +223,22 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
           {/* KOLOM KANAN: LIABILITAS & EKUITAS (PASIVA) */}
           <div className="space-y-6">
             <div>
-              <div className="flex justify-between items-center bg-muted/50 px-3 py-1.5 font-bold uppercase tracking-wider text-foreground border-b border-border text-[11px]">
+              <div className="flex justify-between items-center bg-slate-100 px-3 py-1.5 font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 text-[11px]">
                 <span>KEWAJIBAN & EKUITAS (PASIVA)</span>
                 <span>NOMINAL (IDR)</span>
               </div>
 
               {/* KEWAJIBAN JANGKA PENDEK */}
               <div className="mt-3">
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 px-3">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 px-3">
                   Kewajiban Jangka Pendek (Current Liabilities)
                 </p>
-                <div className="divide-y divide-border/40 px-3 py-1">
+                <div className="divide-y divide-slate-200 px-3 py-1">
                   {report.liabilities.currentLiabilities.length === 0 ? (
-                    <div className="py-2 text-muted-foreground italic">Tidak ada kewajiban tercatat.</div>
+                    <div className="py-2 text-slate-500 italic">Tidak ada kewajiban tercatat.</div>
                   ) : (
                     report.liabilities.currentLiabilities.map((line) => (
-                      <div key={line.id} className="flex justify-between py-1.5 text-foreground">
+                      <div key={line.id} className="flex justify-between py-1.5 text-slate-900">
                         <span>
                           {line.code} {line.name}
                         </span>
@@ -247,9 +247,9 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
                     ))
                   )}
 
-                  <div className="flex justify-between py-2 font-bold text-foreground border-t border-border mt-1">
+                  <div className="flex justify-between py-2 font-bold text-slate-900 border-t border-slate-200 mt-1">
                     <span>Subtotal Kewajiban</span>
-                    <span className="tabular-nums font-mono text-amber-400">
+                    <span className="tabular-nums font-mono text-amber-700">
                       {formatCurrency(report.liabilities.totalLiabilities)}
                     </span>
                   </div>
@@ -258,34 +258,34 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
 
               {/* EKUITAS PEMILIK */}
               <div className="mt-4">
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 px-3">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 px-3">
                   Ekuitas Pemilik (Owner's Equity)
                 </p>
-                <div className="divide-y divide-border/40 px-3 py-1">
-                  <div className="flex justify-between py-1.5 text-foreground">
+                <div className="divide-y divide-slate-200 px-3 py-1">
+                  <div className="flex justify-between py-1.5 text-slate-900">
                     <span>3-1001 Modal Disetor Pemilik</span>
                     <span className="tabular-nums font-mono">{formatCurrency(report.equity.paidInCapital)}</span>
                   </div>
 
-                  <div className="flex justify-between py-1.5 text-foreground">
+                  <div className="flex justify-between py-1.5 text-slate-900">
                     <span>3-1002 Laba Ditahan (Retained Earnings)</span>
                     <span className="tabular-nums font-mono">{formatCurrency(report.equity.retainedEarnings)}</span>
                   </div>
 
-                  <div className="flex justify-between py-1.5 text-foreground">
+                  <div className="flex justify-between py-1.5 text-slate-900">
                     <span>Laba Periode Berjalan (Current Net Earnings)</span>
                     <span
                       className={`tabular-nums font-mono ${
-                        report.equity.currentEarnings >= 0 ? "text-emerald-400" : "text-rose-400"
+                        report.equity.currentEarnings >= 0 ? "text-emerald-700" : "text-rose-700"
                       }`}
                     >
                       {formatCurrency(report.equity.currentEarnings)}
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-2 font-bold text-foreground border-t border-border mt-1">
+                  <div className="flex justify-between py-2 font-bold text-slate-900 border-t border-slate-200 mt-1">
                     <span>Subtotal Ekuitas</span>
-                    <span className="tabular-nums font-mono text-cyan-400">
+                    <span className="tabular-nums font-mono text-blue-700">
                       {formatCurrency(report.equity.totalEquity)}
                     </span>
                   </div>
@@ -293,11 +293,11 @@ export function BalanceSheetViewer({ initialReport, tipeOptions }: Props) {
               </div>
 
               {/* TOTAL KEWAJIBAN & EKUITAS */}
-              <div className="rounded border border-border/80 bg-muted/40 p-3 mt-6 flex justify-between items-center text-sm font-bold">
-                <span className="uppercase tracking-wider text-foreground">
+              <div className="rounded border border-slate-200 bg-slate-100 p-3 mt-6 flex justify-between items-center text-sm font-bold">
+                <span className="uppercase tracking-wider text-slate-900">
                   TOTAL KEWAJIBAN & EKUITAS
                 </span>
-                <span className="tabular-nums font-mono text-emerald-400 text-base">
+                <span className="tabular-nums font-mono text-emerald-700 text-base">
                   {formatCurrency(report.totalLiabilitiesAndEquity)}
                 </span>
               </div>

@@ -39,11 +39,11 @@ export default async function SavingsPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <p className="mb-1 text-xs font-bold uppercase tracking-[0.13em] text-emerald-400">
+        <p className="mb-1 text-xs font-bold uppercase tracking-[0.13em] text-emerald-700">
           SDM & KESEJAHTERAAN
         </p>
         <h2 className="aj-page-title text-3xl font-bold">Simpanan Karyawan</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-slate-500">
           Pengelolaan tabungan internal karyawan, pencatatan setoran & penarikan, serta integrasi buku jurnal otomatis (Double-Entry COA 2-1003).
         </p>
       </div>

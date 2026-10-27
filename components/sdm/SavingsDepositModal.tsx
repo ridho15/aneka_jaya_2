@@ -97,20 +97,20 @@ export function SavingsDepositModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="aj-surface w-full max-w-lg border border-border shadow-2xl">
+      <div className="aj-surface w-full max-w-lg border border-slate-200 shadow-2xl">
         {/* Header */}
-        <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-muted/40">
+        <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-100">
           <div>
-            <h3 className="text-base font-semibold tracking-tight text-foreground uppercase">
+            <h3 className="text-base font-semibold tracking-tight text-slate-900 uppercase">
               Setor Simpanan Karyawan
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Penerimaan tabungan internal ke rekening perusahaan (Double-Entry terhubung)
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground text-sm font-semibold transition"
+            className="text-slate-500 hover:text-slate-900 text-sm font-semibold transition"
           >
             ✕
           </button>
@@ -119,7 +119,7 @@ export function SavingsDepositModal({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Karyawan Penyetor
             </label>
             <Select
@@ -135,15 +135,15 @@ export function SavingsDepositModal({
               ))}
             </Select>
             {selectedEmployee && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Departemen: <span className="font-semibold text-foreground">{selectedEmployee.department}</span>
+              <p className="text-xs text-slate-500 mt-1">
+                Departemen: <span className="font-semibold text-slate-900">{selectedEmployee.department}</span>
               </p>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
                 Nominal Setoran
               </label>
               <MoneyInput
@@ -156,7 +156,7 @@ export function SavingsDepositModal({
             </div>
 
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
                 Tanggal Transaksi
               </label>
               <Input
@@ -171,7 +171,7 @@ export function SavingsDepositModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
                 Rekening Kas / Bank Penerima
               </label>
               <Select
@@ -188,7 +188,7 @@ export function SavingsDepositModal({
             </div>
 
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
                 Sumber Setoran
               </label>
               <Select
@@ -204,7 +204,7 @@ export function SavingsDepositModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Catatan / Keterangan
             </label>
             <Input
@@ -215,20 +215,20 @@ export function SavingsDepositModal({
             />
           </div>
 
-          <div className="rounded border border-border/80 bg-muted/20 p-3 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground uppercase tracking-wider">Jurnal Otomatis:</span>
+          <div className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+            <span className="font-semibold text-slate-900 uppercase tracking-wider">Jurnal Otomatis:</span>
             <div className="mt-1 flex justify-between">
               <span>Debit: Kas & Bank (1-1001 / Rekening Terkait)</span>
-              <span className="font-medium text-foreground">{formatCurrency(amount || 0)}</span>
+              <span className="font-medium text-slate-900">{formatCurrency(amount || 0)}</span>
             </div>
             <div className="flex justify-between">
               <span>Kredit: Utang Simpanan Karyawan (2-1003)</span>
-              <span className="font-medium text-foreground">{formatCurrency(amount || 0)}</span>
+              <span className="font-medium text-slate-900">{formatCurrency(amount || 0)}</span>
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="border-t border-border pt-4 flex items-center justify-end gap-3">
+          <div className="border-t border-slate-200 pt-4 flex items-center justify-end gap-3">
             <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
               Batal
             </Button>

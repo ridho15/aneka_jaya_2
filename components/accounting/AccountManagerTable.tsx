@@ -191,13 +191,13 @@ export function AccountManagerTable({ initialAccounts }: Props) {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="font-mono text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-xs">
+                      <span className="font-mono text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
                         {acc.category}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[11px] font-bold font-mono ${
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
                           acc.normalBalance === "DEBIT"
                             ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                             : "bg-blue-50 text-blue-800 border border-blue-200"
@@ -208,18 +208,18 @@ export function AccountManagerTable({ initialAccounts }: Props) {
                     </td>
                     <td className="py-3 px-4 text-center">
                       {acc.isSystem ? (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-bold bg-slate-200 text-slate-800">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">
                           SISTEM
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                           KUSTOM
                         </span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span
-                        className={`inline-flex items-center rounded-xs px-2 py-0.5 text-[11px] font-semibold ${
+                        className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-semibold ${
                           acc.isActive
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                             : "bg-slate-100 text-slate-500 border border-slate-200"
@@ -245,7 +245,7 @@ export function AccountManagerTable({ initialAccounts }: Props) {
                             type="button"
                             disabled={isProcessingId === acc.id}
                             onClick={() => handleToggleActive(acc)}
-                            className={`text-[11px] font-semibold px-2 py-1 rounded-xs transition-colors ${
+                            className={`text-[11px] font-semibold px-2 py-1 rounded transition-colors ${
                               acc.isActive
                                 ? "text-red-700 hover:bg-red-50"
                                 : "text-emerald-700 hover:bg-emerald-50"

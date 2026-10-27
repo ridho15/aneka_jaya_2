@@ -54,10 +54,10 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
   return (
     <div className="space-y-6">
       {/* Filter & Action Bar - Hidden on print */}
-      <div className="aj-surface p-4 border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
+      <div className="aj-surface p-4 border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-auto">
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Dari Tanggal
             </label>
             <Input
@@ -69,7 +69,7 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Sampai Tanggal
             </label>
             <Input
@@ -81,7 +81,7 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
               Tipe Pembukuan
             </label>
             <Select
@@ -110,16 +110,16 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
       </div>
 
       {/* Main Financial Statement Document */}
-      <div className="aj-surface border border-border p-8 print:p-0 print:border-none shadow-sm max-w-4xl mx-auto">
+      <div className="aj-surface border border-slate-200 p-8 print:p-0 print:border-none shadow-sm max-w-4xl mx-auto">
         {/* Document Header */}
-        <div className="text-center border-b border-border pb-6 mb-6">
-          <h1 className="text-lg font-bold tracking-wider text-foreground uppercase">
+        <div className="text-center border-b border-slate-200 pb-6 mb-6">
+          <h1 className="text-lg font-bold tracking-wider text-slate-900 uppercase">
             PT SURYA LOGAM MULIA
           </h1>
-          <h2 className="text-xl font-bold tracking-tight text-foreground uppercase mt-1">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 uppercase mt-1">
             LAPORAN LABA RUGI KOMPREHENSIF
           </h2>
-          <p className="text-xs text-muted-foreground mt-1 font-mono">
+          <p className="text-xs text-slate-500 mt-1 font-mono">
             Periode: {report.period.startDate} s/d {report.period.endDate}
           </p>
         </div>
@@ -128,26 +128,26 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
         <div className="space-y-6 text-xs">
           {/* 1. REVENUE SECTION */}
           <div>
-            <div className="flex justify-between items-center bg-muted/40 px-3 py-1.5 font-bold uppercase tracking-wider text-foreground border-b border-border text-[11px]">
+            <div className="flex justify-between items-center bg-slate-100 px-3 py-1.5 font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 text-[11px]">
               <span>PENDAPATAN USAHA (REVENUE)</span>
               <span>NOMINAL (IDR)</span>
             </div>
 
-            <div className="divide-y divide-border/40 px-3 py-1">
-              <div className="flex justify-between py-2 text-foreground">
+            <div className="divide-y divide-slate-200 px-3 py-1">
+              <div className="flex justify-between py-2 text-slate-900">
                 <span>Pendapatan Penjualan Barang</span>
                 <span className="tabular-nums font-mono">{formatCurrency(report.revenue.grossSales)}</span>
               </div>
 
               {report.revenue.forexGains > 0 && (
-                <div className="flex justify-between py-2 text-foreground">
+                <div className="flex justify-between py-2 text-slate-900">
                   <span>Keuntungan Selisih Kurs Valas (4-1002)</span>
                   <span className="tabular-nums font-mono">{formatCurrency(report.revenue.forexGains)}</span>
                 </div>
               )}
 
               {report.revenue.salesDeductions > 0 && (
-                <div className="flex justify-between py-2 text-rose-400">
+                <div className="flex justify-between py-2 text-rose-600">
                   <span>Dikurangi: Retur & Potongan Penjualan (4-1003)</span>
                   <span className="tabular-nums font-mono">
                     ({formatCurrency(report.revenue.salesDeductions)})
@@ -155,9 +155,9 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
                 </div>
               )}
 
-              <div className="flex justify-between py-2.5 font-bold text-foreground border-t border-border">
+              <div className="flex justify-between py-2.5 font-bold text-slate-900 border-t border-slate-200">
                 <span>TOTAL PENDAPATAN BERSIH</span>
-                <span className="tabular-nums font-mono text-emerald-400">
+                <span className="tabular-nums font-mono text-emerald-700">
                   {formatCurrency(report.revenue.netRevenue)}
                 </span>
               </div>
@@ -166,20 +166,20 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
 
           {/* 2. COGS SECTION */}
           <div>
-            <div className="flex justify-between items-center bg-muted/40 px-3 py-1.5 font-bold uppercase tracking-wider text-foreground border-b border-border text-[11px]">
+            <div className="flex justify-between items-center bg-slate-100 px-3 py-1.5 font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 text-[11px]">
               <span>HARGA POKOK PENJUALAN (HPP)</span>
               <span>NOMINAL (IDR)</span>
             </div>
 
-            <div className="divide-y divide-border/40 px-3 py-1">
-              <div className="flex justify-between py-2 text-foreground">
+            <div className="divide-y divide-slate-200 px-3 py-1">
+              <div className="flex justify-between py-2 text-slate-900">
                 <span>Beban Pokok Penjualan Riil (5-1001)</span>
                 <span className="tabular-nums font-mono">{formatCurrency(report.cogs.totalCogs)}</span>
               </div>
 
-              <div className="flex justify-between py-2.5 font-bold text-foreground border-t border-border">
+              <div className="flex justify-between py-2.5 font-bold text-slate-900 border-t border-slate-200">
                 <span>TOTAL HARGA POKOK PENJUALAN</span>
-                <span className="tabular-nums font-mono text-rose-400">
+                <span className="tabular-nums font-mono text-rose-600">
                   ({formatCurrency(report.cogs.totalCogs)})
                 </span>
               </div>
@@ -187,16 +187,16 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
           </div>
 
           {/* 3. GROSS PROFIT HIGHLIGHT */}
-          <div className="rounded border border-border/80 bg-muted/30 px-4 py-3 flex justify-between items-center text-sm font-bold">
+          <div className="rounded border border-slate-200 bg-slate-100 px-4 py-3 flex justify-between items-center text-sm font-bold">
             <div>
-              <span className="uppercase tracking-wider text-foreground">LABA KOTOR (GROSS PROFIT)</span>
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              <span className="uppercase tracking-wider text-slate-900">LABA KOTOR (GROSS PROFIT)</span>
+              <span className="ml-2 text-xs font-normal text-slate-500">
                 Margin: {report.grossProfitMargin}%
               </span>
             </div>
             <span
               className={`tabular-nums font-mono ${
-                report.grossProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+                report.grossProfit >= 0 ? "text-emerald-700" : "text-rose-600"
               }`}
             >
               {formatCurrency(report.grossProfit)}
@@ -205,20 +205,20 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
 
           {/* 4. OPERATING EXPENSES SECTION */}
           <div>
-            <div className="flex justify-between items-center bg-muted/40 px-3 py-1.5 font-bold uppercase tracking-wider text-foreground border-b border-border text-[11px]">
+            <div className="flex justify-between items-center bg-slate-100 px-3 py-1.5 font-bold uppercase tracking-wider text-slate-900 border-b border-slate-200 text-[11px]">
               <span>BEBAN OPERASIONAL (OPERATING EXPENSES)</span>
               <span>NOMINAL (IDR)</span>
             </div>
 
-            <div className="divide-y divide-border/40 px-3 py-1">
-              <div className="flex justify-between py-2 text-foreground">
+            <div className="divide-y divide-slate-200 px-3 py-1">
+              <div className="flex justify-between py-2 text-slate-900">
                 <span>Beban Gaji & Upah Karyawan (6-1002)</span>
                 <span className="tabular-nums font-mono">
                   {formatCurrency(report.operatingExpenses.salaryExpense)}
                 </span>
               </div>
 
-              <div className="flex justify-between py-2 text-foreground">
+              <div className="flex justify-between py-2 text-slate-900">
                 <span>Beban Operasional Kantor & Umum (6-1001)</span>
                 <span className="tabular-nums font-mono">
                   {formatCurrency(report.operatingExpenses.generalExpense)}
@@ -226,7 +226,7 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
               </div>
 
               {report.operatingExpenses.logisticsExpense > 0 && (
-                <div className="flex justify-between py-2 text-foreground">
+                <div className="flex justify-between py-2 text-slate-900">
                   <span>Beban Transport & Logistik (6-1003)</span>
                   <span className="tabular-nums font-mono">
                     {formatCurrency(report.operatingExpenses.logisticsExpense)}
@@ -235,7 +235,7 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
               )}
 
               {report.operatingExpenses.maintenanceExpense > 0 && (
-                <div className="flex justify-between py-2 text-foreground">
+                <div className="flex justify-between py-2 text-slate-900">
                   <span>Beban Pemeliharaan & Perbaikan (6-1004)</span>
                   <span className="tabular-nums font-mono">
                     {formatCurrency(report.operatingExpenses.maintenanceExpense)}
@@ -244,7 +244,7 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
               )}
 
               {report.operatingExpenses.utilitiesExpense > 0 && (
-                <div className="flex justify-between py-2 text-foreground">
+                <div className="flex justify-between py-2 text-slate-900">
                   <span>Beban Utilitas, Air & Komunikasi (6-1005)</span>
                   <span className="tabular-nums font-mono">
                     {formatCurrency(report.operatingExpenses.utilitiesExpense)}
@@ -253,7 +253,7 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
               )}
 
               {report.operatingExpenses.forexLossExpense > 0 && (
-                <div className="flex justify-between py-2 text-foreground">
+                <div className="flex justify-between py-2 text-slate-900">
                   <span>Kerugian Selisih Kurs Valas (6-1006)</span>
                   <span className="tabular-nums font-mono">
                     {formatCurrency(report.operatingExpenses.forexLossExpense)}
@@ -262,7 +262,7 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
               )}
 
               {report.operatingExpenses.otherExpenses > 0 && (
-                <div className="flex justify-between py-2 text-foreground">
+                <div className="flex justify-between py-2 text-slate-900">
                   <span>Beban Operasional Lainnya</span>
                   <span className="tabular-nums font-mono">
                     {formatCurrency(report.operatingExpenses.otherExpenses)}
@@ -270,9 +270,9 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
                 </div>
               )}
 
-              <div className="flex justify-between py-2.5 font-bold text-foreground border-t border-border">
+              <div className="flex justify-between py-2.5 font-bold text-slate-900 border-t border-slate-200">
                 <span>TOTAL BEBAN OPERASIONAL</span>
-                <span className="tabular-nums font-mono text-rose-400">
+                <span className="tabular-nums font-mono text-rose-600">
                   ({formatCurrency(report.operatingExpenses.totalOperatingExpenses)})
                 </span>
               </div>
@@ -283,27 +283,27 @@ export function IncomeStatementViewer({ initialReport, tipeOptions }: Props) {
           <div
             className={`rounded-md border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
               isNetProfit
-                ? "border-emerald-500/40 bg-emerald-500/10"
-                : "border-rose-500/40 bg-rose-500/10"
+                ? "border-emerald-500/40 bg-emerald-50"
+                : "border-rose-500/40 bg-rose-50"
             }`}
           >
             <div>
               <p
                 className={`text-xs font-bold uppercase tracking-widest ${
-                  isNetProfit ? "text-emerald-400" : "text-rose-400"
+                  isNetProfit ? "text-emerald-700" : "text-rose-700"
                 }`}
               >
                 {isNetProfit ? "LABA BERSIH OPERASIONAL" : "RUGI BERSIH OPERASIONAL"}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Net Profit Margin: <strong className="text-foreground">{report.netProfitMargin}%</strong>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Net Profit Margin: <strong className="text-slate-900">{report.netProfitMargin}%</strong>
               </p>
             </div>
 
             <div className="text-right">
               <span
                 className={`text-2xl font-bold font-mono tracking-tight tabular-nums ${
-                  isNetProfit ? "text-emerald-400" : "text-rose-400"
+                  isNetProfit ? "text-emerald-700" : "text-rose-700"
                 }`}
               >
                 {formatCurrency(report.netOperatingIncome)}

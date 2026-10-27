@@ -157,8 +157,8 @@ export function SavingsManager({
             onClick={() => setActiveTab("accounts")}
             className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition ${
               activeTab === "accounts"
-                ? "bg-foreground text-background shadow"
-                : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             Rekening Simpanan ({accounts.length})
@@ -167,8 +167,8 @@ export function SavingsManager({
             onClick={() => setActiveTab("transactions")}
             className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider transition ${
               activeTab === "transactions"
-                ? "bg-foreground text-background shadow"
-                : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             Riwayat Mutasi ({transactions.length})
@@ -201,49 +201,49 @@ export function SavingsManager({
 
       {/* 4 Metric KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="aj-surface p-4 border border-border">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="aj-surface p-4 border border-slate-200">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Total Saldo Tersimpan
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-emerald-400 tabular-nums">
+          <p className="mt-2 text-2xl font-bold tracking-tight text-emerald-700 tabular-nums">
             {formatCurrency(summary.totalBalance)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Kewajiban internal perusahaan (COA 2-1003)</p>
+          <p className="mt-1 text-xs text-slate-500">Kewajiban internal perusahaan (COA 2-1003)</p>
         </div>
 
-        <div className="aj-surface p-4 border border-border">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="aj-surface p-4 border border-slate-200">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Karyawan Penabung
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground tabular-nums">
+          <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
             {summary.totalEmployeesWithSavings}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Akun tabungan terdaftar aktif</p>
+          <p className="mt-1 text-xs text-slate-500">Akun tabungan terdaftar aktif</p>
         </div>
 
-        <div className="aj-surface p-4 border border-border">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="aj-surface p-4 border border-slate-200">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Akumulasi Setoran
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-cyan-400 tabular-nums">
+          <p className="mt-2 text-2xl font-bold tracking-tight text-blue-700 tabular-nums">
             {formatCurrency(summary.totalDeposits)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">{summary.depositCount} kali penyetoran</p>
+          <p className="mt-1 text-xs text-slate-500">{summary.depositCount} kali penyetoran</p>
         </div>
 
-        <div className="aj-surface p-4 border border-border">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="aj-surface p-4 border border-slate-200">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             Akumulasi Penarikan
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-rose-400 tabular-nums">
+          <p className="mt-2 text-2xl font-bold tracking-tight text-rose-600 tabular-nums">
             {formatCurrency(summary.totalWithdrawals)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">{summary.withdrawalCount} kali pencairan</p>
+          <p className="mt-1 text-xs text-slate-500">{summary.withdrawalCount} kali pencairan</p>
         </div>
       </div>
 
       {/* Filter search bar */}
-      <div className="aj-surface p-3 border border-border flex items-center justify-between gap-4">
+      <div className="aj-surface p-3 border border-slate-200 flex items-center justify-between gap-4">
         <div className="w-full max-w-sm">
           <Input
             value={keyword}
@@ -252,7 +252,7 @@ export function SavingsManager({
             className="w-full text-xs"
           />
         </div>
-        <p className="text-xs text-muted-foreground hidden sm:block">
+        <p className="text-xs text-slate-500 hidden sm:block">
           {activeTab === "accounts"
             ? `Menampilkan ${filteredAccounts.length} dari ${accounts.length} rekening`
             : `Menampilkan ${filteredTransactions.length} transaksi terakhir`}
@@ -260,10 +260,11 @@ export function SavingsManager({
       </div>
 
       {/* Main Table Content */}
+      {/* Main Table Content */}
       {activeTab === "accounts" ? (
-        <div className="aj-surface border border-border overflow-x-auto">
+        <div className="aj-surface border border-slate-200 overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-muted/40 uppercase tracking-wider text-muted-foreground border-b border-border text-[11px]">
+            <thead className="bg-slate-100 uppercase tracking-wider text-slate-600 border-b border-slate-200 text-[11px]">
               <tr>
                 <th className="px-4 py-3 font-semibold">No. Rekening</th>
                 <th className="px-4 py-3 font-semibold">Nama Karyawan</th>
@@ -273,41 +274,41 @@ export function SavingsManager({
                 <th className="px-4 py-3 font-semibold text-center">Aksi Cepat</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-slate-200">
               {filteredAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                     Tidak ada data rekening simpanan ditemukan.
                   </td>
                 </tr>
               ) : (
                 filteredAccounts.map((acc) => (
-                  <tr key={acc.id} className="hover:bg-muted/20 transition">
-                    <td className="px-4 py-3 font-mono font-medium text-foreground">
+                  <tr key={acc.id} className="hover:bg-slate-50 transition">
+                    <td className="px-4 py-3 font-mono font-medium text-slate-900">
                       {acc.accountNumber}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-foreground">{acc.employee.name}</div>
+                      <div className="font-semibold text-slate-900">{acc.employee.name}</div>
                       {acc.employee.nik && (
-                        <div className="text-[10px] text-muted-foreground font-mono">
+                        <div className="text-[10px] text-slate-500 font-mono">
                           NIK: {acc.employee.nik}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      <span className="inline-block px-2 py-0.5 rounded bg-muted/60 text-[10px] font-medium">
+                    <td className="px-4 py-3 text-slate-500">
+                      <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-[10px] font-medium text-slate-700">
                         {acc.employee.department}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-400 tabular-nums">
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700 tabular-nums">
                       {formatCurrency(Number(acc.balance))}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span
                         className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                           acc.isActive
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                            : "bg-muted text-muted-foreground"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-slate-100 text-slate-500"
                         }`}
                       >
                         {acc.isActive ? "Aktif" : "Non-Aktif"}
@@ -320,7 +321,7 @@ export function SavingsManager({
                             setSelectedEmployeeId(acc.employee.id);
                             setIsDepositOpen(true);
                           }}
-                          className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-[10px] font-semibold text-foreground transition"
+                          className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition"
                           title="Setor Simpanan"
                         >
                           + Setor
@@ -331,7 +332,7 @@ export function SavingsManager({
                             setIsWithdrawalOpen(true);
                           }}
                           disabled={Number(acc.balance) <= 0}
-                          className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-[10px] font-semibold text-foreground transition disabled:opacity-40"
+                          className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition disabled:opacity-40"
                           title="Tarik Simpanan"
                         >
                           − Tarik
@@ -345,9 +346,9 @@ export function SavingsManager({
           </table>
         </div>
       ) : (
-        <div className="aj-surface border border-border overflow-x-auto">
+        <div className="aj-surface border border-slate-200 overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-muted/40 uppercase tracking-wider text-muted-foreground border-b border-border text-[11px]">
+            <thead className="bg-slate-100 uppercase tracking-wider text-slate-600 border-b border-slate-200 text-[11px]">
               <tr>
                 <th className="px-4 py-3 font-semibold">Tanggal</th>
                 <th className="px-4 py-3 font-semibold">Karyawan</th>
@@ -359,10 +360,10 @@ export function SavingsManager({
                 <th className="px-4 py-3 font-semibold">Keterangan</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-slate-200">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                     Belum ada riwayat transaksi simpanan tercatat.
                   </td>
                 </tr>
@@ -375,13 +376,13 @@ export function SavingsManager({
                       : jakartaDateKey(new Date(trx.transactionDate));
 
                   return (
-                    <tr key={trx.id} className="hover:bg-muted/20 transition">
-                      <td className="px-4 py-3 font-mono text-muted-foreground">{dateStr}</td>
+                    <tr key={trx.id} className="hover:bg-slate-50 transition">
+                      <td className="px-4 py-3 font-mono text-slate-500">{dateStr}</td>
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-foreground">
+                        <div className="font-semibold text-slate-900">
                           {trx.savingsAccount.employee.name}
                         </div>
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-[10px] text-slate-500">
                           {trx.savingsAccount.employee.department}
                         </div>
                       </td>
@@ -389,8 +390,8 @@ export function SavingsManager({
                         <span
                           className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                             isDeposit
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
                           }`}
                         >
                           {isDeposit ? "SETORAN" : "PENARIKAN"}
@@ -398,27 +399,27 @@ export function SavingsManager({
                       </td>
                       <td
                         className={`px-4 py-3 text-right font-bold tabular-nums ${
-                          isDeposit ? "text-emerald-400" : "text-rose-400"
+                          isDeposit ? "text-emerald-700" : "text-rose-600"
                         }`}
                       >
                         {isDeposit ? "+" : "-"} {formatCurrency(Number(trx.amount))}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-foreground tabular-nums">
+                      <td className="px-4 py-3 text-right font-mono text-slate-900 tabular-nums">
                         {formatCurrency(Number(trx.balanceAfter))}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-slate-500">
                         {trx.rekeningAccount?.name || "Kas Perusahaan"}
                       </td>
                       <td className="px-4 py-3">
                         {trx.journalEntry ? (
-                          <span className="inline-block px-1.5 py-0.5 rounded font-mono text-[10px] bg-muted/80 text-foreground border border-border">
+                          <span className="inline-block px-1.5 py-0.5 rounded font-mono text-[10px] bg-slate-100 text-slate-800 border border-slate-200">
                             {trx.journalEntry.journalNumber}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground italic">-</span>
+                          <span className="text-[10px] text-slate-500 italic">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-[11px] max-w-xs truncate">
+                      <td className="px-4 py-3 text-slate-500 text-[11px] max-w-xs truncate">
                         {trx.notes || "-"}
                       </td>
                     </tr>

@@ -10,8 +10,8 @@ export function Sidebar({ role }: { role: Role }) {
   const groups = visibleNavGroups(role);
 
   return (
-    <aside className="hidden shrink-0 border-neutral-200 bg-white lg:block lg:min-h-screen lg:w-64 lg:border-r">
-      <div className="flex min-h-screen flex-col">
+    <aside className="hidden shrink-0 border-neutral-200 bg-white lg:sticky lg:top-0 lg:block lg:h-screen lg:w-64 lg:border-r lg:overflow-hidden">
+      <div className="flex h-full flex-col">
         {/* Brand Header */}
         <div className="flex items-center gap-3 border-b border-neutral-100 px-6 py-6">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-600 text-sm font-black tracking-tighter text-white shadow-sm">

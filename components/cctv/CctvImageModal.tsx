@@ -23,7 +23,7 @@ export function CctvImageModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="cursor-pointer text-left focus:outline-hidden"
+        className="cursor-pointer text-left focus:outline-none"
       >
         {trigger || (
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors">

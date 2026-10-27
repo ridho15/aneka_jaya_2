@@ -129,7 +129,7 @@ export function AccountModal({ isOpen, onClose, accountToEdit, onSuccess }: Prop
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="Contoh: 6-1005"
-              className="mt-1 block w-full rounded-xs border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono focus:border-emerald-600 focus:outline-hidden disabled:bg-slate-100 disabled:text-slate-500"
+              className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono focus:border-emerald-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
             />
             {isSystem && (
               <p className="mt-1 text-[11px] text-amber-700">Kode akun sistem tidak dapat diubah.</p>
@@ -144,7 +144,7 @@ export function AccountModal({ isOpen, onClose, accountToEdit, onSuccess }: Prop
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Contoh: Beban Pemeliharaan Bangunan"
-              className="mt-1 block w-full rounded-xs border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-hidden"
+              className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-none"
             />
           </div>
 
@@ -159,7 +159,7 @@ export function AccountModal({ isOpen, onClose, accountToEdit, onSuccess }: Prop
                     e.target.value as "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE"
                   )
                 }
-                className="mt-1 block w-full rounded-xs border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-hidden disabled:bg-slate-100 disabled:text-slate-500 font-mono"
+                className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 font-mono"
               >
                 <option value="ASSET">ASET (Harta)</option>
                 <option value="LIABILITY">LIABILITAS (Kewajiban)</option>
@@ -175,7 +175,7 @@ export function AccountModal({ isOpen, onClose, accountToEdit, onSuccess }: Prop
                 disabled={isSystem}
                 value={normalBalance}
                 onChange={(e) => setNormalBalance(e.target.value as "DEBIT" | "CREDIT")}
-                className="mt-1 block w-full rounded-xs border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-hidden disabled:bg-slate-100 disabled:text-slate-500 font-mono"
+                className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 font-mono"
               >
                 <option value="DEBIT">DEBIT</option>
                 <option value="CREDIT">KREDIT</option>
@@ -190,7 +190,7 @@ export function AccountModal({ isOpen, onClose, accountToEdit, onSuccess }: Prop
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Penjelasan tujuan penggunaan akun ini..."
-              className="mt-1 block w-full rounded-xs border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-hidden"
+              className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-none"
             />
           </div>
 

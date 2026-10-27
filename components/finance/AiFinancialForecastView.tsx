@@ -773,11 +773,11 @@ export function AiFinancialForecastView({ initialData }: Props) {
                 ) : (
                   <div className="hidden lg:flex items-center gap-3 text-[11px] text-slate-600">
                     <div className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-xs bg-emerald-600" />
+                      <span className="h-2.5 w-2.5 rounded-sm bg-emerald-600" />
                       <span>Kas Masuk (+)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-xs bg-rose-500" />
+                      <span className="h-2.5 w-2.5 rounded-sm bg-rose-500" />
                       <span>Kas Keluar (-)</span>
                     </div>
                   </div>
@@ -1017,7 +1017,7 @@ export function AiFinancialForecastView({ initialData }: Props) {
                         key={pt.dayNumber}
                         onMouseEnter={() => setHoveredDay(pt.dayNumber)}
                         onClick={() => setHoveredDay(pt.dayNumber)}
-                        className={`relative flex flex-col justify-end items-center h-full cursor-pointer rounded-xs px-0.5 transition-colors ${
+                        className={`relative flex flex-col justify-end items-center h-full cursor-pointer rounded-sm px-0.5 transition-colors ${
                           pt.isBufferBreached ? "bg-amber-50/80" : "hover:bg-slate-50"
                         } ${isHovered ? "ring-2 ring-emerald-500 bg-emerald-50/50" : ""}`}
                       >
@@ -1025,13 +1025,13 @@ export function AiFinancialForecastView({ initialData }: Props) {
                           {/* Inflow bar */}
                           <div
                             style={{ height: `${inflowHeight}%` }}
-                            className="w-1/2 bg-emerald-600 rounded-t-xs transition-all"
+                            className="w-1/2 bg-emerald-600 rounded-t-sm transition-all"
                             title={`Kas Masuk: +${rupiah(pt.projectedInflow)}`}
                           />
                           {/* Outflow bar */}
                           <div
                             style={{ height: `${outflowHeight}%` }}
-                            className="w-1/2 bg-rose-500 rounded-t-xs transition-all"
+                            className="w-1/2 bg-rose-500 rounded-t-sm transition-all"
                             title={`Kas Keluar: -${rupiah(pt.projectedOutflow)}`}
                           />
                         </div>

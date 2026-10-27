@@ -124,7 +124,7 @@ export function PeriodClosingView({ initialPeriods }: Props) {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-hidden"
+              className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-emerald-600 focus:outline-none"
             />
           </div>
 
@@ -137,7 +137,7 @@ export function PeriodClosingView({ initialPeriods }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Contoh: Tutup buku bulanan audit internal selesai"
-              className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs focus:border-emerald-600 focus:outline-hidden"
+              className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
             />
           </div>
 
@@ -155,7 +155,7 @@ export function PeriodClosingView({ initialPeriods }: Props) {
 
         {/* Confirmation Prompt */}
         {showConfirmClose && (
-          <div className="mt-4 rounded-xs border border-red-200 bg-red-50/70 p-4 space-y-3">
+          <div className="mt-4 rounded border border-red-200 bg-red-50/70 p-4 space-y-3">
             <p className="text-xs font-bold text-red-900">
               Konfirmasi Penguncian Periode: {selectedMonth}
             </p>
@@ -217,7 +217,7 @@ export function PeriodClosingView({ initialPeriods }: Props) {
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-xs text-[11px] font-bold ${
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
                           p.isClosed
                             ? "bg-red-50 text-red-800 border border-red-200"
                             : "bg-emerald-50 text-emerald-800 border border-emerald-200"
@@ -279,7 +279,7 @@ export function PeriodClosingView({ initialPeriods }: Props) {
                 value={reopenReason}
                 onChange={(e) => setReopenReason(e.target.value)}
                 placeholder="Contoh: Koreksi ayat jurnal atas instruksi Direksi"
-                className="w-full rounded-xs border border-slate-300 bg-white px-3 py-2 text-xs focus:border-emerald-600 focus:outline-hidden"
+                className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
               />
             </div>
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">

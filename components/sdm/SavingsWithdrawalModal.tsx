@@ -110,20 +110,20 @@ export function SavingsWithdrawalModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="aj-surface w-full max-w-lg border border-border shadow-2xl">
+      <div className="aj-surface w-full max-w-lg border border-slate-200 shadow-2xl">
         {/* Header */}
-        <div className="border-b border-border px-6 py-4 flex items-center justify-between bg-muted/40">
+        <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-100">
           <div>
-            <h3 className="text-base font-semibold tracking-tight text-foreground uppercase">
+            <h3 className="text-base font-semibold tracking-tight text-slate-900 uppercase">
               Tarik Simpanan Karyawan
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Pencairan tabungan internal karyawan dari kas / rekening perusahaan
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground text-sm font-semibold transition"
+            className="text-slate-500 hover:text-slate-900 text-sm font-semibold transition"
           >
             ✕
           </button>
@@ -132,7 +132,7 @@ export function SavingsWithdrawalModal({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Pilih Rekening Simpanan Karyawan
             </label>
             <Select
@@ -152,9 +152,9 @@ export function SavingsWithdrawalModal({
             </Select>
 
             {currentAccount && (
-              <div className="mt-2 flex items-center justify-between rounded border border-border/70 bg-muted/30 px-3 py-2 text-xs">
-                <span className="text-muted-foreground">Saldo Simpanan Tersedia:</span>
-                <span className="font-semibold text-emerald-400 tabular-nums">
+              <div className="mt-2 flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+                <span className="text-slate-500">Saldo Simpanan Tersedia:</span>
+                <span className="font-semibold text-emerald-700 tabular-nums">
                   {formatCurrency(availableBalance)}
                 </span>
               </div>
@@ -163,7 +163,7 @@ export function SavingsWithdrawalModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
                 Nominal Penarikan
               </label>
               <MoneyInput
@@ -174,12 +174,12 @@ export function SavingsWithdrawalModal({
                 required
               />
               {amount > availableBalance && (
-                <p className="text-xs text-rose-400 mt-1">Melebihi saldo simpanan tersedia!</p>
+                <p className="text-xs text-rose-600 mt-1">Melebihi saldo simpanan tersedia!</p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
                 Tanggal Transaksi
               </label>
               <Input
@@ -193,7 +193,7 @@ export function SavingsWithdrawalModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Rekening Kas / Bank Pencairan
             </label>
             <Select
@@ -210,7 +210,7 @@ export function SavingsWithdrawalModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
               Catatan / Alasan Penarikan
             </label>
             <Input
@@ -221,20 +221,20 @@ export function SavingsWithdrawalModal({
             />
           </div>
 
-          <div className="rounded border border-border/80 bg-muted/20 p-3 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground uppercase tracking-wider">Jurnal Otomatis:</span>
+          <div className="rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+            <span className="font-semibold text-slate-900 uppercase tracking-wider">Jurnal Otomatis:</span>
             <div className="mt-1 flex justify-between">
               <span>Debit: Utang Simpanan Karyawan (2-1003)</span>
-              <span className="font-medium text-foreground">{formatCurrency(amount || 0)}</span>
+              <span className="font-medium text-slate-900">{formatCurrency(amount || 0)}</span>
             </div>
             <div className="flex justify-between">
               <span>Kredit: Kas & Bank (1-1001 / Rekening Terkait)</span>
-              <span className="font-medium text-foreground">{formatCurrency(amount || 0)}</span>
+              <span className="font-medium text-slate-900">{formatCurrency(amount || 0)}</span>
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="border-t border-border pt-4 flex items-center justify-end gap-3">
+          <div className="border-t border-slate-200 pt-4 flex items-center justify-end gap-3">
             <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
               Batal
             </Button>
