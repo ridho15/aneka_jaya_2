@@ -181,6 +181,35 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
     expect(itemAny.subtotal).toBeUndefined();
   });
 
+  it("2b. Orders DO items by the sales invoice item order (sortOrder)", async () => {
+    const { getDeliveryOrderDetail } = await import("@/lib/deliveryOrders/store");
+
+    mocks.deliveryOrder.findFirst.mockResolvedValue({
+      id: "do-order-1",
+      doNumber: "DO-TRX-1",
+      salesRecordId: "sale-order-1",
+      status: "belum_selesai",
+      packingStatus: "belum",
+      shippingStatus: "belum",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      salesRecord: {
+        id: "sale-order-1",
+        saleDate: new Date("2026-09-05"),
+        customerName: "Customer",
+        deliveryAt: null
+      },
+      items: []
+    });
+
+    await getDeliveryOrderDetail("do-order-1");
+
+    const args = mocks.deliveryOrder.findFirst.mock.calls.at(-1)?.[0];
+    expect(args.include.items).toEqual({
+      orderBy: [{ salesRecordItem: { sortOrder: "asc" } }, { id: "asc" }]
+    });
+  });
+
   it("3. Handles assignment to Petugas DO", async () => {
     const { assignDeliveryOrder } = await import("@/lib/deliveryOrders/store");
 

@@ -470,7 +470,11 @@ export async function getDeliveryOrderDetail(
           createdByUserId: true
         }
       },
-      items: true,
+      // Ikuti urutan item di invoice penjualan. Item DO dibuat ulang saat invoice diedit,
+      // sehingga tanpa orderBy PostgreSQL bisa mengembalikan urutan acak.
+      items: {
+        orderBy: [{ salesRecordItem: { sortOrder: "asc" } }, { id: "asc" }]
+      },
       assignees: true
     }
   });
