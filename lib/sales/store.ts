@@ -12,7 +12,7 @@ import { cancelErpSales, type SalesCancellationResult } from "@/lib/api/salesCan
 import { cancelStockRelease, nextRevisionReference, releaseSaleStock } from "@/lib/api/stockReleases";
 import { jakartaDateKey, jakartaTimestampFromLocal, transactionDateKey, transactionNumberFor } from "@/lib/date/jakarta";
 import { createTempoReceivableInTransaction, syncTempoReceivableOnSalesEdit, syncTempoReceivableOnSalesEditInTransaction, type TempoCreationInput } from "@/lib/tempo/store";
-import { createDeliveryOrderForSale, syncDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
+import { createDeliveryOrderForSale, snapshotDeliveryOrderShippedItems, syncDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
 import { postSalesInvoiceJournal, postSalesCogsJournal, reverseSalesJournals } from "@/lib/sales/postingHooks";
 
 const fileName = "sales-records.json";
@@ -870,7 +870,9 @@ async function updatePrismaSalesRecord(
   }
 ) {
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
+  let previousShipped: Awaited<ReturnType<typeof snapshotDeliveryOrderShippedItems>> = [];
   const row = await prisma.$transaction(async (tx) => {
+    previousShipped = await snapshotDeliveryOrderShippedItems(tx, id);
     await tx.salesRecordItem.deleteMany({ where: { salesRecordId: id } });
 
     if (stockOptions?.approvalStatus !== "draft") {
@@ -981,7 +983,7 @@ async function updatePrismaSalesRecord(
   });
   const isApproved = (stockOptions?.approvalStatus || before.approvalStatus) === "approved";
   if (isApproved) {
-    await syncDeliveryOrderForSale(id).catch((err) => {
+    await syncDeliveryOrderForSale(id, undefined, { previousShipped }).catch((err) => {
       console.error("[DO] Failed to sync delivery order on sales update:", err);
     });
   }

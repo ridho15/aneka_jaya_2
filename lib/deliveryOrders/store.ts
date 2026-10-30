@@ -20,7 +20,35 @@ export type ListDeliveryOrdersFilter = {
   search?: string;
 };
 
-export async function syncDeliveryOrderForSale(saleId: string, customTx?: Prisma.TransactionClient) {
+export type DeliveryOrderShippedSnapshot = {
+  productRef: string;
+  quantity: unknown;
+  isShipped: boolean;
+  shippedQuantity: unknown;
+  shippedAt: Date | null;
+};
+
+/**
+ * Ambil status kirim item DO sebelum item penjualan dihapus saat invoice diedit.
+ * Item DO ikut terhapus (cascade), sehingga status ini harus disimpan lebih dulu.
+ */
+export async function snapshotDeliveryOrderShippedItems(
+  tx: Prisma.TransactionClient,
+  saleId: string
+): Promise<DeliveryOrderShippedSnapshot[]> {
+  if (!tx?.deliveryOrderItem?.findMany) return [];
+  const rows = await tx.deliveryOrderItem.findMany({
+    where: { deliveryOrder: { salesRecordId: saleId }, isShipped: true },
+    select: { productRef: true, quantity: true, isShipped: true, shippedQuantity: true, shippedAt: true }
+  });
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function syncDeliveryOrderForSale(
+  saleId: string,
+  customTx?: Prisma.TransactionClient,
+  options: { previousShipped?: DeliveryOrderShippedSnapshot[] } = {}
+) {
   const runner = async (tx: Prisma.TransactionClient) => {
     if (!tx?.deliveryOrder || !tx?.salesRecord) return null;
 
@@ -157,10 +185,11 @@ export async function syncDeliveryOrderForSale(saleId: string, customTx?: Prisma
       const hasStaleItems = currentItems.some((i) => !salesItemIds.has(i.salesRecordItemId));
 
       if (hasMissingItems || hasStaleItems) {
-        const shippedMap = new Map<string, { isShipped: boolean; shippedQuantity: any; shippedAt: any }>();
-        for (const ci of currentItems) {
+        const shippedMap = new Map<string, { quantity: number; isShipped: boolean; shippedQuantity: any; shippedAt: any }>();
+        for (const ci of [...(options.previousShipped || []), ...currentItems]) {
           if (ci.isShipped) {
             shippedMap.set(ci.productRef, {
+              quantity: Number(ci.quantity),
               isShipped: ci.isShipped,
               shippedQuantity: ci.shippedQuantity,
               shippedAt: ci.shippedAt
@@ -175,7 +204,9 @@ export async function syncDeliveryOrderForSale(saleId: string, customTx?: Prisma
         }
 
         for (const itm of itemsToCreate) {
-          const prevShipped = shippedMap.get(itm.productRef);
+          const prev = shippedMap.get(itm.productRef);
+          // Jangan anggap terkirim bila jumlahnya dinaikkan melebihi yang sudah dikirim.
+          const prevShipped = prev && Number(itm.quantity) <= prev.quantity ? prev : undefined;
           if (tx.deliveryOrderItem?.create) {
             await tx.deliveryOrderItem.create({
               data: {
@@ -816,7 +847,9 @@ export async function completeDeliveryOrderShipping(
     }
 
     const totalItems = doRow.items.length;
-    const shippedCount = input.shippedItemIds.length;
+    // Hitung juga item yang sudah dikirim sebelumnya (pengiriman bertahap).
+    const requestedIds = new Set(input.shippedItemIds);
+    const shippedCount = doRow.items.filter((item) => item.isShipped || requestedIds.has(item.id)).length;
     const isFullShipment = shippedCount >= totalItems;
     const status: DeliveryOrderStatus = isFullShipment ? "selesai" : "selesai_setengah";
     const packingStatus: PackingStatus = "sudah";
