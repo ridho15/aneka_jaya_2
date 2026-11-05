@@ -127,7 +127,7 @@ export async function releaseSaleStock(input: {
         reference: built.data.releaseReference,
         saleDate: input.saleDate,
         sourceNumber: input.sourceNumber,
-        items: input.items.map((item) => ({ productId: item.productId, productRef: item.productRef, warehouseId: item.warehouseId, quantity: item.quantity }))
+        items: input.items.map((item) => ({ productId: item.productId, productRef: item.productRef, warehouseId: item.warehouseId, quantity: item.quantity, allowNegative: item.allowNegativeStock }))
       });
       return { success: true, data: { ...result, releaseReference: built.data.releaseReference } };
     } catch (error) {

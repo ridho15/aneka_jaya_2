@@ -19,6 +19,8 @@ import { createOfficialProduct, findProductIdBySku, listProducts } from "@/lib/a
 import { listErpPaginated } from "@/lib/api/pagination";
 import type { ManualSalesProduct } from "@/lib/types/sales";
 import { releaseSaleStock, stockReleaseErrorFrom } from "@/lib/api/stockReleases";
+import { isLocalInventory, DEFAULT_UNIT } from "@/lib/inventory/config";
+import { createProduct as createInventoryProduct } from "@/lib/inventory/service";
 import { syncErpSalesPayment } from "@/lib/api/salesPayments";
 import { jakartaTimestampFromLocal, transactionDateKey } from "@/lib/date/jakarta";
 import {
@@ -110,7 +112,7 @@ export function safeErpSyncError(response: ApiResponse<unknown>) {
 }
 
 type ErpCustomer = { id?: unknown; code?: unknown; name?: unknown; perusahaan?: unknown };
-type ErpSaleSyncItem = { productRef: string; productId?: string; productInputMode?: "erp" | "manual"; manualProduct?: ManualSalesProduct; warehouseId?: string; warehouseNameSnapshot?: string; rackId?: string; rackNameSnapshot?: string; unitSnapshot?: string; uomIdSnapshot?: number; quantity: number; unitPrice: number; discount?: number };
+type ErpSaleSyncItem = { productRef: string; productId?: string; productInputMode?: "erp" | "manual"; manualProduct?: ManualSalesProduct; allowNegativeStock?: boolean; warehouseId?: string; warehouseNameSnapshot?: string; rackId?: string; rackNameSnapshot?: string; unitSnapshot?: string; uomIdSnapshot?: number; quantity: number; unitPrice: number; discount?: number };
 type ErpSaleSyncInput = {
   saleDate: string;
   customerName: string;
@@ -260,8 +262,41 @@ function normalizeManualSaleItems(items: ErpSaleSyncItem[]): ErpSaleSyncItem[] {
   });
 }
 
+/** Barang baru dari form penjualan masuk Master Barang SLM; kode yang sudah ada dipakai ulang. */
+async function resolveOrCreateLocalManualProduct(item: ErpSaleSyncItem): Promise<ApiResponse<ErpSaleSyncItem>> {
+  const manual = item.manualProduct;
+  const sku = (manual?.sku || item.productRef || "").trim();
+  if (!sku) return failure("Barang baru belum memiliki kode barang.", "VALIDATION_ERROR");
+  const normalizedManual = normalizeManualSaleItems([item])[0].manualProduct;
+  try {
+    const existing = await prisma.inventoryProduct.findFirst({ where: { sku: { equals: sku, mode: "insensitive" } } });
+    if (existing) {
+      return { success: true, data: { ...item, productRef: existing.sku, productId: existing.id, unitSnapshot: existing.unit, manualProduct: normalizedManual } };
+    }
+    if (!manual?.name?.trim()) return failure(`Barang baru ${sku} belum memiliki nama.`, "VALIDATION_ERROR");
+    const created = await createInventoryProduct({
+      sku,
+      name: manual.name.trim(),
+      category: manual.category?.trim() || undefined,
+      unit: manual.unit?.trim() || DEFAULT_UNIT,
+      minimumStock: 0,
+      costPrice: positiveNumber(manual.costPrice) ?? 0,
+      sellingPrice: positiveNumber(manual.sellingPrice) ?? positiveNumber(item.unitPrice) ?? 0,
+      isActive: true
+    });
+    await recordAudit({ entityType: "product", entityId: created.id, action: "create", afterValue: created, reason: `Barang baru ${sku} dibuat dari Input Penjualan` });
+    return {
+      success: true,
+      data: { ...item, productRef: created.sku, productId: created.id, unitSnapshot: created.unit, allowNegativeStock: true, manualProduct: normalizedManual }
+    };
+  } catch (error) {
+    return failure(`Barang baru ${sku} gagal disimpan ke Master Barang: ${error instanceof Error ? error.message : "kesalahan tidak diketahui"}`, "INVENTORY_ERROR");
+  }
+}
+
 async function resolveOrCreateManualProduct(item: ErpSaleSyncItem): Promise<ApiResponse<ErpSaleSyncItem>> {
   if (item.productInputMode !== "manual") return { success: true, data: item };
+  if (isLocalInventory()) return resolveOrCreateLocalManualProduct(item);
   if (numberId(item.productId)) return { success: true, data: item };
   const manual = item.manualProduct;
   const sku = (manual?.sku || item.productRef).trim();

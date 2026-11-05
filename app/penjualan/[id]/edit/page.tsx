@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isLocalInventory } from "@/lib/inventory/config";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { PenjualanForm } from "@/components/forms/PenjualanForm";
@@ -45,7 +46,8 @@ export default async function EditPenjualanPage({ params }: { params: Promise<{ 
       {isCancelled ? (
         <ErrorState message="Transaksi yang sudah dibatalkan tidak dapat diedit." />
       ) : (
-        <PenjualanForm sale={sale} tipes={tipes} rekenings={rekenings} allowTestTransaction={user.role === "OWNER"} erpTypeCodes={Array.from(erpSalesTypeCodes())} />
+        <PenjualanForm sale={sale} tipes={tipes} rekenings={rekenings} allowTestTransaction={user.role === "OWNER"} erpTypeCodes={Array.from(erpSalesTypeCodes())}
+        localCatalog={isLocalInventory()} />
       )}
     </AppShell>
   );

@@ -10,7 +10,10 @@ const manualProductSchema = z.object({
   brandCode: z.string().trim().max(80).optional(),
   costPrice: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Harga modal tidak boleh negatif").default(0)).optional(),
   sellingPrice: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Harga jual tidak boleh negatif").default(0)).optional(),
-  description: z.string().trim().max(500).optional()
+  description: z.string().trim().max(500).optional(),
+  /** Untuk barang baru di Master Barang SLM (bukan ERP). */
+  unit: z.string().trim().max(30).optional(),
+  category: z.string().trim().max(120).optional()
 });
 export const penjualanSchema = z.object({
   saleDate: date,

@@ -200,8 +200,8 @@ test("Input Penjualan can submit mixed ERP and manual products in one AJ transac
 
   await page.getByRole("button", { name: "+ Tambah barang" }).click();
   await page.getByRole("button", { name: "Barang baru (belum ada di daftar)" }).last().click();
-  await page.getByRole("button", { name: "Generate SKU" }).click();
-  await expect(page.getByPlaceholder("SKU produk baru").last()).toHaveValue(/^SLM-AJ-\d{10}-[A-Z0-9]{4}$/);
+  await page.getByRole("button", { name: "Buat kode" }).click();
+  await expect(page.getByPlaceholder("Kode barang baru").last()).toHaveValue(/^SLM-AJ-\d{10}-[A-Z0-9]{4}$/);
   await page.getByPlaceholder("Nama produk baru").fill("QA Mixed Manual Product");
   await page.getByLabel("Harga modal").fill("500");
   await page.getByPlaceholder("Contoh: UMUM").fill("UMUM");

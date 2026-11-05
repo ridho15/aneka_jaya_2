@@ -792,7 +792,7 @@ export async function postPurchaseReceiptToInventory(receiptId: string, location
 // Penjualan (dipakai bila INVENTORY_SOURCE=local)
 // ---------------------------------------------------------------------
 
-export type SaleStockItem = { productId?: string; productRef?: string; warehouseId?: string; quantity: number };
+export type SaleStockItem = { productId?: string; productRef?: string; warehouseId?: string; quantity: number; allowNegative?: boolean };
 
 async function resolveSaleProduct(tx: Tx, item: SaleStockItem) {
   const erpId = item.productId && /^\d+$/.test(item.productId) ? Number(item.productId) : undefined;
@@ -825,13 +825,13 @@ export async function releaseSaleStockLocal(input: { reference: string; saleDate
       const item = input.items[i];
       const product = await resolveSaleProduct(tx, item);
       const location = await resolveSaleLocation(tx, item.warehouseId);
-      lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity });
+      lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity, allowNegative: item.allowNegative });
     }
     // Urutan kunci yang konsisten mencegah deadlock antar penjualan paralel.
     lines.sort((a, b) => `${a.productId}:${a.locationId}`.localeCompare(`${b.productId}:${b.locationId}`));
     for (const line of lines) {
       await postMovement(tx, {
-        productId: line.productId, locationId: line.locationId, delta: -Math.abs(line.quantity), type: "SALE_OUT", movementDate: date,
+        productId: line.productId, locationId: line.locationId, delta: -Math.abs(line.quantity), type: "SALE_OUT", movementDate: date, allowNegative: line.allowNegative || undefined,
         referenceType: "SALE", referenceNumber: input.reference, idempotencyKey: `sale:${input.reference}:${line.index}`,
         notes: `Penjualan ${input.sourceNumber || input.reference}`
       }, actor);

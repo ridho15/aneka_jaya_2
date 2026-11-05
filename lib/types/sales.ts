@@ -7,12 +7,16 @@ export type ManualSalesProduct = {
   costPrice?: number;
   sellingPrice?: number;
   description?: string;
+  unit?: string;
+  category?: string;
 };
 export type SalesItem = {
   productRef: string;
   productId?: string;
   productInputMode?: "erp" | "manual";
   manualProduct?: ManualSalesProduct;
+  /** Barang baru dari penjualan: stoknya belum tercatat, jadi boleh minus sampai dicatat masuk/opname. */
+  allowNegativeStock?: boolean;
   warehouseId?: string;
   warehouseNameSnapshot?: string;
   rackId?: string;

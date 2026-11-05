@@ -102,6 +102,8 @@ type Props = {
   allowTestTransaction?: boolean;
   erpTypeCodes?: string[];
   sale?: Sale;
+  /** true: barang & barang baru memakai Master Barang SLM, bukan ERP. */
+  localCatalog?: boolean;
 };
 type CreatedSale = {
   id: string;
@@ -164,6 +166,7 @@ export function PenjualanForm({
   allowTestTransaction = false,
   erpTypeCodes = ["AJ"],
   sale,
+  localCatalog = false,
 }: Props) {
   const router = useRouter();
   const isEdit = Boolean(sale);
@@ -419,7 +422,7 @@ export function PenjualanForm({
   const releaseQuantitiesReady = true;
   const selectedProductsReady =
     values.length > 0 &&
-    values.every(isSalesItemReady) &&
+    values.every((item) => isSalesItemReady(item, localCatalog)) &&
     releaseSelectionsReady;
   const hasManualItems = values.some(
     (item) => item.productInputMode === "manual",
@@ -428,6 +431,13 @@ export function PenjualanForm({
     (productState.status === "ready" || allItemsManual) && masterDataReady;
 
   const isDraftEdit = isEdit && sale?.approvalStatus === "draft";
+
+  // Lokasi yang dikenal dari data stok, untuk barang baru yang belum punya stok di mana pun.
+  const stockLocations = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const row of stocks) if (row.warehouseId && !seen.has(String(row.warehouseId))) seen.set(String(row.warehouseId), row.warehouse || "Lokasi");
+    return Array.from(seen, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [stocks]);
 
   const publishBlockingReasons = useMemo(() => {
     const reasons: string[] = [];
@@ -453,15 +463,15 @@ export function PenjualanForm({
           if (!sku?.trim() || !item.manualProduct?.name?.trim()) {
             reasons.push(`${itemLabel}: Nama dan SKU barang manual wajib diisi.`);
           }
-          if (!item.manualProduct?.productCategoryId) {
+          if (!localCatalog && !item.manualProduct?.productCategoryId) {
             reasons.push(`${itemLabel}: Kategori ERP untuk barang manual wajib dipilih.`);
           }
-          if (!item.manualProduct?.uomId) {
+          if (!localCatalog && !item.manualProduct?.uomId) {
             reasons.push(`${itemLabel}: Satuan UOM ERP untuk barang manual wajib dipilih.`);
           }
         } else {
           if (!item.productRef?.trim() || !item.productId?.trim()) {
-            reasons.push(`Barang #${itemNumber}: Belum dipilih dari katalog produk ERP.`);
+            reasons.push(`Barang #${itemNumber}: Belum dipilih dari daftar barang.`);
           }
         }
 
@@ -526,6 +536,7 @@ export function PenjualanForm({
     initialPaymentAmount,
     initialPaymentMethod,
     initialPaymentRekeningId,
+    localCatalog,
     masterDataReady,
     paymentMethod,
     productOptions,
@@ -701,9 +712,9 @@ export function PenjualanForm({
   }, [refreshProducts]);
 
   useEffect(() => {
-    if (!hasManualItems || referenceState.status !== "idle") return;
+    if (localCatalog || !hasManualItems || referenceState.status !== "idle") return;
     void refreshProductReferences();
-  }, [hasManualItems, referenceState.status, refreshProductReferences]);
+  }, [localCatalog, hasManualItems, referenceState.status, refreshProductReferences]);
 
   useEffect(() => {
     if (productQuery.trim().length < 2) return;
@@ -1557,7 +1568,7 @@ export function PenjualanForm({
                         {mode === "manual" ? (
                           <div className="flex gap-2">
                             <Input
-                              placeholder="SKU produk baru"
+                              placeholder="Kode barang baru"
                               {...register(`items.${index}.manualProduct.sku`)}
                               onChange={(event) => {
                                 setValue(
@@ -1590,7 +1601,7 @@ export function PenjualanForm({
                                 });
                               }}
                             >
-                              Generate SKU
+                              Buat kode
                             </Button>
                           </div>
                         ) : (
@@ -1794,7 +1805,7 @@ export function PenjualanForm({
                       <div className="col-span-3 -mt-1 md:col-span-6">
                         {mode === "manual" ? (
                           <span className="block text-xs font-normal text-amber-800">
-                            Barang baru, dibuat di ERP bila SKU belum ada ·{" "}
+                            {localCatalog ? "Barang baru, masuk Master Barang SLM saat disimpan" : "Barang baru, dibuat di ERP bila SKU belum ada"} ·{" "}
                             <button type="button" className="font-semibold underline" onClick={switchToErp}>Pilih dari daftar barang</button>
                           </span>
                         ) : (
@@ -1838,6 +1849,8 @@ export function PenjualanForm({
                         setValue={setValue}
                         values={values}
                         referenceState={referenceState}
+                        localCatalog={localCatalog}
+                        locations={stockLocations}
                       />
                     )}
                   </div>
@@ -2109,12 +2122,14 @@ export function mergeErpProductResults(
   return Array.from(products.values());
 }
 
-export function isSalesItemReady(item: PenjualanInput["items"][number]) {
+export function isSalesItemReady(item: PenjualanInput["items"][number], localCatalog = false) {
   if (item.productInputMode === "manual") {
     const sku = item.manualProduct?.sku || item.productRef;
     const hasBasic = Boolean(
       String(sku || "").trim() && String(item.manualProduct?.name || "").trim(),
     );
+    // Master Barang SLM cukup kode + nama; ERP butuh kategori, satuan, dan merk resmi.
+    if (localCatalog) return hasBasic;
     return (
       hasBasic &&
       Boolean(
@@ -2440,14 +2455,60 @@ function ManualProductFields({
   setValue,
   values,
   referenceState,
+  localCatalog = false,
+  locations = [],
 }: {
   index: number;
   register: UseFormRegister<PenjualanInput>;
   setValue: UseFormSetValue<PenjualanInput>;
   values: PenjualanInput["items"];
   referenceState: ProductReferenceState;
+  localCatalog?: boolean;
+  locations?: Array<{ id: string; name: string }>;
 }) {
   const unitPrice = Number(values[index]?.unitPrice || 0);
+  if (localCatalog) {
+    return (
+      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]">
+          <Field label="Nama barang" className="col-span-2 md:col-span-1">
+            <Input placeholder="Nama barang baru" {...register(`items.${index}.manualProduct.name`)} />
+          </Field>
+          <Field label="Satuan">
+            <Input placeholder="Lusin" {...register(`items.${index}.manualProduct.unit`)} />
+          </Field>
+          <Field label="Harga modal">
+            <MoneyInput
+              value={values[index]?.manualProduct?.costPrice}
+              min={0}
+              onValueChange={(value) => setValue(`items.${index}.manualProduct.costPrice`, value, { shouldDirty: true, shouldValidate: true })}
+            />
+          </Field>
+          <Field label="Kategori (opsional)" className="col-span-2 md:col-span-1">
+            <Input placeholder="mis. Kuku Palsu" {...register(`items.${index}.manualProduct.category`)} />
+          </Field>
+          {locations.length > 0 && (
+            <Field label="Potong stok dari" className="col-span-2 md:col-span-4">
+              <Select
+                value={values[index]?.warehouseId || ""}
+                onChange={(event) => {
+                  const picked = locations.find((l) => l.id === event.target.value);
+                  setValue(`items.${index}.warehouseId`, picked?.id, { shouldDirty: true });
+                  setValue(`items.${index}.warehouseNameSnapshot`, picked?.name, { shouldDirty: true });
+                }}
+              >
+                <option value="">Lokasi default</option>
+                {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </Select>
+            </Field>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-amber-900">
+          Disimpan ke Master Barang SLM saat penjualan disimpan. Satuan kosong = Lusin. Stok barang baru akan minus sampai dicatat di Barang Masuk atau Stock Opname.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">

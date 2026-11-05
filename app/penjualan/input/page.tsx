@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { isLocalInventory } from "@/lib/inventory/config";
 import { PenjualanForm } from "@/components/forms/PenjualanForm";
 import {
   listBookkeepingTypes,
@@ -33,6 +34,7 @@ export default async function InputPenjualanPage() {
         rekenings={rekenings}
         allowTestTransaction={user.role === "OWNER"}
         erpTypeCodes={Array.from(erpSalesTypeCodes())}
+        localCatalog={isLocalInventory()}
       />
     </AppShell>
   );
