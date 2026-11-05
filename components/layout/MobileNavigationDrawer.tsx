@@ -5,13 +5,16 @@ import { useState } from "react";
 import { roleLabel, type Role } from "@/lib/auth/roles";
 import { APP_BRAND_INITIALS, APP_BRAND_NAME } from "@/lib/appBrand";
 import { activeNavSection, visibleNavSections } from "./navigation";
+import { NavCountBadge } from "./NavCountBadge";
+import type { NavBadges } from "@/lib/layout/navBadges";
 
-export function MobileNavigationDrawer({ role, userName }: { role: Role; userName: string }) {
+export function MobileNavigationDrawer({ role, userName, badges = {} }: { role: Role; userName: string; badges?: NavBadges }) {
   const pathname = usePathname();
   const [drawerState, setDrawerState] = useState({ open: false, pathname });
   const open = drawerState.open && drawerState.pathname === pathname;
   const groups = visibleNavSections(role);
   const current = activeNavSection(pathname, groups.flatMap((g) => g.sections)).section;
+  const pending = groups.flatMap((g) => g.sections).reduce((sum, s) => sum + (badges[s.id]?.count ?? 0), 0);
   const setOpen = (nextOpen: boolean) => setDrawerState({ open: nextOpen, pathname });
 
   return (
@@ -31,6 +34,7 @@ export function MobileNavigationDrawer({ role, userName }: { role: Role; userNam
             <span className="block h-0.5 w-4 bg-current" />
           </span>
           Menu
+          {pending > 0 && <NavCountBadge badge={{ count: pending, title: `${pending} hal perlu ditindaklanjuti` }} active={false} />}
         </button>
       </div>
       {open ? <div className="fixed inset-0 z-50 lg:hidden">
@@ -64,6 +68,7 @@ export function MobileNavigationDrawer({ role, userName }: { role: Role; userNam
                       }`}
                     >
                       {section.label}
+                      <NavCountBadge badge={badges[section.id]} active={section.id === current?.id} />
                     </Link>
                   ))}
                 </div>

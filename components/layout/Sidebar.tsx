@@ -4,8 +4,10 @@ import { usePathname } from "next/navigation";
 import { roleLabel, type Role } from "@/lib/auth/roles";
 import { APP_BRAND_INITIALS, APP_BRAND_NAME } from "@/lib/appBrand";
 import { activeNavSection, visibleNavSections } from "./navigation";
+import { NavCountBadge } from "./NavCountBadge";
+import type { NavBadges } from "@/lib/layout/navBadges";
 
-export function Sidebar({ role }: { role: Role }) {
+export function Sidebar({ role, badges = {} }: { role: Role; badges?: NavBadges }) {
   const pathname = usePathname();
   const groups = visibleNavSections(role);
   const current = activeNavSection(pathname, groups.flatMap((g) => g.sections)).section;
@@ -41,6 +43,7 @@ export function Sidebar({ role }: { role: Role }) {
                       }`}
                     >
                       <span>{section.label}</span>
+                      <NavCountBadge badge={badges[section.id]} active={active} />
                     </Link>
                   );
                 })}
