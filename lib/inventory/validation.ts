@@ -55,7 +55,9 @@ const itemNotes = optionalText(500);
  */
 const koliFields = {
   koli: z.coerce.number().finite().optional(),
-  loose: z.coerce.number().finite().optional()
+  loose: z.coerce.number().finite().optional(),
+  /** Isi 1 koli (dalam satuan barang). Bila diisi, dipakai untuk menghitung dan disimpan ke master barang. */
+  unitsPerKoli: z.coerce.number().positive("Isi per koli harus lebih dari 0").optional()
 };
 const hasQty = (field: "quantity" | "countedQty") => (v: Record<string, unknown>) => v[field] != null || v.koli != null || v.loose != null;
 
@@ -81,6 +83,7 @@ export const opnameSchema = z.object({
     countedQty: qty.min(0, "Qty fisik tidak boleh negatif").optional(),
     koli: z.coerce.number().finite().min(0, "Koli tidak boleh negatif").optional(),
     loose: z.coerce.number().finite().min(0, "Qty lepas tidak boleh negatif").optional(),
+    unitsPerKoli: z.coerce.number().positive("Isi per koli harus lebih dari 0").optional(),
     notes: itemNotes
   }).refine(hasQty("countedQty"), "Isi qty fisik atau koli"))).min(1, "Minimal satu barang")
 });
