@@ -64,7 +64,6 @@ export const NAV_LINKS: NavLink[] = [
     icon: "✎",
     permission: "penjualan.create",
     category: "OPERASIONAL & TRANSAKSI",
-    hideForRoles: ["ADMIN"],
   },
   {
     href: "/penjualan/retur",

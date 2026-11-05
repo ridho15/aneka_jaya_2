@@ -22,6 +22,7 @@ describe("global navigation", () => {
   it("shows exactly the sales and delivery order menus to Admin", () => {
     expect(visibleNavLinks("ADMIN").map((link) => [link.href, link.label])).toEqual([
       ["/penjualan", "Riwayat Penjualan"],
+      ["/penjualan/draft", "Draft Penjualan"],
       ["/delivery-orders", "Delivery Order (DO)"],
       ["/tempo", "Tempo & Piutang"],
       ["/inventory", "Stok Gudang & Toko"],

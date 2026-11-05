@@ -24,6 +24,7 @@ describe("sidebar ringkas per modul", () => {
     expect(sectionsOf("ADMIN").map((s) => s.label)).toEqual(["Penjualan", "Delivery Order", "Tempo & Piutang", "Stok", "Input Stok"]);
     expect(sectionsOf("DELIVERY_DRIVER").map((s) => s.label)).toEqual(["Delivery Order", "Stok"]);
     expect(sectionsOf("ADMIN").find((s) => s.id === "input-stok")?.links.map((l) => l.label)).toEqual(["Transfer Stok", "Stock Opname"]);
+    expect(sectionsOf("ADMIN").find((s) => s.id === "penjualan")?.links.map((l) => l.label)).toEqual(["Riwayat", "Draft"]);
   });
 
   it("menu modul menuju halaman utamanya, dan halaman detail ikut menandai tab yang benar", () => {
