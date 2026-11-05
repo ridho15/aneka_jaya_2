@@ -52,7 +52,7 @@ describe("Penjualan product search options", () => {
 
     expect(option.quantity).toBeNull();
     expect(option.warehouses).toEqual([]);
-    expect(option.warnings).toEqual(expect.arrayContaining(["stok ERP", "qty ERP", "harga jual"]));
+    expect(option.warnings).toEqual(expect.arrayContaining(["stok gudang", "jumlah stok", "harga jual"]));
   });
 
   it("retains an earlier ERP selection when a later search returns another product", () => {

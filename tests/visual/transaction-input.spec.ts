@@ -115,7 +115,7 @@ test("Input Penjualan can submit a local SLM transaction with ERP product data",
   await page.getByRole("textbox", { name: "Nama customer" }).fill("Customer E2E Lokal");
   await page.getByRole("combobox", { name: "Barang" }).fill("BRG");
   await page.getByRole("option", { name: /BRG-001/ }).click();
-  await expect(page.getByText(/Stok\s*8/)).toBeVisible();
+  await expect(page.getByText(/Stok total\s*8/)).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Harga" })).toHaveValue("25.000");
   await page.getByRole("spinbutton", { name: "Qty" }).fill("2");
   await expect(page.getByText(/Rp\s?50\.000/).first()).toBeVisible();

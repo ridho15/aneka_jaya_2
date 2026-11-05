@@ -576,7 +576,7 @@ export function PenjualanForm({
         setStockState({
           status: "failed",
           message:
-            "Stok ERP tidak berhasil dimuat karena daftar barang belum siap.",
+            "Stok gudang belum bisa dimuat karena daftar barang belum siap.",
         });
         return;
       }
@@ -690,7 +690,7 @@ export function PenjualanForm({
         status: "failed",
         message:
           stockResult?.message ||
-          "Stok ERP tidak berhasil dimuat. Pilih barang tanpa memakai angka stok palsu.",
+          "Stok gudang gagal dimuat. Barang tetap bisa dipilih, tapi angka stok tidak ditampilkan.",
       });
     }
   }
@@ -1698,43 +1698,6 @@ export function PenjualanForm({
                             onSearch={setProductQuery}
                           />
                         )}
-                        {mode === "manual" ? (
-                          <span className="mt-1 block text-xs font-normal text-amber-800">
-                            Barang baru, dibuat di ERP bila SKU belum ada ·{" "}
-                            <button type="button" className="font-semibold underline" onClick={switchToErp}>Pilih dari ERP</button>
-                          </span>
-                        ) : (
-                          <ProductSelectionInfo
-                          option={selected}
-                          selectedWarehouseId={values[index]?.warehouseId}
-                          selectedRackId={values[index]?.rackId}
-                          stockExceeded={stockExceeded}
-                            onSwitchManual={switchToManual}
-                          stockState={stockState}
-                          targetsErp={targetsErp}
-                          onStockSelect={(stock) => {
-                            setValue(
-                              `items.${index}.warehouseId`,
-                              stock.warehouseId,
-                              { shouldDirty: true, shouldValidate: true },
-                            );
-                            setValue(
-                              `items.${index}.warehouseNameSnapshot`,
-                              stock.warehouse || undefined,
-                              { shouldDirty: true, shouldValidate: true },
-                            );
-                            setValue(`items.${index}.rackId`, stock.rackId, {
-                              shouldDirty: true,
-                              shouldValidate: true,
-                            });
-                            setValue(
-                              `items.${index}.rackNameSnapshot`,
-                              stock.rack || undefined,
-                              { shouldDirty: true, shouldValidate: true },
-                            );
-                          }}
-                        />
-                        )}
                       </Field>
                       <Field
                         compact
@@ -1813,6 +1776,45 @@ export function PenjualanForm({
                           >
                             Hapus
                           </button>
+                        )}
+                      </div>
+                      <div className="col-span-3 -mt-1 md:col-span-6">
+                        {mode === "manual" ? (
+                          <span className="block text-xs font-normal text-amber-800">
+                            Barang baru, dibuat di ERP bila SKU belum ada ·{" "}
+                            <button type="button" className="font-semibold underline" onClick={switchToErp}>Pilih dari ERP</button>
+                          </span>
+                        ) : (
+                          <ProductSelectionInfo
+                          option={selected}
+                          selectedWarehouseId={values[index]?.warehouseId}
+                          selectedRackId={values[index]?.rackId}
+                          stockExceeded={stockExceeded}
+                            onSwitchManual={switchToManual}
+                          stockState={stockState}
+                          targetsErp={targetsErp}
+                          onStockSelect={(stock) => {
+                            setValue(
+                              `items.${index}.warehouseId`,
+                              stock.warehouseId,
+                              { shouldDirty: true, shouldValidate: true },
+                            );
+                            setValue(
+                              `items.${index}.warehouseNameSnapshot`,
+                              stock.warehouse || undefined,
+                              { shouldDirty: true, shouldValidate: true },
+                            );
+                            setValue(`items.${index}.rackId`, stock.rackId, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                            setValue(
+                              `items.${index}.rackNameSnapshot`,
+                              stock.rack || undefined,
+                              { shouldDirty: true, shouldValidate: true },
+                            );
+                          }}
+                        />
                         )}
                       </div>
                     </div>
@@ -2061,8 +2063,8 @@ export function buildProductOptions(
       ...stockRows.flatMap((stock) => stock.dataQualityWarnings ?? []),
     ];
     if (stockRows.length === 0 && !product.stockSummary)
-      warnings.push("stok ERP");
-    if (quantity === null) warnings.push("qty ERP");
+      warnings.push("stok gudang");
+    if (quantity === null) warnings.push("jumlah stok");
     if (product.sellingPrice === null) warnings.push("harga jual");
     return {
       product,
@@ -2191,7 +2193,7 @@ function StockDependencyState({ state }: { state: StockState }) {
   if (state.status === "loading")
     return (
       <p className="border-b border-neutral-100 bg-neutral-50 px-5 py-2 text-xs text-neutral-600 sm:px-6">
-        Memuat stok ERP...
+        Memuat stok gudang...
       </p>
     );
   if (state.status === "success") return null;
@@ -2317,11 +2319,9 @@ function ProductSearchSelect({
                 {option.product.code} · {option.product.name}
               </span>
               <span className="mt-0.5 block text-xs text-slate-600">
-                Stok {formatNumber(option.quantity)} {option.unit ?? ""} ·{" "}
-                {option.warehouses.length
-                  ? option.warehouses.join(", ")
-                  : "Gudang —"}{" "}
-                · Harga {rupiah(option.product.sellingPrice ?? 0)}
+                Stok total {formatNumber(option.quantity)} {option.unit ?? ""}
+                {stockByLocation(option) ? ` (${stockByLocation(option)})` : ""}
+                {" "}· Harga {rupiah(option.product.sellingPrice ?? 0)}
               </span>
             </button>
           ))}
@@ -2334,6 +2334,19 @@ function ProductSearchSelect({
       )}
     </div>
   );
+}
+
+/** Rincian stok per gudang/toko, mis. "Gudang Utama 80 · Toko 40 · +2 lokasi". */
+function stockByLocation(option: ProductOption) {
+  const byLocation = new Map<string, number>();
+  for (const row of option.stockRows) {
+    if (!row.warehouse || typeof row.quantity !== "number" || row.quantity <= 0) continue;
+    byLocation.set(row.warehouse, (byLocation.get(row.warehouse) ?? 0) + row.quantity);
+  }
+  const entries = Array.from(byLocation.entries()).sort((a, b) => b[1] - a[1]);
+  const shown = entries.slice(0, 3).map(([name, qty]) => `${name} ${formatNumber(qty)}`);
+  if (entries.length > 3) shown.push(`+${entries.length - 3} lokasi`);
+  return shown.join(" · ");
 }
 
 function ProductSelectionInfo({
@@ -2357,7 +2370,7 @@ function ProductSelectionInfo({
 }) {
   if (!option)
     return (
-      <span className="mt-1 block text-xs font-normal text-slate-600">
+      <span className="block text-xs font-normal text-slate-600">
         <button type="button" className="font-semibold text-emerald-800 underline" onClick={onSwitchManual}>
           Barang baru (tidak ada di ERP)
         </button>
@@ -2368,15 +2381,15 @@ function ProductSelectionInfo({
     ? `${selectedWarehouseId}::${selectedRackId || ""}`
     : "";
   return (
-    <span className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs font-normal text-slate-600">
+    <span className="flex flex-wrap items-center gap-x-1.5 text-xs font-normal text-slate-600">
       <span>
-        Stok <b className="tabular-nums">{formatNumber(option.quantity)}</b>
+        Stok total <b className="tabular-nums">{formatNumber(option.quantity)}</b>
         {option.unit ? ` ${option.unit}` : ""}
-        {option.warehouses.length ? ` · ${option.warehouses.join(", ")}` : ""}
+        {stockByLocation(option) ? ` · ${stockByLocation(option)}` : ""}
       </span>
       {stockExceeded && <span className="font-semibold text-red-700">· Qty melebihi stok lokasi</span>}
       {stockState.status === "failed" && <span className="font-semibold text-amber-800">· Stok tidak terverifikasi</span>}
-      {option.warnings.length > 0 && <span className="font-semibold text-amber-800">· Data ERP tidak lengkap</span>}
+      {option.warnings.length > 0 && <span className="font-semibold text-amber-800">· Data barang belum lengkap</span>}
       {targetsErp && (
         <select
           aria-label="Lokasi release stok"
