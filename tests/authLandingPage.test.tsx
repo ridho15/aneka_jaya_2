@@ -15,7 +15,7 @@ describe("auth landing page CTA", () => {
 
     const html = renderToStaticMarkup(<AuthLandingPage currentRole="VIEWER" />);
 
-    expect(html).toContain("Email atau username");
+    expect(html).toContain("Username");
     expect(html).toContain("Password");
     expect(html).toContain("Masuk ke Sistem");
     expect(html).toContain("Login internal aktif");

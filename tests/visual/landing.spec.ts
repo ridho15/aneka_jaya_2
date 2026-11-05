@@ -6,7 +6,7 @@ test.describe("login visual QA", () => {
 
     await expect(page.locator("body")).toContainText("SLM Internal App");
     await expect(page.getByRole("heading", { name: "Masuk ke sistem" })).toBeVisible();
-    await expect(page.getByLabel("Email atau username")).toBeVisible();
+    await expect(page.getByLabel("Username")).toBeVisible();
     await expect(page.getByLabel("Password")).toBeVisible();
     await expect(page.getByRole("button", { name: "Masuk ke Sistem" })).toBeVisible();
     await expect(page.getByText("Hubungi Super Admin jika tidak bisa masuk.")).toBeVisible();

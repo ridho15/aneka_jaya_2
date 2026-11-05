@@ -5,7 +5,7 @@ import { landingPageForRole, type Role } from "./roles";
 import { setLocalSessionCookie } from "./localSession";
 
 export const ANIKA_ERP_TOKEN_COOKIE = "aneka_jaya_erp_token";
-const INVALID_MESSAGE = "Email atau password ERP tidak valid.";
+const INVALID_MESSAGE = "Username atau password tidak valid.";
 
 type AnikaVerifyUserResponse = {
   success?: boolean;

@@ -22,7 +22,7 @@ describe("auth smoke script", () => {
       const cookie = headers.get("cookie");
       if (url.endsWith("/dashboard") && !cookie) return response(307, "", { location: "https://app.example.test/login" });
       if (url.endsWith("/api/auth/login")) return response(200, `{"success":true,"sessionCookie":"aneka_jaya_session=token; HttpOnly"}`);
-      if (url.endsWith("/login")) return response(200, `<label>Email atau username</label><label>Password</label>`);
+      if (url.endsWith("/login")) return response(200, `<label>Username</label><label>Password</label>`);
       if (url.endsWith("/settings/users") && cookie) return response(200, "Users");
       if (url === "https://app.example.test/") return response(200, "Masuk ke sistem operasional");
       return response(404);

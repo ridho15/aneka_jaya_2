@@ -11,7 +11,7 @@ describe("login page shell", () => {
     expect(html).toContain("SLM");
     expect(html).toContain("SLM Internal App");
     expect(html).toContain("Masuk ke sistem");
-    expect(html).toContain("Email atau username");
+    expect(html).toContain("Username");
     expect(html).toContain("Password");
     expect(html).toContain("Hubungi Super Admin jika tidak bisa masuk.");
     expect(html).not.toContain("Internal Operations");

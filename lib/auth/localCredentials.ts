@@ -6,7 +6,7 @@ import { landingPageForRole, type Role } from "./roles";
 
 const MAX_FAILED_LOGIN = 5;
 const LOCK_MINUTES = 15;
-const INVALID_MESSAGE = "Email/username atau password tidak valid.";
+const INVALID_MESSAGE = "Username atau password tidak valid.";
 
 function normalizeIdentifier(value: unknown) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -31,20 +31,35 @@ async function recordLoginAudit(user: { externalId: string; name: string; role: 
   }).catch(() => undefined);
 }
 
+/**
+ * Cocokkan username atau email tanpa peduli huruf besar/kecil. Username tanpa "@" juga cocok
+ * dengan akun Aneka Jaya ERP ("anika:<username>") dan bagian depan email, asal hanya satu akun.
+ */
+export async function findUserByIdentifier(identifier: string) {
+  const exact = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: { equals: identifier, mode: "insensitive" } },
+        { externalId: { equals: identifier, mode: "insensitive" } },
+        { externalId: { equals: `anika:${identifier}`, mode: "insensitive" } }
+      ]
+    }
+  });
+  if (exact || identifier.includes("@")) return exact;
+  const byEmailName = await prisma.user.findMany({
+    where: { email: { startsWith: `${identifier}@`, mode: "insensitive" } },
+    take: 2
+  });
+  return byEmailName.length === 1 ? byEmailName[0] : null;
+}
+
 export async function loginWithPassword(input: unknown) {
   const body = input && typeof input === "object" ? input as Record<string, unknown> : {};
   const identifier = normalizeIdentifier(body.identifier);
   const password = normalizePassword(body.password);
   if (!identifier || !password) throw new Error(INVALID_MESSAGE);
 
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: identifier },
-        { externalId: identifier }
-      ]
-    }
-  });
+  const user = await findUserByIdentifier(identifier);
 
   if (!user || !user.isActive) throw new Error(INVALID_MESSAGE);
   if (user.lockedUntil && user.lockedUntil > new Date()) {

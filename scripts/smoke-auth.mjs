@@ -39,7 +39,7 @@ export async function runAuthSmoke(env = process.env, fetchImpl = fetch) {
 
   const login = await fetchManual("/login", {}, env, fetchImpl);
   const loginHtml = await login.text();
-  if (!loginHtml.includes("Email") || !loginHtml.includes("Password")) throw new Error("/login tidak memuat form login internal.");
+  if (!loginHtml.includes("Username") || !loginHtml.includes("Password")) throw new Error("/login tidak memuat form login internal.");
   result.push("login-page-internal-form");
 
   const authResponse = await fetchManual("/api/auth/login", {

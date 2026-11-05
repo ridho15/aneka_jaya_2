@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     prisma: {
       user: {
         findFirst: vi.fn(async () => state.user),
+        findMany: vi.fn(async () => (state.user ? [state.user] : [])),
         update: vi.fn(async ({ data }: { data: Partial<FakeUser> }) => {
           if (!state.user) throw new Error("No user");
           state.user = { ...state.user, ...data };
@@ -62,6 +63,7 @@ describe("local credentials login", () => {
     mocks.state.user = user();
     mocks.setLocalSessionCookie.mockReset();
     mocks.prisma.user.findFirst.mockClear();
+    mocks.prisma.user.findMany.mockClear();
     mocks.prisma.user.update.mockClear();
     mocks.prisma.auditLog.create.mockClear();
   });
@@ -78,7 +80,7 @@ describe("local credentials login", () => {
   });
 
   it("increments failed login count on invalid password", async () => {
-    await expect(loginWithPassword({ identifier: "owner", password: "wrong-password" })).rejects.toThrow("Email/username atau password tidak valid.");
+    await expect(loginWithPassword({ identifier: "owner", password: "wrong-password" })).rejects.toThrow("Username atau password tidak valid.");
 
     expect(mocks.state.user?.failedLoginCount).toBe(1);
     expect(mocks.setLocalSessionCookie).not.toHaveBeenCalled();
@@ -87,7 +89,7 @@ describe("local credentials login", () => {
   it("locks the account after repeated invalid passwords", async () => {
     mocks.state.user = user({ failedLoginCount: 4 });
 
-    await expect(loginWithPassword({ identifier: "owner", password: "wrong-password" })).rejects.toThrow("Email/username atau password tidak valid.");
+    await expect(loginWithPassword({ identifier: "owner", password: "wrong-password" })).rejects.toThrow("Username atau password tidak valid.");
 
     expect(mocks.state.user?.failedLoginCount).toBe(5);
     expect(mocks.state.user?.lockedUntil).toBeInstanceOf(Date);
@@ -96,6 +98,27 @@ describe("local credentials login", () => {
   it("rejects inactive users", async () => {
     mocks.state.user = user({ isActive: false });
 
-    await expect(loginWithPassword({ identifier: "owner", password: "secret123" })).rejects.toThrow("Email/username atau password tidak valid.");
+    await expect(loginWithPassword({ identifier: "owner", password: "secret123" })).rejects.toThrow("Username atau password tidak valid.");
+  });
+
+  it("matches username case-insensitively, including ERP accounts", async () => {
+    await loginWithPassword({ identifier: "  Owner ", password: "secret123" });
+    const where = mocks.prisma.user.findFirst.mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { email: { equals: "owner", mode: "insensitive" } },
+      { externalId: { equals: "owner", mode: "insensitive" } },
+      { externalId: { equals: "anika:owner", mode: "insensitive" } }
+    ]);
+  });
+
+  it("falls back to the email name when exactly one account matches", async () => {
+    const found = mocks.state.user;
+    mocks.prisma.user.findFirst.mockResolvedValueOnce(null);
+    await expect(loginWithPassword({ identifier: "owner", password: "secret123" })).resolves.toMatchObject({ user: { id: "owner" } });
+    expect(mocks.prisma.user.findMany.mock.calls[0][0].where).toEqual({ email: { startsWith: "owner@", mode: "insensitive" } });
+
+    mocks.prisma.user.findFirst.mockResolvedValueOnce(null);
+    mocks.prisma.user.findMany.mockResolvedValueOnce([found!, { ...found!, id: "other" }]);
+    await expect(loginWithPassword({ identifier: "owner", password: "secret123" })).rejects.toThrow("Username atau password tidak valid.");
   });
 });

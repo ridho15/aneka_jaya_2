@@ -26,7 +26,7 @@ export function LoginPageShell() {
           <div className="mt-12 grid max-w-xl grid-cols-3 gap-3 text-sm">
             <div className="border-l border-neutral-300 pl-4">
               <p className="font-bold text-neutral-950">Akun internal</p>
-              <p className="mt-1 leading-6 text-neutral-500">Email atau username</p>
+              <p className="mt-1 leading-6 text-neutral-500">Cukup username</p>
             </div>
             <div className="border-l border-neutral-300 pl-4">
               <p className="font-bold text-neutral-950">Permission</p>
@@ -52,7 +52,7 @@ export function LoginPageShell() {
             <div className="mt-7 lg:mt-0">
               <p className="hidden text-sm font-bold text-neutral-950 lg:block">{APP_BRAND_TITLE}</p>
               <h2 className="mt-2 text-2xl font-bold leading-tight text-neutral-950">Masuk ke sistem</h2>
-              <p className="mt-2 text-sm leading-6 text-neutral-500">Gunakan email dan password akun Anika ERP Anda.</p>
+              <p className="mt-2 text-sm leading-6 text-neutral-500">Masuk dengan username dan password akun Aneka Jaya Anda.</p>
             </div>
 
             <LoginForm className="mt-6" />

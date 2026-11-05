@@ -45,7 +45,7 @@ export function UserManager({ users: initial }: { users: UserRow[] }) {
 
   const addUser = async () => {
     if (!externalId.trim() || !name.trim() || !password.trim()) {
-      showToast("External ID, nama, dan password awal wajib diisi.", "error");
+      showToast("Username, nama, dan password awal wajib diisi.", "error");
       return;
     }
     if (password.trim().length < 8) {
@@ -177,7 +177,7 @@ export function UserManager({ users: initial }: { users: UserRow[] }) {
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
             <tr>
               <th className="px-5 py-3">User</th>
-              <th className="px-5 py-3">External ID</th>
+              <th className="px-5 py-3">Username</th>
               <th className="px-5 py-3">Role</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3">Password</th>
@@ -284,7 +284,7 @@ export function UserManager({ users: initial }: { users: UserRow[] }) {
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-slate-700">
             <span className="mb-1 block">
-              Username / External ID <span className="text-red-500">*</span>
+              Username <span className="text-red-500">*</span>
             </span>
             <Input
               value={externalId}
@@ -303,7 +303,7 @@ export function UserManager({ users: initial }: { users: UserRow[] }) {
             />
           </label>
           <label className="block text-sm font-medium text-slate-700">
-            <span className="mb-1 block">Email</span>
+            <span className="mb-1 block">Email (opsional)</span>
             <Input
               value={email}
               onChange={(event) => setEmail(event.target.value)}
