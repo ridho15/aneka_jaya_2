@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { RETIRED_TIPE_CODES } from "@/lib/business/retiredTipes";
 import {
   useFieldArray,
   useForm,
@@ -183,7 +184,11 @@ export function PenjualanForm({
       ),
     [erpTypeCodes],
   );
-  const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
+  // AJ dan ONLINE tidak dipakai lagi untuk transaksi baru; transaksi lama tetap bisa diedit dengan tipenya.
+  const activeTipes = useMemo(
+    () => tipes.filter((t) => t.isActive && (!RETIRED_TIPE_CODES.includes(t.code.toUpperCase()) || t.id === sale?.tipeId)),
+    [tipes, sale?.tipeId],
+  );
   const defaultTipe = sale
     ? activeTipes.find(
       (tipe) =>

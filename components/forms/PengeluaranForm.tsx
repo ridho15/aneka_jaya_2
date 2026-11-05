@@ -1,5 +1,6 @@
 "use client";
 import { coaLabel, type ExpenseCoaOption } from "@/lib/expenses/coa";
+import { RETIRED_TIPE_CODES } from "@/lib/business/retiredTipes";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,7 +48,11 @@ type CreatedExpense = {
 export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coaAccounts = [] }: Props) {
   const router = useRouter();
   const isEdit = Boolean(expense);
-  const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
+  // AJ dan ONLINE tidak dipakai lagi untuk transaksi baru; transaksi lama tetap bisa diedit dengan tipenya.
+  const activeTipes = useMemo(
+    () => tipes.filter((t) => t.isActive && (!RETIRED_TIPE_CODES.includes(t.code.toUpperCase()) || t.id === expense?.tipeId)),
+    [tipes, expense?.tipeId],
+  );
   const defaultTipe = useMemo(
     () =>
       expense
