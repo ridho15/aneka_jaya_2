@@ -116,7 +116,7 @@ export function SupervisorStockDashboard({
       </div>
 
       {/* Quick Operasional Shortcuts */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Link
           href="/penjualan/input"
           className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-400 hover:shadow-sm"
@@ -147,15 +147,6 @@ export function SupervisorStockDashboard({
           <p className="mt-1 text-[11px] text-slate-500">Pantau jatuh tempo</p>
         </Link>
 
-        <Link
-          href="/approval"
-          className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-400 hover:shadow-sm"
-        >
-          <div className="font-bold text-slate-900 text-sm group-hover:text-emerald-700">
-            Approval Transaksi
-          </div>
-          <p className="mt-1 text-[11px] text-slate-500">Persetujuan transaksi</p>
-        </Link>
       </div>
 
       {/* KPI Cards Strip */}

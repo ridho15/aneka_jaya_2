@@ -111,13 +111,6 @@ export const NAV_LINKS: NavLink[] = [
     anyPermission: ["tempo.view_due"],
     category: "OPERASIONAL & TRANSAKSI",
   },
-  {
-    href: "/approval",
-    label: "Approval",
-    icon: "✓",
-    permission: "approval.view",
-    category: "OPERASIONAL & TRANSAKSI",
-  },
 
   // PEMBELIAN & IMPOR VALAS
   {
@@ -492,7 +485,6 @@ export const NAV_SECTIONS: NavSection[] = [
   { id: "tempo", label: "Tempo & Piutang", group: "Penjualan & Kas", hrefs: ["/tempo"] },
   { id: "pengeluaran", label: "Pengeluaran", group: "Penjualan & Kas", hrefs: ["/pengeluaran", "/pengeluaran/input"], home: "/pengeluaran",
     tabs: { "/pengeluaran": "Riwayat", "/pengeluaran/input": "Input Baru" } },
-  { id: "approval", label: "Approval", group: "Penjualan & Kas", hrefs: ["/approval"] },
   { id: "stok", label: "Stok", group: "Stok & Pembelian", hrefs: ["/inventory", "/inventory/mutasi", "/stok-barang/ai-forecast"], home: "/inventory",
     tabs: { "/inventory": "Stok Gudang & Toko", "/inventory/mutasi": "Kartu Stok", "/stok-barang/ai-forecast": "Prediksi Stok" } },
   { id: "input-stok", label: "Input Stok", group: "Stok & Pembelian", hrefs: ["/inventory/barang-masuk", "/inventory/transfer", "/inventory/opname", "/inventory/adjustment", "/inventory/import"] },

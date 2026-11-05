@@ -139,7 +139,7 @@ describe("Supervisor Role and Access Control", () => {
     expect(html).toContain("/penjualan/input");
     expect(html).toContain("/pengeluaran/input");
     expect(html).toContain("/tempo");
-    expect(html).toContain("/approval");
+    expect(html).not.toContain("/approval");
     expect(html).toContain("/stok-barang/SKU-OUT");
   });
 });

@@ -101,9 +101,10 @@ function toApprovalRequest(row: Awaited<ReturnType<typeof prisma.approvalRequest
   };
 }
 
+/** Halaman Approval sudah tidak dipakai: transaksi langsung disetujui kecuali REQUIRE_APPROVAL_<MODUL>=true. */
 export function approvalIsEnabled(module: ApprovalModule) {
   const key = `REQUIRE_APPROVAL_${module.toUpperCase()}`;
-  return process.env[key] !== "false";
+  return process.env[key] === "true";
 }
 
 export async function createApprovalRequest(input: Omit<ApprovalRequest, "id" | "createdByUserId" | "createdByNameSnapshot" | "createdByRoleSnapshot" | "createdAt" | "status"> & { status?: ApprovalStatus }): Promise<ApprovalRequest> {

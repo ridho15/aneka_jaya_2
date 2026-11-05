@@ -67,14 +67,6 @@ export default async function SettingsPage() {
           tone: "emerald",
         }
       : null,
-    can(role, "approval.view")
-      ? {
-          href: "/approval",
-          title: "Approval",
-          description: "Approve / reject transaksi tertunda",
-          tone: "amber",
-        }
-      : null,
     can(role, "tempo.view")
       ? {
           href: "/tempo",
