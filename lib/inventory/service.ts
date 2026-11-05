@@ -363,26 +363,62 @@ export async function listBalances(query: BalanceQuery = {}) {
   };
 }
 
-/** Matriks stok per produk × lokasi (gudang & toko) dalam satu tabel. */
-export async function stockMatrix(query: { keyword?: string; locationType?: "WAREHOUSE" | "STORE"; page?: number; pageSize?: number } = {}) {
+/**
+ * Matriks stok per produk × lokasi (gudang & toko) dalam satu tabel.
+ * Urutan: barang yang masih ada stoknya di lokasi terpilih, dari yang PALING SEDIKIT
+ * (dalam koli bila isi per koli diketahui), lalu barang dengan stok 0 di paling bawah.
+ * `lowStock` = stok ≤ 1 koli (atau ≤ minimum stok bila isi koli belum diatur).
+ */
+export async function stockMatrix(query: { keyword?: string; locationType?: "WAREHOUSE" | "STORE"; page?: number; pageSize?: number; hideZero?: boolean } = {}) {
+  const page = Math.max(1, Math.floor(query.page || 1));
+  const pageSize = Math.min(200, Math.max(1, Math.floor(query.pageSize || 50)));
   const locations = await listLocations({ type: query.locationType });
-  const products = await listProducts({ keyword: query.keyword, page: query.page, pageSize: query.pageSize });
-  const ids = products.data.map((p) => p.id);
-  const balances = ids.length
-    ? await prisma.inventoryBalance.findMany({ where: { productId: { in: ids }, locationId: { in: locations.map((l) => l.id) } } })
-    : [];
+  const locationIds = locations.map((l) => l.id);
+  const keyword = query.keyword?.trim();
+  const like = keyword ? `%${keyword}%` : null;
+  const scope = locationIds.length ? Prisma.sql`b."locationId" IN (${Prisma.join(locationIds)})` : Prisma.sql`FALSE`;
+  const keywordSql = like ? Prisma.sql`AND (p."sku" ILIKE ${like} OR p."name" ILIKE ${like} OR p."barcode" ILIKE ${like})` : Prisma.empty;
+  const base = Prisma.sql`
+    SELECT p."id", p."name",
+      COALESCE(SUM(b."quantity") FILTER (WHERE ${scope}), 0) AS "total",
+      COALESCE(NULLIF(p."unitsPerKoli", 0), 1) AS "perKoli"
+    FROM "InventoryProduct" p
+    LEFT JOIN "InventoryBalance" b ON b."productId" = p."id"
+    WHERE p."isActive" = TRUE ${keywordSql}
+    GROUP BY p."id"`;
+  const having = query.hideZero ? Prisma.sql`WHERE t."total" > 0` : Prisma.empty;
+  const [countRows, ordered] = await Promise.all([
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint AS "count" FROM (${base}) t ${having}`,
+    prisma.$queryRaw<{ id: string }[]>`
+      SELECT t."id" FROM (${base}) t ${having}
+      ORDER BY (t."total" <= 0), t."total" / t."perKoli", t."name"
+      LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`
+  ]);
+  const total = Number(countRows[0]?.count ?? 0);
+  const ids = ordered.map((r) => r.id);
+  const [products, balances] = ids.length
+    ? await Promise.all([
+        prisma.inventoryProduct.findMany({ where: { id: { in: ids } } }),
+        prisma.inventoryBalance.findMany({ where: { productId: { in: ids }, locationId: { in: locationIds } } })
+      ])
+    : [[], []];
+  const productById = new Map(products.map((p) => [p.id, serializeProduct(p)]));
   const byKey = new Map(balances.map((b) => [`${b.productId}:${b.locationId}`, num(b.quantity)]));
   return {
     locations: locations.map((l) => ({ id: l.id, code: l.code, name: l.name, type: l.type })),
-    data: products.data.map((p) => {
+    data: ids.map((id) => {
+      const p = productById.get(id)!;
       const perLocation = Object.fromEntries(locations.map((l) => [l.id, byKey.get(`${p.id}:${l.id}`) ?? 0]));
       const warehouseTotal = locations.filter((l) => l.type === "WAREHOUSE").reduce((s, l) => s + perLocation[l.id], 0);
       const storeTotal = locations.filter((l) => l.type === "STORE").reduce((s, l) => s + perLocation[l.id], 0);
       const perLocationKoli = Object.fromEntries(locations.map((l) => [l.id, koliInfo(perLocation[l.id], p.unitsPerKoli, p.unit).koliText]));
+      const sum = round2(warehouseTotal + storeTotal);
+      const lowStock = sum > 0 && (p.unitsPerKoli ? sum <= p.unitsPerKoli : p.minimumStock > 0 && sum <= p.minimumStock);
       return { productId: p.id, sku: p.sku, name: p.name, unit: p.unit, unitsPerKoli: p.unitsPerKoli, minimumStock: p.minimumStock, perLocation, perLocationKoli,
-        warehouseKoliText: koliInfo(warehouseTotal, p.unitsPerKoli, p.unit).koliText, storeKoliText: koliInfo(storeTotal, p.unitsPerKoli, p.unit).koliText, totalKoliText: koliInfo(warehouseTotal + storeTotal, p.unitsPerKoli, p.unit).koliText, warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: round2(warehouseTotal + storeTotal) };
+        warehouseKoliText: koliInfo(warehouseTotal, p.unitsPerKoli, p.unit).koliText, storeKoliText: koliInfo(storeTotal, p.unitsPerKoli, p.unit).koliText, totalKoliText: koliInfo(sum, p.unitsPerKoli, p.unit).koliText,
+        warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: sum, lowStock };
     }),
-    meta: products.meta
+    meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
   };
 }
 
@@ -903,4 +939,22 @@ export async function listStockInHistory(limit = 30) {
     g.totalValue = round2(g.totalValue + qty * num(m.unitCost));
   }
   return Array.from(groups.values());
+}
+
+/** Daftar satuan yang dipakai beserta jumlah barangnya (untuk ubah satuan massal). */
+export async function listUnitUsage() {
+  const rows = await prisma.inventoryProduct.groupBy({ by: ["unit"], _count: { _all: true }, orderBy: { unit: "asc" } });
+  return rows.map((r) => ({ unit: r.unit, count: r._count._all }));
+}
+
+/** Ganti satuan semua barang bersatuan `fromUnit` (opsional per kategori) menjadi `toUnit`. Qty stok tidak dikonversi. */
+export async function bulkChangeUnit(input: { fromUnit: string; toUnit: string; category?: string }) {
+  const toUnit = input.toUnit.trim();
+  if (!toUnit) throw new InventoryError("VALIDATION", "Satuan baru wajib diisi.");
+  if (toUnit === input.fromUnit) throw new InventoryError("VALIDATION", "Satuan baru sama dengan satuan lama.");
+  const result = await prisma.inventoryProduct.updateMany({
+    where: { unit: input.fromUnit, ...(input.category ? { category: input.category } : {}) },
+    data: { unit: toUnit }
+  });
+  return { updated: result.count, fromUnit: input.fromUnit, toUnit, category: input.category ?? null };
 }

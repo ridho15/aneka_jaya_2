@@ -30,4 +30,11 @@ describe("menu inventory per role", () => {
     expect(inventoryMenu("FINANCE")).toEqual([]);
     expect(inventoryMenu("VIEWER")).toEqual([]);
   });
+
+  it("Admin: menu operasional hanya Riwayat Penjualan, DO, Tempo; Stock Barang lama sudah digabung", async () => {
+    const { visibleNavGroups } = await import("@/components/layout/navigation");
+    const ops = visibleNavGroups("ADMIN").find((g) => g.category === "OPERASIONAL & TRANSAKSI")?.links.map((l) => l.label);
+    expect(ops).toEqual(["Riwayat Penjualan", "Delivery Order (DO)", "Tempo & Piutang"]);
+    expect(visibleNavLinks("OWNER").some((l) => l.href === "/barang")).toBe(false);
+  });
 });

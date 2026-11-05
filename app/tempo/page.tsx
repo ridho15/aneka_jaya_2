@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/Input";
 import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
+import { TempoDueSoonList } from "@/components/tempo/TempoDueSoonList";
 
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 10;
@@ -79,8 +80,15 @@ function statusBadgeClass(status: string) {
 
 export default async function TempoPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const role = await getCurrentRole();
-  if (!can(role, "tempo.view")) redirect("/");
   const params = await searchParams || {};
+  if (!can(role, "tempo.view")) {
+    if (!can(role, "tempo.view_due")) redirect("/");
+    return (
+      <AppShell>
+        <TempoDueSoonList page={Math.max(1, Number(valueOf(params, "page") || "1"))} keyword={valueOf(params, "keyword") || undefined} />
+      </AppShell>
+    );
+  }
   const page = Math.max(1, Number(valueOf(params, "page") || "1"));
   const filters = filtersFromParams(params);
   const [{ data: paged, meta }, tipeOptions, metricsSummary] = await Promise.all([

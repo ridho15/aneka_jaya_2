@@ -130,36 +130,12 @@ describe("Verifikasi Pembatasan Akses AI Prediksi Stok", () => {
     });
   });
 
-  describe("3. Tombol Akses di Halaman /stok-barang", () => {
-    it("menampilkan tombol Prediksi Stok untuk OWNER", async () => {
+  describe("3-4. /stok-barang dan /barang digabung ke Stok Gudang & Toko", () => {
+    it("mengalihkan /stok-barang dan /barang ke /inventory (kata kunci ikut)", async () => {
       authMocks.currentRole = "OWNER";
-      const html = renderToStaticMarkup(await StokBarangPage({ searchParams: Promise.resolve({}) }));
-      expect(html).toContain('href="/stok-barang/ai-forecast"');
-      expect(html).toContain("Prediksi Stok &amp; Dead Stock");
-    }, 15000);
-
-    it("tidak menampilkan tombol Prediksi Stok untuk SUPERVISOR", async () => {
-      authMocks.currentRole = "SUPERVISOR";
-      const html = renderToStaticMarkup(await StokBarangPage({ searchParams: Promise.resolve({}) }));
-      expect(html).not.toContain('href="/stok-barang/ai-forecast"');
-      expect(html).not.toContain("Prediksi Stok &amp; Dead Stock");
-    }, 15000);
-  });
-
-  describe("4. Tombol Akses di Halaman /barang", () => {
-    it("menampilkan tombol Prediksi Stok untuk OWNER", async () => {
-      authMocks.currentRole = "OWNER";
-      const html = renderToStaticMarkup(await BarangPage({ searchParams: Promise.resolve({}) }));
-      expect(html).toContain('href="/stok-barang/ai-forecast"');
-      expect(html).toContain("Prediksi Stok &amp; Dead Stock");
-    }, 15000);
-
-    it("tidak menampilkan tombol Prediksi Stok untuk SUPERVISOR", async () => {
-      authMocks.currentRole = "SUPERVISOR";
-      const html = renderToStaticMarkup(await BarangPage({ searchParams: Promise.resolve({}) }));
-      expect(html).not.toContain('href="/stok-barang/ai-forecast"');
-      expect(html).not.toContain("Prediksi Stok &amp; Dead Stock");
-    }, 15000);
+      await expect(StokBarangPage({ searchParams: Promise.resolve({}) })).rejects.toThrow("redirect:/inventory");
+      await expect(BarangPage({ searchParams: Promise.resolve({ keyword: "kuku" }) })).rejects.toThrow("redirect:/inventory?keyword=kuku");
+    });
   });
 
   describe("5. Tombol Akses di Halaman /reports/stocks", () => {

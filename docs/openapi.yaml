@@ -746,6 +746,19 @@ paths:
       security: [{ localSessionCookie: [] }, { mjBearer: [] }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryProductInput" } } } }
       responses: { "201": { description: Barang dibuat. }, "409": { description: SKU sudah ada. } }
+  /api/inventory/products/bulk-unit:
+    get:
+      tags: [Inventory]
+      summary: Daftar satuan yang dipakai dan jumlah barangnya.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      responses: { "200": { description: "[{ unit, count }]" } }
+    post:
+      tags: [Inventory]
+      summary: Ubah satuan massal (mis. PCS → Lusin). Qty stok tidak dikonversi.
+      description: Permission inventory.master.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [fromUnit, toUnit], properties: { fromUnit: { type: string }, toUnit: { type: string }, category: { type: string } } } } } }
+      responses: { "200": { description: "{ updated, fromUnit, toUnit, category }" } }
   /api/inventory/products/{id}:
     get:
       tags: [Inventory]

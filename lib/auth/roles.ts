@@ -6,7 +6,7 @@ export const ALL_PERMISSIONS = [
   "penjualan.manage", "pengeluaran.manage", "stock.manage", "stock.adjust",
   "reports.view", "reports.finance_view", "settings.view", "settings.tipe.manage", "settings.rekening.manage",
   "settings.coa.manage", "settings.whatsapp.manage", "settings.profit.manage", "settings.erp_sync.manage", "users.manage", "approval.view", "approval.approve",
-  "tempo.view", "tempo.mark_paid", "tempo.cancel", "tempo.write_off", "audit.view", "erp_sync.retry", "rekening.reset",
+  "tempo.view", "tempo.view_due", "tempo.mark_paid", "tempo.cancel", "tempo.write_off", "audit.view", "erp_sync.retry", "rekening.reset",
   "master_data.view", "guide.view", "do.view", "do.process", "do.assign",
   "sdm.view", "sdm.employee.manage", "sdm.kasbon.manage", "sdm.salary.view", "sdm.savings.manage",
   "accounting.view", "accounting.journal.manage", "accounting.coa.manage", "accounting.period.manage", "accounting.rates.manage",
@@ -52,6 +52,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SUPERVISOR: ALL_PERMISSIONS.filter((p) => !OWNER_ONLY(p) && p !== "sdm.salary.view" && !p.startsWith("inventory.")).concat(INVENTORY_MANAGER),
   ADMIN: [
     "penjualan.create", "penjualan.manage", "do.view", "do.process", "do.assign",
+    // Tempo terbatas: hanya daftar yang jatuh tempo ≤ 3 hari, tanpa total nominal
+    "tempo.view_due",
     "inventory.stock.view", "inventory.opname", "inventory.transfer"
   ],
   FINANCE: [

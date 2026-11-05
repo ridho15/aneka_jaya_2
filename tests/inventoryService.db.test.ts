@@ -231,4 +231,29 @@ suite("inventory service (postgres)", () => {
     expect(doc.items).toHaveLength(2);
     expect(doc.items.find((i) => i.sku === `KOLI-${sku}`)?.koliText).toBe("1 koli");
   });
+
+  it("matriks stok: paling sedikit di atas (dalam koli), ≤ 1 koli ditandai, stok 0 paling bawah", async () => {
+    const tag = `MTX${Date.now().toString(36).toUpperCase()}`;
+    const loc = await svc.createLocation({ code: `TK-${tag}`, name: "Toko Matriks", type: "STORE", allowNegative: false, isDefault: false, isActive: true });
+    const mk = (s: string, qty: number, perKoli?: number) => svc.createProduct({ sku: `${tag}-${s}`, name: `${tag} ${s}`, unit: "Lusin", unitsPerKoli: perKoli ?? null, minimumStock: 0, costPrice: 0, sellingPrice: 0, isActive: true, initialStock: qty ? [{ locationId: loc.id, quantity: qty }] : [] });
+    await mk("A", 600, 60); // 10 koli
+    await mk("B", 60, 60);  // 1 koli → merah
+    await mk("C", 0, 60);   // 0 → paling bawah
+    await mk("D", 150, 60); // 2.5 koli
+    const m = await svc.stockMatrix({ keyword: tag, locationType: "STORE" });
+    expect(m.data.map((r) => r.sku)).toEqual([`${tag}-B`, `${tag}-D`, `${tag}-A`, `${tag}-C`]);
+    expect(m.data.map((r) => r.lowStock)).toEqual([true, false, false, false]);
+    const hidden = await svc.stockMatrix({ keyword: tag, locationType: "STORE", hideZero: true });
+    expect(hidden.data).toHaveLength(3);
+    expect(hidden.meta.total).toBe(3);
+  });
+
+  it("ubah satuan massal", async () => {
+    const unit = `U${Date.now().toString(36)}`.slice(0, 12);
+    await svc.createProduct({ sku: `BU1-${sku}`, name: "Bulk 1", unit, minimumStock: 0, costPrice: 0, sellingPrice: 0, isActive: true });
+    await svc.createProduct({ sku: `BU2-${sku}`, name: "Bulk 2", unit, minimumStock: 0, costPrice: 0, sellingPrice: 0, isActive: true });
+    const r = await svc.bulkChangeUnit({ fromUnit: unit, toUnit: "Lusin" });
+    expect(r.updated).toBe(2);
+    expect((await svc.getProduct(`BU1-${sku}`)).unit).toBe("Lusin");
+  });
 });

@@ -26,6 +26,7 @@ describe("Super Admin permission contract", () => {
   it("keeps Admin focused on sales creation and management while preserving other operational roles", () => {
     expect(ROLE_PERMISSIONS.ADMIN).toEqual([
       "penjualan.create", "penjualan.manage", "do.view", "do.process", "do.assign",
+      "tempo.view_due",
       "inventory.stock.view", "inventory.opname", "inventory.transfer"
     ]);
     for (const permission of ["pengeluaran.view", "pengeluaran.create", "stock.view", "stock.create", "master_data.view", "guide.view"] as const) {

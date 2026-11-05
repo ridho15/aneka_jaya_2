@@ -15,7 +15,9 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
   if (!can(role, "inventory.stock.view")) redirect("/no-access");
   const params = await searchParams;
   const canMovement = can(role, "inventory.movement.view");
-  const type = params.type === "STORE" || params.type === "WAREHOUSE" ? params.type : undefined;
+  // Default membuka stok Toko; filter bisa diganti ke Gudang atau Gudang + Toko (ALL).
+  const typeParam = params.type === "WAREHOUSE" || params.type === "ALL" ? params.type : "STORE";
+  const type = typeParam === "ALL" ? undefined : typeParam;
   const matrix = await stockMatrix({ keyword: params.keyword, locationType: type, page: Number(params.page) || 1, pageSize: 50 });
   return (
     <AppShell>
@@ -23,19 +25,24 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
         title="Stok Gudang & Toko"
         description={<>Seluruh stok di semua gudang dan toko dalam satu tabel. Sumber stok untuk penjualan saat ini: <b>{inventorySource() === "local" ? "Inventory SLM" : "ERP (belum cutover)"}</b>.</>}
         actions={<>
+          {role === "OWNER" && <Link href="/stok-barang/ai-forecast" className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700">Prediksi Stok &amp; Dead Stock</Link>}
           {can(role, "inventory.transfer") && <Link href="/inventory/transfer" className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700">Transfer</Link>}
           {can(role, "inventory.receive") && <Link href="/inventory/barang-masuk" className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Barang Masuk</Link>}
         </>}
       />
       <form className="mb-4 flex flex-wrap gap-2">
         <input name="keyword" defaultValue={params.keyword} placeholder="Cari SKU / nama barang" className={`${filterInput} w-64`} />
-        <select name="type" defaultValue={type ?? ""} className={filterInput}>
-          <option value="">Gudang + Toko</option>
-          <option value="WAREHOUSE">Gudang saja</option>
-          <option value="STORE">Toko saja</option>
+        <select name="type" defaultValue={typeParam} className={filterInput}>
+          <option value="STORE">Toko</option>
+          <option value="WAREHOUSE">Gudang</option>
+          <option value="ALL">Gudang + Toko</option>
         </select>
         <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">Filter</button>
       </form>
+      <p className="mb-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+        <span>Urut dari stok paling sedikit. Kode dengan stok 0 di paling bawah.</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-sm border-l-4 border-l-red-500 bg-red-50" /> Stok ≤ 1 koli</span>
+      </p>
       <div className="aj-surface overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -54,8 +61,8 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
           </thead>
           <tbody>
             {matrix.data.map((row) => (
-              <tr key={row.productId} className="border-t border-slate-100">
-                <td className="sticky left-0 bg-white px-3 py-2">
+              <tr key={row.productId} className={`border-t border-slate-100 ${row.lowStock ? "bg-red-50" : row.total <= 0 ? "opacity-60" : ""}`}>
+                <td className={`sticky left-0 px-3 py-2 ${row.lowStock ? "border-l-4 border-l-red-500 bg-red-50" : "bg-white"}`}>
                   {canMovement ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="font-semibold text-slate-800 hover:text-emerald-700">{row.name}</Link> : <span className="font-semibold text-slate-800">{row.name}</span>}
                   <div className="text-xs text-slate-500">{row.sku} • {row.unit}{row.unitsPerKoli ? ` • ${fmtQty(row.unitsPerKoli)}/koli` : ""}</div>
                 </td>
@@ -66,7 +73,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
                 ))}
                 <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums"><QtyCell qty={row.warehouseTotal} koli={row.warehouseKoliText} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} /></td>
                 <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums"><QtyCell qty={row.storeTotal} koli={row.storeKoliText} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} /></td>
-                <td className={`whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums ${row.minimumStock > 0 && row.total <= row.minimumStock ? "text-red-600" : ""}`}><QtyCell qty={row.total} koli={row.totalKoliText} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} /></td>
+                <td className={`whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums ${row.lowStock ? "text-red-600" : ""}`}><QtyCell qty={row.total} koli={row.totalKoliText} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} /></td>
               </tr>
             ))}
             {!matrix.data.length && (
@@ -77,7 +84,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
           </tbody>
         </table>
       </div>
-      <Pager basePath="/inventory" params={{ keyword: params.keyword, type }} page={matrix.meta.page} totalPages={matrix.meta.totalPages} />
+      <Pager basePath="/inventory" params={{ keyword: params.keyword, type: typeParam }} page={matrix.meta.page} totalPages={matrix.meta.totalPages} />
     </AppShell>
   );
 }

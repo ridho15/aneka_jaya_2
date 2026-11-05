@@ -6,14 +6,14 @@ import { resolveAuthProvider, resolveRequestRole, resolveRequestUser } from "@/l
 const LOCAL_SESSION_COOKIE = "aneka_jaya_session";
 const ANIKA_ERP_TOKEN_COOKIE = "aneka_jaya_erp_token";
 
-const PROTECTED: Array<{ path: string; permission: Parameters<typeof can>[1] }> = [
+const PROTECTED: Array<{ path: string; permission: Parameters<typeof can>[1] | Parameters<typeof can>[1][] }> = [
   { path: "/dashboard", permission: "dashboard.view" },
   { path: "/reports", permission: "reports.view" },
   { path: "/settings", permission: "settings.view" },
   { path: "/audit-trail", permission: "audit.view" },
   { path: "/erp-sync", permission: "erp_sync.retry" },
   { path: "/approval", permission: "approval.view" },
-  { path: "/tempo", permission: "tempo.view" },
+  { path: "/tempo", permission: ["tempo.view", "tempo.view_due"] },
   { path: "/penjualan", permission: "penjualan.create" },
   { path: "/pengeluaran/input", permission: "pengeluaran.create" },
   { path: "/pengeluaran", permission: "pengeluaran.view" },
@@ -51,7 +51,8 @@ export function proxy(request: NextRequest) {
   const role = resolveRequestRole(request);
   for (const rule of PROTECTED) {
     if (pathname === rule.path || pathname.startsWith(`${rule.path}/`)) {
-      if (!can(role, rule.permission)) {
+      const allowed = Array.isArray(rule.permission) ? rule.permission.some((p) => can(role, p)) : can(role, rule.permission);
+      if (!allowed) {
         const landing = landingPageForRole(role);
         return NextResponse.redirect(new URL(landing === pathname ? "/no-access" : landing, request.url));
       }

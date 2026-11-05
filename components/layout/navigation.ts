@@ -20,6 +20,10 @@ export type NavLink = {
   hideForOwner?: boolean;
   /** Tampilkan hanya jika role adalah OWNER */
   ownerOnly?: boolean;
+  /** Permission alternatif: link tampil bila role punya salah satunya. */
+  anyPermission?: Permission[];
+  /** Sembunyikan dari sidebar untuk role tertentu (halaman tetap bisa dibuka lewat tombol). */
+  hideForRoles?: Role[];
 };
 
 export type NavGroup = {
@@ -44,6 +48,7 @@ export const NAV_LINKS: NavLink[] = [
     icon: "⌁",
     permission: "penjualan.create",
     category: "OPERASIONAL & TRANSAKSI",
+    hideForRoles: ["ADMIN"],
     hideForOwner: true,
   },
   {
@@ -59,6 +64,7 @@ export const NAV_LINKS: NavLink[] = [
     icon: "✎",
     permission: "penjualan.create",
     category: "OPERASIONAL & TRANSAKSI",
+    hideForRoles: ["ADMIN"],
   },
   {
     href: "/penjualan/retur",
@@ -66,6 +72,7 @@ export const NAV_LINKS: NavLink[] = [
     icon: "↩",
     permission: "penjualan.create",
     category: "OPERASIONAL & TRANSAKSI",
+    hideForRoles: ["ADMIN"],
   },
   {
     href: "/delivery-orders",
@@ -90,13 +97,6 @@ export const NAV_LINKS: NavLink[] = [
     category: "OPERASIONAL & TRANSAKSI",
   },
   {
-    href: "/barang",
-    label: "Stock Barang",
-    icon: "◇",
-    permission: "stock.view",
-    category: "OPERASIONAL & TRANSAKSI",
-  },
-  {
     href: "/stok-barang/ai-forecast",
     label: "AI Prediksi Stok",
     icon: "◈",
@@ -109,6 +109,7 @@ export const NAV_LINKS: NavLink[] = [
     label: "Tempo & Piutang",
     icon: "◷",
     permission: "tempo.view",
+    anyPermission: ["tempo.view_due"],
     category: "OPERASIONAL & TRANSAKSI",
   },
   {
@@ -420,7 +421,8 @@ const CATEGORY_ORDER: NavCategory[] = [
 export function visibleNavLinks(role: Role): NavLink[] {
   return NAV_LINKS.filter((link) => {
     if (link.ownerOnly && role !== "OWNER") return false;
-    if (!can(role, link.permission)) return false;
+    if (!can(role, link.permission) && !(link.anyPermission ?? []).some((p) => can(role, p))) return false;
+    if (link.hideForRoles?.includes(role)) return false;
     return true;
   });
 }
@@ -428,7 +430,8 @@ export function visibleNavLinks(role: Role): NavLink[] {
 export function visibleNavGroups(role: Role): NavGroup[] {
   const links = NAV_LINKS.filter((link) => {
     if (link.ownerOnly && role !== "OWNER") return false;
-    if (!can(role, link.permission)) return false;
+    if (!can(role, link.permission) && !(link.anyPermission ?? []).some((p) => can(role, p))) return false;
+    if (link.hideForRoles?.includes(role)) return false;
     if (role === "OWNER" && link.hideForOwner) return false;
     return true;
   });
