@@ -14,6 +14,7 @@ import {
 } from "@/lib/validation/penjualanSchema";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { CustomerNameInput } from "@/components/forms/CustomerNameInput";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -1184,7 +1185,17 @@ export function PenjualanForm({
                 </Select>
               </Field>
               <Field label="Nama customer" error={errors.customerName?.message}>
-                <Input placeholder="Walk In" {...register("customerName")} />
+                <CustomerNameInput
+                  registration={register("customerName")}
+                  value={customerName || ""}
+                  onPick={(customer) => {
+                    const opts = { shouldDirty: true, shouldValidate: true };
+                    setValue("customerName", customer.name, opts);
+                    if (customer.phone) setValue("customerPhone", customer.phone, opts);
+                    if (customer.location) setValue("customerLocation", customer.location, opts);
+                    if (customer.shippingMethod) setValue("shippingMethod", customer.shippingMethod, opts);
+                  }}
+                />
               </Field>
               <Field label="No. HP customer">
                 <Input placeholder="08xxx" {...register("customerPhone")} />

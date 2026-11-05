@@ -414,6 +414,7 @@ export default async function CustomerReportsPage({
                         >
                           {c.customerName}
                         </Link>
+                        {c.phone && <div className="text-xs font-normal text-slate-500">{c.phone}</div>}
                       </td>
 
                       <td className="px-4 py-3.5 text-slate-600">

@@ -1457,3 +1457,19 @@ model InventoryAdjustmentItem {
 
   @@index([adjustmentId])
 }
+
+/// Daftar customer yang tersimpan otomatis dari setiap penjualan (kunci: nama yang dinormalisasi).
+model Customer {
+  id             String    @id
+  nameKey        String    @unique
+  name           String
+  phone          String?
+  location       String?
+  shippingMethod String?
+  orderCount     Int       @default(0)
+  lastOrderAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([lastOrderAt])
+}

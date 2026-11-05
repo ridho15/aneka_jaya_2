@@ -1,4 +1,5 @@
 import "server-only";
+import { prisma } from "@/lib/db/prisma";
 import { listSalesRecords } from "@/lib/sales/store";
 import { listTempoReceivables } from "@/lib/tempo/store";
 import type { Sale } from "@/lib/types/sales";
@@ -6,6 +7,8 @@ import type { Sale } from "@/lib/types/sales";
 export type CustomerSalesRow = {
   customerKey: string;
   customerName: string;
+  /** No. HP dari daftar customer (tersimpan otomatis saat penjualan). */
+  phone?: string | null;
   locations: string[];
   primaryLocation: string;
   totalOrders: number;
@@ -63,10 +66,12 @@ function cleanString(val?: string | null): string {
 export async function getCustomerSalesReport(
   options: CustomerReportOptions = {}
 ): Promise<CustomerReportResult> {
-  const [sales, allTempo] = await Promise.all([
+  const [sales, allTempo, customers] = await Promise.all([
     listSalesRecords(),
-    listTempoReceivables().catch(() => [])
+    listTempoReceivables().catch(() => []),
+    prisma.customer.findMany({ select: { nameKey: true, phone: true } }).catch(() => [])
   ]);
+  const phoneByKey = new Map(customers.map((c) => [c.nameKey, c.phone]));
 
   // Map open tempo balance by normalized customer key
   const openTempoMap = new Map<string, number>();
@@ -155,6 +160,7 @@ export async function getCustomerSalesReport(
     return {
       customerKey: entry.key,
       customerName: bestName,
+      phone: phoneByKey.get(entry.key) ?? null,
       locations,
       primaryLocation,
       totalOrders: entry.orders,

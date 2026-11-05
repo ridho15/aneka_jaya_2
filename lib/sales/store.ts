@@ -1,4 +1,5 @@
 import "server-only";
+import { rememberCustomerFromSale, customerNameKey } from "@/lib/customers/store";
 import { readJsonArray, writeJsonArray } from "@/lib/data/jsonStore";
 import type { Sale } from "@/lib/types/sales";
 import { prisma } from "@/lib/db/prisma";
@@ -552,6 +553,11 @@ export async function getSalesRecord(id: string): Promise<Sale | undefined> {
 }
 
 export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreationInput }): Promise<void> {
+  await saveSalesRecordInner(sale, options);
+  if (sale.approvalStatus !== "cancelled") await rememberCustomerFromSale(sale, { countOrder: true });
+}
+
+async function saveSalesRecordInner(sale: Sale, options?: { tempo?: TempoCreationInput }): Promise<void> {
   if (isProductionMode()) {
     await prisma.$transaction(async (tx) => {
       const identity = sale.transactionNumber || !sale.transactionAt ? sale : { ...sale, ...await allocateTransactionIdentity(tx, sale.transactionAt) };
@@ -1003,6 +1009,14 @@ async function assertNoPostedReturns(saleId: string, action: string) {
 }
 
 export async function updateSalesRecord(id: string, input: PenjualanInput): Promise<Sale> {
+  const previousName = (await getSalesRecord(id))?.customerName;
+  const after = await updateSalesRecordInner(id, input);
+  // Edit transaksi lama tidak menambah jumlah order, kecuali customer-nya diganti.
+  await rememberCustomerFromSale(after, { countOrder: customerNameKey(after.customerName) !== customerNameKey(previousName) });
+  return after;
+}
+
+async function updateSalesRecordInner(id: string, input: PenjualanInput): Promise<Sale> {
   const before = await getSalesRecord(id);
   if (!before) throw Object.assign(new Error("Transaksi penjualan tidak ditemukan."), { code: "SALES_NOT_FOUND" });
   if (before.source === "MJ") throw Object.assign(new Error("Invoice MJ hanya dapat diubah melalui API integrasi MJ."), { code: "INVOICE_LOCKED" });

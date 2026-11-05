@@ -1228,6 +1228,35 @@ paths:
           description: Kontrak ERP belum tersedia.
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/customers:
+    get:
+      summary: Cari customer yang pernah belanja.
+      description: Permission penjualan.create. Customer tersimpan otomatis setiap penjualan disimpan (nama, No. HP, lokasi, ekspedisi). Tanpa `q` mengembalikan customer yang terakhir belanja.
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string }, description: Potongan nama atau No. HP. }
+      responses:
+        "200":
+          description: Maksimal 8 customer.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: string }
+                            name: { type: string }
+                            phone: { type: [string, "null"] }
+                            location: { type: [string, "null"] }
+                            shippingMethod: { type: [string, "null"] }
+                            orderCount: { type: integer }
+        "403":
+          description: Tidak punya akses.
   /api/product-references:
     get:
       summary: Referensi kategori dan satuan produk ERP.
