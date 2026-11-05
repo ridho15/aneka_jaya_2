@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { InlineNameForm } from "@/components/inventory/InlineNameForm";
+import { ProductPhoto } from "@/components/inventory/ProductPhoto";
 import { InventoryHeader, Pager, filterButton, filterInput, fmtQty } from "@/components/inventory/ui";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
@@ -140,7 +141,7 @@ function LowChip() {
   return <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">Menipis</span>;
 }
 
-type MatrixRow = { productId: string; sku: string; name: string; category: string | null; hasName: boolean; unit: string; unitsPerKoli: number | null; lowStock: boolean };
+type MatrixRow = { productId: string; sku: string; name: string; photoUrl?: string | null; category: string | null; hasName: boolean; unit: string; unitsPerKoli: number | null; lowStock: boolean };
 
 /** Kode tanpa nama ditandai agar mudah dilengkapi. */
 function ProductCell({ row, canMovement, canEditMaster, canAdjust }: { row: MatrixRow; canMovement: boolean; canEditMaster: boolean; canAdjust: boolean }) {
@@ -148,6 +149,8 @@ function ProductCell({ row, canMovement, canEditMaster, canAdjust }: { row: Matr
     ? <span className="font-semibold leading-snug text-slate-900">{row.name}</span>
     : <span className="text-sm italic text-slate-600">Nama belum diisi</span>;
   return (
+    <div className="flex items-start gap-2.5">
+    <ProductPhoto productId={row.productId} sku={row.sku} photoUrl={row.photoUrl} canEdit={canEditMaster} />
     <div className={row.hasName || !canEditMaster ? "min-w-[200px] max-w-[300px]" : "w-[240px] sm:w-[300px]"}>
       <div className="flex flex-wrap items-center gap-2">
         {canMovement && row.hasName ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="hover:text-emerald-800">{title}</Link> : title}
@@ -162,6 +165,7 @@ function ProductCell({ row, canMovement, canEditMaster, canAdjust }: { row: Matr
         )}
       </div>
       {!row.hasName && canEditMaster && <InlineNameForm productId={row.productId} sku={row.sku} />}
+    </div>
     </div>
   );
 }
@@ -183,8 +187,9 @@ function MobileStockRow({ row, scopeLabel, scopeQty, scopeKoli, parts, canMoveme
   const name = row.hasName ? row.name : "Nama belum diisi";
   return (
     <li className={`px-4 py-3 ${row.lowStock ? "bg-red-50" : ""}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex items-start gap-3">
+        <ProductPhoto productId={row.productId} sku={row.sku} photoUrl={row.photoUrl} canEdit={canEditMaster} />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             {canMovement && row.hasName
               ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="truncate font-semibold text-slate-900">{name}</Link>

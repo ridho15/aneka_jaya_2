@@ -12,6 +12,7 @@ type Props = {
   sales: Sale[];
   canManage: boolean;
   canViewTransactionNumber: boolean;
+  productNames?: Record<string, string>;
 };
 
 const rowLink =
@@ -275,9 +276,12 @@ function ExpandButton({
 export function SalesItemsDetail({
   sale,
   className = "",
+  productNames = {},
 }: {
   sale: Sale;
   className?: string;
+  /** Nama barang dari Master Barang SLM per kode (huruf kecil). */
+  productNames?: Record<string, string>;
 }) {
   return (
     <div id={`sale-items-${sale.id}`} className={className}>
@@ -311,6 +315,9 @@ export function SalesItemsDetail({
                       <p className="font-semibold text-slate-900">
                         {manualName || item.productRef}
                       </p>
+                      {!manualName && productNames[item.productRef.trim().toLowerCase()] && (
+                        <p className="mt-0.5 text-xs text-slate-500">{productNames[item.productRef.trim().toLowerCase()]}</p>
+                      )}
                       {manualName && (
                         <p className="mt-0.5 text-xs text-slate-500">
                           SKU: {manualSku}
@@ -344,6 +351,7 @@ export function SalesHistoryList({
   sales,
   canManage,
   canViewTransactionNumber,
+  productNames = {},
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const columnCount = canViewTransactionNumber ? 9 : 8;
@@ -461,7 +469,7 @@ export function SalesHistoryList({
                   onToggle={() => toggle(sale.id)}
                 />
               </div>
-              {expanded && <SalesItemsDetail sale={sale} className="mt-3" />}
+              {expanded && <SalesItemsDetail sale={sale} className="mt-3" productNames={productNames} />}
               <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Link
                   className="rounded-md bg-emerald-600 px-2.5 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
@@ -549,7 +557,7 @@ export function SalesHistoryList({
                       />
                     </td>
                     <td className="px-2 py-2">
-                      <div className="flex items-center">
+                      <div className="grid w-[7.5rem] grid-cols-2">
                         <Link className={rowLink} href={`/penjualan/${sale.id}`}>
                           Detail
                         </Link>
@@ -623,7 +631,7 @@ export function SalesHistoryList({
                   {expanded && (
                     <tr className="border-b border-slate-200 bg-slate-50/60">
                       <td colSpan={columnCount} className="whitespace-normal px-5 py-4">
-                        <SalesItemsDetail sale={sale} />
+                        <SalesItemsDetail sale={sale} productNames={productNames} />
                       </td>
                     </tr>
                   )}

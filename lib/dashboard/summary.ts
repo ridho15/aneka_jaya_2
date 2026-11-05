@@ -241,7 +241,7 @@ function apakahPengeluaranOperasional(baris: Pick<Expense, "tipeId" | "tipeCodeS
 export const MINIMUM_REAL_COST_THRESHOLD = 1000;
 
 /**
- * Menyusun Map harga modal (cost price) dari master produk ERP.
+ * Menyusun Map harga modal (cost price) dari Master Barang SLM.
  * Diindeks berdasarkan ID, SKU/kode, dan nama produk agar pencarian cepat.
  * Harga modal <= 1.000 (misal placeholder Rp 500 atau 0) diabaikan dan dianggap belum memiliki modal riil.
  */
@@ -251,6 +251,7 @@ function buatPetaHargaModal(daftarProduk: Product[] = []): Map<string, number> {
     const hargaModal = Number(produk.costPrice);
     if (!Number.isFinite(hargaModal) || hargaModal <= MINIMUM_REAL_COST_THRESHOLD) continue;
     if (produk.id) petaHarga.set(produk.id.trim().toLowerCase(), hargaModal);
+    if (produk.productId) petaHarga.set(produk.productId.trim().toLowerCase(), hargaModal);
     if (produk.code) petaHarga.set(produk.code.trim().toLowerCase(), hargaModal);
     if (produk.name) petaHarga.set(produk.name.trim().toLowerCase(), hargaModal);
   }

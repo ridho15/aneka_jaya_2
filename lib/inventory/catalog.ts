@@ -33,3 +33,19 @@ export async function listCatalogProducts(options: { activeOnly?: boolean } = {}
     return { success: false, message: "Master Barang SLM gagal dimuat.", data: [] };
   }
 }
+
+/** Nama barang per kode (huruf kecil) untuk menampilkan nama di rincian penjualan. Kode tanpa nama asli dilewati. */
+export async function productNamesBySku(skus: string[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(skus.map((s) => s.trim()).filter(Boolean)));
+  if (!unique.length) return {};
+  try {
+    const rows = await prisma.inventoryProduct.findMany({
+      where: { sku: { in: unique, mode: "insensitive" } },
+      select: { sku: true, name: true }
+    });
+    const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return Object.fromEntries(rows.filter((r) => r.name.trim() && norm(r.name) !== norm(r.sku)).map((r) => [r.sku.toLowerCase(), r.name]));
+  } catch {
+    return {};
+  }
+}

@@ -12,6 +12,7 @@ import { listBookkeepingTypes, listRekeningAccounts, type RekeningAccount } from
 import type { Sale } from "@/lib/types/sales";
 import { SalesHistoryList } from "@/components/transactions/SalesHistoryList";
 import { approvalLabel } from "@/lib/sales/approvalLabel";
+import { productNamesBySku } from "@/lib/inventory/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
   const activeRekeningOptions = rekeningOptions
     .filter((item) => item.isActive !== false)
     .sort((a, b) => rekeningLabel(a).localeCompare(rekeningLabel(b)));
+  const productNames = await productNamesBySku(paged.flatMap((sale) => sale.items.map((item) => item.productRef)));
   const totalPages = meta.totalPages;
   const activeFilters = activeFilterLabels(params, activeRekeningOptions);
 
@@ -144,7 +146,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
 
       <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} transaksi.</div>
-        <SalesHistoryList sales={paged} canManage={canManage} canViewTransactionNumber={canViewTransactionNumber} />
+        <SalesHistoryList sales={paged} canManage={canManage} canViewTransactionNumber={canViewTransactionNumber} productNames={productNames} />
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
           <span className="text-slate-500">Halaman {page} dari {totalPages}</span>
           <div className="flex gap-2">

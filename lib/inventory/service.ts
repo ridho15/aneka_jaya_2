@@ -432,7 +432,7 @@ export async function stockMatrix(query: { keyword?: string; locationType?: "WAR
       // Penanda merah & urutan memakai stok di lokasi yang sedang ditampilkan.
       const scopeTotal = round2(locations.reduce((s, l) => s + perLocation[l.id], 0));
       const lowStock = scopeTotal > 0 && (p.unitsPerKoli ? scopeTotal <= p.unitsPerKoli : p.minimumStock > 0 && scopeTotal <= p.minimumStock);
-      return { productId: p.id, sku: p.sku, name: p.name, category: p.category, hasName: hasRealName(p.name, p.sku), unit: p.unit, unitsPerKoli: p.unitsPerKoli, minimumStock: p.minimumStock, perLocation, perLocationKoli,
+      return { productId: p.id, sku: p.sku, name: p.name, category: p.category, photoUrl: p.photoUrl, hasName: hasRealName(p.name, p.sku), unit: p.unit, unitsPerKoli: p.unitsPerKoli, minimumStock: p.minimumStock, perLocation, perLocationKoli,
         warehouseKoliText: koliInfo(warehouseTotal, p.unitsPerKoli, p.unit).koliText, storeKoliText: koliInfo(storeTotal, p.unitsPerKoli, p.unit).koliText, totalKoliText: koliInfo(sum, p.unitsPerKoli, p.unit).koliText,
         warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: sum, scopeTotal, lowStock };
     }),

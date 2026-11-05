@@ -59,23 +59,23 @@ function monthEnd(month: string) {
   const [year, value] = month.split("-").map(Number);
   return `${year}-${String(value).padStart(2, "0")}-${new Date(Date.UTC(year, value, 0)).getUTCDate().toString().padStart(2, "0")}`;
 }
-function paymentPeriodFromParams(params: SearchParams, currentMonth: string): PaymentPeriod {
+function paymentPeriodFromParams(params: SearchParams, currentMonth: string, today: string): PaymentPeriod {
   const requestedMode = valueOf(params, "paymentPeriod");
-  const mode: PaymentPeriod["mode"] = requestedMode === "day" ? "day" : "day-range";
-  const defaultFrom = `${currentMonth}-01`;
-  const defaultTo = monthEnd(currentMonth);
-  const day = validDayKey(valueOf(params, "paymentDate")) ? valueOf(params, "paymentDate") as string : defaultFrom;
-  const dayFrom = validDayKey(valueOf(params, "paymentFrom")) ? valueOf(params, "paymentFrom") as string : defaultFrom;
-  const dayTo = validDayKey(valueOf(params, "paymentTo")) ? valueOf(params, "paymentTo") as string : defaultTo;
-  const from = mode === "day" ? day : dayFrom;
-  const to = mode === "day" ? day : dayTo;
+  // Bawaan: hari ini. Bisa diganti ke satu bulan atau rentang tanggal.
+  const mode: PaymentPeriod["mode"] = requestedMode === "month" || requestedMode === "day-range" ? requestedMode : "day";
+  const month = /^\d{4}-\d{2}$/.test(valueOf(params, "paymentMonth") || "") ? valueOf(params, "paymentMonth") as string : currentMonth;
+  const day = validDayKey(valueOf(params, "paymentDate")) ? valueOf(params, "paymentDate") as string : today;
+  const dayFrom = validDayKey(valueOf(params, "paymentFrom")) ? valueOf(params, "paymentFrom") as string : `${currentMonth}-01`;
+  const dayTo = validDayKey(valueOf(params, "paymentTo")) ? valueOf(params, "paymentTo") as string : today;
+  const from = mode === "day" ? day : mode === "month" ? `${month}-01` : dayFrom;
+  const to = mode === "day" ? day : mode === "month" ? monthEnd(month) : dayTo;
   const error = from > to ? "Periode awal tidak boleh melewati periode akhir." : undefined;
-  const label = error ? "Periode tidak valid" : mode === "day" ? `Tanggal ${day}` : `${from} sampai ${to}`;
-  return { mode, day, from, to, label, transactionCount: 0, error };
+  const label = error ? "Periode tidak valid" : mode === "day" ? (day === today ? `Hari ini (${day})` : `Tanggal ${day}`) : mode === "month" ? `Bulan ${month}` : `${from} sampai ${to}`;
+  return { mode, day, month, from, to, label, transactionCount: 0, error };
 }
 
 function preservedDashboardParams(params: SearchParams) {
-  const paymentKeys = new Set(["paymentPeriod", "paymentDate", "paymentFrom", "paymentTo"]);
+  const paymentKeys = new Set(["paymentPeriod", "paymentDate", "paymentMonth", "paymentFrom", "paymentTo"]);
   return Object.fromEntries(Object.entries(params).flatMap(([key, raw]) => {
     const value = Array.isArray(raw) ? raw[0] : raw;
     return !value || paymentKeys.has(key) ? [] : [[key, value]];
@@ -138,7 +138,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
 
   const todayStr = jakartaDateKey();
   const monthStr = jakartaMonthKey();
-  const paymentPeriod = paymentPeriodFromParams(params, monthStr);
+  const paymentPeriod = paymentPeriodFromParams(params, monthStr, todayStr);
   const allSales = await listSalesRecords();
   const isOwner = role === "OWNER";
   const [allExpenses, allRekenings, allTempoPayments, allTempoReversals, cctvSummary] = await Promise.all([

@@ -66,3 +66,22 @@ export async function uploadReceipt(file: File): Promise<ApiResponse<UploadedFil
   // Seamless local disk storage fallback
   return saveLocalReceipt(file);
 }
+
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** Simpan gambar ke public/uploads/<folder> (dilayani route /uploads/...). */
+export async function saveLocalImage(file: File, folder: string, prefix: string): Promise<ApiResponse<UploadedFile>> {
+  if (!IMAGE_TYPES.includes(file.type)) return failure("Format foto harus JPG, PNG, atau WEBP.", "INVALID_FILE_TYPE");
+  if (file.size > MAX_FILE_SIZE) return failure(`Ukuran foto maksimal ${Math.round(MAX_FILE_SIZE / 1024 / 1024)} MB.`, "FILE_TOO_LARGE");
+  try {
+    const safeFolder = folder.replace(/[^a-z0-9-]/gi, "");
+    const safePrefix = prefix.replace(/[^a-z0-9-]/gi, "").slice(0, 60);
+    const filename = `${safePrefix}-${Date.now()}-${crypto.randomUUID().slice(0, 6)}${EXTENSION_MAP[file.type]}`;
+    const dir = path.join(process.cwd(), "public", "uploads", safeFolder);
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, filename), Buffer.from(await file.arrayBuffer()));
+    return { success: true, data: { url: `/uploads/${safeFolder}/${filename}`, reference: filename, name: file.name, size: file.size, contentType: file.type } };
+  } catch (error) {
+    return failure(`Gagal menyimpan foto: ${error instanceof Error ? error.message : "kesalahan tidak diketahui"}`, "LOCAL_STORAGE_WRITE_FAILED");
+  }
+}

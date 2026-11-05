@@ -1228,6 +1228,22 @@ paths:
           description: Kontrak ERP belum tersedia.
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/inventory/products/{id}/photo:
+    post:
+      summary: Unggah atau ganti foto barang.
+      description: Permission inventory.master. multipart/form-data dengan field `file` (JPG/PNG/WEBP, maks 5 MB). Disimpan di /uploads/products/.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "201": { description: "Foto tersimpan; data.photoUrl berisi path foto." }
+        "400": { description: Format/ukuran foto tidak valid. }
+        "403": { description: Tidak punya akses. }
+    delete:
+      summary: Hapus foto barang.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Foto dihapus. }
   /api/customers:
     get:
       summary: Cari customer yang pernah belanja.

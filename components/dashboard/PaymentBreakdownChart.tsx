@@ -8,7 +8,8 @@ import { Select } from "@/components/ui/Select";
 const colors = ["#059669", "#047857", "#10b981", "#334155", "#64748b"];
 type LinkFilters = { from?: string; to?: string };
 export type PaymentPeriod = {
-  mode: "day" | "day-range";
+  mode: "day" | "month" | "day-range";
+  month?: string;
   day: string; from: string; to: string;
   label: string; transactionCount: number; error?: string;
 };
@@ -39,8 +40,9 @@ export function PaymentBreakdownChart({ data, filters, period = defaultPeriod, p
     <form className="mt-4 space-y-3 rounded-xl bg-slate-50 p-3">
       <input type="hidden" name="paymentPeriod" value={mode} />
       {Object.entries(preservedParams).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
-      <Select aria-label="Mode periode pembayaran" value={mode} onChange={(event) => setMode(event.target.value as PaymentPeriod["mode"])}><option value="day">Satu tanggal</option><option value="day-range">Rentang tanggal</option></Select>
+      <Select aria-label="Mode periode pembayaran" value={mode} onChange={(event) => setMode(event.target.value as PaymentPeriod["mode"])}><option value="day">Per hari</option><option value="month">Per bulan</option><option value="day-range">Rentang tanggal</option></Select>
       {mode === "day" && <Input aria-label="Tanggal pembayaran" type="date" name="paymentDate" defaultValue={period.day} />}
+      {mode === "month" && <Input aria-label="Bulan pembayaran" type="month" name="paymentMonth" defaultValue={period.month || period.from.slice(0, 7)} />}
       {mode === "day-range" && <div className="grid grid-cols-2 gap-2"><Input aria-label="Tanggal awal pembayaran" type="date" name="paymentFrom" defaultValue={period.from} /><Input aria-label="Tanggal akhir pembayaran" type="date" name="paymentTo" defaultValue={period.to} /></div>}
       <div className="flex items-center gap-3"><button className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white" type="submit">Terapkan</button><Link className="text-xs font-semibold text-slate-600" href={resetQuery ? `/dashboard?${resetQuery}` : "/dashboard"}>Reset periode</Link></div>
     </form>

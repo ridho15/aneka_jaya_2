@@ -1312,6 +1312,8 @@ model InventoryProduct {
   extraCostIdr Decimal  @default(0) @db.Decimal(18, 2)
   sellingPrice Decimal  @default(0) @db.Decimal(18, 2)
   erpProductId Int?     @unique
+  /// Foto barang (path /uploads/products/...), diunggah dari Master Barang / Stok.
+  photoUrl     String?
   isActive     Boolean  @default(true)
   notes        String?
   createdAt    DateTime @default(now())
