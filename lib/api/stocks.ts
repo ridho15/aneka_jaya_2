@@ -5,6 +5,8 @@ import type { StockItem } from "@/lib/types/stock";
 import { toStockItem } from "@/lib/api/erpMappers";
 import { listErpPage, listErpPaginated } from "@/lib/api/pagination";
 import { summarizeStockDetail, type StockDetailSummary } from "@/lib/stocks/detail";
+import { isLocalInventory } from "@/lib/inventory/config";
+import { listLocalStockItems } from "@/lib/inventory/legacyAdapter";
 
 export type StockListOptions = {
   page?: number;
@@ -102,7 +104,18 @@ export function paginateStocks(items: StockItem[], options: StockListOptions = {
   };
 }
 
+async function listLocalStocks(options: StockListOptions): Promise<ApiResponse<StockItem[]>> {
+  try {
+    const rows = await listLocalStockItems({ productId: options.productId, sku: options.sku, warehouse: options.warehouse, keyword: options.keyword });
+    return { success: true, data: filterStocks(rows, { ...options, productId: undefined }) };
+  } catch (error) {
+    console.error("[stocks] local inventory", error);
+    return failure("Gagal membaca stok dari inventory SLM.", "INVENTORY_ERROR");
+  }
+}
+
 export async function listStocks(options: StockListOptions = {}): Promise<ApiResponse<StockItem[]>> {
+  if (isLocalInventory()) return listLocalStocks(options);
   const response = await listErpPaginated("/stocks", { query: stockQuery(options), perPage: options.pageSize, maxPages: options.maxPages });
   if (!response.success) return response.code === "ERP_SCHEMA" ? failure("Format data stok dari ERP tidak dikenali.", "ERP_SCHEMA") : response;
   const rows = response.data;
@@ -113,6 +126,10 @@ export async function listStocks(options: StockListOptions = {}): Promise<ApiRes
 export async function listStocksPage(options: StockListOptions = {}): Promise<ApiResponse<StockTablePage>> {
   const page = clampPage(options.page);
   const pageSize = clampPageSize(options.pageSize);
+  if (isLocalInventory()) {
+    const local = await listLocalStocks(options);
+    return local.success ? { success: true, data: paginateStocks(local.data, { ...options, productId: undefined, page, pageSize }) } : local;
+  }
   const response = await listErpPage("/stocks", { query: stockQuery(options), page, perPage: pageSize });
   if (!response.success) return response;
   const rows = filterStocks(response.data.data.map((row) => toStockItem(row as Record<string, unknown>)), options);

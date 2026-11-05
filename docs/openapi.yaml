@@ -523,6 +523,154 @@ components:
           type: boolean
         receivesTempoReminder:
           type: boolean
+    InventoryProductRef:
+      type: object
+      description: Referensi produk — isi salah satu dari productId (ID lokal SLM), sku, atau erpProductId. Semua field locationId / fromLocationId / toLocationId menerima ID maupun kode lokasi (mis. GD-UTAMA).
+      properties:
+        productId: { type: string }
+        sku: { type: string }
+        erpProductId: { type: integer }
+    InventoryLocationInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, example: GD-UTAMA }
+        name: { type: string, example: Gudang Utama }
+        type: { type: string, enum: [WAREHOUSE, STORE], default: WAREHOUSE }
+        address: { type: string }
+        phone: { type: string }
+        erpWarehouseId: { type: [integer, "null"], description: Pemetaan ke ID gudang ERP lama (opsional). }
+        allowNegative: { type: boolean, default: false }
+        isDefault: { type: boolean, default: false, description: Lokasi default untuk penjualan & penerimaan pembelian. }
+        isActive: { type: boolean, default: true }
+        notes: { type: string }
+    InventoryProductInput:
+      type: object
+      required: [sku, name]
+      properties:
+        sku: { type: string }
+        name: { type: string }
+        category: { type: string }
+        brand: { type: string }
+        unit: { type: string, default: PCS }
+        barcode: { type: string }
+        minimumStock: { type: number }
+        costPrice: { type: number }
+        sellingPrice: { type: number }
+        erpProductId: { type: [integer, "null"] }
+        isActive: { type: boolean }
+        initialStock:
+          type: array
+          items:
+            type: object
+            required: [locationId, quantity]
+            properties:
+              locationId: { type: string }
+              quantity: { type: number }
+              unitCost: { type: number }
+    InventoryBalance:
+      type: object
+      properties:
+        productId: { type: string }
+        sku: { type: string }
+        productName: { type: string }
+        unit: { type: string }
+        locationId: { type: string }
+        locationCode: { type: string }
+        locationName: { type: string }
+        locationType: { type: string, enum: [WAREHOUSE, STORE] }
+        quantity: { type: number }
+        avgCost: { type: number }
+        stockValue: { type: number }
+        minimumStock: { type: number }
+        isLowStock: { type: boolean }
+    InventoryMovement:
+      type: object
+      properties:
+        id: { type: string }
+        movementDate: { type: string, format: date-time }
+        type: { type: string, enum: [INITIAL, PURCHASE_RECEIPT, TRANSFER_OUT, TRANSFER_IN, OPNAME, ADJUSTMENT_IN, ADJUSTMENT_OUT, SALE_OUT, SALE_REVERSAL] }
+        sku: { type: string }
+        locationCode: { type: string }
+        quantityIn: { type: number }
+        quantityOut: { type: number }
+        balanceBefore: { type: number }
+        balanceAfter: { type: number }
+        unitCost: { type: number }
+        referenceType: { type: string }
+        referenceNumber: { type: string }
+        notes: { type: string }
+    InventoryTransferInput:
+      type: object
+      required: [fromLocationId, toLocationId, items]
+      properties:
+        transferNumber: { type: string, description: Kosongkan untuk penomoran otomatis TRF-YYYYMM-####. }
+        transferDate: { type: string, format: date }
+        fromLocationId: { type: string }
+        toLocationId: { type: string }
+        receiveNow: { type: boolean, default: true, description: false = status IN_TRANSIT sampai POST /receive. }
+        idempotencyKey: { type: string, description: Kirim ulang dengan key yang sama tidak membuat transfer ganda. }
+        notes: { type: string }
+        items:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/InventoryProductRef"
+              - type: object
+                required: [quantity]
+                properties: { quantity: { type: number, exclusiveMinimum: 0 }, notes: { type: string } }
+    InventoryOpnameInput:
+      type: object
+      required: [locationId, items]
+      properties:
+        opnameNumber: { type: string }
+        opnameDate: { type: string, format: date }
+        locationId: { type: string }
+        idempotencyKey: { type: string }
+        notes: { type: string }
+        items:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/InventoryProductRef"
+              - type: object
+                required: [countedQty]
+                properties: { countedQty: { type: number, minimum: 0, description: Qty fisik; stok sistem diganti dengan nilai ini. }, notes: { type: string } }
+    InventoryAdjustmentInput:
+      type: object
+      required: [locationId, reason, items]
+      properties:
+        adjustmentNumber: { type: string }
+        adjustmentDate: { type: string, format: date }
+        locationId: { type: string }
+        reason: { type: string }
+        idempotencyKey: { type: string }
+        notes: { type: string }
+        items:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/InventoryProductRef"
+              - type: object
+                required: [quantity]
+                properties: { quantity: { type: number, description: Positif menambah, negatif mengurangi stok. }, unitCost: { type: number }, notes: { type: string } }
+    InventoryStockInInput:
+      type: object
+      required: [locationId, items]
+      properties:
+        referenceNumber: { type: string }
+        movementDate: { type: string, format: date }
+        locationId: { type: string }
+        idempotencyKey: { type: string }
+        notes: { type: string }
+        items:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/InventoryProductRef"
+              - type: object
+                required: [quantity]
+                properties: { quantity: { type: number, exclusiveMinimum: 0 }, unitCost: { type: number }, notes: { type: string } }
   responses:
     BadRequest:
       description: Request tidak valid.
@@ -549,6 +697,191 @@ components:
           schema:
             $ref: "#/components/schemas/ApiError"
 paths:
+  /api/inventory/locations:
+    get:
+      tags: [Inventory]
+      summary: Daftar gudang & toko.
+      description: Permission inventory.view, atau Bearer token integrasi.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters:
+        - { in: query, name: type, schema: { type: string, enum: [WAREHOUSE, STORE] } }
+        - { in: query, name: includeInactive, schema: { type: boolean } }
+      responses: { "200": { description: Daftar lokasi. }, "401": { description: AUTH_INVALID }, "403": { $ref: "#/components/responses/Forbidden" } }
+    post:
+      tags: [Inventory]
+      summary: Tambah gudang / toko.
+      description: Permission inventory.manage.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryLocationInput" } } } }
+      responses: { "201": { description: Lokasi dibuat. }, "400": { $ref: "#/components/responses/BadRequest" }, "409": { description: Kode sudah dipakai. } }
+  /api/inventory/locations/{id}:
+    patch:
+      tags: [Inventory]
+      summary: Ubah gudang / toko.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryLocationInput" } } } }
+      responses: { "200": { description: Lokasi diperbarui. }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/inventory/products:
+    get:
+      tags: [Inventory]
+      summary: Master barang inventory (dengan total stok).
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters:
+        - { in: query, name: keyword, schema: { type: string } }
+        - { in: query, name: page, schema: { type: integer } }
+        - { in: query, name: pageSize, schema: { type: integer, maximum: 200 } }
+      responses: { "200": { description: Daftar barang + meta paginasi. } }
+    post:
+      tags: [Inventory]
+      summary: Tambah barang (opsional dengan stok awal per lokasi).
+      description: Permission inventory.manage.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryProductInput" } } } }
+      responses: { "201": { description: Barang dibuat. }, "409": { description: SKU sudah ada. } }
+  /api/inventory/products/{id}:
+    get:
+      tags: [Inventory]
+      summary: Detail barang beserta stok di setiap gudang/toko. `id` boleh ID lokal atau SKU.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { "200": { description: Detail barang. }, "404": { $ref: "#/components/responses/NotFound" } }
+    patch:
+      tags: [Inventory]
+      summary: Ubah master barang.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryProductInput" } } } }
+      responses: { "200": { description: Barang diperbarui. } }
+  /api/inventory/stocks:
+    get:
+      tags: [Inventory]
+      summary: Saldo stok per barang per lokasi.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters:
+        - { in: query, name: locationId, schema: { type: string } }
+        - { in: query, name: locationType, schema: { type: string, enum: [WAREHOUSE, STORE] } }
+        - { in: query, name: productId, schema: { type: string } }
+        - { in: query, name: sku, schema: { type: string } }
+        - { in: query, name: keyword, schema: { type: string } }
+        - { in: query, name: lowStockOnly, schema: { type: boolean } }
+        - { in: query, name: includeZero, schema: { type: boolean } }
+        - { in: query, name: page, schema: { type: integer } }
+        - { in: query, name: pageSize, schema: { type: integer, maximum: 500 } }
+      responses:
+        "200":
+          description: Saldo stok.
+          content: { application/json: { schema: { type: object, properties: { success: { type: boolean }, data: { type: array, items: { $ref: "#/components/schemas/InventoryBalance" } }, meta: { type: object } } } } }
+  /api/inventory/stocks/matrix:
+    get:
+      tags: [Inventory]
+      summary: Matriks stok — tiap barang dengan kolom per gudang & toko, total gudang, total toko.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters:
+        - { in: query, name: keyword, schema: { type: string } }
+        - { in: query, name: locationType, schema: { type: string, enum: [WAREHOUSE, STORE] } }
+        - { in: query, name: page, schema: { type: integer } }
+      responses: { "200": { description: "data[].perLocation berisi {locationId: qty}; meta.locations berisi daftar kolom lokasi." } }
+  /api/inventory/movements:
+    get:
+      tags: [Inventory]
+      summary: Mutasi stok / kartu stok (saldo sebelum & sesudah tiap transaksi).
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters:
+        - { in: query, name: productId, schema: { type: string } }
+        - { in: query, name: sku, schema: { type: string } }
+        - { in: query, name: locationId, schema: { type: string } }
+        - { in: query, name: type, schema: { type: string } }
+        - { in: query, name: reference, schema: { type: string } }
+        - { in: query, name: from, schema: { type: string, format: date } }
+        - { in: query, name: to, schema: { type: string, format: date } }
+        - { in: query, name: page, schema: { type: integer } }
+        - { in: query, name: pageSize, schema: { type: integer, maximum: 500 } }
+      responses:
+        "200":
+          description: Daftar mutasi.
+          content: { application/json: { schema: { type: object, properties: { success: { type: boolean }, data: { type: array, items: { $ref: "#/components/schemas/InventoryMovement" } }, meta: { type: object } } } } }
+  /api/inventory/transfers:
+    get:
+      tags: [Inventory]
+      summary: Daftar transfer stok antar gudang/toko.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters:
+        - { in: query, name: status, schema: { type: string, enum: [IN_TRANSIT, RECEIVED, CANCELLED] } }
+        - { in: query, name: locationId, schema: { type: string } }
+      responses: { "200": { description: Daftar transfer. } }
+    post:
+      tags: [Inventory]
+      summary: Buat transfer stok antar gudang/toko.
+      description: Permission inventory.transfer. Stok asal langsung berkurang; stok tujuan bertambah saat diterima (langsung bila receiveNow=true).
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryTransferInput" } } } }
+      responses: { "201": { description: Transfer dibuat. }, "400": { $ref: "#/components/responses/BadRequest" }, "409": { description: INSUFFICIENT_STOCK } }
+  /api/inventory/transfers/{id}/receive:
+    post:
+      tags: [Inventory]
+      summary: Konfirmasi transfer IN_TRANSIT diterima di lokasi tujuan.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { "200": { description: Transfer diterima. }, "409": { description: INVALID_STATE } }
+  /api/inventory/transfers/{id}/cancel:
+    post:
+      tags: [Inventory]
+      summary: Batalkan transfer IN_TRANSIT; stok dikembalikan ke lokasi asal.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { reason: { type: string } } } } } }
+      responses: { "200": { description: Transfer dibatalkan. }, "409": { description: INVALID_STATE } }
+  /api/inventory/opnames:
+    get:
+      tags: [Inventory]
+      summary: Daftar stock opname.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      responses: { "200": { description: Daftar opname. } }
+    post:
+      tags: [Inventory]
+      summary: Stock opname — mengganti stok sistem dengan qty fisik.
+      description: Permission inventory.adjust. Selisih (fisik − sistem) dicatat sebagai mutasi OPNAME.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryOpnameInput" } } } }
+      responses: { "201": { description: Opname diposting. } }
+  /api/inventory/adjustments:
+    get:
+      tags: [Inventory]
+      summary: Daftar stock adjustment.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      responses: { "200": { description: Daftar adjustment. } }
+    post:
+      tags: [Inventory]
+      summary: Stock adjustment — menambah (+) atau mengurangi (−) stok yang ada.
+      description: Permission inventory.adjust.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryAdjustmentInput" } } } }
+      responses: { "201": { description: Adjustment diposting. }, "409": { description: INSUFFICIENT_STOCK } }
+  /api/inventory/stock-in:
+    post:
+      tags: [Inventory]
+      summary: Barang masuk ke gudang/toko (pembelian tanpa PO / penerimaan manual).
+      description: Permission inventory.manage.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InventoryStockInInput" } } } }
+      responses: { "201": { description: Barang masuk diposting. } }
+  /api/inventory/import-erp:
+    post:
+      tags: [Inventory]
+      summary: Impor awal master barang, gudang, dan saldo stok dari Anika ERP (cutover).
+      description: Khusus Super Admin (OWNER). Default dryRun=true (hanya menghitung). Kirim {"dryRun":false} untuk menulis; saldo lokal di-SET sama dengan qty ERP sehingga aman diulang.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { dryRun: { type: boolean, default: true }, maxPages: { type: integer } } } } } }
+      responses: { "200": { description: Ringkasan impor. }, "403": { $ref: "#/components/responses/Forbidden" }, "502": { $ref: "#/components/responses/BadGateway" } }
+  /api/inventory/purchase-receipts/{id}/post:
+    post:
+      tags: [Inventory]
+      summary: Masukkan penerimaan pembelian (GRN) ke stok gudang/toko. Idempotent.
+      description: Permission inventory.manage. Barang yang belum ada di master dibuat otomatis dari kode item PO.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [locationId], properties: { locationId: { type: string } } } } } }
+      responses: { "200": { description: GRN diposting ke inventory. }, "404": { $ref: "#/components/responses/NotFound" } }
   /api/integrations/mj/customers:
     get:
       summary: Cari customer AJ untuk dipilih MJ.

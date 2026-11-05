@@ -10,7 +10,8 @@ export const ALL_PERMISSIONS = [
   "master_data.view", "guide.view", "do.view", "do.process", "do.assign",
   "sdm.view", "sdm.employee.manage", "sdm.kasbon.manage", "sdm.salary.view", "sdm.savings.manage",
   "accounting.view", "accounting.journal.manage", "accounting.coa.manage", "accounting.period.manage", "accounting.rates.manage",
-  "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage"
+  "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage",
+  "inventory.view", "inventory.manage", "inventory.transfer", "inventory.adjust"
 ] as const;
 export type Permission = (typeof ALL_PERMISSIONS)[number];
 
@@ -37,14 +38,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "reports.finance_view", "master_data.view", "guide.view",
     "sdm.view", "sdm.kasbon.manage", "sdm.salary.view", "sdm.savings.manage",
     "accounting.view", "accounting.journal.manage", "accounting.coa.manage", "accounting.rates.manage",
-    "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage"
+    "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage",
+    "inventory.view"
   ],
   MANAGER: [
     "pengeluaran.view", "approval.view", "approval.approve", "tempo.view",
     "reports.finance_view", "audit.view", "master_data.view", "guide.view",
     "sdm.view", "sdm.employee.manage", "sdm.savings.manage",
     "accounting.view", "accounting.period.manage",
-    "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage"
+    "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage",
+    "inventory.view", "inventory.transfer"
   ],
   DELIVERY_DRIVER: ["do.view", "do.process"],
   VIEWER: []
