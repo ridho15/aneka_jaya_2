@@ -29,7 +29,7 @@ export default async function OpnamePage({ searchParams }: { searchParams: Promi
                 <td className="whitespace-nowrap px-3 py-2">{fmtDate(o.opnameDate)}</td>
                 <td className="px-3 py-2">{o.location?.code}</td>
                 <td className="px-3 py-2 text-xs">{o.items.map((i) => (
-                  <div key={i.id}>{i.sku} — {i.productName}: {fmtQty(i.systemQty)} → {fmtQty(i.countedQty)} = <b className={(i.differenceQty ?? 0) < 0 ? "text-red-600" : (i.differenceQty ?? 0) > 0 ? "text-emerald-700" : ""}>{(i.differenceQty ?? 0) > 0 ? "+" : ""}{fmtQty(i.differenceQty)}</b></div>
+                  <div key={i.id}>{i.sku} — {i.productName}: {fmtQty(i.systemQty)} → {fmtQty(i.countedQty)}{i.koliText?.includes("koli") ? ` (${i.koliText})` : ""} = <b className={(i.differenceQty ?? 0) < 0 ? "text-red-600" : (i.differenceQty ?? 0) > 0 ? "text-emerald-700" : ""}>{(i.differenceQty ?? 0) > 0 ? "+" : ""}{fmtQty(i.differenceQty)}</b></div>
                 ))}</td>
                 <td className="px-3 py-2 text-xs">{o.createdByName}{o.notes && <div className="text-slate-500">{o.notes}</div>}</td>
               </tr>

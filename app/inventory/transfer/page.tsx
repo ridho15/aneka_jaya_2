@@ -40,7 +40,7 @@ export default async function TransferPage({ searchParams }: { searchParams: SP 
                 <td className="px-3 py-2 font-mono text-xs font-semibold">{t.transferNumber}</td>
                 <td className="whitespace-nowrap px-3 py-2">{fmtDate(t.transferDate)}</td>
                 <td className="whitespace-nowrap px-3 py-2">{t.fromLocation?.code} → {t.toLocation?.code}</td>
-                <td className="px-3 py-2 text-xs">{t.items.map((i) => <div key={i.id}>{i.sku} — {i.productName}: <b>{fmtQty(i.quantity)}</b> {i.unit}</div>)}</td>
+                <td className="px-3 py-2 text-xs">{t.items.map((i) => <div key={i.id}>{i.sku} — {i.productName}: <b>{fmtQty(i.quantity)}</b> {i.unit}{i.koliText?.includes("koli") ? ` (${i.koliText})` : ""}</div>)}</td>
                 <td className="px-3 py-2">{STATUS_LABEL[t.status]}{t.createdByName && <div className="text-xs text-slate-400">oleh {t.createdByName}</div>}</td>
                 <td className="px-3 py-2">
                   {canTransfer && t.status === "IN_TRANSIT" && (

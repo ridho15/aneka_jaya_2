@@ -25,8 +25,12 @@ export const productSchema = z.object({
   brand: optionalText(120),
   unit: z.string().trim().min(1).max(20).default("PCS"),
   barcode: optionalText(80),
+  unitsPerKoli: z.coerce.number().positive("Isi per koli harus lebih dari 0").optional().nullable(),
   minimumStock: z.coerce.number().min(0).default(0),
   costPrice: z.coerce.number().min(0).default(0),
+  /** Harga beli RMB per satuan; modal dihitung otomatis dari kurs RMB. */
+  priceRmb: z.coerce.number().min(0).optional().nullable(),
+  extraCostIdr: z.coerce.number().min(0).optional(),
   sellingPrice: z.coerce.number().min(0).default(0),
   erpProductId: z.coerce.number().int().positive().optional().nullable(),
   isActive: z.boolean().default(true),
@@ -44,6 +48,16 @@ const productRef = z.object({
 
 const itemNotes = optionalText(500);
 
+/**
+ * Qty barang bisa diisi langsung (`quantity`, dalam satuan barang: lusin/pack/box)
+ * atau dalam koli: `koli` × isi per koli barang + `loose` (lepas, satuan barang).
+ */
+const koliFields = {
+  koli: z.coerce.number().finite().optional(),
+  loose: z.coerce.number().finite().optional()
+};
+const hasQty = (field: "quantity" | "countedQty") => (v: Record<string, unknown>) => v[field] != null || v.koli != null || v.loose != null;
+
 export const transferSchema = z.object({
   transferNumber: optionalText(60),
   transferDate: dateString.optional(),
@@ -52,7 +66,8 @@ export const transferSchema = z.object({
   receiveNow: z.boolean().default(true),
   notes: optionalText(1000),
   idempotencyKey: optionalText(120),
-  items: z.array(productRef.and(z.object({ quantity: qty.positive("Qty harus lebih dari 0"), notes: itemNotes }))).min(1, "Minimal satu barang")
+  items: z.array(productRef.and(z.object({ quantity: qty.positive("Qty harus lebih dari 0").optional(), ...koliFields, notes: itemNotes })
+    .refine(hasQty("quantity"), "Isi qty atau koli"))).min(1, "Minimal satu barang")
 }).refine((v) => v.fromLocationId !== v.toLocationId, { message: "Lokasi asal dan tujuan tidak boleh sama", path: ["toLocationId"] });
 
 export const opnameSchema = z.object({
@@ -61,7 +76,12 @@ export const opnameSchema = z.object({
   locationId: z.string().min(1, "Lokasi wajib dipilih"),
   notes: optionalText(1000),
   idempotencyKey: optionalText(120),
-  items: z.array(productRef.and(z.object({ countedQty: qty.min(0, "Qty fisik tidak boleh negatif"), notes: itemNotes }))).min(1, "Minimal satu barang")
+  items: z.array(productRef.and(z.object({
+    countedQty: qty.min(0, "Qty fisik tidak boleh negatif").optional(),
+    koli: z.coerce.number().finite().min(0, "Koli tidak boleh negatif").optional(),
+    loose: z.coerce.number().finite().min(0, "Qty lepas tidak boleh negatif").optional(),
+    notes: itemNotes
+  }).refine(hasQty("countedQty"), "Isi qty fisik atau koli"))).min(1, "Minimal satu barang")
 });
 
 export const adjustmentSchema = z.object({
@@ -72,10 +92,11 @@ export const adjustmentSchema = z.object({
   notes: optionalText(1000),
   idempotencyKey: optionalText(120),
   items: z.array(productRef.and(z.object({
-    quantity: qty.refine((v) => v !== 0, "Qty tidak boleh 0 (positif = tambah, negatif = kurang)"),
+    quantity: qty.refine((v) => v !== 0, "Qty tidak boleh 0 (positif = tambah, negatif = kurang)").optional(),
+    ...koliFields,
     unitCost: z.coerce.number().min(0).optional(),
     notes: itemNotes
-  }))).min(1, "Minimal satu barang")
+  }).refine(hasQty("quantity"), "Isi qty atau koli"))).min(1, "Minimal satu barang")
 });
 
 export const stockInSchema = z.object({
@@ -84,7 +105,8 @@ export const stockInSchema = z.object({
   locationId: z.string().min(1, "Lokasi wajib dipilih"),
   notes: optionalText(1000),
   idempotencyKey: optionalText(120),
-  items: z.array(productRef.and(z.object({ quantity: qty.positive("Qty harus lebih dari 0"), unitCost: z.coerce.number().min(0).optional(), notes: itemNotes }))).min(1)
+  items: z.array(productRef.and(z.object({ quantity: qty.positive("Qty harus lebih dari 0").optional(), ...koliFields, unitCost: z.coerce.number().min(0).optional(), notes: itemNotes })
+    .refine(hasQty("quantity"), "Isi qty atau koli"))).min(1)
 });
 
 export type LocationInput = z.infer<typeof locationSchema>;
@@ -94,3 +116,5 @@ export type TransferInput = z.infer<typeof transferSchema>;
 export type OpnameInput = z.infer<typeof opnameSchema>;
 export type AdjustmentInput = z.infer<typeof adjustmentSchema>;
 export type StockInInput = z.infer<typeof stockInSchema>;
+
+export const rmbRateSchema = z.object({ rate: z.coerce.number().positive("Kurs RMB harus lebih dari 0").max(100000) });

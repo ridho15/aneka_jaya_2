@@ -554,8 +554,11 @@ components:
         brand: { type: string }
         unit: { type: string, default: PCS }
         barcode: { type: string }
+        unitsPerKoli: { type: [number, "null"], description: "Isi per koli dalam satuan barang (mis. 60 lusin per koli)." }
         minimumStock: { type: number }
-        costPrice: { type: number }
+        costPrice: { type: number, description: Diabaikan (dihitung otomatis) bila priceRmb diisi dan kurs RMB sudah diatur. }
+        priceRmb: { type: [number, "null"], description: "Harga beli RMB per satuan. Modal = priceRmb × kurs RMB + extraCostIdr." }
+        extraCostIdr: { type: number, description: Biaya tambahan per satuan dalam Rupiah (ongkir/CBM, bea). }
         sellingPrice: { type: number }
         erpProductId: { type: [integer, "null"] }
         isActive: { type: boolean }
@@ -580,6 +583,10 @@ components:
         locationName: { type: string }
         locationType: { type: string, enum: [WAREHOUSE, STORE] }
         quantity: { type: number }
+        unitsPerKoli: { type: [number, "null"] }
+        koli: { type: [number, "null"], description: Jumlah koli utuh. }
+        loose: { type: [number, "null"], description: Sisa lepas dalam satuan barang. }
+        koliText: { type: string, example: "32 koli + 5 Lusin" }
         avgCost: { type: number }
         stockValue: { type: number }
         minimumStock: { type: number }
@@ -618,7 +625,7 @@ components:
               - $ref: "#/components/schemas/InventoryProductRef"
               - type: object
                 required: [quantity]
-                properties: { quantity: { type: number, exclusiveMinimum: 0 }, notes: { type: string } }
+                properties: { quantity: { type: number, exclusiveMinimum: 0, description: Qty satuan. Alternatif isi koli + loose. }, koli: { type: number, description: Jumlah koli; dikali isi per koli barang. }, loose: { type: number, description: Qty lepas dalam satuan barang. }, notes: { type: string } }
     InventoryOpnameInput:
       type: object
       required: [locationId, items]
@@ -635,7 +642,7 @@ components:
               - $ref: "#/components/schemas/InventoryProductRef"
               - type: object
                 required: [countedQty]
-                properties: { countedQty: { type: number, minimum: 0, description: Qty fisik; stok sistem diganti dengan nilai ini. }, notes: { type: string } }
+                properties: { countedQty: { type: number, minimum: 0, description: Qty fisik; stok sistem diganti dengan nilai ini. Alternatif isi koli + loose. }, koli: { type: number, description: Jumlah koli; dikali isi per koli barang. }, loose: { type: number, description: Qty lepas dalam satuan barang. }, notes: { type: string } }
     InventoryAdjustmentInput:
       type: object
       required: [locationId, reason, items]
@@ -653,7 +660,7 @@ components:
               - $ref: "#/components/schemas/InventoryProductRef"
               - type: object
                 required: [quantity]
-                properties: { quantity: { type: number, description: Positif menambah, negatif mengurangi stok. }, unitCost: { type: number }, notes: { type: string } }
+                properties: { quantity: { type: number, description: Positif menambah, negatif mengurangi stok. }, koli: { type: number, description: Jumlah koli; dikali isi per koli barang. }, loose: { type: number, description: Qty lepas dalam satuan barang. }, unitCost: { type: number }, notes: { type: string } }
     InventoryStockInInput:
       type: object
       required: [locationId, items]
@@ -670,7 +677,7 @@ components:
               - $ref: "#/components/schemas/InventoryProductRef"
               - type: object
                 required: [quantity]
-                properties: { quantity: { type: number, exclusiveMinimum: 0 }, unitCost: { type: number }, notes: { type: string } }
+                properties: { quantity: { type: number, exclusiveMinimum: 0 }, koli: { type: number, description: Jumlah koli; dikali isi per koli barang. }, loose: { type: number, description: Qty lepas dalam satuan barang. }, unitCost: { type: number }, notes: { type: string } }
   responses:
     BadRequest:
       description: Request tidak valid.
@@ -895,6 +902,19 @@ paths:
                 zeroUncounted: { type: boolean, default: true }
                 updateMaster: { type: boolean, default: true }
       responses: { "200": { description: Ringkasan import (preview atau hasil posting). }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/inventory/settings/rmb-rate:
+    get:
+      tags: [Inventory]
+      summary: Kurs RMB aktif untuk harga modal.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      responses: { "200": { description: "{ rate, updatedAt, updatedBy }" } }
+    put:
+      tags: [Inventory]
+      summary: Ganti kurs RMB; harga modal semua barang berharga RMB dihitung ulang.
+      description: Permission inventory.manage. Hanya costPrice yang berubah (priceRmb × rate + extraCostIdr). Harga jual dan nilai stok yang sudah tercatat tidak diubah.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [rate], properties: { rate: { type: number, example: 2750 } } } } } }
+      responses: { "200": { description: "{ rate, previousRate, updatedProducts }" }, "400": { $ref: "#/components/responses/BadRequest" } }
   /api/inventory/purchase-receipts/{id}/post:
     post:
       tags: [Inventory]

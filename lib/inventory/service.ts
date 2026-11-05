@@ -2,7 +2,8 @@ import "server-only";
 import { Prisma, type InventoryMovementType, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { InventoryError } from "./errors";
-import { applyDelta, round2 } from "./math";
+import { applyDelta, formatKoli, qtyFromKoli, round2, splitKoli } from "./math";
+import { applyRmbCost } from "./pricing";
 import type {
   AdjustmentInput,
   LocationInput,
@@ -204,7 +205,10 @@ export async function listProducts(options: { keyword?: string; page?: number; p
     prisma.inventoryProduct.findMany({ where, orderBy: { name: "asc" }, skip: (page - 1) * pageSize, take: pageSize, include: { balances: { select: { quantity: true } } } })
   ]);
   return {
-    data: rows.map(({ balances, ...p }) => ({ ...serializeProduct(p), totalQuantity: round2(balances.reduce((s, b) => s + num(b.quantity), 0)) })),
+    data: rows.map(({ balances, ...p }) => {
+      const totalQuantity = round2(balances.reduce((s, b) => s + num(b.quantity), 0));
+      return { ...serializeProduct(p), totalQuantity, totalKoliText: koliInfo(totalQuantity, p.unitsPerKoli, p.unit).koliText };
+    }),
     meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
   };
 }
@@ -219,12 +223,13 @@ export async function getProduct(idOrSku: string) {
   return {
     ...serializeProduct(rest),
     totalQuantity: round2(balances.reduce((s, b) => s + num(b.quantity), 0)),
-    stocks: balances.map((b) => ({ locationId: b.locationId, locationCode: b.location.code, locationName: b.location.name, locationType: b.location.type, quantity: num(b.quantity), avgCost: num(b.avgCost) }))
+    stocks: balances.map((b) => ({ locationId: b.locationId, locationCode: b.location.code, locationName: b.location.name, locationType: b.location.type, quantity: num(b.quantity), avgCost: num(b.avgCost), ...koliInfo(num(b.quantity), rest.unitsPerKoli, rest.unit) }))
   };
 }
 
 export async function createProduct(input: ProductInput, actor?: InventoryActor) {
-  const { initialStock, ...data } = input;
+  const { initialStock, ...raw } = input;
+  const data = await applyRmbCost(raw);
   return runInventoryTransaction(async (tx) => {
     const product = await tx.inventoryProduct.create({ data });
     for (let index = 0, list = (initialStock ?? []); index < list.length; index++) {
@@ -251,11 +256,34 @@ export async function createProduct(input: ProductInput, actor?: InventoryActor)
 export async function updateProduct(idOrSku: string, input: Partial<Omit<ProductInput, "initialStock">>) {
   const product = await prisma.inventoryProduct.findFirst({ where: { OR: [{ id: idOrSku }, { sku: idOrSku }] } });
   if (!product) throw new InventoryError("NOT_FOUND", "Produk tidak ditemukan.", 404);
-  return serializeProduct(await prisma.inventoryProduct.update({ where: { id: product.id }, data: input }));
+  const data = await applyRmbCost(input, { priceRmb: product.priceRmb == null ? null : num(product.priceRmb), extraCostIdr: num(product.extraCostIdr) });
+  return serializeProduct(await prisma.inventoryProduct.update({ where: { id: product.id }, data }));
 }
 
-function serializeProduct<T extends { minimumStock: Prisma.Decimal; costPrice: Prisma.Decimal; sellingPrice: Prisma.Decimal }>(p: T) {
-  return { ...p, minimumStock: num(p.minimumStock), costPrice: num(p.costPrice), sellingPrice: num(p.sellingPrice) };
+function serializeProduct<T extends { minimumStock: Prisma.Decimal; costPrice: Prisma.Decimal; sellingPrice: Prisma.Decimal; unitsPerKoli: Prisma.Decimal | null; priceRmb: Prisma.Decimal | null; extraCostIdr: Prisma.Decimal }>(p: T) {
+  return {
+    ...p,
+    minimumStock: num(p.minimumStock),
+    costPrice: num(p.costPrice),
+    sellingPrice: num(p.sellingPrice),
+    unitsPerKoli: p.unitsPerKoli == null ? null : num(p.unitsPerKoli),
+    priceRmb: p.priceRmb == null ? null : num(p.priceRmb),
+    extraCostIdr: num(p.extraCostIdr)
+  };
+}
+
+/** Qty satuan dari item dokumen (qty langsung atau koli × isi/koli + lepas). */
+function itemQuantity(product: { sku: string; unitsPerKoli: Prisma.Decimal | null }, item: { quantity?: number | null; countedQty?: number | null; koli?: number | null; loose?: number | null }, field: "quantity" | "countedQty" = "quantity") {
+  const perKoli = product.unitsPerKoli == null ? null : num(product.unitsPerKoli);
+  const qty = qtyFromKoli({ quantity: item[field], koli: item.koli, loose: item.loose }, perKoli);
+  if (qty == null) throw new InventoryError("VALIDATION", `Isi per koli barang ${product.sku} belum diatur, jadi qty tidak bisa diisi dalam koli. Atur di Master Barang atau isi qty satuan.`, 400, { sku: product.sku });
+  return qty;
+}
+
+function koliInfo(quantity: number, unitsPerKoli: Prisma.Decimal | number | null, unit: string) {
+  const perKoli = unitsPerKoli == null ? null : num(unitsPerKoli);
+  const split = splitKoli(quantity, perKoli);
+  return { unitsPerKoli: perKoli, koli: split?.koli ?? null, loose: split?.loose ?? null, koliText: formatKoli(quantity, perKoli, unit) };
 }
 
 // ---------------------------------------------------------------------
@@ -276,7 +304,7 @@ export type BalanceQuery = {
 
 export async function listBalances(query: BalanceQuery = {}) {
   const page = Math.max(1, Math.floor(query.page || 1));
-  const pageSize = Math.min(500, Math.max(1, Math.floor(query.pageSize || 50)));
+  const pageSize = Math.min(5000, Math.max(1, Math.floor(query.pageSize || 50)));
   const keyword = query.keyword?.trim();
   const where: Prisma.InventoryBalanceWhereInput = {
     locationId: query.locationId,
@@ -311,6 +339,7 @@ export async function listBalances(query: BalanceQuery = {}) {
       quantity,
       avgCost: num(b.avgCost),
       stockValue: round2(quantity * num(b.avgCost)),
+      ...koliInfo(quantity, b.product.unitsPerKoli, b.product.unit),
       minimumStock,
       isLowStock: minimumStock > 0 && quantity <= minimumStock,
       updatedAt: b.updatedAt.toISOString()
@@ -339,7 +368,9 @@ export async function stockMatrix(query: { keyword?: string; locationType?: "WAR
       const perLocation = Object.fromEntries(locations.map((l) => [l.id, byKey.get(`${p.id}:${l.id}`) ?? 0]));
       const warehouseTotal = locations.filter((l) => l.type === "WAREHOUSE").reduce((s, l) => s + perLocation[l.id], 0);
       const storeTotal = locations.filter((l) => l.type === "STORE").reduce((s, l) => s + perLocation[l.id], 0);
-      return { productId: p.id, sku: p.sku, name: p.name, unit: p.unit, minimumStock: p.minimumStock, perLocation, warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: round2(warehouseTotal + storeTotal) };
+      const perLocationKoli = Object.fromEntries(locations.map((l) => [l.id, koliInfo(perLocation[l.id], p.unitsPerKoli, p.unit).koliText]));
+      return { productId: p.id, sku: p.sku, name: p.name, unit: p.unit, unitsPerKoli: p.unitsPerKoli, minimumStock: p.minimumStock, perLocation, perLocationKoli,
+        warehouseKoliText: koliInfo(warehouseTotal, p.unitsPerKoli, p.unit).koliText, storeKoliText: koliInfo(storeTotal, p.unitsPerKoli, p.unit).koliText, totalKoliText: koliInfo(warehouseTotal + storeTotal, p.unitsPerKoli, p.unit).koliText, warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: round2(warehouseTotal + storeTotal) };
     }),
     meta: products.meta
   };
@@ -375,7 +406,7 @@ export async function listMovements(query: MovementQuery = {}) {
     prisma.inventoryMovement.count({ where }),
     prisma.inventoryMovement.findMany({
       where,
-      include: { product: { select: { sku: true, name: true, unit: true } }, location: { select: { code: true, name: true, type: true } } },
+      include: { product: { select: { sku: true, name: true, unit: true, unitsPerKoli: true } }, location: { select: { code: true, name: true, type: true } } },
       orderBy: [{ movementDate: "desc" }, { createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize
@@ -399,6 +430,8 @@ export async function listMovements(query: MovementQuery = {}) {
       quantity: num(m.quantity),
       balanceBefore: num(m.balanceBefore),
       balanceAfter: num(m.balanceAfter),
+      quantityKoliText: koliInfo(Math.abs(num(m.quantity)), m.product.unitsPerKoli, m.product.unit).koliText,
+      balanceKoliText: koliInfo(num(m.balanceAfter), m.product.unitsPerKoli, m.product.unit).koliText,
       unitCost: num(m.unitCost),
       referenceType: m.referenceType,
       referenceId: m.referenceId,
@@ -428,6 +461,9 @@ export async function createTransfer(input: TransferInput, actor?: InventoryActo
     const transferNumber = input.transferNumber || await nextNumber(tx, "TRF", date, async (s) => (await tx.inventoryTransfer.findFirst({ where: { transferNumber: { startsWith: s } }, orderBy: { transferNumber: "desc" }, select: { transferNumber: true } }))?.transferNumber);
     const products: Awaited<ReturnType<typeof resolveProduct>>[] = [];
     for (const item of input.items) products.push(await resolveProduct(tx, item));
+    const quantities = input.items.map((item, i) => itemQuantity(products[i], item));
+    const badQty = quantities.findIndex((q) => !(q > 0));
+    if (badQty >= 0) throw new InventoryError("VALIDATION", `Qty transfer ${products[badQty].sku} harus lebih dari 0.`);
 
     const transfer = await tx.inventoryTransfer.create({
       data: {
@@ -442,7 +478,7 @@ export async function createTransfer(input: TransferInput, actor?: InventoryActo
         idempotencyKey: input.idempotencyKey,
         createdByUserId: actor?.id,
         createdByName: actor?.name,
-        items: { create: input.items.map((item, i) => ({ productId: products[i].id, quantity: item.quantity, notes: item.notes })) }
+        items: { create: input.items.map((item, i) => ({ productId: products[i].id, quantity: quantities[i], notes: item.notes })) }
       },
       include: { items: true }
     });
@@ -539,7 +575,9 @@ export async function createOpname(input: OpnameInput, actor?: InventoryActor) {
       if (seen.has(product.id)) throw new InventoryError("VALIDATION", `Produk ${product.sku} tercantum lebih dari sekali dalam opname.`);
       seen.add(product.id);
       const systemQty = await currentQuantity(tx, product.id, location.id);
-      lines.push({ productId: product.id, systemQty, countedQty: round2(item.countedQty), differenceQty: round2(item.countedQty - systemQty), notes: item.notes, unitCost: num(product.costPrice) });
+      const counted = itemQuantity(product, item, "countedQty");
+      if (counted < 0) throw new InventoryError("VALIDATION", `Qty fisik ${product.sku} tidak boleh negatif.`);
+      lines.push({ productId: product.id, systemQty, countedQty: counted, differenceQty: round2(counted - systemQty), notes: item.notes, unitCost: num(product.costPrice) });
     }
     const opname = await tx.inventoryOpname.create({
       data: {
@@ -587,19 +625,22 @@ export async function createAdjustment(input: AdjustmentInput, actor?: Inventory
     const adjustmentNumber = input.adjustmentNumber || await nextNumber(tx, "ADJ", date, async (s) => (await tx.inventoryAdjustment.findFirst({ where: { adjustmentNumber: { startsWith: s } }, orderBy: { adjustmentNumber: "desc" }, select: { adjustmentNumber: true } }))?.adjustmentNumber);
     const products: Awaited<ReturnType<typeof resolveProduct>>[] = [];
     for (const item of input.items) products.push(await resolveProduct(tx, item));
+    const quantities = input.items.map((item, i) => itemQuantity(products[i], item));
+    const zero = quantities.findIndex((q) => q === 0);
+    if (zero >= 0) throw new InventoryError("VALIDATION", `Qty adjustment ${products[zero].sku} tidak boleh 0.`);
     const adjustment = await tx.inventoryAdjustment.create({
       data: {
         adjustmentNumber, adjustmentDate: date, locationId: location.id, reason: input.reason, notes: input.notes, idempotencyKey: input.idempotencyKey,
         createdByUserId: actor?.id, createdByName: actor?.name,
-        items: { create: input.items.map((item, i) => ({ productId: products[i].id, quantity: item.quantity, unitCost: item.unitCost ?? 0, notes: item.notes })) }
+        items: { create: input.items.map((item, i) => ({ productId: products[i].id, quantity: quantities[i], unitCost: item.unitCost ?? 0, notes: item.notes })) }
       },
       include: { items: true }
     });
     for (let i = 0, list = input.items; i < list.length; i++) {
       const item = list[i];
       await postMovement(tx, {
-        productId: products[i].id, locationId: location.id, delta: item.quantity, unitCost: item.unitCost ?? num(products[i].costPrice),
-        type: item.quantity > 0 ? "ADJUSTMENT_IN" : "ADJUSTMENT_OUT", movementDate: date,
+        productId: products[i].id, locationId: location.id, delta: quantities[i], unitCost: item.unitCost ?? num(products[i].costPrice),
+        type: quantities[i] > 0 ? "ADJUSTMENT_IN" : "ADJUSTMENT_OUT", movementDate: date,
         referenceType: "ADJUSTMENT", referenceId: adjustment.id, referenceNumber: adjustmentNumber,
         idempotencyKey: `adjustment:${adjustment.id}:${i}`, notes: item.notes || input.reason
       }, actor);
@@ -632,8 +673,10 @@ export async function createStockIn(input: StockInInput, actor?: InventoryActor)
     for (let i = 0, list = input.items; i < list.length; i++) {
       const item = list[i];
       const product = await resolveProduct(tx, item);
+      const quantity = itemQuantity(product, item);
+      if (!(quantity > 0)) throw new InventoryError("VALIDATION", `Qty masuk ${product.sku} harus lebih dari 0.`);
       movements.push(await postMovement(tx, {
-        productId: product.id, locationId: location.id, delta: item.quantity, unitCost: item.unitCost ?? num(product.costPrice),
+        productId: product.id, locationId: location.id, delta: quantity, unitCost: item.unitCost ?? num(product.costPrice),
         type: "PURCHASE_RECEIPT", movementDate: date, referenceType: "STOCK_IN", referenceNumber,
         idempotencyKey: input.idempotencyKey ? `stock-in:${input.idempotencyKey}:${i}` : undefined, notes: item.notes || input.notes
       }, actor));
@@ -743,7 +786,7 @@ export async function cancelSaleStockLocal(input: { reference: string; reason: s
 type DocWithItems = { items: { productId: string; quantity?: Prisma.Decimal; systemQty?: Prisma.Decimal; countedQty?: Prisma.Decimal; differenceQty?: Prisma.Decimal; unitCost?: Prisma.Decimal }[]; locationId?: string; fromLocationId?: string; toLocationId?: string };
 
 type DecoratedItem<I> = Omit<I, "quantity" | "systemQty" | "countedQty" | "differenceQty" | "unitCost"> & {
-  quantity?: number; systemQty?: number; countedQty?: number; differenceQty?: number; unitCost?: number; sku?: string; productName?: string; unit?: string;
+  quantity?: number; systemQty?: number; countedQty?: number; differenceQty?: number; unitCost?: number; sku?: string; productName?: string; unit?: string; koliText?: string;
 };
 type LocationSummary = { id: string; code: string; name: string; type: "WAREHOUSE" | "STORE" };
 export type DecoratedDocument<T extends DocWithItems> = Omit<T, "items"> & {
@@ -757,7 +800,7 @@ async function decorateDocuments<T extends DocWithItems>(docs: T[]): Promise<Dec
   const productIds = Array.from(new Set(docs.flatMap((d) => d.items.map((i) => i.productId))));
   const locationIds = Array.from(new Set(docs.flatMap((d) => [d.locationId, d.fromLocationId, d.toLocationId].filter(Boolean) as string[])));
   const [products, locations] = await Promise.all([
-    prisma.inventoryProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, sku: true, name: true, unit: true } }),
+    prisma.inventoryProduct.findMany({ where: { id: { in: productIds } }, select: { id: true, sku: true, name: true, unit: true, unitsPerKoli: true } }),
     prisma.inventoryLocation.findMany({ where: { id: { in: locationIds } }, select: { id: true, code: true, name: true, type: true } })
   ]);
   const p = new Map(products.map((x) => [x.id, x]));
@@ -776,14 +819,20 @@ async function decorateDocuments<T extends DocWithItems>(docs: T[]): Promise<Dec
       unitCost: i.unitCost != null ? num(i.unitCost) : undefined,
       sku: p.get(i.productId)?.sku,
       productName: p.get(i.productId)?.name,
-      unit: p.get(i.productId)?.unit
+      unit: p.get(i.productId)?.unit,
+      koliText: (() => {
+        const prod = p.get(i.productId);
+        const q = i.quantity ?? i.countedQty;
+        return prod && q != null ? koliInfo(num(q), prod.unitsPerKoli, prod.unit).koliText : undefined;
+      })()
     }))
   })) as unknown as DecoratedDocument<T>[];
 }
 
 /** Daftar ringkas seluruh barang aktif untuk pilihan di form. */
 export async function listProductOptions() {
-  return prisma.inventoryProduct.findMany({ where: { isActive: true }, select: { id: true, sku: true, name: true, unit: true }, orderBy: { name: "asc" } });
+  const rows = await prisma.inventoryProduct.findMany({ where: { isActive: true }, select: { id: true, sku: true, name: true, unit: true, unitsPerKoli: true }, orderBy: { name: "asc" } });
+  return rows.map((r) => ({ ...r, unitsPerKoli: r.unitsPerKoli == null ? null : num(r.unitsPerKoli) }));
 }
 
 export async function listPendingPurchaseReceipts(limit = 50) {

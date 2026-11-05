@@ -60,9 +60,9 @@ export default async function MutasiStokPage({ searchParams }: { searchParams: S
                 <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{m.referenceNumber}</td>
                 <td className="px-3 py-2"><div className="font-semibold">{m.productName}</div><div className="text-xs text-slate-500">{m.sku}</div></td>
                 <td className="whitespace-nowrap px-3 py-2">{m.locationCode}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{m.quantityIn ? fmtQty(m.quantityIn) : ""}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-red-600">{m.quantityOut ? fmtQty(m.quantityOut) : ""}</td>
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">{fmtQty(m.balanceAfter)}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{m.quantityIn ? <>{fmtQty(m.quantityIn)}{m.quantityKoliText.includes("koli") && <div className="text-[11px] text-slate-400">{m.quantityKoliText}</div>}</> : ""}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-red-600">{m.quantityOut ? <>{fmtQty(m.quantityOut)}{m.quantityKoliText.includes("koli") && <div className="text-[11px] text-slate-400">{m.quantityKoliText}</div>}</> : ""}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums">{fmtQty(m.balanceAfter)}{m.balanceKoliText.includes("koli") && <div className="text-[11px] font-normal text-slate-400">{m.balanceKoliText}</div>}</td>
                 <td className="px-3 py-2 text-xs text-slate-600">{m.notes}{m.createdByName && <div className="text-slate-400">oleh {m.createdByName}</div>}</td>
               </tr>
             ))}

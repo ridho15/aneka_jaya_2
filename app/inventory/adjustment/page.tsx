@@ -30,7 +30,7 @@ export default async function AdjustmentPage({ searchParams }: { searchParams: P
                 <td className="px-3 py-2">{a.location?.code}</td>
                 <td className="px-3 py-2">{a.reason}</td>
                 <td className="px-3 py-2 text-xs">{a.items.map((i) => (
-                  <div key={i.id}>{i.sku} — {i.productName}: <b className={(i.quantity ?? 0) < 0 ? "text-red-600" : "text-emerald-700"}>{(i.quantity ?? 0) > 0 ? "+" : ""}{fmtQty(i.quantity)}</b> {i.unit}</div>
+                  <div key={i.id}>{i.sku} — {i.productName}: <b className={(i.quantity ?? 0) < 0 ? "text-red-600" : "text-emerald-700"}>{(i.quantity ?? 0) > 0 ? "+" : ""}{fmtQty(i.quantity)}</b> {i.unit}{i.koliText?.includes("koli") ? ` (${i.koliText})` : ""}</div>
                 ))}</td>
                 <td className="px-3 py-2 text-xs">{a.createdByName}</td>
               </tr>

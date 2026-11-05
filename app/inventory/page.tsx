@@ -56,14 +56,16 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
               <tr key={row.productId} className="border-t border-slate-100">
                 <td className="sticky left-0 bg-white px-3 py-2">
                   <Link href={`/inventory/mutasi?productId=${row.productId}`} className="font-semibold text-slate-800 hover:text-emerald-700">{row.name}</Link>
-                  <div className="text-xs text-slate-500">{row.sku} • {row.unit}</div>
+                  <div className="text-xs text-slate-500">{row.sku} • {row.unit}{row.unitsPerKoli ? ` • ${fmtQty(row.unitsPerKoli)}/koli` : ""}</div>
                 </td>
                 {matrix.locations.map((l) => (
-                  <td key={l.id} className={`px-3 py-2 text-right tabular-nums ${row.perLocation[l.id] < 0 ? "text-red-600" : row.perLocation[l.id] === 0 ? "text-slate-300" : ""}`}>{fmtQty(row.perLocation[l.id])}</td>
+                  <td key={l.id} className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${row.perLocation[l.id] < 0 ? "text-red-600" : row.perLocation[l.id] === 0 ? "text-slate-300" : ""}`}>
+                    <QtyCell qty={row.perLocation[l.id]} koli={row.perLocationKoli[l.id]} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} />
+                  </td>
                 ))}
-                <td className="px-3 py-2 text-right tabular-nums">{fmtQty(row.warehouseTotal)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtQty(row.storeTotal)}</td>
-                <td className={`px-3 py-2 text-right font-bold tabular-nums ${row.minimumStock > 0 && row.total <= row.minimumStock ? "text-red-600" : ""}`}>{fmtQty(row.total)}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums"><QtyCell qty={row.warehouseTotal} koli={row.warehouseKoliText} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} /></td>
+                <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums"><QtyCell qty={row.storeTotal} koli={row.storeKoliText} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} /></td>
+                <td className={`whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums ${row.minimumStock > 0 && row.total <= row.minimumStock ? "text-red-600" : ""}`}><QtyCell qty={row.total} koli={row.totalKoliText} unit={row.unit} hasKoli={Boolean(row.unitsPerKoli)} /></td>
               </tr>
             ))}
             {!matrix.data.length && (
@@ -77,4 +79,10 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
       <Pager basePath="/inventory" params={{ keyword: params.keyword, type }} page={matrix.meta.page} totalPages={matrix.meta.totalPages} />
     </AppShell>
   );
+}
+
+/** Tampilkan "32 koli" dengan qty satuan di bawahnya bila barang punya isi/koli. */
+function QtyCell({ qty, koli, unit, hasKoli }: { qty: number; koli: string; unit: string; hasKoli: boolean }) {
+  if (!hasKoli || qty === 0) return <>{fmtQty(qty)}</>;
+  return <>{koli}<div className="text-[11px] font-normal text-slate-400">{fmtQty(qty)} {unit}</div></>;
 }

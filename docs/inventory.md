@@ -23,6 +23,29 @@ Jaminan data:
 - Stok tidak boleh minus kecuali lokasi diset *Izinkan stok minus* (opname & pembatalan selalu boleh).
 - `idempotencyKey` pada dokumen membuat request ulang (retry jaringan/API) tidak terposting dua kali.
 
+## Koli (isi per koli)
+
+Setiap barang bisa diberi **Isi per Koli** di Master Barang, dalam satuan barangnya
+(mis. kuku palsu 60 *Lusin* per koli, hairnet 40 *Box* per koli).
+
+- Stok tetap disimpan dalam satuan barang (lusin/pack/box), jadi penjualan per lusin/pack tidak berubah.
+- Di gudang, stok ditampilkan sebagai koli + lepas, mis. 698 lusin isi 60 → **11 koli + 38 Lusin**.
+- Form transfer, barang masuk, opname, dan adjustment menerima input **Koli + Lepas**
+  (qty = koli × isi/koli + lepas). Barang tanpa isi/koli tetap diinput per satuan.
+- API: kirim `koli` dan/atau `loose` sebagai ganti `quantity`/`countedQty`. Response saldo memuat
+  `unitsPerKoli`, `koli`, `loose`, dan `koliText`.
+- Import Excel ikut menyimpan kolom *Isi / Koli* ke master barang.
+
+## Harga RMB & kurs
+
+- Master Barang punya **Harga RMB per satuan** dan **Biaya tambahan per satuan (Rp)** (ongkir/CBM, bea).
+- Modal = Harga RMB × Kurs RMB + biaya tambahan.
+- Kurs RMB diatur sekali di halaman Master Barang (`PUT /api/inventory/settings/rmb-rate`).
+  Saat kurs diganti, **hanya harga modal** barang yang punya harga RMB yang dihitung ulang.
+  Harga jual dan nilai stok yang sudah tercatat di kartu stok tidak berubah.
+- Barang tanpa harga RMB memakai modal yang diisi manual.
+- Import Excel membaca kolom berjudul "Harga RMB" bila ada.
+
 ## Halaman (menu "Inventory Gudang & Toko")
 
 - `/inventory` — matriks stok: tiap barang dengan kolom per gudang & toko, total gudang, total toko.
@@ -90,6 +113,7 @@ Referensi barang di body boleh `productId` (ID SLM), `sku`, atau `erpProductId`.
 | POST | `/api/inventory/purchase-receipts/{id}/post` | masukkan GRN pembelian ke stok |
 | POST | `/api/inventory/import-erp` | impor awal dari ERP (Super Admin) |
 | POST | `/api/inventory/import-opname` | import opname dari Excel (multipart, default preview) |
+| GET/PUT | `/api/inventory/settings/rmb-rate` | kurs RMB; PUT menghitung ulang harga modal |
 
 Contoh transfer gudang → toko:
 

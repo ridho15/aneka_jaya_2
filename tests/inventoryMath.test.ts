@@ -49,3 +49,24 @@ describe("aggregateErpStocks", () => {
     expect(result.skipped).toHaveLength(1);
   });
 });
+
+describe("koli", async () => {
+  const { qtyFromKoli, splitKoli, formatKoli } = await import("@/lib/inventory/math");
+  it("menghitung qty dari koli × isi + lepas", () => {
+    expect(qtyFromKoli({ koli: 32 }, 40)).toBe(1280);
+    expect(qtyFromKoli({ koli: 2, loose: 5 }, 60)).toBe(125);
+    expect(qtyFromKoli({ quantity: 7 }, 60)).toBe(7);
+    expect(qtyFromKoli({ loose: 9 }, null)).toBe(9);
+    expect(qtyFromKoli({ koli: 1 }, null)).toBeNull();
+    expect(qtyFromKoli({ koli: -1, loose: -2 }, 60)).toBe(-62);
+  });
+  it("memecah qty menjadi koli + lepas", () => {
+    expect(splitKoli(1280, 40)).toEqual({ koli: 32, loose: 0 });
+    expect(splitKoli(698, 60)).toEqual({ koli: 11, loose: 38 });
+    expect(splitKoli(-62, 60)).toEqual({ koli: -1, loose: -2 });
+    expect(splitKoli(10, null)).toBeNull();
+    expect(formatKoli(698, 60, "Lusin")).toBe("11 koli + 38 Lusin");
+    expect(formatKoli(20, 60, "Lusin")).toBe("20 Lusin");
+    expect(formatKoli(1280, 40, "Box")).toBe("32 koli");
+  });
+});

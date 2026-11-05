@@ -33,7 +33,7 @@ describe("parseOpnameWorkbook", () => {
     const parsed = await parseOpnameWorkbook(buf);
     expect(parsed.sheetName).toBe("Opname");
     expect(parsed.rows).toHaveLength(2);
-    expect(parsed.rows[0]).toMatchObject({ sku: "KP-1", unit: "Lusin", costPrice: 55550, sellingPrice: 72000, qtyWarehouse: 600, qtyStore: 98 });
+    expect(parsed.rows[0]).toMatchObject({ sku: "KP-1", unit: "Lusin", costPrice: 55550, sellingPrice: 72000, qtyWarehouse: 600, qtyStore: 98, unitsPerKoli: 60 });
     expect(parsed.rows[1]).toMatchObject({ sku: "BH-1", qtyWarehouse: 0, qtyStore: 0 });
     expect(parsed.warnings.some((w) => w.includes("BH-1") && w.includes("dua kali"))).toBe(true);
   });

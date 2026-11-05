@@ -165,4 +165,35 @@ suite("inventory service (postgres)", () => {
     const adj = await svc.createAdjustment({ locationId: loc.code.toLowerCase(), reason: "via kode", items: [{ sku, quantity: 1 }] });
     expect(adj.locationId).toBe(gudang.id);
   });
+
+  it("qty dalam koli: transfer & opname memakai isi per koli", async () => {
+    const koliSku = `KOLI-${sku}`;
+    await svc.createProduct({ sku: koliSku, name: "Kuku Koli", unit: "Lusin", unitsPerKoli: 60, minimumStock: 0, costPrice: 1000, sellingPrice: 0, isActive: true, initialStock: [{ locationId: gudang.id, quantity: 600 }] });
+    await svc.createTransfer({ fromLocationId: gudang.id, toLocationId: toko.id, receiveNow: true, items: [{ sku: koliSku, koli: 2, loose: 5 }] });
+    const bal = await svc.listBalances({ sku: koliSku, includeZero: true });
+    const g = bal.data.find((b) => b.locationId === gudang.id)!;
+    expect(g.quantity).toBe(475);
+    expect(g.koliText).toBe("7 koli + 55 Lusin");
+    const o = await svc.createOpname({ locationId: toko.id, items: [{ sku: koliSku, koli: 1, loose: 3 }] });
+    expect(Number(o.items[0].countedQty)).toBe(63);
+    await expect(svc.createTransfer({ fromLocationId: gudang.id, toLocationId: toko.id, receiveNow: true, items: [{ sku, koli: 1 }] }))
+      .rejects.toMatchObject({ code: "VALIDATION" });
+  });
+
+  it("ganti kurs RMB hanya menghitung ulang harga modal", async () => {
+    const { setRmbRate } = await import("@/lib/inventory/pricing");
+    await setRmbRate(2750);
+    const rmbSku = `RMB-${sku}`;
+    const created = await svc.createProduct({ sku: rmbSku, name: "Barang Impor", unit: "Lusin", priceRmb: 20, extraCostIdr: 1500, minimumStock: 0, costPrice: 1, sellingPrice: 99000, isActive: true, initialStock: [{ locationId: gudang.id, quantity: 10 }] });
+    expect(created.costPrice).toBe(56500);
+    const result = await setRmbRate(2800);
+    expect(result.previousRate).toBe(2750);
+    expect(result.updatedProducts).toBeGreaterThanOrEqual(1);
+    const p = await svc.getProduct(rmbSku);
+    expect(p.costPrice).toBe(57500);
+    expect(p.sellingPrice).toBe(99000);
+    expect(p.stocks.find((s) => s.locationId === gudang.id)?.avgCost).toBe(56500);
+    const updated = await svc.updateProduct(rmbSku, { extraCostIdr: 0 });
+    expect(updated.costPrice).toBe(56000);
+  });
 });

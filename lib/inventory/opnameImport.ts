@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { InventoryError } from "./errors";
 import { round2 } from "./math";
 import { createOpname, type InventoryActor } from "./service";
+import { costFromRmb, getRmbRate } from "./pricing";
 
 /**
  * Import hasil stock opname dari file Excel template "Stock Opname Aneka Jaya".
@@ -23,6 +24,8 @@ export type OpnameImportRow = {
   unit?: string;
   costPrice?: number;
   sellingPrice?: number;
+  unitsPerKoli?: number;
+  priceRmb?: number;
   qtyWarehouse: number;
   qtyStore: number;
 };
@@ -48,6 +51,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   looseStore: ["lepas toko"],
   qtyStore: ["qty toko"],
   sellingPrice: ["harga jual", "harga jual (rp)"],
+  priceRmb: ["harga rmb", "harga rmb (¥)", "harga (rmb)", "rmb"],
   oldCost: ["modal lama di sistem (rp)", "modal lama di sistem"]
 };
 
@@ -162,6 +166,8 @@ export async function parseOpnameWorkbook(buffer: ArrayBuffer | Buffer): Promise
       unit: toText(get(row, "unit"))?.slice(0, 20),
       costPrice: toNumber(get(row, "costPrice")),
       sellingPrice: toNumber(get(row, "sellingPrice")),
+      unitsPerKoli: (() => { const v = toNumber(get(row, "perKoli")); return v && v > 0 ? v : undefined; })(),
+      priceRmb: (() => { const v = toNumber(get(row, "priceRmb")); return v != null && v >= 0 ? v : undefined; })(),
       qtyWarehouse,
       qtyStore
     });
@@ -236,12 +242,16 @@ export async function importOpnameWorkbook(parsed: ParsedOpnameWorkbook, options
   if (options.dryRun) return summary;
 
   // 1) Master barang: buat yang belum ada, perbarui yang sudah ada bila diminta.
+  //    Bila ada Harga RMB dan kurs RMB sudah diatur, modal dihitung dari RMB.
+  const { rate } = await getRmbRate();
+  const costOf = (r: OpnameImportRow) => (r.priceRmb != null && rate ? costFromRmb(r.priceRmb, rate) : r.costPrice);
   const newRows = parsed.rows.filter((r) => !existing.has(r.sku));
   for (let i = 0; i < newRows.length; i += 500) {
     await prisma.inventoryProduct.createMany({
       data: newRows.slice(i, i + 500).map((r) => ({
         sku: r.sku, name: r.name, category: r.category, unit: r.unit || "PCS",
-        costPrice: r.costPrice ?? 0, sellingPrice: r.sellingPrice ?? 0
+        costPrice: costOf(r) ?? 0, sellingPrice: r.sellingPrice ?? 0,
+        unitsPerKoli: r.unitsPerKoli ?? null, priceRmb: r.priceRmb ?? null
       })),
       skipDuplicates: true
     });
@@ -255,11 +265,21 @@ export async function importOpnameWorkbook(parsed: ParsedOpnameWorkbook, options
           ...(r.category ? { category: r.category } : {}),
           ...(r.unit ? { unit: r.unit } : {}),
           // modal/harga 0 atau kosong tidak menimpa data yang sudah ada
-          ...(r.costPrice ? { costPrice: r.costPrice } : {}),
+          // modal dari RMB dihitung ulang di bawah agar biaya tambahan barang ikut terhitung
+          ...(r.priceRmb == null || !rate ? (r.costPrice ? { costPrice: r.costPrice } : {}) : {}),
+          ...(r.unitsPerKoli ? { unitsPerKoli: r.unitsPerKoli } : {}),
+          ...(r.priceRmb != null ? { priceRmb: r.priceRmb } : {}),
           ...(r.sellingPrice ? { sellingPrice: r.sellingPrice } : {})
         }
       });
     }
+  }
+
+  const rmbSkus = parsed.rows.filter((r) => r.priceRmb != null).map((r) => r.sku);
+  if (rate && rmbSkus.length) {
+    await prisma.$executeRaw`
+      UPDATE "InventoryProduct" SET "costPrice" = ROUND("priceRmb" * ${rate}::numeric + "extraCostIdr", 2), "updatedAt" = NOW()
+      WHERE "priceRmb" IS NOT NULL AND "sku" = ANY(${rmbSkus})`;
   }
 
   // 2) Stock opname per lokasi, dipecah per 250 barang. idempotencyKey berbasis hash file

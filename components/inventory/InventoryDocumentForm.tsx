@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useToast } from "@/components/ui/ToastProvider";
-import { locationLabel, type InvLocation, type InvProduct } from "./labels";
+import { koliText, koliToQty, locationLabel, type InvLocation, type InvProduct } from "./labels";
 
 type Mode = "transfer" | "opname" | "adjustment" | "stock-in";
-type Row = { productId: string; qty: string; unitCost: string; notes: string };
+type Row = { productId: string; qty: string; koli: string; loose: string; unitCost: string; notes: string };
 
 const ENDPOINT: Record<Mode, string> = {
   transfer: "/api/inventory/transfers",
@@ -18,10 +18,10 @@ const ENDPOINT: Record<Mode, string> = {
 };
 
 const QTY_LABEL: Record<Mode, string> = {
-  transfer: "Qty Transfer",
-  opname: "Qty Fisik (hasil hitung)",
+  transfer: "Qty Transfer (koli + lepas)",
+  opname: "Qty Fisik (koli + lepas)",
   adjustment: "Qty (+ tambah / − kurang)",
-  "stock-in": "Qty Masuk"
+  "stock-in": "Qty Masuk (koli + lepas)"
 };
 
 export function InventoryDocumentForm({ mode, locations, products }: { mode: Mode; locations: InvLocation[]; products: InvProduct[] }) {
@@ -43,14 +43,14 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
 
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const productOptions = useMemo(
-    () => products.filter((p) => !rows.some((r) => r.productId === p.id)).map((p) => ({ value: p.id, label: p.name, badge: p.sku, description: `${p.unit}${locationId ? ` • stok sistem: ${systemQty[p.id] ?? 0}` : ""}` })),
+    () => products.filter((p) => !rows.some((r) => r.productId === p.id)).map((p) => ({ value: p.id, label: p.name, badge: p.sku, description: `${p.unit}${p.unitsPerKoli ? ` • isi ${p.unitsPerKoli}/koli` : ""}${locationId ? ` • stok: ${koliText(systemQty[p.id] ?? 0, p.unitsPerKoli, p.unit)}` : ""}` })),
     [products, rows, systemQty, locationId]
   );
 
   useEffect(() => {
     if (!locationId) return;
     let active = true;
-    fetch(`/api/inventory/stocks?locationId=${encodeURIComponent(locationId)}&includeZero=1&pageSize=500`)
+    fetch(`/api/inventory/stocks?locationId=${encodeURIComponent(locationId)}&includeZero=1&pageSize=5000`)
       .then((r) => r.json())
       .then((json) => {
         if (!active || !json.success) return;
@@ -60,6 +60,13 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
     return () => { active = false; };
   }, [locationId]);
 
+  /** Qty satuan dari baris: koli × isi + lepas bila barang punya isi/koli, selain itu qty langsung. */
+  const rowQty = (row: Row) => {
+    const perKoli = productMap.get(row.productId)?.unitsPerKoli;
+    if (perKoli) return row.koli.trim() === "" && row.loose.trim() === "" ? NaN : koliToQty(row.koli, row.loose, perKoli);
+    return row.qty.trim() === "" ? NaN : Number(row.qty);
+  };
+
   const updateRow = (index: number, patch: Partial<Row>) => setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
 
   async function submit() {
@@ -68,13 +75,17 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
     if (mode === "transfer" && !toLocationId) return setError("Pilih lokasi tujuan.");
     if (mode === "adjustment" && reason.trim().length < 3) return setError("Alasan adjustment wajib diisi.");
     if (!rows.length) return setError("Tambahkan minimal satu barang.");
-    const bad = rows.find((r) => r.qty.trim() === "" || !Number.isFinite(Number(r.qty)));
-    if (bad) return setError("Qty setiap barang wajib diisi angka.");
+    const bad = rows.find((r) => !Number.isFinite(rowQty(r)));
+    if (bad) return setError(`Qty ${productMap.get(bad.productId)?.sku ?? ""} wajib diisi angka (koli/lepas atau qty).`);
 
     const items = rows.map((r) => {
       const base = { productId: r.productId, notes: r.notes || undefined };
-      if (mode === "opname") return { ...base, countedQty: Number(r.qty) };
-      return { ...base, quantity: Number(r.qty), unitCost: r.unitCost ? Number(r.unitCost) : undefined };
+      const perKoli = productMap.get(r.productId)?.unitsPerKoli;
+      const qtyPart = perKoli
+        ? { koli: r.koli.trim() === "" ? undefined : Number(r.koli), loose: r.loose.trim() === "" ? undefined : Number(r.loose) }
+        : mode === "opname" ? { countedQty: Number(r.qty) } : { quantity: Number(r.qty) };
+      if (mode === "opname") return { ...base, ...qtyPart };
+      return { ...base, ...qtyPart, unitCost: r.unitCost ? Number(r.unitCost) : undefined };
     });
     const body: Record<string, unknown> = { notes: notes || undefined, items, idempotencyKey: crypto.randomUUID() };
     if (mode === "transfer") Object.assign(body, { fromLocationId: locationId, toLocationId, transferDate: date, receiveNow });
@@ -168,13 +179,27 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
             {rows.map((row, i) => {
               const p = productMap.get(row.productId);
               const sys = systemQty[row.productId] ?? 0;
-              const diff = row.qty === "" ? null : Number(row.qty) - sys;
+              const q = rowQty(row);
+              const diff = Number.isFinite(q) ? Math.round((q - sys) * 100) / 100 : null;
+              const unit = p?.unit ?? "";
               return (
                 <tr key={row.productId} className="border-t border-slate-100">
-                  <td className="px-3 py-2"><div className="font-semibold text-slate-800">{p?.name}</div><div className="text-xs text-slate-500">{p?.sku} • {p?.unit}</div></td>
-                  <td className="px-3 py-2 text-right tabular-nums">{locationId ? sys : "-"}</td>
-                  <td className="px-3 py-2"><input className={`${input} w-28`} inputMode="decimal" value={row.qty} onChange={(e) => updateRow(i, { qty: e.target.value })} /></td>
-                  {mode === "opname" && <td className={`px-3 py-2 text-right tabular-nums ${diff && diff < 0 ? "text-red-600" : diff ? "text-emerald-700" : ""}`}>{diff == null ? "-" : diff > 0 ? `+${diff}` : diff}</td>}
+                  <td className="px-3 py-2"><div className="font-semibold text-slate-800">{p?.name}</div><div className="text-xs text-slate-500">{p?.sku} • {unit}{p?.unitsPerKoli ? ` • isi ${p.unitsPerKoli} ${unit}/koli` : ""}</div></td>
+                  <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{locationId ? <>{koliText(sys, p?.unitsPerKoli, unit)}{p?.unitsPerKoli ? <div className="text-xs text-slate-400">{sys} {unit}</div> : null}</> : "-"}</td>
+                  <td className="px-3 py-2">
+                    {p?.unitsPerKoli ? (
+                      <div className="flex items-center gap-1">
+                        <input className={`${input.replace("w-full", "")} w-20`} inputMode="decimal" placeholder="koli" aria-label="Koli" value={row.koli} onChange={(e) => updateRow(i, { koli: e.target.value })} />
+                        <span className="whitespace-nowrap text-xs text-slate-500">koli +</span>
+                        <input className={`${input.replace("w-full", "")} w-20`} inputMode="decimal" placeholder="lepas" aria-label={`Lepas (${unit})`} value={row.loose} onChange={(e) => updateRow(i, { loose: e.target.value })} />
+                        <span className="text-xs text-slate-500">{unit}</span>
+                      </div>
+                    ) : (
+                      <input className={`${input} w-28`} inputMode="decimal" value={row.qty} onChange={(e) => updateRow(i, { qty: e.target.value })} />
+                    )}
+                    {p?.unitsPerKoli && Number.isFinite(q) ? <div className="mt-1 text-xs text-slate-500">= {q.toLocaleString("id-ID")} {unit}</div> : null}
+                  </td>
+                  {mode === "opname" && <td className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${diff && diff < 0 ? "text-red-600" : diff ? "text-emerald-700" : ""}`}>{diff == null ? "-" : `${diff > 0 ? "+" : ""}${diff} ${unit}`}</td>}
                   {(mode === "stock-in" || mode === "adjustment") && <td className="px-3 py-2"><input className={`${input} w-32`} inputMode="decimal" value={row.unitCost} onChange={(e) => updateRow(i, { unitCost: e.target.value })} placeholder="opsional" /></td>}
                   <td className="px-3 py-2"><input className={input} value={row.notes} onChange={(e) => updateRow(i, { notes: e.target.value })} /></td>
                   <td className="px-3 py-2"><button type="button" className="text-xs font-semibold text-red-600" onClick={() => setRows((prev) => prev.filter((_, idx) => idx !== i))}>Hapus</button></td>
@@ -189,7 +214,7 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
         <div className="w-full sm:w-96">
           <SearchableSelect
             options={productOptions}
-            onSelect={(productId) => setRows((prev) => [...prev, { productId, qty: "", unitCost: "", notes: "" }])}
+            onSelect={(productId) => setRows((prev) => [...prev, { productId, qty: "", koli: "", loose: "", unitCost: "", notes: "" }])}
             placeholder="+ Tambah barang"
             searchPlaceholder="Cari SKU / nama barang..."
             emptyText="Barang tidak ditemukan. Tambahkan di Master Barang."

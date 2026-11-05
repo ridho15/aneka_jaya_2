@@ -1301,8 +1301,14 @@ model InventoryProduct {
   brand        String?
   unit         String   @default("PCS")
   barcode      String?
+  /// Isi per koli dalam satuan barang (mis. 60 lusin per koli).
+  unitsPerKoli Decimal? @db.Decimal(18, 2)
   minimumStock Decimal  @default(0) @db.Decimal(18, 2)
   costPrice    Decimal  @default(0) @db.Decimal(18, 2)
+  /// Harga beli RMB per satuan. Bila diisi: costPrice = priceRmb × kurs RMB + extraCostIdr.
+  priceRmb     Decimal? @db.Decimal(18, 4)
+  /// Biaya tambahan per satuan (Rp): ongkir/CBM, bea, dll.
+  extraCostIdr Decimal  @default(0) @db.Decimal(18, 2)
   sellingPrice Decimal  @default(0) @db.Decimal(18, 2)
   erpProductId Int?     @unique
   isActive     Boolean  @default(true)

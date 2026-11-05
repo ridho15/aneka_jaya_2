@@ -15,3 +15,28 @@ export function applyDelta(balance: { quantity: number; avgCost: number }, delta
   }
   return { quantity, avgCost };
 }
+
+/** Qty dalam satuan barang dari input koli + lepas. Tanpa isi per koli, koli tidak bisa dihitung. */
+export function qtyFromKoli(input: { quantity?: number | null; koli?: number | null; loose?: number | null }, unitsPerKoli?: number | null) {
+  const hasKoli = input.koli != null && input.koli !== 0;
+  if (input.quantity != null && !hasKoli && input.loose == null) return round2(input.quantity);
+  if (hasKoli && !(unitsPerKoli && unitsPerKoli > 0)) return null;
+  return round2((input.koli ?? 0) * (unitsPerKoli ?? 0) + (input.loose ?? 0));
+}
+
+/** Pecah qty satuan menjadi koli utuh + sisa lepas. */
+export function splitKoli(quantity: number, unitsPerKoli?: number | null) {
+  if (!unitsPerKoli || unitsPerKoli <= 0) return null;
+  const sign = quantity < 0 ? -1 : 1;
+  const abs = Math.abs(quantity);
+  const koli = Math.floor((abs + 1e-9) / unitsPerKoli);
+  return { koli: sign * koli, loose: sign * round2(abs - koli * unitsPerKoli) };
+}
+
+/** Teks ringkas, mis. "32 koli + 5 Lusin" atau "120 Lusin" bila isi per koli belum diisi. */
+export function formatKoli(quantity: number, unitsPerKoli: number | null | undefined, unit: string) {
+  const fmt = (n: number) => n.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+  const split = splitKoli(quantity, unitsPerKoli);
+  if (!split || split.koli === 0) return `${fmt(quantity)} ${unit}`;
+  return split.loose ? `${fmt(split.koli)} koli + ${fmt(split.loose)} ${unit}` : `${fmt(split.koli)} koli`;
+}
