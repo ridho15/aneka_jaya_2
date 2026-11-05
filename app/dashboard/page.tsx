@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Select } from "@/components/ui/Select";
-import { KpiCard } from "@/components/dashboard/KpiCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { PaymentBreakdownChart, type PaymentPeriod } from "@/components/dashboard/PaymentBreakdownChart";
 import { salePaymentParts } from "@/lib/sales/payments";
@@ -178,6 +177,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   paymentPeriod.transactionCount = paymentSales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF" || sale.paymentMethod === "Split")).length + paymentTempo.filter((payment) => payment.paymentMethod === "Cash" || payment.paymentMethod === "TF").length;
   const rekenings = rekeningOptions(allSales, allRekenings);
   const whatsappStatus = getWhatsappProviderStatus();
+  // Ringkasan transaksi MJ khusus Super Admin.
+  const mjStats = isOwner ? (() => {
+    const mj = allSales.filter((sale) => sale.approvalStatus === "approved" && (sale.source === "MJ" || sale.createdByUserId === "integration:mj"));
+    const today = mj.filter((sale) => sale.saleDate === todayStr);
+    const month = mj.filter((sale) => sale.saleDate?.startsWith(monthStr));
+    const sum = (rows: typeof mj) => rows.reduce((total, sale) => total + (Number(sale.total) || 0), 0);
+    return { todayCount: today.length, todayTotal: sum(today), monthCount: month.length, monthTotal: sum(month) };
+  })() : null;
   const dataSourceNotice = dashboardDataSourceNotice();
   const activeFilters = activeFilterLabels(params);
 
@@ -185,37 +192,38 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
     <AppShell>
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Ringkasan operasional</p>
-          <h2 className="aj-page-title mt-2 text-3xl font-bold">Halo, {user.name}</h2>
-          <p className="mt-2 text-sm text-slate-600">Pantau penjualan, pengeluaran, dan stok dalam satu tampilan.</p>
+          <h2 className="aj-page-title text-2xl font-bold sm:text-3xl">Halo, {user.name}</h2>
         </div>
         {can(role, "penjualan.create") && <Link href="/penjualan/input"><Button>+ Input Penjualan</Button></Link>}
       </div>
       {dataSourceNotice && <p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">{dataSourceNotice}</p>}
-      {operationalProfit && <section className="mt-7">
-        <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">OPERASIONAL</p>
-            <h3 className="text-lg font-bold tracking-tight">Profit Operasional</h3>
+      {operationalProfit && (
+        <section className="mt-7" aria-labelledby="ringkasan-heading">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <h3 id="ringkasan-heading" className="text-lg font-bold tracking-tight">Ringkasan penjualan</h3>
+            <div className="flex flex-wrap gap-4 text-sm font-semibold">
+              <Link className="text-emerald-800 hover:underline" href="/dashboard/detail">Rincian profit</Link>
+              <Link className="text-emerald-800 hover:underline" href="/settings/profit-slm">
+                Atur estimasi GP {operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm font-semibold">
-            <Link className="inline-flex items-center gap-1 font-bold text-emerald-600 hover:text-emerald-700" href="/dashboard/detail">
-              Lihat Rincian Sumber Data Profit →
-            </Link>
-            <Link className="text-sm font-semibold text-emerald-700 hover:text-emerald-800" href="/settings/profit-slm">
-              Atur Gross Profit {operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}% →
-            </Link>
+          <div className="grid gap-4 md:grid-cols-2">
+            <SummaryPanel title="Hari ini">
+              <SummaryRow testId="dashboard-kpi-operational-today-revenue" label="Omset" note={`${operationalProfit.todaySalesCount} transaksi`} value={formatDashboardMoney(operationalProfit.todayRevenue)} />
+              <SummaryRow testId="dashboard-kpi-operational-today-expenses" label="Pengeluaran" note="Disetujui hari ini" value={formatDashboardMoney(operationalProfit.todayExpenses)} />
+              {mjStats && <SummaryRow testId="dashboard-mj-today" label="Transaksi MJ" note={`${mjStats.todayCount} transaksi`} value={formatDashboardMoney(mjStats.todayTotal)} />}
+            </SummaryPanel>
+            <SummaryPanel title="Bulan ini">
+              <SummaryRow testId="dashboard-kpi-operational-month-revenue" label="Omset" note={`${operationalProfit.monthlySalesCount} transaksi`} value={formatDashboardMoney(operationalProfit.monthlyRevenue)} />
+              <SummaryRow testId="dashboard-kpi-operational-month-expenses" label="Pengeluaran" note="Disetujui bulan ini" value={formatDashboardMoney(operationalProfit.monthlyExpenses)} />
+              <SummaryRow testId="dashboard-kpi-operational-gross-profit" label="Gross profit (perkiraan)" note={`Modal Riil + Estimasi ${operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`} value={formatDashboardMoney(operationalProfit.grossProfit)} />
+              <SummaryRow testId="dashboard-kpi-operational-nett-profit" label="Nett profit (perkiraan)" note="Gross profit − pengeluaran" value={formatDashboardMoney(operationalProfit.nettProfit)} negative={operationalProfit.nettProfit < 0} />
+              {mjStats && <SummaryRow testId="dashboard-mj-month" label="Transaksi MJ" note={`${mjStats.monthCount} transaksi`} value={formatDashboardMoney(mjStats.monthTotal)} />}
+            </SummaryPanel>
           </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard testId="dashboard-kpi-operational-month-revenue" label="Omset operasional bulan ini" value={formatDashboardMoney(operationalProfit.monthlyRevenue)} change={`${operationalProfit.monthlySalesCount} transaksi operasional`} tone="blue" />
-          <KpiCard testId="dashboard-kpi-operational-month-expenses" label="Pengeluaran operasional bulan ini" value={formatDashboardMoney(operationalProfit.monthlyExpenses)} change="Expense approved operasional" tone="orange" />
-          <KpiCard testId="dashboard-kpi-operational-today-revenue" label="Omset operasional hari ini" value={formatDashboardMoney(operationalProfit.todayRevenue)} change={`${operationalProfit.todaySalesCount} transaksi hari ini`} tone="violet" />
-          <KpiCard testId="dashboard-kpi-operational-today-expenses" label="Pengeluaran operasional hari ini" value={formatDashboardMoney(operationalProfit.todayExpenses)} change="Expense approved hari ini" tone="orange" />
-          <KpiCard testId="dashboard-kpi-operational-gross-profit" label="Gross Profit Operasional" value={formatDashboardMoney(operationalProfit.grossProfit)} change={`Modal Riil + Estimasi ${operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`} tone="green" />
-          <KpiCard testId="dashboard-kpi-operational-nett-profit" label="Nett Profit Operasional" value={formatDashboardMoney(operationalProfit.nettProfit)} change="Gross Profit - pengeluaran bulanan" tone={operationalProfit.nettProfit >= 0 ? "green" : "orange"} />
-        </div>
-      </section>}
+        </section>
+      )}
 
       {cctvSummary && (
         <CctvDashboardWidget
@@ -283,6 +291,27 @@ function Status({ label, ok, text }: { label: string; ok: boolean; text: string 
     <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3.5">
       <div className="flex items-center gap-2 text-sm font-semibold"><span className={`h-2.5 w-2.5 rounded-full ${ok ? "bg-emerald-500" : "bg-red-500"}`} />{label}</div>
       <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
+    </div>
+  );
+}
+
+function SummaryPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="aj-surface p-4 sm:p-5">
+      <h4 className="text-sm font-semibold text-slate-600">{title}</h4>
+      <dl className="mt-2 divide-y divide-slate-100">{children}</dl>
+    </section>
+  );
+}
+
+function SummaryRow({ label, note, value, testId, negative = false }: { label: string; note: string; value: string; testId?: string; negative?: boolean }) {
+  return (
+    <div data-testid={testId} className="flex items-baseline justify-between gap-3 py-2.5">
+      <dt className="min-w-0">
+        <span className="block text-sm font-medium text-slate-800">{label}</span>
+        <span className="block text-xs text-slate-500">{note}</span>
+      </dt>
+      <dd className={`shrink-0 text-lg font-bold tabular-nums ${negative ? "text-red-700" : "text-slate-900"}`}>{value}</dd>
     </div>
   );
 }

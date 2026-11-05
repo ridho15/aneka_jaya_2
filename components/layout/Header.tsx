@@ -12,12 +12,10 @@ function initials(name: string) {
 export function Header({ user, showDemoLogout = false, showLogout = false }: { user: UserProfile; showDemoLogout?: boolean; showLogout?: boolean }) {
   const date = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date());
   return (
-    <header className="mb-8 flex flex-col gap-4 border-b border-neutral-300 pb-5 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-neutral-500">Operasional internal</p>
-        <h1 className="mt-1 text-xl font-bold tracking-tight text-neutral-900">{APP_BRAND_TITLE}</h1>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600 sm:justify-end">
+    // Di HP nama aplikasi sudah ada di bar atas, jadi di sini cukup menu akun.
+    <header className="mb-5 flex items-center justify-end gap-4 border-b border-neutral-300 pb-3 sm:mb-8 sm:justify-between sm:pb-5">
+      <h1 className="hidden text-xl font-bold tracking-tight text-neutral-900 sm:block">{APP_BRAND_TITLE}</h1>
+      <div className="flex flex-wrap items-center justify-end gap-3 text-xs text-neutral-600">
         <span className="hidden border-r border-neutral-200 pr-4 sm:block">{date}</span>
         <details className="relative">
           <summary className="flex cursor-pointer list-none items-center gap-2 border border-neutral-300 bg-white px-2.5 py-1.5 transition hover:border-emerald-400 hover:bg-emerald-50">
