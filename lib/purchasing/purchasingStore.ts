@@ -15,6 +15,8 @@ import type {
 } from "@/lib/validation/purchasingSchema";
 import { recordAudit } from "@/lib/audit/store";
 import { postPurchaseInvoiceJournal, type PurchasingActor } from "@/lib/purchasing/postingHooks";
+import { isLocalInventory } from "@/lib/inventory/config";
+import { postPurchaseReceiptToInventory } from "@/lib/inventory/service";
 
 // =====================================================================
 // 1. LANDED COST ALLOCATION CALCULATOR (RE-EXPORT FROM SHARED UTILITY)
@@ -419,7 +421,29 @@ export async function createPurchaseReceipt(
     reason: `Penerimaan barang ${receipt.grnNumber} untuk PO ${po.poNumber}`
   });
 
+  // Masukkan barang yang diterima ke stok gudang/toko (inventory SLM).
+  const inventoryLocationId = await resolveReceiptLocationId(input);
+  if (inventoryLocationId) {
+    try {
+      return await postPurchaseReceiptToInventory(receipt.id, inventoryLocationId, { id: actor.id, name: actor.name }).then((posted) => ({ ...receipt, ...posted }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal posting stok.";
+      throw new Error(`GRN ${receipt.grnNumber} tersimpan, tetapi stok belum masuk inventory: ${message} Ulangi via Inventory > Barang Masuk.`);
+    }
+  }
+
   return receipt;
+}
+
+async function resolveReceiptLocationId(input: PurchaseReceiptInput) {
+  if (input.inventoryLocationId) return input.inventoryLocationId;
+  if (!isLocalInventory()) return undefined;
+  const name = (input.warehouseName || "").trim();
+  const match = name
+    ? await prisma.inventoryLocation.findFirst({ where: { isActive: true, OR: [{ code: name.toUpperCase() }, { name: { equals: name, mode: "insensitive" } }] } })
+    : null;
+  const fallback = match ?? (await prisma.inventoryLocation.findFirst({ where: { isActive: true, isDefault: true } }));
+  return fallback?.id;
 }
 
 // =====================================================================

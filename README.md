@@ -60,6 +60,14 @@ Dengan konfigurasi default tersebut, hanya tipe AJ yang dikirim ke Neo/Anika ERP
 
 Adapter Neo memakai envelope `NeoCommandRequest` yang didokumentasikan (`text`, `message_id`, `source`, dan `parsed_intent`). Pembuatan barang dikirim sebagai `import_products` dengan referensi kategori, satuan, gudang, dan rak yang dapat dibaca manusia, sesuai skema Neo.
 
+## Inventory gudang & toko
+
+Stok seluruh gudang dan toko dikelola langsung di SLM (menu **Inventory Gudang & Toko**): matriks stok,
+mutasi/kartu stok, transfer antar gudang/toko, barang masuk dari pembelian, stock opname (mengganti stok),
+dan stock adjustment (menambah/mengurangi stok). Semua fitur tersedia sebagai API di `/api/inventory/*`
+(sesi login atau Bearer token integrasi). Saklar sumber stok untuk alur penjualan: `INVENTORY_SOURCE=erp|local`.
+Detail, contoh API, dan langkah cutover dari ERP: [`docs/inventory.md`](docs/inventory.md).
+
 ## OpenCloud
 
 Atur `OPENCLOUD_API_BASE_URL`, `OPENCLOUD_PROJECT_ID`, `OPENCLOUD_API_KEY`, dan `OPENCLOUD_STORAGE_BUCKET` saat detail API OpenCloud tersedia. Upload memvalidasi PDF/JPG/JPEG/PNG/WEBP dan membatasi ukuran default hingga 5 MB (`OPENCLOUD_MAX_FILE_SIZE_BYTES` dapat diatur).

@@ -1010,6 +1010,8 @@ model PurchaseReceipt {
   purchaseOrder          PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
   receiptDate            DateTime
   warehouseName          String                @default("Gudang Utama")
+  inventoryLocationId    String?
+  inventoryPostedAt      DateTime?
   notes                  String?
   receivedByUserId       String
   receivedByNameSnapshot String
@@ -1236,4 +1238,215 @@ model EmployeeSavingsTransaction {
 
   @@index([savingsAccountId])
   @@index([transactionDate])
+}
+
+// =====================================================================
+// INVENTORY (stok native SLM — sumber kebenaran stok gudang & toko)
+// =====================================================================
+
+enum InventoryLocationType {
+  WAREHOUSE
+  STORE
+}
+
+enum InventoryMovementType {
+  INITIAL
+  PURCHASE_RECEIPT
+  TRANSFER_OUT
+  TRANSFER_IN
+  OPNAME
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  SALE_OUT
+  SALE_REVERSAL
+}
+
+enum InventoryDocumentStatus {
+  POSTED
+  CANCELLED
+}
+
+enum InventoryTransferStatus {
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+model InventoryLocation {
+  id             String                @id @default(cuid())
+  code           String                @unique
+  name           String
+  type           InventoryLocationType @default(WAREHOUSE)
+  address        String?
+  phone          String?
+  erpWarehouseId Int?                  @unique
+  allowNegative  Boolean               @default(false)
+  isDefault      Boolean               @default(false)
+  isActive       Boolean               @default(true)
+  notes          String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  balances  InventoryBalance[]
+  movements InventoryMovement[]
+
+  @@index([type, isActive])
+}
+
+model InventoryProduct {
+  id           String   @id @default(cuid())
+  sku          String   @unique
+  name         String
+  category     String?
+  brand        String?
+  unit         String   @default("PCS")
+  barcode      String?
+  minimumStock Decimal  @default(0) @db.Decimal(18, 2)
+  costPrice    Decimal  @default(0) @db.Decimal(18, 2)
+  sellingPrice Decimal  @default(0) @db.Decimal(18, 2)
+  erpProductId Int?     @unique
+  isActive     Boolean  @default(true)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  balances  InventoryBalance[]
+  movements InventoryMovement[]
+
+  @@index([name])
+  @@index([barcode])
+}
+
+model InventoryBalance {
+  id         String            @id @default(cuid())
+  productId  String
+  product    InventoryProduct  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  locationId String
+  location   InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  quantity   Decimal           @default(0) @db.Decimal(18, 2)
+  avgCost    Decimal           @default(0) @db.Decimal(18, 2)
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([productId, locationId])
+  @@index([locationId])
+}
+
+model InventoryMovement {
+  id              String                @id @default(cuid())
+  movementDate    DateTime
+  type            InventoryMovementType
+  productId       String
+  product         InventoryProduct      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  locationId      String
+  location        InventoryLocation     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  quantity        Decimal               @db.Decimal(18, 2)
+  balanceBefore   Decimal               @db.Decimal(18, 2)
+  balanceAfter    Decimal               @db.Decimal(18, 2)
+  unitCost        Decimal               @default(0) @db.Decimal(18, 2)
+  referenceType   String
+  referenceId     String?
+  referenceNumber String?
+  idempotencyKey  String?               @unique
+  notes           String?
+  createdByUserId String?
+  createdByName   String?
+  createdAt       DateTime              @default(now())
+
+  @@index([productId, locationId, movementDate])
+  @@index([locationId, movementDate])
+  @@index([referenceType, referenceNumber])
+  @@index([type])
+}
+
+model InventoryTransfer {
+  id              String                  @id @default(cuid())
+  transferNumber  String                  @unique
+  idempotencyKey  String?                 @unique
+  transferDate    DateTime
+  fromLocationId  String
+  toLocationId    String
+  status          InventoryTransferStatus @default(IN_TRANSIT)
+  notes           String?
+  receivedAt      DateTime?
+  receivedByName  String?
+  createdByUserId String?
+  createdByName   String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  items           InventoryTransferItem[]
+
+  @@index([fromLocationId])
+  @@index([toLocationId])
+  @@index([transferDate])
+}
+
+model InventoryTransferItem {
+  id         String            @id @default(cuid())
+  transferId String
+  transfer   InventoryTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId  String
+  quantity   Decimal           @db.Decimal(18, 2)
+  notes      String?
+
+  @@index([transferId])
+}
+
+model InventoryOpname {
+  id              String                  @id @default(cuid())
+  opnameNumber    String                  @unique
+  idempotencyKey  String?                 @unique
+  opnameDate      DateTime
+  locationId      String
+  status          InventoryDocumentStatus @default(POSTED)
+  notes           String?
+  createdByUserId String?
+  createdByName   String?
+  createdAt       DateTime                @default(now())
+  items           InventoryOpnameItem[]
+
+  @@index([locationId])
+  @@index([opnameDate])
+}
+
+model InventoryOpnameItem {
+  id            String          @id @default(cuid())
+  opnameId      String
+  opname        InventoryOpname @relation(fields: [opnameId], references: [id], onDelete: Cascade)
+  productId     String
+  systemQty     Decimal         @db.Decimal(18, 2)
+  countedQty    Decimal         @db.Decimal(18, 2)
+  differenceQty Decimal         @db.Decimal(18, 2)
+  notes         String?
+
+  @@index([opnameId])
+}
+
+model InventoryAdjustment {
+  id               String                    @id @default(cuid())
+  adjustmentNumber String                    @unique
+  idempotencyKey   String?                   @unique
+  adjustmentDate   DateTime
+  locationId       String
+  reason           String
+  status           InventoryDocumentStatus   @default(POSTED)
+  notes            String?
+  createdByUserId  String?
+  createdByName    String?
+  createdAt        DateTime                  @default(now())
+  items            InventoryAdjustmentItem[]
+
+  @@index([locationId])
+  @@index([adjustmentDate])
+}
+
+model InventoryAdjustmentItem {
+  id           String              @id @default(cuid())
+  adjustmentId String
+  adjustment   InventoryAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
+  productId    String
+  quantity     Decimal             @db.Decimal(18, 2)
+  unitCost     Decimal             @default(0) @db.Decimal(18, 2)
+  notes        String?
+
+  @@index([adjustmentId])
 }

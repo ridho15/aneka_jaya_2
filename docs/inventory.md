@@ -1,0 +1,111 @@
+# Inventory Gudang & Toko (SLM)
+
+Modul stok native SLM. Semua stok — gudang maupun toko — tersimpan di database SLM
+(`slm.playgo.id`) sebagai satu kesatuan, tidak lagi bergantung pada stok Anika ERP
+(`ankjy.playgo.id`).
+
+## Konsep
+
+| Konsep | Keterangan |
+| --- | --- |
+| **Lokasi** | Gudang (`WAREHOUSE`) atau Toko (`STORE`). Satu lokasi bisa ditandai *default* untuk penjualan & penerimaan pembelian. |
+| **Saldo stok** | Qty per barang per lokasi + HPP rata-rata bergerak (moving average). |
+| **Mutasi / kartu stok** | Setiap perubahan stok dicatat (saldo sebelum → sesudah, referensi dokumen, user). Saldo tidak pernah diubah tanpa mutasi. |
+| **Transfer** | Pindah stok antar gudang/toko. Langsung diterima, atau `IN_TRANSIT` sampai dikonfirmasi diterima / dibatalkan. |
+| **Barang masuk** | Dari GRN pembelian (Pembelian → Penerimaan) atau input manual tanpa PO. |
+| **Stock opname** | Hitung fisik → stok sistem **diganti** dengan qty fisik; selisih dicatat. |
+| **Stock adjustment** | **Menambah (+) atau mengurangi (−)** stok yang ada, wajib alasan. |
+| **Penjualan** | Bila `INVENTORY_SOURCE=local`, potong stok penjualan & pembatalannya terjadi di SLM. |
+
+Jaminan data:
+- Setiap posting berjalan dalam satu transaksi database dengan row-lock pada saldo,
+  sehingga input bersamaan (mis. 2 kasir menjual barang yang sama) tidak membuat stok minus.
+- Stok tidak boleh minus kecuali lokasi diset *Izinkan stok minus* (opname & pembatalan selalu boleh).
+- `idempotencyKey` pada dokumen membuat request ulang (retry jaringan/API) tidak terposting dua kali.
+
+## Halaman (menu "Inventory Gudang & Toko")
+
+- `/inventory` — matriks stok: tiap barang dengan kolom per gudang & toko, total gudang, total toko.
+- `/inventory/mutasi` — mutasi & kartu stok (filter barang, lokasi, jenis, tanggal, referensi).
+- `/inventory/transfer` — transfer antar gudang/toko, terima / batalkan transfer dalam perjalanan.
+- `/inventory/barang-masuk` — GRN pembelian yang belum masuk stok + barang masuk manual.
+- `/inventory/opname`, `/inventory/adjustment`, `/inventory/produk`, `/inventory/lokasi`.
+
+Permission: `inventory.view`, `inventory.manage` (master data & barang masuk),
+`inventory.transfer`, `inventory.adjust` (opname & adjustment). Super Admin & Supervisor
+mendapat semuanya; Manager: view + transfer; Finance: view.
+
+## API
+
+Semua endpoint ada di `/api/inventory/*` dan terdokumentasi di `GET /api/docs`
+(OpenAPI: `docs/openapi.yaml`, tag *Inventory*). Endpoint bisa dipanggil dengan:
+
+1. sesi login SLM (cookie), atau
+2. **Bearer token integrasi** untuk aplikasi lain (toko, POS, marketplace):
+
+```bash
+npm run integration:token:provision -- --client=pos-toko --environment=production --name="POS Toko"
+```
+
+```bash
+curl -H "Authorization: Bearer slm_production_xxx" https://slm.playgo.id/api/inventory/stocks?locationType=STORE
+```
+
+Referensi barang di body boleh `productId` (ID SLM), `sku`, atau `erpProductId`.
+`locationId` boleh ID atau kode lokasi (mis. `GD-UTAMA`).
+
+| Method | Path | Fungsi |
+| --- | --- | --- |
+| GET/POST | `/api/inventory/locations` | daftar / tambah gudang & toko |
+| PATCH | `/api/inventory/locations/{id}` | ubah lokasi |
+| GET/POST | `/api/inventory/products` | master barang (+ stok awal) |
+| GET/PATCH | `/api/inventory/products/{id\|sku}` | detail barang + stok per lokasi |
+| GET | `/api/inventory/stocks` | saldo per barang per lokasi (`lowStockOnly`, `locationType`, …) |
+| GET | `/api/inventory/stocks/matrix` | matriks barang × lokasi |
+| GET | `/api/inventory/movements` | mutasi / kartu stok |
+| GET/POST | `/api/inventory/transfers` | transfer antar lokasi |
+| POST | `/api/inventory/transfers/{id}/receive` | terima transfer |
+| POST | `/api/inventory/transfers/{id}/cancel` | batalkan transfer |
+| GET/POST | `/api/inventory/opnames` | stock opname (ganti stok) |
+| GET/POST | `/api/inventory/adjustments` | stock adjustment (+/−) |
+| POST | `/api/inventory/stock-in` | barang masuk manual |
+| POST | `/api/inventory/purchase-receipts/{id}/post` | masukkan GRN pembelian ke stok |
+| POST | `/api/inventory/import-erp` | impor awal dari ERP (Super Admin) |
+
+Contoh transfer gudang → toko:
+
+```json
+POST /api/inventory/transfers
+{
+  "fromLocationId": "GD-UTAMA",
+  "toLocationId": "TK-PUSAT",
+  "receiveNow": true,
+  "idempotencyKey": "pos-trf-000123",
+  "items": [{ "sku": "BRG-001", "quantity": 8 }]
+}
+```
+
+Error memakai format `{ success: false, message, code, details }` dengan `code`:
+`VALIDATION` (400), `NOT_FOUND` (404), `INSUFFICIENT_STOCK` (409, `details.available`),
+`INVALID_STATE` (409), `DUPLICATE` (409), `AUTH_INVALID` (401), `FORBIDDEN` (403), `RATE_LIMITED` (429).
+
+## Langkah cutover dari ERP ke SLM
+
+1. Deploy & migrasi database: `npm run db:migrate:deploy` (migrasi `20261105010000_add_native_inventory`).
+   Selama `INVENTORY_SOURCE=erp` (default), alur penjualan lama tidak berubah.
+2. Login sebagai Super Admin, cek data impor (dry run, tidak menulis apa pun):
+   `POST /api/inventory/import-erp` dengan body `{}`.
+3. Impor sungguhan: `POST /api/inventory/import-erp` body `{"dryRun": false}`.
+   Gudang ERP dibuat sebagai lokasi (dipetakan via `erpWarehouseId`), barang dibuat dengan
+   `erpProductId`, dan saldo SLM di-SET sama dengan qty ERP. Aman diulang tepat sebelum cutover.
+4. Di `/inventory/lokasi`: rapikan kode/nama, set jenis Gudang/Toko, tambahkan toko yang belum ada,
+   dan tandai satu lokasi **default**.
+5. Ubah env `INVENTORY_SOURCE=local` lalu restart. Mulai saat itu:
+   - halaman Stok Barang, `/api/stocks`, alert minimum stok membaca stok SLM;
+   - penjualan memotong stok SLM (ID barang/gudang ERP pada item penjualan otomatis dipetakan);
+   - pembatalan/revisi penjualan mengembalikan stok SLM;
+   - penerimaan pembelian (GRN) otomatis masuk ke gudang yang dipilih / default.
+6. Rollback: set kembali `INVENTORY_SOURCE=erp`. Data inventory SLM tetap tersimpan.
+
+Catatan: invoice penjualan & akuntansi yang masih dikirim ke ERP tidak diubah oleh modul ini —
+yang dipindahkan ke SLM adalah **stok**.

@@ -93,6 +93,8 @@ export const PurchaseReceiptSchema = z.object({
   purchaseOrderId: z.string().min(1, "ID Purchase Order wajib diisi"),
   receiptDate: z.string().or(z.date()),
   warehouseName: z.string().default("Gudang Utama"),
+  /** Lokasi inventory SLM (gudang/toko) tujuan barang masuk. */
+  inventoryLocationId: z.string().optional().nullable(),
   items: z.array(PurchaseReceiptItemSchema).min(1, "Minimal harus ada 1 item yang diterima"),
   notes: z.string().optional().nullable()
 });

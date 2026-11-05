@@ -69,6 +69,7 @@ describe("global navigation", () => {
     expect(groups.map((g) => g.category)).toEqual([
       "MENU UTAMA",
       "OPERASIONAL & TRANSAKSI",
+      "INVENTORY GUDANG & TOKO",
       "AKUNTANSI & BUKU BESAR",
       "SDM & PERSONALIA",
       "PUSAT LAPORAN",

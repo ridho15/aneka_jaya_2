@@ -3,6 +3,7 @@ import { can, type Permission, type Role } from "@/lib/auth/roles";
 export type NavCategory =
   | "MENU UTAMA"
   | "OPERASIONAL & TRANSAKSI"
+  | "INVENTORY GUDANG & TOKO"
   | "PEMBELIAN & IMPOR VALAS"
   | "AKUNTANSI & BUKU BESAR"
   | "SDM & PERSONALIA"
@@ -139,6 +140,64 @@ export const NAV_LINKS: NavLink[] = [
     icon: "⌹",
     permission: "purchasing.view",
     category: "PEMBELIAN & IMPOR VALAS",
+  },
+
+  // INVENTORY GUDANG & TOKO
+  {
+    href: "/inventory",
+    label: "Stok Gudang & Toko",
+    icon: "▦",
+    permission: "inventory.view",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
+    href: "/inventory/mutasi",
+    label: "Mutasi / Kartu Stok",
+    icon: "⇅",
+    permission: "inventory.view",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
+    href: "/inventory/transfer",
+    label: "Transfer Antar Gudang",
+    icon: "⇄",
+    permission: "inventory.view",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
+    href: "/inventory/barang-masuk",
+    label: "Barang Masuk",
+    icon: "⤓",
+    permission: "inventory.manage",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
+    href: "/inventory/opname",
+    label: "Stock Opname",
+    icon: "☑",
+    permission: "inventory.view",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
+    href: "/inventory/adjustment",
+    label: "Stock Adjustment",
+    icon: "±",
+    permission: "inventory.view",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
+    href: "/inventory/produk",
+    label: "Master Barang",
+    icon: "▤",
+    permission: "inventory.view",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
+    href: "/inventory/lokasi",
+    label: "Gudang & Toko",
+    icon: "⌂",
+    permission: "inventory.view",
+    category: "INVENTORY GUDANG & TOKO",
   },
 
   // AKUNTANSI & BUKU BESAR
@@ -343,6 +402,7 @@ export const NAV_LINKS: NavLink[] = [
 const CATEGORY_ORDER: NavCategory[] = [
   "MENU UTAMA",
   "OPERASIONAL & TRANSAKSI",
+  "INVENTORY GUDANG & TOKO",
   "AKUNTANSI & BUKU BESAR",
   "SDM & PERSONALIA",
   "PUSAT LAPORAN",

@@ -2,6 +2,9 @@ import "server-only";
 import { anikaRequest } from "@/lib/api/anikaClient";
 import { failure, type ApiResponse } from "@/lib/types/api";
 import type { Sale } from "@/lib/types/sales";
+import { isLocalInventory } from "@/lib/inventory/config";
+import { InventoryError } from "@/lib/inventory/errors";
+import { cancelSaleStockLocal, releaseSaleStockLocal } from "@/lib/inventory/service";
 
 export type StockReleaseResult = {
   status: "released" | "already_released";
@@ -118,6 +121,19 @@ export async function releaseSaleStock(input: {
 }): Promise<ApiResponse<StockReleaseResult & { releaseReference: string }>> {
   const built = buildStockReleasePayload(input);
   if (!built.success) return built;
+  if (isLocalInventory()) {
+    try {
+      const result = await releaseSaleStockLocal({
+        reference: built.data.releaseReference,
+        saleDate: input.saleDate,
+        sourceNumber: input.sourceNumber,
+        items: input.items.map((item) => ({ productId: item.productId, productRef: item.productRef, warehouseId: item.warehouseId, quantity: item.quantity }))
+      });
+      return { success: true, data: { ...result, releaseReference: built.data.releaseReference } };
+    } catch (error) {
+      return localFailure(error, "Potong stok inventory SLM gagal.");
+    }
+  }
   const response = await anikaRequest<StockReleaseResult>("/stock-releases", {
     method: "POST",
     body: JSON.stringify(built.data.payload)
@@ -134,6 +150,13 @@ export async function cancelStockRelease(input: {
   reference: string;
   reason: string;
 }): Promise<ApiResponse<{ status: "reversed"; message?: string }>> {
+  if (isLocalInventory()) {
+    try {
+      return { success: true, data: await cancelSaleStockLocal(input) };
+    } catch (error) {
+      return localFailure(error, "Gagal mengembalikan stok di inventory SLM.");
+    }
+  }
   const response = await anikaRequest<{ status?: string; message?: string }>("/stock-releases/cancel", {
     method: "POST",
     body: JSON.stringify({
@@ -152,6 +175,15 @@ export async function cancelStockRelease(input: {
     },
     details: response.details
   };
+}
+
+function localFailure(error: unknown, fallback: string) {
+  if (error instanceof InventoryError) {
+    const code = error.code === "INSUFFICIENT_STOCK" ? "stock_insufficient" : error.code === "NOT_FOUND" ? "product_invalid" : error.code;
+    return failure(error.message, code, error.details);
+  }
+  console.error("[stockReleases] local inventory", error);
+  return failure(fallback, "INVENTORY_ERROR");
 }
 
 export function nextRevisionReference(currentRef?: string, baseReference?: string) {
