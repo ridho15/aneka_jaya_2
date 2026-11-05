@@ -51,7 +51,14 @@ baru (termasuk kode tanpa kolom Satuan di Excel) adalah **Lusin**.
 - Barang tanpa harga RMB memakai modal yang diisi manual.
 - Import Excel membaca kolom berjudul "Harga RMB" bila ada.
 
-## Halaman (menu "Inventory Gudang & Toko")
+## Menu
+
+Sidebar menampilkan satu menu per modul; halaman di dalam modul tampil sebagai tab di atas konten.
+Inventory terbagi menjadi tiga menu: **Stok** (Stok Gudang & Toko, Kartu Stok, Prediksi Stok),
+**Input Stok** (Barang Masuk, Transfer, Opname, Adjustment, Import Excel), dan **Master Barang**
+(Barang, Lokasi Stok). Tab hanya berisi halaman yang boleh dibuka role tersebut.
+
+## Halaman
 
 - `/inventory`: matriks stok: tiap barang dengan kolom per gudang & toko, total gudang, total toko.
 - `/inventory/mutasi`: mutasi & kartu stok (filter barang, lokasi, jenis, tanggal, referensi).
@@ -64,7 +71,7 @@ baru (termasuk kode tanpa kolom Satuan di Excel) adalah **Lusin**.
 
 1. Buat lokasi gudang & toko di `/inventory/lokasi` (mis. `GDG-PLUIT` Gudang, `TK-MEKAR` Toko).
 2. Buka `/inventory/import`, unggah file `.xlsx`, pilih lokasi untuk kolom *Qty Gudang* dan *Qty Toko*.
-3. Klik **Cek Dulu**: cek jumlah baris, barang baru, total qty per lokasi, nilai modal, dan peringatan.
+3. Setelah file dan lokasi dipilih, hasil cek muncul otomatis: cek jumlah baris, barang baru, total qty per lokasi, nilai modal, dan peringatan.
 4. Klik **Simpan Opname**.
 
 Aturan pembacaan (sheet `Opname`, kolom dicari berdasarkan judul header):

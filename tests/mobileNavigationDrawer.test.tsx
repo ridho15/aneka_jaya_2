@@ -59,10 +59,10 @@ describe("global navigation", () => {
     expect(html).toContain("lg:block");
     expect(html).toContain('href="/dashboard"');
     expect(html).toContain("Dashboard");
-    expect(html).toContain("MENU UTAMA");
-    expect(html).toContain("OPERASIONAL &amp; TRANSAKSI");
-    expect(html).toContain("PUSAT LAPORAN");
-    expect(html).toContain("SISTEM &amp; MONITORING");
+    expect(html).toContain("Penjualan &amp; Kas");
+    expect(html).toContain("Stok &amp; Pembelian");
+    expect(html).toContain('href="/reports"');
+    expect(html).toContain('href="/settings"');
     expect(html).not.toContain("overflow-x-auto");
   });
 

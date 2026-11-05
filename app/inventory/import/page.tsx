@@ -17,7 +17,7 @@ export default async function ImportOpnamePage() {
     <AppShell>
       <InventoryHeader
         title="Import Opname Excel"
-        description={<>Unggah file Excel <i>Stock Opname Aneka Jaya</i> (sheet Opname). Barang baru dibuat otomatis, lalu stok tiap lokasi diganti sesuai hitungan di file. Klik <b>Cek Dulu</b> sebelum menyimpan.</>}
+        description={<>Unggah file Excel <i>Stock Opname Aneka Jaya</i> (sheet Opname). Barang baru dibuat otomatis, lalu stok tiap lokasi diganti sesuai hitungan di file. Hasil cek muncul otomatis sebelum Anda menyimpan.</>}
       />
       {locations.length ? <OpnameImportForm locations={locations} /> : (
         <p className="aj-surface p-5 text-sm">Belum ada gudang/toko. Buat dulu di <Link className="text-emerald-800 underline" href="/inventory/lokasi">Lokasi Stok</Link>.</p>

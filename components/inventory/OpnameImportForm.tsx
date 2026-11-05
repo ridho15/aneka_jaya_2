@@ -31,18 +31,33 @@ export function OpnameImportForm({ locations }: { locations: InvLocation[] }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function send(dryRun: boolean) {
-    if (!file) return setError("Pilih file Excel (.xlsx) dulu.");
-    if (!warehouseId && !storeId) return setError("Pilih lokasi untuk kolom Qty Gudang dan/atau Qty Toko.");
+  type Choice = { file: File | null; warehouseId: string; storeId: string; zeroUncounted: boolean };
+
+  // Cek otomatis begitu file dan minimal satu lokasi sudah dipilih, jadi tidak perlu klik "Cek".
+  function changed(next: Partial<Choice>) {
+    const choice = { file, warehouseId, storeId, zeroUncounted, ...next };
+    if (next.file !== undefined) setFile(next.file);
+    if (next.warehouseId !== undefined) setWarehouseId(next.warehouseId);
+    if (next.storeId !== undefined) setStoreId(next.storeId);
+    if (next.zeroUncounted !== undefined) setZeroUncounted(next.zeroUncounted);
+    setSummary(null);
+    setError(null);
+    if (choice.file && (choice.warehouseId || choice.storeId)) void send(true, choice);
+  }
+
+  async function send(dryRun: boolean, choice?: Choice) {
+    const c = choice ?? { file, warehouseId, storeId, zeroUncounted };
+    if (!c.file) return setError("Pilih file Excel (.xlsx) dulu.");
+    if (!c.warehouseId && !c.storeId) return setError("Pilih lokasi untuk kolom Qty Gudang dan/atau Qty Toko.");
     setBusy(true); setError(null);
     try {
       const form = new FormData();
-      form.set("file", file);
-      if (warehouseId) form.set("warehouseLocationId", warehouseId);
-      if (storeId) form.set("storeLocationId", storeId);
+      form.set("file", c.file);
+      if (c.warehouseId) form.set("warehouseLocationId", c.warehouseId);
+      if (c.storeId) form.set("storeLocationId", c.storeId);
       form.set("opnameDate", date);
       form.set("dryRun", String(dryRun));
-      form.set("zeroUncounted", String(zeroUncounted));
+      form.set("zeroUncounted", String(c.zeroUncounted));
       form.set("updateMaster", String(updateMaster));
       const res = await fetch("/api/inventory/import-opname", { method: "POST", body: form });
       const json = await res.json();
@@ -64,34 +79,33 @@ export function OpnameImportForm({ locations }: { locations: InvLocation[] }) {
       <div className="aj-surface space-y-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="space-y-1 text-sm font-semibold lg:col-span-2"><span>File Excel opname (.xlsx)</span>
-            <input type="file" accept=".xlsx" className={input} onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSummary(null); }} />
+            <input type="file" accept=".xlsx" className={input} onChange={(e) => changed({ file: e.target.files?.[0] ?? null })} />
           </label>
           <label className="space-y-1 text-sm font-semibold"><span>Tanggal opname</span>
             <input type="date" className={input} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <div />
           <label className="space-y-1 text-sm font-semibold"><span>Kolom &quot;Qty Gudang&quot; masuk ke</span>
-            <select className={input} value={warehouseId} onChange={(e) => { setWarehouseId(e.target.value); setSummary(null); }}>
+            <select className={input} value={warehouseId} onChange={(e) => changed({ warehouseId: e.target.value })}>
               <option value="">Tidak diimpor</option>
               {locations.map((l) => <option key={l.id} value={l.id}>{locationLabel(l)}</option>)}
             </select>
           </label>
           <label className="space-y-1 text-sm font-semibold"><span>Kolom &quot;Qty Toko&quot; masuk ke</span>
-            <select className={input} value={storeId} onChange={(e) => { setStoreId(e.target.value); setSummary(null); }}>
+            <select className={input} value={storeId} onChange={(e) => changed({ storeId: e.target.value })}>
               <option value="">Tidak diimpor</option>
               {locations.map((l) => <option key={l.id} value={l.id}>{locationLabel(l)}</option>)}
             </select>
           </label>
         </div>
         <div className="flex flex-col gap-2 text-sm">
-          <label className="flex min-h-11 items-center gap-3"><input type="checkbox" className="h-5 w-5" checked={zeroUncounted} onChange={(e) => { setZeroUncounted(e.target.checked); setSummary(null); }} /> Barang dengan jumlah 0 di file dianggap habis (opname penuh). Matikan kalau file hanya berisi sebagian barang.</label>
+          <label className="flex min-h-11 items-center gap-3"><input type="checkbox" className="h-5 w-5" checked={zeroUncounted} onChange={(e) => changed({ zeroUncounted: e.target.checked })} /> Barang dengan jumlah 0 di file dianggap habis (opname penuh). Matikan kalau file hanya berisi sebagian barang.</label>
           <label className="flex min-h-11 items-center gap-3"><input type="checkbox" className="h-5 w-5" checked={updateMaster} onChange={(e) => setUpdateMaster(e.target.checked)} /> Perbarui Master Barang (nama, kategori, satuan, modal, harga jual) bila kolomnya terisi</label>
         </div>
         {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {!summary?.dryRun && <span className="text-sm text-slate-600">Klik Cek Dulu sebelum menyimpan.</span>}
-          <Button variant="secondary" className="min-h-11" onClick={() => send(true)} disabled={busy}>{busy ? "Memproses..." : "1. Cek Dulu"}</Button>
-          <Button className="min-h-11" onClick={() => setConfirmOpen(true)} disabled={busy || !summary?.dryRun}>{busy ? "Memproses..." : "2. Simpan Opname"}</Button>
+          {!summary?.dryRun && <span className="text-sm text-slate-600">{busy ? "Mengecek file…" : "Pilih file dan lokasi; hasil cek muncul otomatis."}</span>}
+          <Button className="min-h-11" onClick={() => setConfirmOpen(true)} disabled={busy || !summary?.dryRun}>{busy ? "Memproses..." : "Simpan Opname"}</Button>
         </div>
         <ConfirmationModal
           isOpen={confirmOpen}

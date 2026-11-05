@@ -29,11 +29,19 @@ describe('inventory', { tags: ['inventory'] }, () => {
   test('Admin hanya melihat menu yang diizinkan', async ({ app, browser, screen }) => {
     await asRole(browser, 'ADMIN');
     await app.open('/inventory');
-    const nav = screen.getByRole('navigation').first();
-    await expect(nav.getByRole('link', /Riwayat Penjualan/)).toBeVisible();
-    await expect(nav.getByRole('link', /Stock Opname/)).toBeVisible();
-    await expect(nav.getByRole('link', /Master Barang/)).toHaveCount(0);
-    await expect(nav.getByRole('link', /Mutasi \/ Kartu Stok/)).toHaveCount(0);
+    const nav = screen.getByRole('navigation', 'Menu utama').first();
+    await expect(nav.getByRole('link', 'Penjualan')).toBeVisible();
+    await expect(nav.getByRole('link', 'Input Stok')).toBeVisible();
+    await expect(nav.getByRole('link', 'Master Barang')).toHaveCount(0);
+    await expect(nav.getByRole('link', 'Akuntansi')).toHaveCount(0);
+  });
+
+  test('sub-halaman modul tampil sebagai tab', async ({ app, browser, screen }) => {
+    await asRole(browser, 'OWNER');
+    await app.open('/inventory/opname');
+    const tabs = screen.getByRole('navigation', 'Halaman Input Stok');
+    await expect(tabs.getByRole('link', 'Barang Masuk')).toBeVisible();
+    await expect(tabs.getByRole('link', 'Stock Opname')).toHaveAttribute('aria-current', 'page');
   });
 
   test('Admin tidak bisa membuka Master Barang', async ({ app, browser }) => {

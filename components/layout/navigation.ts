@@ -476,3 +476,65 @@ export function isNavLinkActive(pathname: string, href: string) {
     (href === "/reports/ai-finance" && pathname.startsWith("/reports/ai-finance"))
   );
 }
+
+/**
+ * Sidebar ringkas: satu menu per modul. Halaman di dalam modul tampil sebagai tab di atas
+ * konten (SectionTabs), jadi semua halaman tetap bisa dicapai dalam 2 klik.
+ */
+export type NavSectionGroup = "Utama" | "Penjualan & Kas" | "Stok & Pembelian" | "Keuangan" | "Sistem";
+
+export type NavSection = { id: string; label: string; group: NavSectionGroup; hrefs: string[]; home?: string; tabs?: Record<string, string> };
+
+export const NAV_SECTIONS: NavSection[] = [
+  { id: "dashboard", label: "Dashboard", group: "Utama", hrefs: ["/dashboard"] },
+  { id: "penjualan", label: "Penjualan", group: "Penjualan & Kas", hrefs: ["/penjualan", "/penjualan/input", "/penjualan/draft", "/penjualan/retur"], home: "/penjualan",
+    tabs: { "/penjualan": "Riwayat", "/penjualan/input": "Input Baru", "/penjualan/draft": "Draft", "/penjualan/retur": "Retur" } },
+  { id: "do", label: "Delivery Order", group: "Penjualan & Kas", hrefs: ["/delivery-orders"] },
+  { id: "tempo", label: "Tempo & Piutang", group: "Penjualan & Kas", hrefs: ["/tempo"] },
+  { id: "pengeluaran", label: "Pengeluaran", group: "Penjualan & Kas", hrefs: ["/pengeluaran", "/pengeluaran/input"], home: "/pengeluaran",
+    tabs: { "/pengeluaran": "Riwayat", "/pengeluaran/input": "Input Baru" } },
+  { id: "approval", label: "Approval", group: "Penjualan & Kas", hrefs: ["/approval"] },
+  { id: "stok", label: "Stok", group: "Stok & Pembelian", hrefs: ["/inventory", "/inventory/mutasi", "/stok-barang/ai-forecast"], home: "/inventory",
+    tabs: { "/inventory": "Stok Gudang & Toko", "/inventory/mutasi": "Kartu Stok", "/stok-barang/ai-forecast": "Prediksi Stok" } },
+  { id: "input-stok", label: "Input Stok", group: "Stok & Pembelian", hrefs: ["/inventory/barang-masuk", "/inventory/transfer", "/inventory/opname", "/inventory/adjustment", "/inventory/import"] },
+  { id: "master-barang", label: "Master Barang", group: "Stok & Pembelian", hrefs: ["/inventory/produk", "/inventory/lokasi"], tabs: { "/inventory/produk": "Barang" } },
+  { id: "pembelian", label: "Pembelian", group: "Stok & Pembelian", hrefs: ["/pembelian/pesanan", "/pembelian/invoice", "/pembelian/pembayaran"],
+    tabs: { "/pembelian/pesanan": "Pesanan (PO)", "/pembelian/invoice": "Tagihan & Landed Cost", "/pembelian/pembayaran": "Pembayaran" } },
+  { id: "laporan", label: "Laporan", group: "Keuangan", hrefs: ["/reports", "/reports/income-statement", "/reports/balance-sheet", "/reports/finance", "/reports/customers", "/reports/products", "/reports/stocks", "/reports/ai-finance", "/reports/cctv"], home: "/reports",
+    tabs: { "/reports": "Harian", "/reports/income-statement": "Laba Rugi", "/reports/balance-sheet": "Neraca", "/reports/finance": "Finance", "/reports/customers": "Customer", "/reports/products": "Produk", "/reports/stocks": "Stok", "/reports/ai-finance": "AI CFO", "/reports/cctv": "CCTV" } },
+  { id: "akuntansi", label: "Akuntansi", group: "Keuangan", hrefs: ["/akuntansi/jurnal", "/akuntansi/buku-besar", "/akuntansi/neraca-saldo", "/akuntansi/kurs", "/akuntansi/coa", "/akuntansi/tutup-buku", "/akuntansi/rekonsiliasi"],
+    tabs: { "/akuntansi/jurnal": "Jurnal", "/akuntansi/kurs": "Kurs Valas", "/akuntansi/coa": "Bagan Akun", "/akuntansi/rekonsiliasi": "Rekonsiliasi" } },
+  { id: "sdm", label: "SDM", group: "Keuangan", hrefs: ["/sdm/karyawan", "/sdm/organisasi", "/sdm/gaji", "/sdm/kasbon", "/sdm/simpanan", "/sdm/uang-muka"],
+    tabs: { "/sdm/karyawan": "Karyawan", "/sdm/organisasi": "Organisasi", "/sdm/gaji": "Gaji", "/sdm/kasbon": "Kasbon", "/sdm/simpanan": "Simpanan", "/sdm/uang-muka": "Uang Muka" } },
+  { id: "sistem", label: "Sistem", group: "Sistem", hrefs: ["/settings", "/audit-trail", "/erp-sync", "/cctv-monitoring", "/panduan"],
+    tabs: { "/cctv-monitoring": "Monitoring CCTV" } }
+];
+
+const SECTION_GROUP_ORDER: NavSectionGroup[] = ["Utama", "Penjualan & Kas", "Stok & Pembelian", "Keuangan", "Sistem"];
+
+export type VisibleNavSection = { id: string; label: string; href: string; links: NavLink[] };
+
+/** Modul yang punya minimal satu halaman yang boleh dibuka role ini, dengan tab-tabnya. */
+export function visibleNavSections(role: Role): { group: NavSectionGroup; sections: VisibleNavSection[] }[] {
+  const allowed = new Map(visibleNavLinks(role).map((l) => [l.href, l]));
+  const sections = NAV_SECTIONS.map((s) => {
+    const links = s.hrefs.map((h) => allowed.get(h)).filter((l): l is NavLink => Boolean(l)).map((l) => ({ ...l, label: s.tabs?.[l.href] ?? l.label }));
+    const href = s.home && allowed.has(s.home) ? s.home : links[0]?.href;
+    return { ...s, href, links };
+  }).filter((s) => s.links.length > 0 && s.href);
+  return SECTION_GROUP_ORDER
+    .map((group) => ({ group, sections: sections.filter((s) => s.group === group).map(({ id, label, href, links }) => ({ id, label, href: href!, links })) }))
+    .filter((g) => g.sections.length > 0);
+}
+
+/** Link yang paling cocok dengan URL: sama persis, atau awalan terpanjang (mis. /penjualan/123 → /penjualan). */
+export function matchNavHref(pathname: string, hrefs: string[]) {
+  return hrefs
+    .filter((h) => pathname === h || pathname.startsWith(`${h}/`))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
+export function activeNavSection(pathname: string, sections: VisibleNavSection[]) {
+  const href = matchNavHref(pathname, sections.flatMap((s) => s.links.map((l) => l.href)));
+  return { section: sections.find((s) => s.links.some((l) => l.href === href)), href };
+}
