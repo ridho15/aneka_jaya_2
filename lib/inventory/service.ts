@@ -284,17 +284,14 @@ function serializeProduct<T extends { minimumStock: Prisma.Decimal; costPrice: P
 type KoliItem = { quantity?: number | null; countedQty?: number | null; koli?: number | null; loose?: number | null; unitsPerKoli?: number | null };
 
 function itemQuantity(product: { sku: string; unitsPerKoli: Prisma.Decimal | null }, item: KoliItem, field: "quantity" | "countedQty" = "quantity") {
-  const perKoli = item.unitsPerKoli ?? (product.unitsPerKoli == null ? null : num(product.unitsPerKoli));
+  const perKoli = product.unitsPerKoli == null ? null : num(product.unitsPerKoli);
+  // Isi per koli hanya diatur di Master Barang; dokumen stok tidak boleh mengubahnya.
+  if (item.unitsPerKoli != null && item.unitsPerKoli !== perKoli) {
+    throw new InventoryError("VALIDATION", `Isi per koli ${product.sku} hanya bisa diubah di Master Barang (sekarang: ${perKoli ?? "belum diatur"}).`, 400, { sku: product.sku });
+  }
   const qty = qtyFromKoli({ quantity: item[field], koli: item.koli, loose: item.loose }, perKoli);
-  if (qty == null) throw new InventoryError("VALIDATION", `Isi per koli untuk ${product.sku} belum ada. Isi kolom "Isi per koli" di baris ini, atau masukkan jumlah di kolom Lepas.`, 400, { sku: product.sku });
+  if (qty == null) throw new InventoryError("VALIDATION", `Isi per koli ${product.sku} belum diatur di Master Barang. Masukkan jumlah di kolom Lepas, atau minta Super Admin mengisi isi per koli.`, 400, { sku: product.sku });
   return qty;
-}
-
-/** Isi per koli yang diisi saat input stok disimpan ke master barang agar input berikutnya langsung tahu. */
-async function rememberUnitsPerKoli(tx: Tx, product: { id: string; unitsPerKoli: Prisma.Decimal | null }, item: KoliItem) {
-  if (item.unitsPerKoli == null) return;
-  if (product.unitsPerKoli != null && num(product.unitsPerKoli) === item.unitsPerKoli) return;
-  await tx.inventoryProduct.update({ where: { id: product.id }, data: { unitsPerKoli: item.unitsPerKoli } });
 }
 
 
@@ -529,7 +526,6 @@ export async function createTransfer(input: TransferInput, actor?: InventoryActo
     const products: Awaited<ReturnType<typeof resolveProduct>>[] = [];
     for (const item of input.items) products.push(await resolveProduct(tx, item));
     const quantities = input.items.map((item, i) => itemQuantity(products[i], item));
-    for (let i = 0; i < products.length; i++) await rememberUnitsPerKoli(tx, products[i], input.items[i]);
     const badQty = quantities.findIndex((q) => !(q > 0));
     if (badQty >= 0) throw new InventoryError("VALIDATION", `Qty transfer ${products[badQty].sku} harus lebih dari 0.`);
 
@@ -644,7 +640,6 @@ export async function createOpname(input: OpnameInput, actor?: InventoryActor) {
       seen.add(product.id);
       const systemQty = await currentQuantity(tx, product.id, location.id);
       const counted = itemQuantity(product, item, "countedQty");
-      await rememberUnitsPerKoli(tx, product, item);
       if (counted < 0) throw new InventoryError("VALIDATION", `Qty fisik ${product.sku} tidak boleh negatif.`);
       lines.push({ productId: product.id, systemQty, countedQty: counted, differenceQty: round2(counted - systemQty), notes: item.notes, unitCost: num(product.costPrice) });
     }
@@ -695,7 +690,6 @@ export async function createAdjustment(input: AdjustmentInput, actor?: Inventory
     const products: Awaited<ReturnType<typeof resolveProduct>>[] = [];
     for (const item of input.items) products.push(await resolveProduct(tx, item));
     const quantities = input.items.map((item, i) => itemQuantity(products[i], item));
-    for (let i = 0; i < products.length; i++) await rememberUnitsPerKoli(tx, products[i], input.items[i]);
     const zero = quantities.findIndex((q) => q === 0);
     if (zero >= 0) throw new InventoryError("VALIDATION", `Qty adjustment ${products[zero].sku} tidak boleh 0.`);
     const adjustment = await tx.inventoryAdjustment.create({
@@ -744,7 +738,6 @@ export async function createStockIn(input: StockInInput, actor?: InventoryActor)
       const item = list[i];
       const product = await resolveProduct(tx, item);
       const quantity = itemQuantity(product, item);
-      await rememberUnitsPerKoli(tx, product, item);
       if (!(quantity > 0)) throw new InventoryError("VALIDATION", `Qty masuk ${product.sku} harus lebih dari 0.`);
       movements.push(await postMovement(tx, {
         productId: product.id, locationId: location.id, delta: quantity, unitCost: item.unitCost ?? num(product.costPrice),

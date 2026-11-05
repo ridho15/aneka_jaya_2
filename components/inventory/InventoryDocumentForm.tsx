@@ -10,7 +10,7 @@ import { koliText, koliToQty, locationLabel, qtyToKoliFields, type InvLocation, 
 import { useRememberedLocation } from "./rememberedLocation";
 
 type Mode = "transfer" | "opname" | "adjustment" | "stock-in";
-type Row = { productId: string; koli: string; perKoli: string; loose: string; unitCost: string; notes: string };
+type Row = { productId: string; koli: string; loose: string; unitCost: string; notes: string };
 type Snapshot = { locationId: string; status: "loading" | "ready" | "error"; qty: Record<string, number> };
 
 const ENDPOINT: Record<Mode, string> = {
@@ -39,11 +39,12 @@ export const fieldClass =
 
 type Props = { mode: Mode; locations: InvLocation[]; products: InvProduct[]; initialLocationId?: string; initialProductId?: string };
 
-const emptyRow = (product: InvProduct | undefined, productId: string): Row => ({
-  productId, koli: "", perKoli: product?.unitsPerKoli ? String(product.unitsPerKoli) : "", loose: "", unitCost: "", notes: ""
-});
+const emptyRow = (productId: string): Row => ({ productId, koli: "", loose: "", unitCost: "", notes: "" });
 
 const qtyField = fieldClass.replace("w-full ", "");
+// Satu baris per barang di layar lebar; kelas ditulis utuh agar terbaca Tailwind.
+const GRID = "md:grid-cols-[minmax(160px,1.4fr)_minmax(90px,0.6fr)_auto_minmax(110px,0.6fr)_minmax(120px,1fr)_auto]";
+const GRID_COST = "md:grid-cols-[minmax(160px,1.4fr)_minmax(90px,0.6fr)_auto_minmax(90px,0.5fr)_minmax(100px,0.6fr)_minmax(110px,0.8fr)_auto]";
 
 export function InventoryDocumentForm({ mode, locations, products, initialLocationId, initialProductId }: Props) {
   const router = useRouter();
@@ -60,7 +61,7 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
   const [receiveNow, setReceiveNow] = useState(true);
   const [rows, setRows] = useState<Row[]>(() => {
     const p = products.find((x) => x.id === initialProductId);
-    return p ? [emptyRow(p, p.id)] : [];
+    return p ? [emptyRow(p.id)] : [];
   });
   const [rowFilter, setRowFilter] = useState("");
   const [filling, setFilling] = useState(false);
@@ -101,7 +102,7 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
     return () => { active = false; };
   }, [locationId, reloadKey]);
 
-  const prefilledRow = (p: InvProduct, quantity: number): Row => ({ ...emptyRow(p, p.id), ...qtyToKoliFields(quantity, p.unitsPerKoli) });
+  const prefilledRow = (p: InvProduct, quantity: number): Row => ({ ...emptyRow(p.id), ...qtyToKoliFields(quantity, p.unitsPerKoli) });
 
   /** Opname: semua barang yang ada stoknya di lokasi ini langsung masuk daftar berisi stok sistem. */
   function loadAllForOpname() {
@@ -136,7 +137,7 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
   const numOrNull = (v: string) => (v.trim() === "" ? null : Number(v));
   const rowQty = (row: Row) => {
     const koli = numOrNull(row.koli);
-    const perKoli = numOrNull(row.perKoli);
+    const perKoli = productMap.get(row.productId)?.unitsPerKoli ?? null;
     if (koli == null && numOrNull(row.loose) == null) return NaN;
     if (koli && !(perKoli && perKoli > 0)) return NaN;
     return koliToQty(row.koli, row.loose, perKoli);
@@ -152,7 +153,7 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
     const bad = rows.find((r) => !Number.isFinite(rowQty(r)));
     if (bad) {
       const sku = productMap.get(bad.productId)?.sku ?? "";
-      return numOrNull(bad.koli) && !numOrNull(bad.perKoli) ? `Isi per koli untuk ${sku} wajib diisi kalau memakai koli.` : `Jumlah ${sku} wajib diisi (koli dan/atau lepas).`;
+      return numOrNull(bad.koli) && !productMap.get(bad.productId)?.unitsPerKoli ? `Isi per koli ${sku} belum diatur di Master Barang. Isi jumlahnya di kolom lepas.` : `Jumlah ${sku} wajib diisi (koli dan/atau lepas).`;
     }
     if (mode === "opname" && stockStatus !== "ready") return "Stok sistem belum termuat. Tunggu sebentar atau muat ulang sebelum menyimpan opname.";
     return null;
@@ -168,13 +169,11 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
 
   async function submit() {
     const items = rows.map((r) => {
-      const perKoli = numOrNull(r.perKoli);
       const base = {
         productId: r.productId,
         notes: r.notes || undefined,
         koli: numOrNull(r.koli) ?? undefined,
-        loose: numOrNull(r.loose) ?? undefined,
-        unitsPerKoli: perKoli && perKoli > 0 ? perKoli : undefined
+        loose: numOrNull(r.loose) ?? undefined
       };
       return mode === "opname" ? base : { ...base, unitCost: r.unitCost ? Number(r.unitCost) : undefined };
     });
@@ -220,8 +219,11 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
       );
     }
     const sys = systemQty[productId] ?? 0;
-    return <>{koliText(sys, unitsPerKoli, unit)}{unitsPerKoli && sys ? <span className="block text-xs text-slate-600">{sys.toLocaleString("id-ID")} {unit}</span> : null}</>;
+    return <span title={`${sys.toLocaleString("id-ID")} ${unit}`}>{koliText(sys, unitsPerKoli, unit)}</span>;
   };
+
+  const withCost = mode === "stock-in" || mode === "adjustment";
+  const gridCols = withCost ? GRID_COST : GRID;
 
   return (
     // Pesan error lama hilang begitu pengguna mengubah isian.
@@ -299,65 +301,81 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
       )}
 
       {rows.length > 0 && (
-        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
-          {rows.map((row, i) => {
-            const p = productMap.get(row.productId);
-            const needle = rowFilter.trim().toLowerCase();
-            if (needle && !`${p?.sku} ${p?.name}`.toLowerCase().includes(needle)) return null;
-            const unit = p?.unit ?? "";
-            const q = rowQty(row);
-            const sys = systemQty[row.productId] ?? 0;
-            const diff = stockStatus === "ready" && Number.isFinite(q) ? Math.round((q - sys) * 100) / 100 : null;
-            const perKoliChanged = row.perKoli !== "" && Number(row.perKoli) !== (p?.unitsPerKoli ?? null);
-            return (
-              <li key={row.productId} className="grid gap-3 p-3 md:grid-cols-[minmax(180px,1.3fr)_minmax(110px,0.6fr)_minmax(250px,2fr)_minmax(140px,1fr)_auto] md:items-start">
-                <div>
-                  <div className="font-semibold text-slate-900">{p?.name}</div>
-                  <div className="text-xs text-slate-600">{p?.sku} · {unit}{p?.unitsPerKoli ? ` · isi ${p.unitsPerKoli} ${unit}/koli` : ""}</div>
-                </div>
-                <div className="text-sm tabular-nums md:text-right">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600 md:hidden">Stok sistem: </span>
-                  {stockCell(row.productId, p?.unitsPerKoli, unit)}
-                </div>
-                <div>
-                  <span className="mb-1 block text-xs font-semibold text-slate-700">{QTY_LABEL[mode]}</span>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <label className="flex flex-col text-xs text-slate-700">Koli
-                      <input className={`${qtyField} mt-0.5 w-20`} inputMode="decimal" placeholder="0" value={row.koli} onChange={(e) => updateRow(i, { koli: e.target.value })} />
-                    </label>
-                    <span className="pb-3 text-sm text-slate-600" aria-hidden>×</span>
-                    <label className="flex flex-col text-xs text-slate-700">Isi per koli ({unit})
-                      <input className={`${qtyField} mt-0.5 w-24 ${perKoliChanged ? "border-amber-500 bg-amber-50" : ""}`} inputMode="decimal" placeholder="isi" value={row.perKoli} onChange={(e) => updateRow(i, { perKoli: e.target.value })} />
-                    </label>
-                    <span className="pb-3 text-sm text-slate-600" aria-hidden>+</span>
-                    <label className="flex flex-col text-xs text-slate-700">Lepas ({unit})
-                      <input className={`${qtyField} mt-0.5 w-20`} inputMode="decimal" placeholder="0" value={row.loose} onChange={(e) => updateRow(i, { loose: e.target.value })} />
-                    </label>
+        <div className="rounded-lg border border-slate-200">
+          <div className={`hidden gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 md:grid ${gridCols}`}>
+            <span>Barang</span>
+            <span className="text-right">Stok sistem</span>
+            <span>{QTY_LABEL[mode]}</span>
+            <span className="text-right">{mode === "opname" ? "Total · selisih" : "Total"}</span>
+            {withCost && <span>HPP per satuan (opsional)</span>}
+            <span>Catatan</span>
+            <span />
+          </div>
+          <ul className="divide-y divide-slate-200">
+            {rows.map((row, i) => {
+              const p = productMap.get(row.productId);
+              const needle = rowFilter.trim().toLowerCase();
+              if (needle && !`${p?.sku} ${p?.name}`.toLowerCase().includes(needle)) return null;
+              const unit = p?.unit ?? "";
+              const perKoli = p?.unitsPerKoli ?? null;
+              const q = rowQty(row);
+              const sys = systemQty[row.productId] ?? 0;
+              const diff = stockStatus === "ready" && Number.isFinite(q) ? Math.round((q - sys) * 100) / 100 : null;
+              const name = p?.name ?? row.productId;
+              return (
+                <li key={row.productId} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2 ${gridCols}`}>
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-slate-900" title={name}>{name}</div>
+                    <div className="hidden truncate text-xs text-slate-600 md:block">
+                      {p?.sku} · {perKoli ? `isi ${perKoli.toLocaleString("id-ID")} ${unit}/koli` : `${unit} · isi per koli belum diatur`}
+                    </div>
+                    <div className="truncate text-xs text-slate-600 md:hidden">
+                      {p?.sku} · {perKoli ? `${perKoli.toLocaleString("id-ID")}/koli` : "tanpa koli"} · stok {stockCell(row.productId, perKoli, unit)}
+                    </div>
                   </div>
-                  <p className="mt-1 text-xs text-slate-600">
-                    {row.perKoli ? <>1 koli = <b>{Number(row.perKoli).toLocaleString("id-ID")} {unit}</b></> : "Isi per koli belum diatur"}
-                    {Number.isFinite(q) ? <> · total <b>{q.toLocaleString("id-ID")} {unit}</b></> : null}
-                    {mode === "opname" && diff != null ? <> · selisih <b className={diff < 0 ? "text-red-700" : diff > 0 ? "text-emerald-800" : ""}>{diff > 0 ? "+" : ""}{diff.toLocaleString("id-ID")} {unit}</b></> : null}
-                  </p>
-                  {perKoliChanged && <p className="mt-1 text-xs text-amber-800">Isi per koli baru ini ikut disimpan ke Master Barang.</p>}
-                </div>
-                <div className="grid gap-2">
-                  {(mode === "stock-in" || mode === "adjustment") && (
-                    <label className="text-xs text-slate-700">HPP per {unit || "satuan"} (opsional)
-                      <input className={`${fieldClass} mt-0.5`} inputMode="decimal" value={row.unitCost} onChange={(e) => updateRow(i, { unitCost: e.target.value })} />
-                    </label>
+                  <div className="hidden whitespace-nowrap text-right text-sm tabular-nums md:block">{stockCell(row.productId, perKoli, unit)}</div>
+                  <div className="col-span-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-slate-700 md:col-span-1 md:flex-nowrap">
+                    <input
+                      aria-label={`Koli ${p?.sku ?? ""}`}
+                      className={`${qtyField} w-16 disabled:bg-slate-100`}
+                      inputMode="decimal"
+                      placeholder={perKoli ? "0" : "–"}
+                      disabled={!perKoli}
+                      title={perKoli ? undefined : "Isi per koli belum diatur di Master Barang"}
+                      value={row.koli}
+                      onChange={(e) => updateRow(i, { koli: e.target.value })}
+                    />
+                    <span>koli +</span>
+                    <input
+                      aria-label={`Lepas ${p?.sku ?? ""} (${unit})`}
+                      className={`${qtyField} w-20`}
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={row.loose}
+                      onChange={(e) => updateRow(i, { loose: e.target.value })}
+                    />
+                    <span>{unit}</span>
+                    <span className="whitespace-nowrap text-xs text-slate-600 md:hidden">
+                      {Number.isFinite(q) ? <>= <b>{q.toLocaleString("id-ID")}</b></> : null}
+                      {mode === "opname" && diff != null && diff !== 0 ? <> (<b className={diff < 0 ? "text-red-700" : "text-emerald-800"}>{diff > 0 ? "+" : ""}{diff.toLocaleString("id-ID")}</b>)</> : null}
+                    </span>
+                  </div>
+                  <div className="hidden whitespace-nowrap text-right text-sm tabular-nums md:block">
+                    {Number.isFinite(q) ? <b>{q.toLocaleString("id-ID")} {unit}</b> : <span className="text-slate-500">–</span>}
+                    {mode === "opname" && diff != null ? <span className={`ml-1 font-semibold ${diff < 0 ? "text-red-700" : diff > 0 ? "text-emerald-800" : "text-slate-500"}`}>{diff > 0 ? "+" : ""}{diff.toLocaleString("id-ID")}</span> : null}
+                  </div>
+                  {withCost && (
+                    <input aria-label={`HPP per ${unit || "satuan"} ${p?.sku ?? ""} (opsional)`} placeholder="HPP (opsional)" className={`${fieldClass} hidden md:block`} inputMode="decimal" value={row.unitCost} onChange={(e) => updateRow(i, { unitCost: e.target.value })} />
                   )}
-                  <label className="text-xs text-slate-700">Catatan
-                    <input className={`${fieldClass} mt-0.5`} value={row.notes} onChange={(e) => updateRow(i, { notes: e.target.value })} />
-                  </label>
-                </div>
-                <button type="button" className="min-h-11 justify-self-start rounded-lg px-3 text-sm font-semibold text-red-700 hover:bg-red-50 md:justify-self-end" onClick={() => setRows((prev) => prev.filter((_, idx) => idx !== i))}>
-                  Hapus
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                  <input aria-label={`Catatan ${p?.sku ?? ""}`} placeholder="Catatan" className={`${fieldClass} hidden md:block`} value={row.notes} onChange={(e) => updateRow(i, { notes: e.target.value })} />
+                  <button type="button" aria-label={`Hapus ${p?.sku ?? ""}`} className="col-start-2 row-start-1 min-h-11 rounded-lg px-3 text-sm font-semibold text-red-700 hover:bg-red-50 md:col-start-auto md:row-start-auto" onClick={() => setRows((prev) => prev.filter((_, idx) => idx !== i))}>
+                    Hapus
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       <div className="w-full sm:w-96">
@@ -365,7 +383,7 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
           options={productOptions}
           onSelect={(productId) => {
             setError(null);
-            setRows((prev) => [...prev, emptyRow(productMap.get(productId), productId)]);
+            setRows((prev) => [...prev, emptyRow(productId)]);
           }}
           placeholder="+ Tambah barang"
           searchPlaceholder="Cari kode / nama barang..."

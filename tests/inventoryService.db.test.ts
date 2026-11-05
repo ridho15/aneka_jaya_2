@@ -197,14 +197,17 @@ suite("inventory service (postgres)", () => {
     expect(updated.costPrice).toBe(56000);
   });
 
-  it("isi 1 koli yang diisi saat input stok tersimpan ke master barang", async () => {
+  it("isi per koli hanya dari master barang; dokumen stok tidak bisa mengubahnya", async () => {
     const newSku = `ISI-${sku}`;
     await svc.createProduct({ sku: newSku, name: "Tanpa Isi Koli", unit: "Lusin", minimumStock: 0, costPrice: 0, sellingPrice: 0, isActive: true });
-    await svc.createStockIn({ locationId: gudang.id, items: [{ sku: newSku, koli: 3, unitsPerKoli: 60, loose: 4 }] });
+    await expect(svc.createStockIn({ locationId: gudang.id, items: [{ sku: newSku, koli: 3, loose: 4 }] })).rejects.toThrow(/Master Barang/);
+    await expect(svc.createStockIn({ locationId: gudang.id, items: [{ sku: newSku, koli: 3, unitsPerKoli: 60, loose: 4 }] })).rejects.toThrow(/Master Barang/);
+    await svc.updateProduct(newSku, { unitsPerKoli: 60 });
+    await svc.createStockIn({ locationId: gudang.id, items: [{ sku: newSku, koli: 3, loose: 4 }] });
     let p = await svc.getProduct(newSku);
     expect(p.unitsPerKoli).toBe(60);
     expect(p.totalQuantity).toBe(184);
-    // input berikutnya cukup koli, isi diambil dari master
+    await expect(svc.createTransfer({ fromLocationId: gudang.id, toLocationId: toko.id, receiveNow: true, items: [{ sku: newSku, koli: 1, unitsPerKoli: 50 }] })).rejects.toThrow(/Master Barang/);
     await svc.createTransfer({ fromLocationId: gudang.id, toLocationId: toko.id, receiveNow: true, items: [{ sku: newSku, koli: 1 }] });
     p = await svc.getProduct(newSku);
     expect(p.stocks.find((s) => s.locationId === toko.id)?.quantity).toBe(60);

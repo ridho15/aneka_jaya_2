@@ -33,7 +33,7 @@ Setiap barang bisa diberi **Isi per Koli** di Master Barang, dalam satuan barang
 - Setiap input stok (transfer, barang masuk, opname, adjustment) punya kolom **Koli × Isi 1 koli + Lepas**.
   Isi 1 koli otomatis terisi dari master barang; bila belum ada atau berubah, cukup diisi di form dan
   angkanya **disimpan ke master barang** untuk input berikutnya.
-- API: kirim `koli` dan/atau `loose` (plus `unitsPerKoli` opsional = isi 1 koli, ikut disimpan ke master) sebagai ganti `quantity`/`countedQty`. Response saldo memuat
+- API: kirim `koli` dan/atau `loose` (isi 1 koli selalu diambil dari Master Barang; `unitsPerKoli` yang berbeda ditolak) sebagai ganti `quantity`/`countedQty`. Response saldo memuat
   `unitsPerKoli`, `koli`, `loose`, dan `koliText`.
 - Import Excel ikut menyimpan kolom *Isi / Koli* ke master barang.
 
