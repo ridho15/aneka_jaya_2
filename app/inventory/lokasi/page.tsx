@@ -10,12 +10,12 @@ export const dynamic = "force-dynamic";
 
 export default async function LokasiPage() {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.view")) redirect("/no-access");
+  if (!can(role, "inventory.location")) redirect("/no-access");
   const locations = await listLocations({ includeInactive: true });
   return (
     <AppShell>
       <InventoryHeader title="Gudang & Toko" description="Kelola semua lokasi stok: gudang dan toko. Tandai satu lokasi sebagai default untuk penjualan dan penerimaan pembelian." />
-      <LocationManager locations={locations} canManage={can(role, "inventory.manage")} />
+      <LocationManager locations={locations} canManage={can(role, "inventory.location")} />
     </AppShell>
   );
 }

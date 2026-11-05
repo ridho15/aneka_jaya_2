@@ -12,7 +12,7 @@ type SP = Promise<{ productId?: string; locationId?: string; type?: string; refe
 
 export default async function MutasiStokPage({ searchParams }: { searchParams: SP }) {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.view")) redirect("/no-access");
+  if (!can(role, "inventory.movement.view")) redirect("/no-access");
   const p = await searchParams;
   const type = p.type && p.type in MOVEMENT_LABEL ? (p.type as InventoryMovementType) : undefined;
   const [locations, products, result] = await Promise.all([

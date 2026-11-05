@@ -23,7 +23,15 @@ const PROTECTED: Array<{ path: string; permission: Parameters<typeof can>[1] }> 
   { path: "/sdm", permission: "sdm.view" },
   { path: "/akuntansi", permission: "accounting.view" },
   { path: "/pembelian", permission: "purchasing.view" },
-  { path: "/inventory", permission: "inventory.view" },
+  { path: "/inventory/mutasi", permission: "inventory.movement.view" },
+  { path: "/inventory/transfer", permission: "inventory.transfer" },
+  { path: "/inventory/barang-masuk", permission: "inventory.receive" },
+  { path: "/inventory/opname", permission: "inventory.opname" },
+  { path: "/inventory/adjustment", permission: "inventory.adjust" },
+  { path: "/inventory/import", permission: "inventory.import" },
+  { path: "/inventory/produk", permission: "inventory.master" },
+  { path: "/inventory/lokasi", permission: "inventory.location" },
+  { path: "/inventory", permission: "inventory.stock.view" },
 ];
 
 export function proxy(request: NextRequest) {

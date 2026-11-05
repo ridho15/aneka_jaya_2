@@ -10,7 +10,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
  * Field: file (.xlsx), warehouseLocationId, storeLocationId, opnameDate (YYYY-MM-DD),
  * dryRun ("true" default), zeroUncounted ("true" default), updateMaster ("true" default).
  */
-export const POST = inventoryRoute("inventory.adjust", async (request, ctx) => {
+export const POST = inventoryRoute("inventory.import", async (request, ctx) => {
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   if (!form || !file || typeof file === "string") throw new InventoryError("VALIDATION", "File Excel wajib diunggah.");

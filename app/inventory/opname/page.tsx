@@ -10,13 +10,13 @@ export const dynamic = "force-dynamic";
 
 export default async function OpnamePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.view")) redirect("/no-access");
+  if (!can(role, "inventory.opname")) redirect("/no-access");
   const p = await searchParams;
   const [locations, products, result] = await Promise.all([listLocations(), listProductOptions(), listOpnames({ page: Number(p.page) || 1 })]);
   return (
     <AppShell>
       <InventoryHeader title="Stock Opname" description="Hitung fisik barang lalu input qty sebenarnya. Stok sistem akan DIGANTI dengan qty fisik dan selisihnya tercatat di kartu stok." />
-      {can(role, "inventory.adjust") && <div className="mb-8"><InventoryDocumentForm mode="opname" locations={locations} products={products} /></div>}
+      {can(role, "inventory.opname") && <div className="mb-8"><InventoryDocumentForm mode="opname" locations={locations} products={products} /></div>}
       <div className="aj-surface overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">

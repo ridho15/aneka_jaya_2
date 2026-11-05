@@ -2,7 +2,7 @@ import { inventoryRoute, parseBody, searchParams, auditInventory } from "@/lib/i
 import { createAdjustment, listAdjustments } from "@/lib/inventory/service";
 import { adjustmentSchema } from "@/lib/inventory/validation";
 
-export const GET = inventoryRoute("inventory.view", async (request) => {
+export const GET = inventoryRoute("inventory.adjust", async (request) => {
   const q = searchParams(request);
   return listAdjustments({ locationId: q.get("locationId"), page: q.int("page"), pageSize: q.int("pageSize") });
 });

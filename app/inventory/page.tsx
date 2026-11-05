@@ -12,8 +12,9 @@ type SP = Promise<{ keyword?: string; type?: string; page?: string }>;
 
 export default async function InventoryStockPage({ searchParams }: { searchParams: SP }) {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.view")) redirect("/no-access");
+  if (!can(role, "inventory.stock.view")) redirect("/no-access");
   const params = await searchParams;
+  const canMovement = can(role, "inventory.movement.view");
   const type = params.type === "STORE" || params.type === "WAREHOUSE" ? params.type : undefined;
   const matrix = await stockMatrix({ keyword: params.keyword, locationType: type, page: Number(params.page) || 1, pageSize: 50 });
   return (
@@ -22,8 +23,8 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
         title="Stok Gudang & Toko"
         description={<>Seluruh stok di semua gudang dan toko dalam satu tabel. Sumber stok untuk penjualan saat ini: <b>{inventorySource() === "local" ? "Inventory SLM" : "ERP (belum cutover)"}</b>.</>}
         actions={<>
-          <Link href="/inventory/transfer" className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700">Transfer</Link>
-          <Link href="/inventory/barang-masuk" className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Barang Masuk</Link>
+          {can(role, "inventory.transfer") && <Link href="/inventory/transfer" className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700">Transfer</Link>}
+          {can(role, "inventory.receive") && <Link href="/inventory/barang-masuk" className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Barang Masuk</Link>}
         </>}
       />
       <form className="mb-4 flex flex-wrap gap-2">
@@ -42,7 +43,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
               <th className="sticky left-0 min-w-[220px] bg-slate-50 px-3 py-2">Barang</th>
               {matrix.locations.map((l) => (
                 <th key={l.id} className="whitespace-nowrap px-3 py-2 text-right">
-                  <Link href={`/inventory/mutasi?locationId=${l.id}`} className="hover:text-emerald-700">{l.code}</Link>
+                  {canMovement ? <Link href={`/inventory/mutasi?locationId=${l.id}`} className="hover:text-emerald-700">{l.code}</Link> : l.code}
                   <div className="text-[10px] font-normal normal-case">{l.type === "STORE" ? "Toko" : "Gudang"}</div>
                 </th>
               ))}
@@ -55,7 +56,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
             {matrix.data.map((row) => (
               <tr key={row.productId} className="border-t border-slate-100">
                 <td className="sticky left-0 bg-white px-3 py-2">
-                  <Link href={`/inventory/mutasi?productId=${row.productId}`} className="font-semibold text-slate-800 hover:text-emerald-700">{row.name}</Link>
+                  {canMovement ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="font-semibold text-slate-800 hover:text-emerald-700">{row.name}</Link> : <span className="font-semibold text-slate-800">{row.name}</span>}
                   <div className="text-xs text-slate-500">{row.sku} • {row.unit}{row.unitsPerKoli ? ` • ${fmtQty(row.unitsPerKoli)}/koli` : ""}</div>
                 </td>
                 {matrix.locations.map((l) => (
@@ -70,7 +71,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
             ))}
             {!matrix.data.length && (
               <tr><td colSpan={matrix.locations.length + 4} className="px-3 py-8 text-center text-slate-500">
-                Belum ada barang. Mulai dari <Link className="text-emerald-700 underline" href="/inventory/lokasi">Gudang & Toko</Link> lalu <Link className="text-emerald-700 underline" href="/inventory/produk">Master Barang</Link>.
+                Belum ada barang.{can(role, "inventory.master") && <> Mulai dari <Link className="text-emerald-700 underline" href="/inventory/lokasi">Gudang & Toko</Link> lalu <Link className="text-emerald-700 underline" href="/inventory/produk">Master Barang</Link>.</>}
               </td></tr>
             )}
           </tbody>

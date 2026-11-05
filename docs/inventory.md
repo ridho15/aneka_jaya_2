@@ -77,9 +77,21 @@ Aturan pembacaan (sheet `Opname`, kolom dicari berdasarkan judul header):
 - Opname diposting per 250 barang. Upload ulang file yang **sama persis** tidak membuat opname ganda.
 - HPP rata-rata saldo hasil opname memakai modal di master barang, sehingga nilai persediaan langsung terhitung.
 
-Permission: `inventory.view`, `inventory.manage` (master data & barang masuk),
-`inventory.transfer`, `inventory.adjust` (opname & adjustment). Super Admin & Supervisor
-mendapat semuanya; Manager: view + transfer; Finance: view.
+Hak akses per menu:
+
+| Menu | Permission | Super Admin | Manager / Supervisor | Admin | Petugas DO (packing) |
+| --- | --- | :-: | :-: | :-: | :-: |
+| Stok Gudang & Toko | `inventory.stock.view` | ✓ | ✓ | ✓ | ✓ |
+| Mutasi / Kartu Stok | `inventory.movement.view` | ✓ | ✓ | | ✓ |
+| Transfer Antar Gudang | `inventory.transfer` | ✓ | ✓ | ✓ | |
+| Barang Masuk | `inventory.receive` | ✓ | ✓ | | |
+| Stock Opname | `inventory.opname` | ✓ | ✓ | ✓ | |
+| Stock Adjustment | `inventory.adjust` | ✓ | ✓ | | |
+| Import Opname Excel | `inventory.import` | ✓ | | | |
+| Master Barang (+ kurs RMB) | `inventory.master` | ✓ | | | |
+| Gudang & Toko | `inventory.location` | ✓ | | | |
+
+Finance dan Viewer tidak melihat menu inventory. Permission yang sama dipakai API `/api/inventory/*`.
 
 ## API
 

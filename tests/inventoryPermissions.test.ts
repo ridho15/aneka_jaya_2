@@ -1,0 +1,33 @@
+import { describe, expect, it } from "vitest";
+import { visibleNavLinks } from "@/components/layout/navigation";
+import type { Role } from "@/lib/auth/roles";
+
+const inventoryMenu = (role: Role) => visibleNavLinks(role).filter((l) => l.category === "INVENTORY GUDANG & TOKO").map((l) => l.label);
+
+describe("menu inventory per role", () => {
+  it("Super Admin melihat semua menu", () => {
+    expect(inventoryMenu("OWNER")).toEqual([
+      "Stok Gudang & Toko", "Mutasi / Kartu Stok", "Transfer Antar Gudang", "Barang Masuk", "Stock Opname",
+      "Import Opname Excel", "Stock Adjustment", "Master Barang", "Gudang & Toko"
+    ]);
+  });
+
+  it("Admin hanya stok, opname, transfer", () => {
+    expect(inventoryMenu("ADMIN")).toEqual(["Stok Gudang & Toko", "Transfer Antar Gudang", "Stock Opname"]);
+  });
+
+  it("Manager & Supervisor semua kecuali Master Barang, Gudang & Toko (dan Import)", () => {
+    const expected = ["Stok Gudang & Toko", "Mutasi / Kartu Stok", "Transfer Antar Gudang", "Barang Masuk", "Stock Opname", "Stock Adjustment"];
+    expect(inventoryMenu("MANAGER")).toEqual(expected);
+    expect(inventoryMenu("SUPERVISOR")).toEqual(expected);
+  });
+
+  it("Petugas DO (packing) hanya stok dan mutasi", () => {
+    expect(inventoryMenu("DELIVERY_DRIVER")).toEqual(["Stok Gudang & Toko", "Mutasi / Kartu Stok"]);
+  });
+
+  it("Finance dan Viewer tidak melihat inventory", () => {
+    expect(inventoryMenu("FINANCE")).toEqual([]);
+    expect(inventoryMenu("VIEWER")).toEqual([]);
+  });
+});

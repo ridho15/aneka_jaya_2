@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdjustmentPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.view")) redirect("/no-access");
+  if (!can(role, "inventory.adjust")) redirect("/no-access");
   const p = await searchParams;
   const [locations, products, result] = await Promise.all([listLocations(), listProductOptions(), listAdjustments({ page: Number(p.page) || 1 })]);
   return (

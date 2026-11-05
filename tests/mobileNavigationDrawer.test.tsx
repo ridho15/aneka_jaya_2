@@ -26,12 +26,17 @@ describe("global navigation", () => {
       ["/penjualan/draft", "Draft Penjualan"],
       ["/penjualan/retur", "Retur Penjualan"],
       ["/delivery-orders", "Delivery Order (DO)"],
+      ["/inventory", "Stok Gudang & Toko"],
+      ["/inventory/transfer", "Transfer Antar Gudang"],
+      ["/inventory/opname", "Stock Opname"],
     ]);
   });
 
-  it("shows exactly Delivery Order menu to Petugas DO (DELIVERY_DRIVER)", () => {
+  it("shows Delivery Order plus stock & mutasi menus to Petugas DO / packing (DELIVERY_DRIVER)", () => {
     expect(visibleNavLinks("DELIVERY_DRIVER").map((link) => [link.href, link.label])).toEqual([
       ["/delivery-orders", "Delivery Order (DO)"],
+      ["/inventory", "Stok Gudang & Toko"],
+      ["/inventory/mutasi", "Mutasi / Kartu Stok"],
     ]);
   });
 

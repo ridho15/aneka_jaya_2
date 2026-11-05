@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BarangMasukPage() {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.manage")) redirect("/no-access");
+  if (!can(role, "inventory.receive")) redirect("/no-access");
   const [locations, products, pending] = await Promise.all([listLocations(), listProductOptions(), listPendingPurchaseReceipts()]);
   return (
     <AppShell>

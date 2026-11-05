@@ -11,7 +11,9 @@ export const ALL_PERMISSIONS = [
   "sdm.view", "sdm.employee.manage", "sdm.kasbon.manage", "sdm.salary.view", "sdm.savings.manage",
   "accounting.view", "accounting.journal.manage", "accounting.coa.manage", "accounting.period.manage", "accounting.rates.manage",
   "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage",
-  "inventory.view", "inventory.manage", "inventory.transfer", "inventory.adjust"
+  // Inventory gudang & toko — satu permission per menu
+  "inventory.stock.view", "inventory.movement.view", "inventory.transfer", "inventory.receive",
+  "inventory.opname", "inventory.adjust", "inventory.import", "inventory.master", "inventory.location"
 ] as const;
 export type Permission = (typeof ALL_PERMISSIONS)[number];
 
@@ -27,19 +29,27 @@ export const ROLE_LABEL: Record<Role, string> = {
   VIEWER: "Viewer"
 };
 
+/**
+ * Inventory: Super Admin semua menu. Manager & Supervisor semua kecuali Master Barang,
+ * Gudang & Toko, dan Import Excel (yang mengubah master barang).
+ */
+const INVENTORY_MANAGER: Permission[] = [
+  "inventory.stock.view", "inventory.movement.view", "inventory.transfer", "inventory.receive", "inventory.opname", "inventory.adjust"
+];
+
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   OWNER: [...ALL_PERMISSIONS],
-  SUPERVISOR: ALL_PERMISSIONS.filter((p) => p !== "reports.view" && p !== "reports.finance_view" && p !== "sdm.salary.view"),
+  SUPERVISOR: ALL_PERMISSIONS.filter((p) => p !== "reports.view" && p !== "reports.finance_view" && p !== "sdm.salary.view" && !p.startsWith("inventory.")).concat(INVENTORY_MANAGER),
   ADMIN: [
-    "penjualan.create", "penjualan.manage", "do.view", "do.process", "do.assign"
+    "penjualan.create", "penjualan.manage", "do.view", "do.process", "do.assign",
+    "inventory.stock.view", "inventory.opname", "inventory.transfer"
   ],
   FINANCE: [
     "pengeluaran.view", "pengeluaran.create", "tempo.view", "tempo.mark_paid",
     "reports.finance_view", "master_data.view", "guide.view",
     "sdm.view", "sdm.kasbon.manage", "sdm.salary.view", "sdm.savings.manage",
     "accounting.view", "accounting.journal.manage", "accounting.coa.manage", "accounting.rates.manage",
-    "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage",
-    "inventory.view"
+    "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage"
   ],
   MANAGER: [
     "pengeluaran.view", "approval.view", "approval.approve", "tempo.view",
@@ -47,9 +57,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "sdm.view", "sdm.employee.manage", "sdm.savings.manage",
     "accounting.view", "accounting.period.manage",
     "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage",
-    "inventory.view", "inventory.transfer"
+    ...INVENTORY_MANAGER
   ],
-  DELIVERY_DRIVER: ["do.view", "do.process"],
+  // Petugas DO = tim packing
+  DELIVERY_DRIVER: ["do.view", "do.process", "inventory.stock.view", "inventory.movement.view"],
   VIEWER: []
 };
 

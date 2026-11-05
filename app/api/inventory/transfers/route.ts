@@ -2,7 +2,7 @@ import { inventoryRoute, parseBody, searchParams, auditInventory } from "@/lib/i
 import { createTransfer, listTransfers } from "@/lib/inventory/service";
 import { transferSchema } from "@/lib/inventory/validation";
 
-export const GET = inventoryRoute("inventory.view", async (request) => {
+export const GET = inventoryRoute("inventory.transfer", async (request) => {
   const q = searchParams(request);
   const status = q.get("status")?.toUpperCase();
   return listTransfers({

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ImportOpnamePage() {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.adjust")) redirect("/no-access");
+  if (!can(role, "inventory.import")) redirect("/no-access");
   const locations = await listLocations();
   return (
     <AppShell>

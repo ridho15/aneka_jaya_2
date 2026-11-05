@@ -13,7 +13,7 @@ const STATUS_LABEL = { IN_TRANSIT: "Dalam Perjalanan", RECEIVED: "Diterima", CAN
 
 export default async function TransferPage({ searchParams }: { searchParams: SP }) {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.view")) redirect("/no-access");
+  if (!can(role, "inventory.transfer")) redirect("/no-access");
   const p = await searchParams;
   const status = p.status && p.status in STATUS_LABEL ? (p.status as keyof typeof STATUS_LABEL) : undefined;
   const canTransfer = can(role, "inventory.transfer");

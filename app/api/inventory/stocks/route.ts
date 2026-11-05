@@ -2,7 +2,7 @@ import { inventoryRoute, searchParams } from "@/lib/inventory/http";
 import { listBalances } from "@/lib/inventory/service";
 
 /** Saldo stok per produk per lokasi (gudang/toko). */
-export const GET = inventoryRoute("inventory.view", async (request) => {
+export const GET = inventoryRoute("inventory.stock.view", async (request) => {
   const q = searchParams(request);
   const type = q.get("locationType")?.toUpperCase();
   return listBalances({

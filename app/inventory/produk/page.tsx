@@ -14,9 +14,9 @@ export const dynamic = "force-dynamic";
 
 export default async function InventoryProductPage({ searchParams }: { searchParams: Promise<{ keyword?: string; page?: string }> }) {
   const role = await getCurrentRole();
-  if (!can(role, "inventory.view")) redirect("/no-access");
+  if (!can(role, "inventory.master")) redirect("/no-access");
   const p = await searchParams;
-  const canManage = can(role, "inventory.manage");
+  const canManage = can(role, "inventory.master");
   const [locations, result, rmb, rmbProducts] = await Promise.all([
     listLocations(),
     listProducts({ keyword: p.keyword, page: Number(p.page) || 1, pageSize: 50 }),
