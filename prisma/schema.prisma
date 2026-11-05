@@ -1299,7 +1299,7 @@ model InventoryProduct {
   name         String
   category     String?
   brand        String?
-  unit         String   @default("PCS")
+  unit         String   @default("Lusin")
   barcode      String?
   /// Isi per koli dalam satuan barang (mis. 60 lusin per koli).
   unitsPerKoli Decimal? @db.Decimal(18, 2)

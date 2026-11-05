@@ -4,6 +4,7 @@ import { toStockItem } from "@/lib/api/erpMappers";
 import type { StockItem } from "@/lib/types/stock";
 import { InventoryError } from "./errors";
 import { round2 } from "./math";
+import { DEFAULT_UNIT } from "./config";
 import { lockBalanceQuantity, postMovement, runInventoryTransaction, type InventoryActor } from "./service";
 
 export type ErpImportSummary = {
@@ -37,7 +38,7 @@ export function aggregateErpStocks(rows: StockItem[]) {
       erpProductId: intId(row.productId),
       sku: row.productCode,
       name: row.productName,
-      unit: row.unit || "PCS",
+      unit: row.unit || DEFAULT_UNIT,
       minimumStock: row.minimumStock ?? 0,
       warehouseKey,
       erpWarehouseId: intId(row.warehouseId),

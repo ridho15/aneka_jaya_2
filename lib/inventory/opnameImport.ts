@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/lib/db/prisma";
 import { InventoryError } from "./errors";
 import { round2 } from "./math";
+import { DEFAULT_UNIT } from "./config";
 import { createOpname, type InventoryActor } from "./service";
 import { costFromRmb, getRmbRate } from "./pricing";
 
@@ -249,7 +250,7 @@ export async function importOpnameWorkbook(parsed: ParsedOpnameWorkbook, options
   for (let i = 0; i < newRows.length; i += 500) {
     await prisma.inventoryProduct.createMany({
       data: newRows.slice(i, i + 500).map((r) => ({
-        sku: r.sku, name: r.name, category: r.category, unit: r.unit || "PCS",
+        sku: r.sku, name: r.name, category: r.category, unit: r.unit || DEFAULT_UNIT,
         costPrice: costOf(r) ?? 0, sellingPrice: r.sellingPrice ?? 0,
         unitsPerKoli: r.unitsPerKoli ?? null, priceRmb: r.priceRmb ?? null
       })),

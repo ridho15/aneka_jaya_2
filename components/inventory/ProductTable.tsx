@@ -22,7 +22,7 @@ export function ProductTable({ rows, rate, canManage }: { rows: ProductRow[]; ra
         <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
           <tr>
             <th className="px-3 py-2">SKU</th><th className="px-3 py-2">Nama</th><th className="px-3 py-2">Satuan</th><th className="px-3 py-2 text-right">Isi / Koli</th>
-            <th className="px-3 py-2 text-right">Harga RMB</th><th className="px-3 py-2 text-right">Modal (Rp)</th><th className="px-3 py-2 text-right">Harga Jual</th>
+            <th className="px-3 py-2 text-right">Harga RMB / satuan</th><th className="px-3 py-2 text-right">Modal / satuan</th><th className="px-3 py-2 text-right">Harga Jual / satuan</th>
             <th className="px-3 py-2 text-right">Total Stok</th><th className="px-3 py-2" />
           </tr>
         </thead>
@@ -93,10 +93,10 @@ function ProductEditor({ row, rate, onDone }: { row: ProductRow; rate: number | 
         <div className="sm:col-span-2">{field("Nama", "name")}</div>
         {field("Satuan", "unit")}
         {field(`Isi per koli (${f.unit || "satuan"})`, "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
-        {field("Harga RMB / satuan", "priceRmb", { inputMode: "decimal", placeholder: "kosong = tanpa RMB" })}
-        {field("Biaya tambahan / satuan (Rp)", "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
-        {field("Modal (Rp)", "costPrice", { inputMode: "decimal", disabled: previewCost != null })}
-        {field("Harga Jual (Rp)", "sellingPrice", { inputMode: "decimal" })}
+        {field(`Harga RMB per ${f.unit || "lusin"}`, "priceRmb", { inputMode: "decimal", placeholder: "kosong = tanpa RMB" })}
+        {field(`Biaya tambahan per ${f.unit || "lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
+        {field(`Modal per ${f.unit || "lusin"} (Rp)`, "costPrice", { inputMode: "decimal", disabled: previewCost != null })}
+        {field(`Harga Jual per ${f.unit || "lusin"} (Rp)`, "sellingPrice", { inputMode: "decimal" })}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
         <span>{previewCost != null ? <>Modal otomatis: ¥{rmb} × Rp {rate?.toLocaleString("id-ID")}{Number(f.extraCostIdr) ? ` + Rp ${Number(f.extraCostIdr).toLocaleString("id-ID")}` : ""} = <b>Rp {previewCost.toLocaleString("id-ID")}</b></> : rmb != null ? "Kurs RMB belum diatur — modal tidak dihitung otomatis." : "Isi Harga RMB agar modal ikut berubah saat kurs RMB diganti."}</span>

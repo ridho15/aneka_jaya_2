@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { InventoryError } from "./errors";
 import { applyDelta, formatKoli, qtyFromKoli, round2, splitKoli } from "./math";
 import { applyRmbCost } from "./pricing";
+import { DEFAULT_UNIT } from "./config";
 import type {
   AdjustmentInput,
   LocationInput,
@@ -700,7 +701,7 @@ export async function postPurchaseReceiptToInventory(receiptId: string, location
       const unitCost = num(item.purchaseOrderItem?.unitPriceIdr);
       const product = await tx.inventoryProduct.upsert({
         where: { sku: item.itemCode },
-        create: { sku: item.itemCode, name: item.itemName, unit: item.unit || "PCS", costPrice: unitCost },
+        create: { sku: item.itemCode, name: item.itemName, unit: item.unit && item.unit.toUpperCase() !== "PCS" ? item.unit : DEFAULT_UNIT, costPrice: unitCost },
         update: {}
       });
       await postMovement(tx, {

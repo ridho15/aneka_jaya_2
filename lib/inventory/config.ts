@@ -14,3 +14,6 @@ export function inventorySource(): InventorySource {
 export function isLocalInventory() {
   return inventorySource() === "local";
 }
+
+/** Satuan default barang inventory. Semua harga (modal, jual, RMB) dicatat per satuan ini, bukan per pcs. */
+export const DEFAULT_UNIT = "Lusin";

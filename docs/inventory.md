@@ -38,7 +38,11 @@ Setiap barang bisa diberi **Isi per Koli** di Master Barang, dalam satuan barang
 
 ## Harga RMB & kurs
 
-- Master Barang punya **Harga RMB per satuan** dan **Biaya tambahan per satuan (Rp)** (ongkir/CBM, bea).
+Semua harga — modal, harga jual, dan harga RMB — dicatat **per satuan barang**, yaitu per lusin
+(atau per pack/box untuk barang bersatuan itu). Tidak ada harga per pcs. Satuan default barang
+baru (termasuk kode tanpa kolom Satuan di Excel) adalah **Lusin**.
+
+- Master Barang punya **Harga RMB per lusin/satuan** dan **Biaya tambahan per lusin/satuan (Rp)** (ongkir/CBM, bea).
 - Modal = Harga RMB × Kurs RMB + biaya tambahan.
 - Kurs RMB diatur sekali di halaman Master Barang (`PUT /api/inventory/settings/rmb-rate`).
   Saat kurs diganti, **hanya harga modal** barang yang punya harga RMB yang dihitung ulang.
@@ -65,7 +69,7 @@ Setiap barang bisa diberi **Isi per Koli** di Master Barang, dalam satuan barang
 Aturan pembacaan (sheet `Opname`, kolom dicari berdasarkan judul header):
 - Qty = `Koli × Isi/Koli + Lepas` (sama dengan rumus template). Koli tanpa Isi/Koli dihitung 0 dan diberi peringatan.
 - Kolom Harga Jual yang tidak berjudul diambil dari kolom tepat setelah "Modal Lama di Sistem".
-- Barang yang belum ada dibuat otomatis (satuan default `PCS` bila kosong). Bila "Perbarui master" dicentang,
+- Barang yang belum ada dibuat otomatis (satuan default `Lusin` bila kolom Satuan kosong). Bila "Perbarui master" dicentang,
   modal/harga jual 0 atau kosong **tidak** menimpa data yang sudah ada.
 - "Opname penuh" (default): kode dengan qty 0 di file ikut dijadikan 0 di lokasi tersebut.
   Matikan bila file hanya berisi sebagian barang.

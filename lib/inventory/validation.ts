@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_UNIT } from "./config";
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().nullable().transform((v) => (v ? v : undefined));
 const dateString = z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Tanggal tidak valid");
@@ -23,7 +24,7 @@ export const productSchema = z.object({
   name: z.string().trim().min(1, "Nama barang wajib diisi").max(255),
   category: optionalText(120),
   brand: optionalText(120),
-  unit: z.string().trim().min(1).max(20).default("PCS"),
+  unit: z.string().trim().min(1).max(20).default(DEFAULT_UNIT),
   barcode: optionalText(80),
   unitsPerKoli: z.coerce.number().positive("Isi per koli harus lebih dari 0").optional().nullable(),
   minimumStock: z.coerce.number().min(0).default(0),

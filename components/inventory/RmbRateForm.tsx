@@ -32,7 +32,7 @@ export function RmbRateForm({ rate, updatedAt, updatedBy, rmbProducts, canManage
       <div>
         <h3 className="font-bold text-slate-800">Kurs RMB untuk Harga Modal</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Modal barang = <b>Harga RMB × Kurs</b> + biaya tambahan per satuan. Saat kurs diganti, hanya <b>harga modal</b> yang ikut berubah.
+          Modal per lusin (atau per satuan barang) = <b>Harga RMB per lusin × Kurs</b> + biaya tambahan per lusin. Tidak ada harga per pcs. Saat kurs diganti, hanya <b>harga modal</b> yang ikut berubah.
         </p>
         <p className="mt-1 text-xs text-slate-500">
           {rate ? <>Kurs aktif: <b>Rp {rate.toLocaleString("id-ID")}</b> / RMB{updatedAt ? ` • diubah ${new Date(updatedAt).toLocaleString("id-ID")}${updatedBy ? ` oleh ${updatedBy}` : ""}` : ""}</> : "Kurs belum diatur."} • {rmbProducts} barang memakai harga RMB

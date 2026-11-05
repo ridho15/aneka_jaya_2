@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { locationLabel, type InvLocation } from "./labels";
 
-const empty = { sku: "", name: "", category: "", brand: "", unit: "PCS", barcode: "", minimumStock: "", unitsPerKoli: "", priceRmb: "", extraCostIdr: "", costPrice: "", sellingPrice: "", erpProductId: "", initialLocationId: "", initialQty: "" };
+const empty = { sku: "", name: "", category: "", brand: "", unit: "Lusin", barcode: "", minimumStock: "", unitsPerKoli: "", priceRmb: "", extraCostIdr: "", costPrice: "", sellingPrice: "", erpProductId: "", initialLocationId: "", initialQty: "" };
 
 export function ProductCreateForm({ locations }: { locations: InvLocation[] }) {
   const router = useRouter();
@@ -20,7 +20,7 @@ export function ProductCreateForm({ locations }: { locations: InvLocation[] }) {
     try {
       const n = (v: string) => (v ? Number(v) : undefined);
       const payload = {
-        sku: form.sku, name: form.name, category: form.category, brand: form.brand, unit: form.unit || "PCS", barcode: form.barcode,
+        sku: form.sku, name: form.name, category: form.category, brand: form.brand, unit: form.unit || "Lusin", barcode: form.barcode,
         minimumStock: n(form.minimumStock) ?? 0, costPrice: n(form.costPrice) ?? 0,
         unitsPerKoli: n(form.unitsPerKoli) ?? null, priceRmb: n(form.priceRmb) ?? null, extraCostIdr: n(form.extraCostIdr) ?? 0, sellingPrice: n(form.sellingPrice) ?? 0,
         erpProductId: n(form.erpProductId) ?? null,
@@ -50,12 +50,12 @@ export function ProductCreateForm({ locations }: { locations: InvLocation[] }) {
         {field("Merk", "brand")}
         {field("Satuan", "unit")}
         {field("Barcode", "barcode")}
-        {field("Isi per Koli (satuan)", "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
+        {field(`Isi per Koli (${form.unit || "lusin"})`, "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
         {field("Minimum Stok", "minimumStock", { inputMode: "decimal" })}
-        {field("Harga RMB / satuan", "priceRmb", { inputMode: "decimal", placeholder: "opsional" })}
-        {field("Biaya tambahan / satuan (Rp)", "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
-        {field("Modal (Rp) — otomatis bila ada harga RMB", "costPrice", { inputMode: "decimal" })}
-        {field("Harga Jual", "sellingPrice", { inputMode: "decimal" })}
+        {field(`Harga RMB per ${form.unit || "lusin"}`, "priceRmb", { inputMode: "decimal", placeholder: "opsional" })}
+        {field(`Biaya tambahan per ${form.unit || "lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
+        {field(`Modal per ${form.unit || "lusin"} (Rp) — otomatis bila ada RMB`, "costPrice", { inputMode: "decimal" })}
+        {field(`Harga Jual per ${form.unit || "lusin"}`, "sellingPrice", { inputMode: "decimal" })}
         {field("ID Produk ERP (pemetaan, opsional)", "erpProductId", { inputMode: "numeric" })}
         <label className="space-y-1 text-sm font-semibold"><span>Stok Awal di</span>
           <select className={input} value={form.initialLocationId} onChange={set("initialLocationId")}>
