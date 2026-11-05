@@ -6,9 +6,11 @@ import type { Product } from "@/lib/types/product";
  * Master Barang SLM dalam bentuk Product, untuk dashboard & laporan (harga modal, kategori).
  * `id` memakai ID produk ERP lama bila ada, karena item penjualan lama menyimpan ID itu.
  */
-export async function listCatalogProducts(): Promise<{ success: true; data: Product[] } | { success: false; message: string; data: Product[] }> {
+export async function listCatalogProducts(options: { activeOnly?: boolean } = {}): Promise<{ success: true; data: Product[] } | { success: false; message: string; data: Product[] }> {
   try {
     const rows = await prisma.inventoryProduct.findMany({
+      where: options.activeOnly ? { isActive: true } : undefined,
+      orderBy: { name: "asc" },
       select: { id: true, sku: true, name: true, category: true, unit: true, costPrice: true, sellingPrice: true, isActive: true, updatedAt: true, erpProductId: true, minimumStock: true }
     });
     return {

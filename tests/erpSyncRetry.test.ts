@@ -30,6 +30,9 @@ vi.mock("@/lib/audit/store", () => ({ recordAudit: mocks.recordAudit }));
 
 import { getErpSyncOverview, retryPendingSalesErpSync, retrySalesErpSync } from "@/lib/erpSync/salesRetry";
 
+// Test ini menguji jalur ERP lama (rollback); bawaan aplikasi sekarang inventory SLM.
+process.env.INVENTORY_SOURCE = "erp";
+
 const row = {
   id: "S-ERP-1",
   saleDate: new Date("2026-06-29"),

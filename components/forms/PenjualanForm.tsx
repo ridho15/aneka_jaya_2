@@ -434,7 +434,7 @@ export function PenjualanForm({
 
     // 1. Kesiapan Master Data & Produk ERP
     if (productState.status === "error") {
-      reasons.push("Katalog produk ERP gagal dimuat. Periksa koneksi ke server ERP.");
+      reasons.push("Daftar barang gagal dimuat. Muat ulang atau periksa Master Barang.");
     }
     if (!masterDataReady) {
       reasons.push("Data tipe pembukuan atau rekening belum siap.");
@@ -571,7 +571,7 @@ export function PenjualanForm({
         setStocks([]);
         setProductState({
           status: "error",
-          message: productResult?.message || "Produk ERP gagal dimuat.",
+          message: productResult?.message || "Daftar barang gagal dimuat.",
           code: productResult?.code,
         });
         setStockState({
@@ -588,7 +588,7 @@ export function PenjualanForm({
           ? { status: "ready" }
           : {
             status: "empty",
-            message: "ERP belum memiliki produk aktif untuk dipilih.",
+            message: "Belum ada barang aktif di Master Barang.",
           },
       );
       await refreshStocksForProducts();
@@ -637,7 +637,7 @@ export function PenjualanForm({
         return;
       setProductState({
         status: "error",
-        message: "Pencarian produk ERP bermasalah.",
+        message: "Pencarian barang bermasalah.",
       });
     }
   }, []);
@@ -1415,7 +1415,7 @@ export function PenjualanForm({
                   mode === "erp" &&
                     values[index]?.productRef?.trim() &&
                     !values[index]?.productId?.trim()
-                    ? "Pilih barang dari hasil pencarian ERP."
+                    ? "Pilih barang dari hasil pencarian."
                     : undefined;
                 const quantity = Number(values[index]?.quantity || 0);
                 const selectedStock = selected?.stockRows.find(
@@ -1620,10 +1620,12 @@ export function PenjualanForm({
                                 option.product.productId || option.product.id,
                                 { shouldDirty: true, shouldValidate: true },
                               );
-                              const effectiveWarehouseId = option.stockRows[0]?.warehouseId ? String(option.stockRows[0].warehouseId) : "1";
-                              const effectiveWarehouseName = option.stockRows[0]?.warehouse || "Gudang Utama";
-                              const effectiveRackId = option.stockRows[0]?.rackId ? String(option.stockRows[0].rackId) : undefined;
-                              const effectiveRackName = option.stockRows[0]?.rack || undefined;
+                              // Default lokasi potong stok: lokasi dengan stok terbanyak.
+                              const bestStock = [...option.stockRows].sort((x, y) => (y.quantity ?? 0) - (x.quantity ?? 0))[0];
+                              const effectiveWarehouseId = bestStock?.warehouseId ? String(bestStock.warehouseId) : "1";
+                              const effectiveWarehouseName = bestStock?.warehouse || "Gudang Utama";
+                              const effectiveRackId = bestStock?.rackId ? String(bestStock.rackId) : undefined;
+                              const effectiveRackName = bestStock?.rack || undefined;
                               const effectiveUnit = option.unit || option.product.unit || option.stockRows.find((stock) => Boolean(stock.unit))?.unit || "Pcs";
 
                               setValue(
@@ -1793,7 +1795,7 @@ export function PenjualanForm({
                         {mode === "manual" ? (
                           <span className="block text-xs font-normal text-amber-800">
                             Barang baru, dibuat di ERP bila SKU belum ada ·{" "}
-                            <button type="button" className="font-semibold underline" onClick={switchToErp}>Pilih dari ERP</button>
+                            <button type="button" className="font-semibold underline" onClick={switchToErp}>Pilih dari daftar barang</button>
                           </span>
                         ) : (
                           <ProductSelectionInfo
@@ -2153,7 +2155,7 @@ function mergeProductsWithSaleItems(
         isActive: true,
         updatedAt: sale.createdAt || new Date().toISOString(),
         dataQualityWarnings: [
-          "Produk tidak masuk hasil produk ERP awal. Cari dan pilih ulang bila ingin mengganti barang.",
+          "Barang tidak ada di daftar awal. Cari dan pilih ulang bila ingin mengganti barang.",
         ],
       }),
     );
@@ -2278,7 +2280,7 @@ function ProductSearchSelect({
         autoComplete="off"
         disabled={disabled}
         value={query}
-        placeholder="Cari kode / nama barang ERP"
+        placeholder="Cari kode / nama barang"
         className="block w-full rounded-sm border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 disabled:bg-neutral-100"
         onFocus={() => setOpen(true)}
         onChange={(event) => {
@@ -2383,7 +2385,7 @@ function ProductSelectionInfo({
     return (
       <span className="block text-xs font-normal text-slate-600">
         <button type="button" className="font-semibold text-emerald-800 underline" onClick={onSwitchManual}>
-          Barang baru (tidak ada di ERP)
+          Barang baru (belum ada di daftar)
         </button>
       </span>
     );
@@ -2401,9 +2403,9 @@ function ProductSelectionInfo({
       {stockExceeded && <span className="font-semibold text-red-700">· Qty melebihi stok lokasi</span>}
       {stockState.status === "failed" && <span className="font-semibold text-amber-800">· Stok tidak terverifikasi</span>}
       {option.warnings.length > 0 && <span className="font-semibold text-amber-800">· Data barang belum lengkap</span>}
-      {targetsErp && (
+      {(targetsErp || stockOptions.length > 1) && (
         <select
-          aria-label="Lokasi release stok"
+          aria-label="Potong stok dari"
           className="max-w-full rounded-sm border border-neutral-300 bg-white px-2 py-1 text-xs font-medium text-slate-900"
           value={selectedKey}
           onChange={(event) => {
@@ -2415,7 +2417,7 @@ function ProductSelectionInfo({
             if (stock) onStockSelect(stock);
           }}
         >
-          <option value="">{stockOptions.length ? "Pilih gudang/rak release stok" : "ERP belum mengirim gudang"}</option>
+          <option value="">{stockOptions.length ? "Pilih lokasi potong stok" : "Lokasi stok belum ada"}</option>
           {stockOptions.map((stock) => (
             <option
               key={`${stock.warehouseId || ""}::${stock.rackId || ""}`}

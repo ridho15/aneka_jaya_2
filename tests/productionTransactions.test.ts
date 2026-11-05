@@ -61,6 +61,9 @@ import { createSale } from "@/lib/api/sales";
 import { updateApprovalStatus } from "@/lib/approval/store";
 import { cancelTempo, createTempoReceivableInTransaction, payTempo, writeOffTempo } from "@/lib/tempo/store";
 
+// Test ini menguji jalur ERP lama (rollback); bawaan aplikasi sekarang inventory SLM.
+process.env.INVENTORY_SOURCE = "erp";
+
 const saleInput = {
   saleDate: "2026-06-27",
   tipeId: "W",

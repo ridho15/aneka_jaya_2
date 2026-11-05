@@ -1,4 +1,6 @@
 import "server-only";
+import { isLocalInventory } from "@/lib/inventory/config";
+import { listCatalogProducts } from "@/lib/inventory/catalog";
 import { anikaRequest } from "./anikaClient";
 import { sendNeoCommand } from "./neo";
 import type { ApiResponse } from "@/lib/types/api";
@@ -88,6 +90,10 @@ export function paginateProductItems(
 }
 
 export async function listProducts(): Promise<ApiResponse<Product[]>> {
+  if (isLocalInventory()) {
+    const local = await listCatalogProducts({ activeOnly: true });
+    return local.success ? { success: true, data: local.data } : failure(local.message, "INVENTORY_ERROR");
+  }
   const response = await listErpPaginated("/products", {
     query: { include_stock: true },
   });

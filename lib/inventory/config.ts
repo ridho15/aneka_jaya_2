@@ -1,14 +1,14 @@
 /**
  * INVENTORY_SOURCE menentukan sumber kebenaran stok untuk alur lama (daftar stok,
  * release stok penjualan, alert minimum stok):
- *  - "local" → stok dibaca & dipotong dari modul inventory SLM (database lokal).
- *  - "erp"   → perilaku lama, stok dibaca/dipotong di Anika ERP.
+ *  - "local" (default) → barang & stok dibaca/dipotong dari modul inventory SLM.
+ *  - "erp"   → perilaku lama, barang & stok dari Anika ERP (hanya untuk rollback).
  * Modul inventory SLM (/inventory) selalu memakai database lokal.
  */
 export type InventorySource = "local" | "erp";
 
 export function inventorySource(): InventorySource {
-  return String(process.env.INVENTORY_SOURCE || "erp").trim().toLowerCase() === "local" ? "local" : "erp";
+  return String(process.env.INVENTORY_SOURCE || "local").trim().toLowerCase() === "erp" ? "erp" : "local";
 }
 
 export function isLocalInventory() {

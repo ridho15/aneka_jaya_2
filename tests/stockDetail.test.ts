@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { stockDetailHref, stockDetailReturnTo, summarizeStockDetail } from "@/lib/stocks/detail";
 
+// Test ini menguji jalur ERP lama (rollback); bawaan aplikasi sekarang inventory SLM.
+process.env.INVENTORY_SOURCE = "erp";
+
 const mocks = vi.hoisted(() => ({
   listErpPaginated: vi.fn()
 }));

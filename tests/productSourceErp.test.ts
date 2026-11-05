@@ -13,6 +13,9 @@ vi.mock("@/lib/api/anikaClient", () => ({
 import { createOfficialProduct, findProductIdBySku, listProducts, paginateProductItems } from "@/lib/api/products";
 import { listStocks, listStocksPage } from "@/lib/api/stocks";
 
+// Test ini menguji jalur ERP lama (rollback); bawaan aplikasi sekarang inventory SLM.
+process.env.INVENTORY_SOURCE = "erp";
+
 describe("ERP product and stock source contract", () => {
   beforeEach(() => {
     mocks.anikaRequest.mockReset();

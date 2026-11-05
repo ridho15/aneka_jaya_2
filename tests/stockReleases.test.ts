@@ -10,6 +10,9 @@ vi.mock("@/lib/api/anikaClient", () => ({ anikaRequest: mocks.anikaRequest }));
 
 import { buildStockReleasePayload, cancelStockRelease, nextRevisionReference, releaseSaleStock } from "@/lib/api/stockReleases";
 
+// Test ini menguji jalur ERP lama (rollback); bawaan aplikasi sekarang inventory SLM.
+process.env.INVENTORY_SOURCE = "erp";
+
 const items = [{
   productRef: "BRG-001",
   productId: "1",

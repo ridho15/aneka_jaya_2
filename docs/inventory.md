@@ -159,7 +159,7 @@ Error memakai format `{ success: false, message, code, details }` dengan `code`:
 ## Langkah cutover dari ERP ke SLM
 
 1. Deploy & migrasi database: `npm run db:migrate:deploy` (migrasi `20261105010000_add_native_inventory`).
-   Selama `INVENTORY_SOURCE=erp` (default), alur penjualan lama tidak berubah.
+   Sejak versi ini `INVENTORY_SOURCE` default-nya `local` (barang & stok penjualan dari SLM). Set `INVENTORY_SOURCE=erp` hanya untuk rollback ke alur lama.
 2. Login sebagai Super Admin, cek data impor (dry run, tidak menulis apa pun):
    `POST /api/inventory/import-erp` dengan body `{}`.
 3. Impor sungguhan: `POST /api/inventory/import-erp` body `{"dryRun": false}`.

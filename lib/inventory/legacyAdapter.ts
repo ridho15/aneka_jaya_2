@@ -13,8 +13,7 @@ export async function listLocalStockItems(filter: { productId?: string; sku?: st
     keyword: filter.keyword,
     sku: filter.sku,
     includeZero: true,
-    pageSize: 500,
-    page: 1
+    all: true
   });
   return data
     .filter((row) => !filter.productId || row.productId === filter.productId || (erpId != null && row.erpProductId === erpId))
