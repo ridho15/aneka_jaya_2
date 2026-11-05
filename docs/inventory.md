@@ -169,3 +169,18 @@ Error memakai format `{ success: false, message, code, details }` dengan `code`:
 
 Catatan: invoice penjualan & akuntansi yang masih dikirim ke ERP tidak diubah oleh modul ini —
 yang dipindahkan ke SLM adalah **stok**.
+
+## Test end-to-end (e2e)
+
+Repo memakai framework [`e2e`](https://e2e.tester.army) untuk test end-to-end di browser.
+Langkah `agent.*` memakai **Claude Sonnet** (`@ai-sdk/anthropic`) dan butuh `ANTHROPIC_API_KEY`;
+test tanpa langkah agen jalan tanpa model.
+
+```bash
+NEXT_PUBLIC_APP_MODE=mock AUTH_PROVIDER=demo INVENTORY_SOURCE=local npm run dev
+APP_URL=http://localhost:3000 npm run test:e2e
+```
+
+Test ada di `tests/*.e2e.ts` (mis. `tests/inventory.e2e.ts`: menu per role, Stok Gudang & Toko,
+Tempo Admin, form opname). Opsional `E2E_CDP_ENDPOINT` untuk memakai Chromium yang sudah berjalan,
+`E2E_MODEL` untuk mengganti model.
