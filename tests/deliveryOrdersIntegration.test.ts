@@ -181,6 +181,35 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
     expect(itemAny.subtotal).toBeUndefined();
   });
 
+  it("2b. Orders DO items by the sales invoice item order (sortOrder)", async () => {
+    const { getDeliveryOrderDetail } = await import("@/lib/deliveryOrders/store");
+
+    mocks.deliveryOrder.findFirst.mockResolvedValue({
+      id: "do-order-1",
+      doNumber: "DO-TRX-1",
+      salesRecordId: "sale-order-1",
+      status: "belum_selesai",
+      packingStatus: "belum",
+      shippingStatus: "belum",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      salesRecord: {
+        id: "sale-order-1",
+        saleDate: new Date("2026-09-05"),
+        customerName: "Customer",
+        deliveryAt: null
+      },
+      items: []
+    });
+
+    await getDeliveryOrderDetail("do-order-1");
+
+    const args = mocks.deliveryOrder.findFirst.mock.calls.at(-1)?.[0];
+    expect(args.include.items).toEqual({
+      orderBy: [{ salesRecordItem: { sortOrder: "asc" } }, { id: "asc" }]
+    });
+  });
+
   it("3. Handles assignment to Petugas DO", async () => {
     const { assignDeliveryOrder } = await import("@/lib/deliveryOrders/store");
 
@@ -254,6 +283,33 @@ describe("Delivery Order E2E Lifecycle & Strict Data Masking", () => {
         doReceiptPhotoUrl: "https://cloud.aneka-jaya.local/storage/resi-parsial.jpg"
       })
     });
+  });
+
+  it("5b. Shipping the remaining items after a partial shipment completes the DO", async () => {
+    const { completeDeliveryOrderShipping } = await import("@/lib/deliveryOrders/store");
+
+    const mockDo = {
+      id: "do-partial-2",
+      salesRecordId: "sale-partial-2",
+      items: [
+        { id: "item-1", isShipped: true },
+        { id: "item-2", isShipped: false },
+        { id: "item-3", isShipped: false }
+      ]
+    };
+    mocks.deliveryOrder.findFirst.mockResolvedValue(mockDo);
+    mocks.deliveryOrder.update.mockImplementation(({ data }: any) => ({ ...mockDo, ...data }));
+
+    const result = await completeDeliveryOrderShipping(
+      "do-partial-2",
+      {
+        shippedItemIds: ["item-2", "item-3"],
+        receiptPhotoUrl: "https://cloud.aneka-jaya.local/storage/resi-sisa.jpg"
+      },
+      { id: "driver-1", name: "Pak Supardi", role: "DELIVERY_DRIVER" } as any
+    );
+
+    expect(result.status).toBe("selesai");
   });
 
   it("6. Full shipping with proof of delivery (foto resi) transitions status to 'selesai'", async () => {
@@ -512,6 +568,45 @@ describe("Regression Testing: Roles & Permissions Integrity", () => {
         })
       })
     );
+  });
+
+  it("11b. Keeps shipped status when invoice edit recreates DO items", async () => {
+    const { syncDeliveryOrderForSale } = await import("@/lib/deliveryOrders/store");
+    const shippedAt = new Date("2026-10-01T03:00:00Z");
+    mocks.deliveryOrderItem.create.mockReset();
+
+    mocks.deliveryOrder.findUnique.mockResolvedValue({
+      id: "do-edit-1",
+      salesRecordId: "sale-edit-1",
+      status: "selesai_setengah",
+      packingStatus: "sudah",
+      shippingStatus: "sudah",
+      items: []
+    });
+    mocks.salesRecord.findUnique.mockResolvedValue({
+      id: "sale-edit-1",
+      transactionNumber: "TRX-EDIT",
+      items: [
+        { id: "new-a", productRef: "KODE-A", quantity: 5 },
+        { id: "new-b", productRef: "KODE-B", quantity: 10 },
+        { id: "new-c", productRef: "KODE-C", quantity: 3 }
+      ]
+    });
+    mocks.deliveryOrderItem.create.mockImplementation(({ data }: any) => data);
+
+    await syncDeliveryOrderForSale("sale-edit-1", undefined, {
+      previousShipped: [
+        { productRef: "KODE-A", quantity: 5, isShipped: true, shippedQuantity: 0, shippedAt },
+        { productRef: "KODE-C", quantity: 2, isShipped: true, shippedQuantity: 0, shippedAt }
+      ]
+    });
+
+    const created = mocks.deliveryOrderItem.create.mock.calls.map(([arg]: any) => arg.data);
+    expect(created.map((d: any) => d.productRef)).toEqual(["KODE-A", "KODE-B", "KODE-C"]);
+    expect(created[0]).toEqual(expect.objectContaining({ isShipped: true, shippedAt }));
+    expect(created[1]).toEqual(expect.objectContaining({ isShipped: false }));
+    // Jumlah dinaikkan melebihi yang sudah dikirim -> harus dikirim ulang
+    expect(created[2]).toEqual(expect.objectContaining({ isShipped: false }));
   });
 
   it("12. Hides completed DO from non-Super Admin (DELIVERY_DRIVER, ADMIN, SUPERVISOR)", async () => {
