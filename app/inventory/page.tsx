@@ -59,16 +59,16 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr>
               <th className="sticky left-0 z-10 min-w-[220px] bg-slate-50 px-3 py-2">Barang</th>
-              <th className="whitespace-nowrap px-3 py-2 text-right">{scopeLabel}</th>
+              {typeParam !== "ALL" && <th className="whitespace-nowrap px-3 py-2 text-right">{scopeLabel}</th>}
               {typeParam !== "WAREHOUSE" && typeParam !== "ALL" && <th className="whitespace-nowrap px-3 py-2 text-right">Total Gudang</th>}
               {typeParam === "WAREHOUSE" && <th className="whitespace-nowrap px-3 py-2 text-right">Total Toko</th>}
-              {typeParam !== "ALL" && <th className="whitespace-nowrap px-3 py-2 text-right">Total Semua</th>}
               {matrix.locations.map((l) => (
                 <th key={l.id} className="whitespace-nowrap px-3 py-2 text-right normal-case">
                   {canMovement ? <Link href={`/inventory/mutasi?locationId=${l.id}`} className="hover:text-emerald-800">{l.name}</Link> : l.name}
                   <div className="text-[11px] font-normal text-slate-600">{l.code}</div>
                 </th>
               ))}
+              <th className="sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 bg-slate-50 px-3 py-2 text-right">Total Semua</th>
             </tr>
           </thead>
           <tbody>
@@ -79,17 +79,21 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
                   <td className={`sticky left-0 z-10 px-3 py-2 ${row.lowStock ? "bg-red-50" : "bg-white"}`}>
                     <ProductCell row={row} canMovement={canMovement} canEditMaster={canEditMaster} canAdjust={canAdjust} />
                   </td>
-                  <td className={`whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums ${row.lowStock ? "text-red-800" : "text-slate-900"}`}>
-                    {qty(row.scopeTotal, scopeKoli(row))}
-                  </td>
+                  {typeParam !== "ALL" && (
+                    <td className={`whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums ${row.lowStock ? "text-red-800" : "text-slate-900"}`}>
+                      {qty(row.scopeTotal, scopeKoli(row))}
+                    </td>
+                  )}
                   {typeParam !== "WAREHOUSE" && typeParam !== "ALL" && <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{qty(row.warehouseTotal, row.warehouseKoliText)}</td>}
                   {typeParam === "WAREHOUSE" && <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{qty(row.storeTotal, row.storeKoliText)}</td>}
-                  {typeParam !== "ALL" && <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{qty(row.total, row.totalKoliText)}</td>}
                   {matrix.locations.map((l) => (
                     <td key={l.id} className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${row.perLocation[l.id] < 0 ? "text-red-800" : ""}`}>
                       {qty(row.perLocation[l.id], row.perLocationKoli[l.id])}
                     </td>
                   ))}
+                  <td className={`sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 px-3 py-2 text-right font-bold tabular-nums ${row.lowStock ? "bg-red-50" : "bg-white"} ${typeParam === "ALL" && row.lowStock ? "text-red-800" : "text-slate-900"}`}>
+                    {qty(row.total, row.totalKoliText)}
+                  </td>
                 </tr>
               );
             })}
