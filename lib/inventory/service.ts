@@ -2,7 +2,8 @@ import "server-only";
 import { Prisma, type InventoryMovementType, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { InventoryError } from "./errors";
-import { applyDelta, formatKoli, qtyFromKoli, round2, splitKoli } from "./math";
+import { applyDelta, formatKoli, hasRealName, qtyFromKoli, round2, splitKoli } from "./math";
+export { hasRealName } from "./math";
 import { applyRmbCost } from "./pricing";
 import { DEFAULT_UNIT } from "./config";
 import type {
@@ -290,6 +291,7 @@ async function rememberUnitsPerKoli(tx: Tx, product: { id: string; unitsPerKoli:
   await tx.inventoryProduct.update({ where: { id: product.id }, data: { unitsPerKoli: item.unitsPerKoli } });
 }
 
+
 function koliInfo(quantity: number, unitsPerKoli: Prisma.Decimal | number | null, unit: string) {
   const perKoli = unitsPerKoli == null ? null : num(unitsPerKoli);
   const split = splitKoli(quantity, perKoli);
@@ -351,6 +353,9 @@ export async function listBalances(query: BalanceQuery = {}) {
       stockValue: round2(quantity * num(b.avgCost)),
       ...koliInfo(quantity, b.product.unitsPerKoli, b.product.unit),
       minimumStock,
+      costPrice: num(b.product.costPrice),
+      sellingPrice: num(b.product.sellingPrice),
+      category: b.product.category,
       isLowStock: minimumStock > 0 && quantity <= minimumStock,
       updatedAt: b.updatedAt.toISOString()
     };
@@ -414,7 +419,7 @@ export async function stockMatrix(query: { keyword?: string; locationType?: "WAR
       const perLocationKoli = Object.fromEntries(locations.map((l) => [l.id, koliInfo(perLocation[l.id], p.unitsPerKoli, p.unit).koliText]));
       const sum = round2(warehouseTotal + storeTotal);
       const lowStock = sum > 0 && (p.unitsPerKoli ? sum <= p.unitsPerKoli : p.minimumStock > 0 && sum <= p.minimumStock);
-      return { productId: p.id, sku: p.sku, name: p.name, unit: p.unit, unitsPerKoli: p.unitsPerKoli, minimumStock: p.minimumStock, perLocation, perLocationKoli,
+      return { productId: p.id, sku: p.sku, name: p.name, category: p.category, hasName: hasRealName(p.name, p.sku), unit: p.unit, unitsPerKoli: p.unitsPerKoli, minimumStock: p.minimumStock, perLocation, perLocationKoli,
         warehouseKoliText: koliInfo(warehouseTotal, p.unitsPerKoli, p.unit).koliText, storeKoliText: koliInfo(storeTotal, p.unitsPerKoli, p.unit).koliText, totalKoliText: koliInfo(sum, p.unitsPerKoli, p.unit).koliText,
         warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: sum, lowStock };
     }),
@@ -957,4 +962,28 @@ export async function bulkChangeUnit(input: { fromUnit: string; toUnit: string; 
     data: { unit: toUnit }
   });
   return { updated: result.count, fromUnit: input.fromUnit, toUnit, category: input.category ?? null };
+}
+
+/** Ringkasan stok & modal per SKU (gudang vs toko), dipakai laporan produk. */
+export async function stockSnapshotBySkus(skus: string[]) {
+  const unique = Array.from(new Set(skus.filter(Boolean)));
+  if (!unique.length) return new Map<string, { name: string; hasName: boolean; unit: string; unitsPerKoli: number | null; costPrice: number; warehouse: number; store: number; warehouseKoliText: string; storeKoliText: string }>();
+  const products = await prisma.inventoryProduct.findMany({
+    where: { OR: [{ sku: { in: unique } }, { sku: { in: unique, mode: "insensitive" } }] },
+    include: { balances: { include: { location: { select: { type: true, isActive: true } } } } }
+  });
+  const map = new Map<string, { name: string; hasName: boolean; unit: string; unitsPerKoli: number | null; costPrice: number; warehouse: number; store: number; warehouseKoliText: string; storeKoliText: string }>();
+  for (const p of products) {
+    const active = p.balances.filter((b) => b.location.isActive);
+    const warehouse = round2(active.filter((b) => b.location.type === "WAREHOUSE").reduce((s, b) => s + num(b.quantity), 0));
+    const store = round2(active.filter((b) => b.location.type === "STORE").reduce((s, b) => s + num(b.quantity), 0));
+    map.set(p.sku.toLowerCase(), {
+      name: p.name, hasName: hasRealName(p.name, p.sku), unit: p.unit,
+      unitsPerKoli: p.unitsPerKoli == null ? null : num(p.unitsPerKoli), costPrice: num(p.costPrice),
+      warehouse, store,
+      warehouseKoliText: koliInfo(warehouse, p.unitsPerKoli, p.unit).koliText,
+      storeKoliText: koliInfo(store, p.unitsPerKoli, p.unit).koliText
+    });
+  }
+  return map;
 }

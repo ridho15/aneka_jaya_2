@@ -14,8 +14,8 @@ export type ProductRow = {
 
 const fmt = (n: number | null | undefined, d = 2) => (n == null ? "-" : n.toLocaleString("id-ID", { maximumFractionDigits: d }));
 
-export function ProductTable({ rows, rate, canManage }: { rows: ProductRow[]; rate: number | null; canManage: boolean }) {
-  const [editing, setEditing] = useState<string | null>(null);
+export function ProductTable({ rows, rate, canManage, initialEditingId }: { rows: ProductRow[]; rate: number | null; canManage: boolean; initialEditingId?: string }) {
+  const [editing, setEditing] = useState<string | null>(canManage && initialEditingId ? initialEditingId : null);
   return (
     <div className="aj-surface mb-8 overflow-x-auto">
       <table className="min-w-full text-sm">

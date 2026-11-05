@@ -63,15 +63,13 @@ vi.mock("@/lib/erp/products", () => ({
   }),
 }));
 
-vi.mock("@/lib/reports/stockInventory", () => ({
+vi.mock("@/lib/reports/stockReports", () => ({
   getStockInventoryReport: vi.fn().mockResolvedValue({
-    summary: {
-      totalValuation: 1000000,
-      totalPhysicalQuantity: 50,
-      belowMinimumCount: 2,
-      normalCount: 48,
-    },
     items: [],
+    warehouses: [],
+    summary: { totalItems: 0, totalQuantity: 0, totalCostValuation: 0, totalSellValuation: 0, warningCount: 0, outOfStockCount: 0, safeCount: 0 },
+    filter: {},
+    generatedAt: new Date().toISOString(),
   }),
 }));
 

@@ -13,7 +13,7 @@ import { listLocations, listProducts, listUnitUsage } from "@/lib/inventory/serv
 
 export const dynamic = "force-dynamic";
 
-export default async function InventoryProductPage({ searchParams }: { searchParams: Promise<{ keyword?: string; page?: string }> }) {
+export default async function InventoryProductPage({ searchParams }: { searchParams: Promise<{ keyword?: string; page?: string; edit?: string }> }) {
   const role = await getCurrentRole();
   if (!can(role, "inventory.master")) redirect("/no-access");
   const p = await searchParams;
@@ -34,7 +34,7 @@ export default async function InventoryProductPage({ searchParams }: { searchPar
         <input name="keyword" defaultValue={p.keyword} placeholder="Cari SKU / nama / barcode" className={`${filterInput} w-72`} />
         <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">Cari</button>
       </form>
-      <ProductTable rows={result.data} rate={rmb.rate} canManage={canManage} />
+      <ProductTable rows={result.data} rate={rmb.rate} canManage={canManage} initialEditingId={p.edit} />
       <Pager basePath="/inventory/produk" params={{ keyword: p.keyword }} page={result.meta.page} totalPages={result.meta.totalPages} />
       {canManage && <ProductCreateForm locations={locations} />}
     </AppShell>

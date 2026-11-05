@@ -15,6 +15,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
   if (!can(role, "inventory.stock.view")) redirect("/no-access");
   const params = await searchParams;
   const canMovement = can(role, "inventory.movement.view");
+  const canEditMaster = can(role, "inventory.master");
   // Default membuka stok Toko; filter bisa diganti ke Gudang atau Gudang + Toko (ALL).
   const typeParam = params.type === "WAREHOUSE" || params.type === "ALL" ? params.type : "STORE";
   const type = typeParam === "ALL" ? undefined : typeParam;
@@ -63,8 +64,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
             {matrix.data.map((row) => (
               <tr key={row.productId} className={`border-t border-slate-100 ${row.lowStock ? "bg-red-50" : row.total <= 0 ? "opacity-60" : ""}`}>
                 <td className={`sticky left-0 px-3 py-2 ${row.lowStock ? "border-l-4 border-l-red-500 bg-red-50" : "bg-white"}`}>
-                  {canMovement ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="font-semibold text-slate-800 hover:text-emerald-700">{row.name}</Link> : <span className="font-semibold text-slate-800">{row.name}</span>}
-                  <div className="text-xs text-slate-500">{row.sku} • {row.unit}{row.unitsPerKoli ? ` • ${fmtQty(row.unitsPerKoli)}/koli` : ""}</div>
+                  <ProductCell row={row} canMovement={canMovement} canEditMaster={canEditMaster} />
                 </td>
                 {matrix.locations.map((l) => (
                   <td key={l.id} className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${row.perLocation[l.id] < 0 ? "text-red-600" : row.perLocation[l.id] === 0 ? "text-slate-300" : ""}`}>
@@ -93,4 +93,27 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
 function QtyCell({ qty, koli, unit, hasKoli }: { qty: number; koli: string; unit: string; hasKoli: boolean }) {
   if (!hasKoli || qty === 0) return <>{fmtQty(qty)}</>;
   return <>{koli}<div className="text-[11px] font-normal text-slate-400">{fmtQty(qty)} {unit}</div></>;
+}
+
+type MatrixRow = { productId: string; sku: string; name: string; category: string | null; hasName: boolean; unit: string; unitsPerKoli: number | null };
+
+/** Nama barang (besar) lalu kode, kategori, satuan & isi koli. Kode tanpa nama ditandai agar mudah dilengkapi. */
+function ProductCell({ row, canMovement, canEditMaster }: { row: MatrixRow; canMovement: boolean; canEditMaster: boolean }) {
+  const title = row.hasName
+    ? <span className="font-semibold leading-snug text-slate-900">{row.name}</span>
+    : <span className="text-sm italic text-slate-400">Nama belum diisi</span>;
+  return (
+    <div className="min-w-[220px] max-w-[320px]">
+      {canMovement && row.hasName ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="hover:text-emerald-700">{title}</Link> : title}
+      {!row.hasName && canEditMaster && (
+        <Link href={`/inventory/produk?keyword=${encodeURIComponent(row.sku)}&edit=${row.productId}`} className="ml-2 text-xs font-semibold text-emerald-700 hover:underline">Isi nama</Link>
+      )}
+      <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500">
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700">{row.sku}</span>
+        {row.category && <span>{row.category}</span>}
+        {row.category && <span className="text-slate-300">•</span>}
+        <span>{row.unit}{row.unitsPerKoli ? ` • isi ${fmtQty(row.unitsPerKoli)}/koli` : ""}</span>
+      </div>
+    </div>
+  );
 }

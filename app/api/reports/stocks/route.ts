@@ -18,8 +18,12 @@ export async function GET(request: Request) {
   const sku = url.searchParams.get("sku") || undefined;
   const status = (url.searchParams.get("status") as any) || "all";
   const format = url.searchParams.get("format") || "json";
+  // Sama dengan halaman: STORE / WAREHOUSE; ALL atau kosong = semua lokasi
+  const typeParam = url.searchParams.get("type");
+  const locationType = typeParam === "WAREHOUSE" || typeParam === "STORE" ? typeParam : undefined;
 
   const report = await getStockInventoryReport({
+    locationType,
     warehouse,
     productKeyword: keyword,
     sku,

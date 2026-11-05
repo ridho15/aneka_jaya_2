@@ -34,8 +34,11 @@ export default async function StockReportPrintPage({
   const keyword = params?.keyword || "";
   const sku = params?.sku || "";
   const status = (params?.status as any) || "all";
+  const typeParam = (params as { type?: string } | undefined)?.type;
+  const locationType = typeParam === "WAREHOUSE" || typeParam === "STORE" ? typeParam : undefined;
 
   const report = await getStockInventoryReport({
+    locationType,
     warehouse,
     productKeyword: keyword,
     sku,
@@ -155,9 +158,9 @@ export default async function StockReportPrintPage({
               <th className="py-2.5 px-2 text-center w-8">No</th>
               <th className="py-2.5 px-2 w-24">Kode SKU</th>
               <th className="py-2.5 px-2">Nama Barang</th>
-              <th className="py-2.5 px-2 w-32">Gudang / Rak</th>
-              <th className="py-2.5 px-2 text-right w-20">Qty Fisik</th>
-              <th className="py-2.5 px-2 text-right w-16">Min</th>
+              <th className="py-2.5 px-2 w-32">Lokasi</th>
+              <th className="py-2.5 px-2 text-right w-24">Qty Fisik</th>
+              <th className="py-2.5 px-2 text-right w-20">Koli</th>
               <th className="py-2.5 px-2 text-center w-16">Status</th>
               <th className="py-2.5 px-2 text-right w-24">Harga Modal</th>
               <th className="py-2.5 px-2 text-right w-28">Valuasi Aset</th>
@@ -176,13 +179,13 @@ export default async function StockReportPrintPage({
                   {item.productName}
                 </td>
                 <td className="py-2 px-2 text-slate-600">
-                  {item.warehouse} ({item.rack})
+                  {item.warehouse} ({item.locationType === "STORE" ? "Toko" : "Gudang"})
                 </td>
                 <td className="py-2 px-2 text-right font-bold text-slate-900">
                   {item.quantity.toLocaleString("id-ID")} {item.unit}
                 </td>
-                <td className="py-2 px-2 text-right text-slate-600 font-mono">
-                  {item.minStock}
+                <td className="py-2 px-2 text-right text-slate-600">
+                  {item.koliText?.includes("koli") ? item.koliText : "-"}
                 </td>
                 <td className="py-2 px-2 text-center font-bold">
                   {item.status === "out_of_stock" && (

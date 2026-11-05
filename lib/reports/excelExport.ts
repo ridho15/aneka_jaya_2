@@ -250,9 +250,9 @@ export function generateStockReportExcel(report: StockReportResult): string {
       <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">NO</Data></Cell>
       <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">KODE SKU</Data></Cell>
       <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">NAMA BARANG</Data></Cell>
-      <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">GUDANG / RAK</Data></Cell>
+      <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">LOKASI</Data></Cell>
       <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">QTY FISIK</Data></Cell>
-      <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">MIN STOK</Data></Cell>
+      <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">KOLI</Data></Cell>
       <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">STATUS</Data></Cell>
       <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">HARGA MODAL</Data></Cell>
       <Cell ss:StyleID="HeaderCell"><Data ss:Type="String">VALUASI ASET</Data></Cell>
@@ -290,9 +290,9 @@ export function generateStockReportExcel(report: StockReportResult): string {
         <Cell ss:StyleID="DataCenter"><Data ss:Type="Number">${index + 1}</Data></Cell>
         <Cell ss:StyleID="DataCenter"><Data ss:Type="String">${escapeXml(item.sku)}</Data></Cell>
         <Cell ss:StyleID="DataLeft"><Data ss:Type="String">${escapeXml(item.productName)}</Data></Cell>
-        <Cell ss:StyleID="DataCenter"><Data ss:Type="String">${escapeXml(item.warehouse)} (${escapeXml(item.rack)})</Data></Cell>
+        <Cell ss:StyleID="DataCenter"><Data ss:Type="String">${escapeXml(item.warehouse)} (${item.locationType === "STORE" ? "Toko" : "Gudang"})</Data></Cell>
         <Cell ss:StyleID="DataNumber"><Data ss:Type="Number">${item.quantity}</Data></Cell>
-        <Cell ss:StyleID="DataNumber"><Data ss:Type="Number">${item.minStock}</Data></Cell>
+        <Cell ss:StyleID="DataCenter"><Data ss:Type="String">${escapeXml(item.koliText?.includes("koli") ? item.koliText : "-")}</Data></Cell>
         <Cell ss:StyleID="${statusStyle}"><Data ss:Type="String">${statusText}</Data></Cell>
         ${costPriceCell}
         ${valuationCell}

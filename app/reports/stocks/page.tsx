@@ -8,6 +8,7 @@ import { getStockInventoryReport } from "@/lib/reports/stockReports";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{
+  type?: string;
   warehouse?: string;
   keyword?: string;
   sku?: string;
@@ -18,6 +19,7 @@ type SearchParams = Promise<{
 
 function buildPageHref(
   params: {
+    type?: string;
     warehouse?: string;
     keyword?: string;
     sku?: string;
@@ -27,6 +29,7 @@ function buildPageHref(
   targetPage: number,
 ) {
   const q = new URLSearchParams();
+  if (params.type && params.type !== "STORE") q.set("type", params.type);
   if (params.warehouse) q.set("warehouse", params.warehouse);
   if (params.keyword) q.set("keyword", params.keyword);
   if (params.sku) q.set("sku", params.sku);
@@ -53,12 +56,16 @@ export default async function StockReportsPage({
   if (!can(role, "stock.view") && !can(role, "reports.view")) redirect("/");
 
   const params = await searchParams;
+  // Sama dengan halaman Stok Gudang & Toko: default Toko, bisa diganti ke Gudang / Gudang + Toko.
+  const typeParam = params?.type === "WAREHOUSE" || params?.type === "ALL" ? params.type : "STORE";
+  const locationType = typeParam === "ALL" ? undefined : typeParam;
   const warehouse = params?.warehouse || "";
   const keyword = params?.keyword || "";
   const sku = params?.sku || "";
   const status = (params?.status as any) || "all";
 
   const report = await getStockInventoryReport({
+    locationType,
     warehouse,
     productKeyword: keyword,
     sku,
@@ -76,6 +83,7 @@ export default async function StockReportsPage({
   const pagedItems = report.items.slice(startIndex, endIndex);
 
   const filterState = {
+    type: typeParam,
     warehouse,
     keyword,
     sku,
@@ -83,13 +91,13 @@ export default async function StockReportsPage({
     pageSize: String(pageSize),
   };
 
-  const exportExcelUrl = `/api/reports/stocks?warehouse=${encodeURIComponent(
+  const exportExcelUrl = `/api/reports/stocks?type=${typeParam}&warehouse=${encodeURIComponent(
     warehouse,
   )}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${
     sku ? `&sku=${encodeURIComponent(sku)}` : ""
   }&status=${encodeURIComponent(status)}&format=excel`;
 
-  const printPdfUrl = `/reports/stocks/print?warehouse=${encodeURIComponent(
+  const printPdfUrl = `/reports/stocks/print?type=${typeParam}&warehouse=${encodeURIComponent(
     warehouse,
   )}${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""}${
     sku ? `&sku=${encodeURIComponent(sku)}` : ""
@@ -111,8 +119,8 @@ export default async function StockReportsPage({
             Laporan Persediaan Stok Barang
           </h2>
           <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-            Audit kuantitas fisik persediaan, valuasi total nilai aset stok modal,
-            dan status stok di bawah minimum.
+            Data stok yang sama dengan Inventory › Stok Gudang &amp; Toko: urut dari stok paling sedikit,
+            menipis = ≤ 1 koli, stok 0 di paling bawah. Valuasi = qty × harga modal master barang.
           </p>
         </div>
 
@@ -177,13 +185,26 @@ export default async function StockReportsPage({
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-xs font-semibold text-slate-700 sm:text-sm">
-            <span className="mb-1 block">Pilih Lokasi Gudang</span>
+            <span className="mb-1 block">Jenis Lokasi</span>
+            <select
+              name="type"
+              defaultValue={typeParam}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              <option value="STORE">Toko</option>
+              <option value="WAREHOUSE">Gudang</option>
+              <option value="ALL">Gudang + Toko</option>
+            </select>
+          </label>
+
+          <label className="text-xs font-semibold text-slate-700 sm:text-sm">
+            <span className="mb-1 block">Pilih Lokasi</span>
             <select
               name="warehouse"
               defaultValue={warehouse}
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
-              <option value="">Semua Gudang</option>
+              <option value="">Semua Lokasi</option>
               {report.warehouses.map((wh) => (
                 <option key={wh} value={wh}>
                   {wh}
@@ -200,7 +221,7 @@ export default async function StockReportsPage({
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
               <option value="all">Semua Status</option>
-              <option value="warning">Menipis (Di Bawah Minimum)</option>
+              <option value="warning">Menipis (≤ 1 koli)</option>
               <option value="out_of_stock">Habis (Qty 0)</option>
               <option value="safe">Aman</option>
             </select>
@@ -348,9 +369,9 @@ export default async function StockReportsPage({
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-semibold text-slate-900">{item.productName}</p>
+                  <p className="mt-1 font-semibold text-slate-900">{item.hasName === false ? <span className="font-normal italic text-slate-400">Nama belum diisi</span> : item.productName}</p>
                   <p className="text-xs text-slate-500">
-                    {item.warehouse} • Rak: {item.rack}
+                    {item.warehouse} • {item.locationType === "STORE" ? "Toko" : "Gudang"}
                   </p>
                 </div>
                 <div className="text-right">
@@ -358,7 +379,7 @@ export default async function StockReportsPage({
                     {item.quantity.toLocaleString("id-ID")} {item.unit}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Min: {item.minStock}
+                    {item.koliText?.includes("koli") ? item.koliText : `Isi/koli: ${item.unitsPerKoli ?? "-"}`}
                   </p>
                 </div>
               </div>
@@ -394,9 +415,9 @@ export default async function StockReportsPage({
                 <th className="px-5 py-3.5 text-center">No</th>
                 <th className="px-5 py-3.5">Kode SKU</th>
                 <th className="px-5 py-3.5">Nama Barang</th>
-                <th className="px-5 py-3.5">Gudang / Rak</th>
+                <th className="px-5 py-3.5">Lokasi</th>
                 <th className="px-5 py-3.5 text-right">Qty Fisik</th>
-                <th className="px-5 py-3.5 text-right">Min Stok</th>
+                <th className="px-5 py-3.5 text-right">Isi / Koli</th>
                 <th className="px-5 py-3.5 text-center">Status</th>
                 <th className="px-5 py-3.5 text-right">Harga Modal</th>
                 <th className="px-5 py-3.5 text-right">Valuasi Aset</th>
@@ -404,7 +425,7 @@ export default async function StockReportsPage({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {pagedItems.map((item, index) => (
-                <tr key={`${item.sku}-${item.warehouse}-${index}`} className="hover:bg-slate-50/75">
+                <tr key={`${item.sku}-${item.warehouse}-${index}`} className={item.status === "warning" ? "bg-red-50 hover:bg-red-100/60" : item.status === "out_of_stock" ? "opacity-60 hover:bg-slate-50/75" : "hover:bg-slate-50/75"}>
                   <td className="px-5 py-4 text-center font-mono text-xs text-slate-500">
                     {startIndex + index + 1}
                   </td>
@@ -412,16 +433,18 @@ export default async function StockReportsPage({
                     {item.sku}
                   </td>
                   <td className="px-5 py-4 font-medium text-slate-900">
-                    {item.productName}
+                    {item.hasName === false ? <span className="text-sm font-normal italic text-slate-400">Nama belum diisi</span> : item.productName}
+                    {item.category && <div className="text-xs font-normal text-slate-500">{item.category}</div>}
                   </td>
                   <td className="px-5 py-4 text-xs text-slate-600">
-                    {item.warehouse} <span className="text-slate-400">({item.rack})</span>
+                    {item.warehouse} <span className="text-slate-400">({item.locationType === "STORE" ? "Toko" : "Gudang"})</span>
                   </td>
-                  <td className="px-5 py-4 text-right font-bold text-slate-900">
+                  <td className={`px-5 py-4 text-right font-bold ${item.status === "warning" ? "text-red-600" : "text-slate-900"}`}>
                     {item.quantity.toLocaleString("id-ID")} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
+                    {item.koliText?.includes("koli") ? <div className="text-xs font-normal text-slate-500">{item.koliText}</div> : null}
                   </td>
                   <td className="px-5 py-4 text-right font-mono text-xs text-slate-600">
-                    {item.minStock.toLocaleString("id-ID")}
+                    {item.unitsPerKoli ? `${item.unitsPerKoli.toLocaleString("id-ID")} ${item.unit}` : "-"}
                   </td>
                   <td className="px-5 py-4 text-center">
                     {item.status === "out_of_stock" && (

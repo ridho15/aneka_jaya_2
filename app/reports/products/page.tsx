@@ -5,6 +5,7 @@ import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { jakartaDateKey } from "@/lib/date/jakarta";
 import { getProductSalesReport } from "@/lib/reports/productReports";
+import { stockSnapshotBySkus } from "@/lib/inventory/service";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,13 @@ export default async function ProductReportsPage({
   const page = Math.min(Math.max(1, isNaN(pageParam) ? 1 : pageParam), totalPages);
   const startIndex = (page - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalItems);
+  // Stok terkini (gudang & toko) dan modal dari inventory SLM untuk barang di halaman ini.
+  const stockBySku = await stockSnapshotBySkus(report.items.slice(startIndex, endIndex).map((item) => item.code)).catch(() => new Map());
+  const stockOf = (code: string) => stockBySku.get(code.toLowerCase());
+  const grossProfit = (item: { code: string; totalQuantity: number; totalOmset: number }) => {
+    const cost = stockOf(item.code)?.costPrice ?? 0;
+    return cost > 0 ? item.totalOmset - item.totalQuantity * cost : null;
+  };
   const pagedItems = report.items.slice(startIndex, endIndex);
 
   const filterState = {
@@ -323,7 +331,7 @@ export default async function ProductReportsPage({
                   <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
                     {item.code}
                   </span>
-                  <p className="mt-1 font-semibold text-slate-900">{item.name}</p>
+                  <p className="mt-1 font-semibold text-slate-900">{stockOf(item.code)?.hasName ? stockOf(item.code)!.name : item.name}</p>
                 </div>
                 <p className="shrink-0 text-right font-black text-slate-900">
                   {rupiah(item.totalOmset)}
@@ -337,6 +345,11 @@ export default async function ProductReportsPage({
                 <span>
                   Rata-rata: <b>{rupiah(item.avgPrice)}</b>
                 </span>
+                {stockOf(item.code) && (
+                  <span className="w-full text-slate-500">
+                    Stok gudang: <b>{stockOf(item.code)!.warehouseKoliText}</b> • toko: <b>{stockOf(item.code)!.storeKoliText}</b>
+                  </span>
+                )}
               </div>
             </article>
           ))}
@@ -361,6 +374,9 @@ export default async function ProductReportsPage({
                 <th className="px-5 py-3.5 text-right">Jml Transaksi</th>
                 <th className="px-5 py-3.5 text-right">Rata-rata Harga</th>
                 <th className="px-5 py-3.5 text-right">Total Omset</th>
+                <th className="px-5 py-3.5 text-right">Est. Laba Kotor</th>
+                <th className="px-5 py-3.5 text-right">Stok Gudang</th>
+                <th className="px-5 py-3.5 text-right">Stok Toko</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -373,7 +389,7 @@ export default async function ProductReportsPage({
                     {item.code}
                   </td>
                   <td className="px-5 py-4 font-medium text-slate-900">
-                    {item.name}
+                    {stockOf(item.code)?.hasName ? stockOf(item.code)!.name : item.name}
                   </td>
                   <td className="px-5 py-4 text-right font-semibold text-slate-900">
                     {item.totalQuantity.toLocaleString("id-ID")}
@@ -390,13 +406,18 @@ export default async function ProductReportsPage({
                   <td className="px-5 py-4 text-right font-bold text-slate-900">
                     {rupiah(item.totalOmset)}
                   </td>
+                  <td className="px-5 py-4 text-right text-xs">
+                    {grossProfit(item) == null ? <span className="text-slate-400" title="Modal belum diisi di Master Barang">-</span> : <span className={grossProfit(item)! < 0 ? "font-semibold text-red-600" : "font-semibold text-emerald-700"}>{rupiah(grossProfit(item)!)}</span>}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-4 text-right text-xs text-slate-700">{stockOf(item.code)?.warehouseKoliText ?? "-"}</td>
+                  <td className="whitespace-nowrap px-5 py-4 text-right text-xs text-slate-700">{stockOf(item.code)?.storeKoliText ?? "-"}</td>
                 </tr>
               ))}
 
               {pagedItems.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={11}
                     className="px-5 py-12 text-center text-sm text-slate-500"
                   >
                     Tidak ada data penjualan produk pada rentang tanggal yang
@@ -420,6 +441,7 @@ export default async function ProductReportsPage({
                   <td className="px-5 py-4 text-right text-base text-emerald-800">
                     {rupiah(report.summary.totalOmset)}
                   </td>
+                  <td colSpan={3} />
                 </tr>
               </tfoot>
             )}

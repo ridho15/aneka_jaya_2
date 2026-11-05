@@ -40,3 +40,9 @@ export function formatKoli(quantity: number, unitsPerKoli: number | null | undef
   if (!split || split.koli === 0) return `${fmt(quantity)} ${unit}`;
   return split.loose ? `${fmt(split.koli)} koli + ${fmt(split.loose)} ${unit}` : `${fmt(split.koli)} koli`;
 }
+
+/** Nama barang dianggap belum diisi bila sama dengan kodenya (umum pada master lama ERP). */
+export function hasRealName(name: string, sku: string) {
+  const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return Boolean(name.trim()) && norm(name) !== norm(sku);
+}

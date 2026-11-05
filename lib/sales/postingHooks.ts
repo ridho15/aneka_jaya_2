@@ -275,6 +275,23 @@ export async function postSalesInvoiceJournal(
  * - Kredit Persediaan Barang Dagang (1-1005)
  * Dihitung dari akumulasi modal riil per item terjual.
  */
+/** Modal per satuan dari master barang inventory (via ID produk ERP, SKU, atau kode di depan productRef). */
+async function inventoryCostFor(item: { productId?: string | null; productRef?: string | null }) {
+  if (typeof prisma?.inventoryProduct?.findFirst !== "function") return 0;
+  const erpId = item.productId && /^\d+$/.test(item.productId) ? Number(item.productId) : undefined;
+  const ref = (item.productRef || "").trim();
+  const firstToken = ref.split(/\s+/)[0];
+  const or = [
+    ...(erpId ? [{ erpProductId: erpId }] : []),
+    ...(item.productId && !erpId ? [{ id: item.productId }] : []),
+    ...(ref ? [{ sku: ref }] : []),
+    ...(firstToken && firstToken !== ref ? [{ sku: firstToken }] : [])
+  ];
+  if (!or.length) return 0;
+  const product = await prisma.inventoryProduct.findFirst({ where: { OR: or }, select: { costPrice: true } });
+  return product ? Number(product.costPrice) : 0;
+}
+
 export async function postSalesCogsJournal(
   saleOrId: string | SalesRecord,
   actor?: SalesPostingActor
@@ -325,7 +342,13 @@ export async function postSalesCogsJournal(
       unitCost = manualCost;
     }
 
-    // Prioritas 2: Cari harga beli / HPP dari item penerimaan barang pembelian (PO / GRN / Invoice)
+    // Prioritas 2: Harga modal master barang inventory SLM (ikut kurs RMB terbaru)
+    if (unitCost <= 0) {
+      const inventoryCost = await inventoryCostFor(item);
+      if (inventoryCost > MINIMUM_REAL_COST_THRESHOLD) unitCost = inventoryCost;
+    }
+
+    // Prioritas 3: Cari harga beli / HPP dari item penerimaan barang pembelian (PO / GRN / Invoice)
     if (unitCost <= 0 && item.productRef) {
       const latestPurchaseItem = await prisma.purchaseOrderItem.findFirst({
         where: { itemCode: item.productRef },

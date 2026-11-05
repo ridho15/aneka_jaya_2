@@ -1,10 +1,19 @@
-import { listStocks } from "@/lib/api/stocks";
-import { listProducts } from "@/lib/api/products";
-import type { StockItem } from "@/lib/types/stock";
-import type { Product } from "@/lib/types/product";
+import { listBalances, listLocations } from "@/lib/inventory/service";
+import { hasRealName } from "@/lib/inventory/math";
 
+/**
+ * Laporan persediaan stok — sumber datanya sama dengan halaman Inventory › Stok Gudang & Toko
+ * (inventory SLM), termasuk aturan koli:
+ *  - Habis   : qty ≤ 0
+ *  - Menipis : qty ≤ 1 koli (atau ≤ minimum stok bila isi per koli belum diatur)
+ *  - Urutan  : stok paling sedikit (dalam koli) di atas, stok 0 paling bawah.
+ * Nilai modal = qty × harga modal master barang (ikut kurs RMB terbaru).
+ */
 export type StockReportFilter = {
+  /** Nama atau kode lokasi gudang/toko. */
   warehouse?: string;
+  /** WAREHOUSE = gudang, STORE = toko; kosong = semua lokasi. */
+  locationType?: "WAREHOUSE" | "STORE";
   productKeyword?: string;
   productId?: string;
   sku?: string;
@@ -15,10 +24,17 @@ export type StockReportItem = {
   productId: string;
   sku: string;
   productName: string;
+  /** false bila nama barang di master masih sama dengan kodenya. */
+  hasName?: boolean;
+  category?: string | null;
   warehouse: string;
+  warehouseCode?: string;
+  locationType?: "WAREHOUSE" | "STORE";
   rack: string;
   quantity: number;
   unit: string;
+  unitsPerKoli?: number | null;
+  koliText?: string;
   minStock: number;
   costPrice: number;
   sellPrice: number;
@@ -43,113 +59,81 @@ export type StockReportResult = {
   generatedAt: string;
 };
 
-export async function getStockInventoryReport(
-  filter: StockReportFilter = {},
-): Promise<StockReportResult> {
-  const [stocksResponse, productsResponse] = await Promise.all([
-    listStocks({
-      pageSize: 100,
-      maxPages: 10,
-      keyword: filter.productKeyword,
+export function stockStatus(quantity: number, unitsPerKoli: number | null | undefined, minStock: number): StockReportItem["status"] {
+  if (quantity <= 0) return "out_of_stock";
+  if (unitsPerKoli && unitsPerKoli > 0 ? quantity <= unitsPerKoli : minStock > 0 && quantity <= minStock) return "warning";
+  return "safe";
+}
+
+/** Urutan sama dengan halaman stok: paling sedikit (dalam koli) di atas, stok 0 paling bawah. */
+export function compareStockItems(a: StockReportItem, b: StockReportItem) {
+  const zeroA = a.quantity <= 0 ? 1 : 0;
+  const zeroB = b.quantity <= 0 ? 1 : 0;
+  if (zeroA !== zeroB) return zeroA - zeroB;
+  const koliA = a.quantity / (a.unitsPerKoli || 1);
+  const koliB = b.quantity / (b.unitsPerKoli || 1);
+  if (koliA !== koliB) return koliA - koliB;
+  return a.productName.localeCompare(b.productName) || a.warehouse.localeCompare(b.warehouse);
+}
+
+export async function getStockInventoryReport(filter: StockReportFilter = {}): Promise<StockReportResult> {
+  const [locations, balances] = await Promise.all([
+    listLocations({ type: filter.locationType }),
+    listBalances({
+      locationType: filter.locationType,
       productId: filter.productId,
-      sku: filter.sku,
-      warehouse: filter.warehouse,
-    }),
-    listProducts(),
+      sku: filter.sku || undefined,
+      keyword: filter.productKeyword || undefined,
+      includeZero: true,
+      page: 1,
+      pageSize: 5000
+    })
   ]);
 
-  const stockRows: StockItem[] = stocksResponse.success ? stocksResponse.data : [];
-  const productRows: Product[] = productsResponse.success ? productsResponse.data : [];
-
-  // Map product prices by sku or id
-  const productPriceMap = new Map<string, { costPrice: number; sellPrice: number; category?: string }>();
-  for (const prod of productRows) {
-    const costPrice = Number(prod.costPrice || 0);
-    const sellPrice = Number(prod.sellingPrice || 0);
-    if (prod.code) productPriceMap.set(prod.code.toLowerCase(), { costPrice, sellPrice, category: prod.category ?? undefined });
-    if (prod.id) productPriceMap.set(prod.id.toLowerCase(), { costPrice, sellPrice, category: prod.category ?? undefined });
-    if (prod.productId) productPriceMap.set(prod.productId.toLowerCase(), { costPrice, sellPrice, category: prod.category ?? undefined });
-  }
-
-  const warehouseSet = new Set<string>();
+  const wanted = filter.warehouse?.trim().toLowerCase();
   const items: StockReportItem[] = [];
-
-  for (const stock of stockRows) {
-    const warehouse = stock.warehouse || "Gudang Utama";
-    warehouseSet.add(warehouse);
-
-    const qty = Number(stock.quantity || 0);
-    const minStock = Number(stock.minimumStock || 0);
-
-    let status: "safe" | "warning" | "out_of_stock" = "safe";
-    if (qty <= 0) {
-      status = "out_of_stock";
-    } else if (minStock > 0 && qty <= minStock) {
-      status = "warning";
-    }
-
-    if (filter.status && filter.status !== "all" && filter.status !== status) {
-      continue;
-    }
-
-    const priceInfo =
-      productPriceMap.get(stock.productCode.toLowerCase()) ||
-      (stock.productId ? productPriceMap.get(stock.productId.toLowerCase()) : undefined) || {
-        costPrice: 0,
-        sellPrice: 0,
-      };
-
-    const costPrice = priceInfo.costPrice;
-    const sellPrice = priceInfo.sellPrice;
-    const totalCostValuation = qty * costPrice;
-    const totalSellValuation = qty * sellPrice;
-
+  for (const row of balances.data) {
+    if (wanted && row.locationName.toLowerCase() !== wanted && row.locationCode.toLowerCase() !== wanted) continue;
+    const status = stockStatus(row.quantity, row.unitsPerKoli, row.minimumStock);
+    if (filter.status && filter.status !== "all" && filter.status !== status) continue;
     items.push({
-      productId: stock.productId || "",
-      sku: stock.productCode,
-      productName: stock.productName,
-      warehouse,
-      rack: stock.rack || "-",
-      quantity: qty,
-      unit: stock.unit || "Pcs",
-      minStock,
-      costPrice,
-      sellPrice,
-      totalCostValuation,
-      totalSellValuation,
-      status,
+      productId: row.productId,
+      sku: row.sku,
+      productName: row.productName,
+      hasName: hasRealName(row.productName, row.sku),
+      category: row.category,
+      warehouse: row.locationName,
+      warehouseCode: row.locationCode,
+      locationType: row.locationType,
+      rack: "-",
+      quantity: row.quantity,
+      unit: row.unit,
+      unitsPerKoli: row.unitsPerKoli,
+      koliText: row.koliText,
+      minStock: row.minimumStock,
+      costPrice: row.costPrice,
+      sellPrice: row.sellingPrice,
+      totalCostValuation: Math.round(row.quantity * row.costPrice * 100) / 100,
+      totalSellValuation: Math.round(row.quantity * row.sellingPrice * 100) / 100,
+      status
     });
   }
+  items.sort(compareStockItems);
 
-  // Sort by warning/out_of_stock first, then product name
-  items.sort((a, b) => {
-    if (a.status === "out_of_stock" && b.status !== "out_of_stock") return -1;
-    if (b.status === "out_of_stock" && a.status !== "out_of_stock") return 1;
-    if (a.status === "warning" && b.status === "safe") return -1;
-    if (b.status === "warning" && a.status === "safe") return 1;
-    return a.productName.localeCompare(b.productName);
-  });
-
-  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCostValuation = items.reduce((sum, item) => sum + item.totalCostValuation, 0);
-  const totalSellValuation = items.reduce((sum, item) => sum + item.totalSellValuation, 0);
-  const warningCount = items.filter((item) => item.status === "warning").length;
-  const outOfStockCount = items.filter((item) => item.status === "out_of_stock").length;
-  const safeCount = items.filter((item) => item.status === "safe").length;
-
+  const sum = (fn: (i: StockReportItem) => number) => items.reduce((s, i) => s + fn(i), 0);
   return {
     items,
-    warehouses: Array.from(warehouseSet).sort(),
+    warehouses: Array.from(new Set(locations.map((l) => l.name))),
     summary: {
       totalItems: items.length,
-      totalQuantity,
-      totalCostValuation,
-      totalSellValuation,
-      warningCount,
-      outOfStockCount,
-      safeCount,
+      totalQuantity: sum((i) => i.quantity),
+      totalCostValuation: sum((i) => i.totalCostValuation),
+      totalSellValuation: sum((i) => i.totalSellValuation),
+      warningCount: items.filter((i) => i.status === "warning").length,
+      outOfStockCount: items.filter((i) => i.status === "out_of_stock").length,
+      safeCount: items.filter((i) => i.status === "safe").length
     },
     filter,
-    generatedAt: new Date().toISOString(),
+    generatedAt: new Date().toISOString()
   };
 }
