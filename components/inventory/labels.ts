@@ -2,7 +2,7 @@ export type InvLocation = { id: string; code: string; name: string; type: "WAREH
 export type InvProduct = { id: string; sku: string; name: string; unit: string; unitsPerKoli?: number | null };
 
 export function locationLabel(l: InvLocation) {
-  return `${l.code} — ${l.name} (${l.type === "STORE" ? "Toko" : "Gudang"})`;
+  return `${l.code} · ${l.name} (${l.type === "STORE" ? "Toko" : "Gudang"})`;
 }
 
 /** Hitung qty satuan dari koli + lepas (sama dengan lib/inventory/math.ts). */

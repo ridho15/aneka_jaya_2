@@ -179,7 +179,7 @@ export function SearchableSelect({
                   <div className="truncate">
                     <span className="font-semibold text-slate-900">{opt.label}</span>
                     {opt.description && (
-                      <p className="text-[10px] text-slate-400 truncate">{opt.description}</p>
+                      <p className="text-xs text-slate-600 truncate">{opt.description}</p>
                     )}
                   </div>
                   {opt.badge && (
@@ -190,7 +190,7 @@ export function SearchableSelect({
                 </button>
               ))
             ) : (
-              <div className="py-4 text-center text-xs text-slate-400 italic">
+              <div className="py-4 text-center text-xs text-slate-600 italic">
                 {emptyText}
               </div>
             )}

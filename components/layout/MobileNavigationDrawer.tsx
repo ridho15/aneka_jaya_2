@@ -49,7 +49,7 @@ export function MobileNavigationDrawer({ role, userName }: { role: Role; userNam
           <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
             {groups.map((group) => (
               <div key={group.category}>
-                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
                   {group.category}
                 </p>
                 <div className="space-y-0.5">
@@ -60,7 +60,7 @@ export function MobileNavigationDrawer({ role, userName }: { role: Role; userNam
                       onClick={() => setOpen(false)}
                       className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
                         isNavLinkActive(pathname, link.href)
-                          ? "bg-emerald-600 text-white shadow-sm"
+                          ? "bg-emerald-700 text-white shadow-sm"
                           : "text-neutral-700 hover:bg-emerald-50 hover:text-emerald-800"
                       }`}
                     >
@@ -74,7 +74,7 @@ export function MobileNavigationDrawer({ role, userName }: { role: Role; userNam
               </div>
             ))}
           </nav>
-          <div className="border-t border-neutral-200 px-5 py-4 text-xs text-neutral-400">Operasional harian • akses sesuai role</div>
+          <div className="border-t border-neutral-200 px-5 py-4 text-xs text-neutral-500">Operasional harian • akses sesuai role</div>
         </aside>
       </div> : null}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -16,39 +16,50 @@ const fmt = (n: number | null | undefined, d = 2) => (n == null ? "-" : n.toLoca
 
 export function ProductTable({ rows, rate, canManage, initialEditingId }: { rows: ProductRow[]; rate: number | null; canManage: boolean; initialEditingId?: string }) {
   const [editing, setEditing] = useState<string | null>(canManage && initialEditingId ? initialEditingId : null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const editingRow = rows.find((x) => x.id === editing);
+  useEffect(() => {
+    if (editing) editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editing]);
   return (
+    <>
+      {/* Form edit di luar tabel supaya tetap utuh di layar HP (tabel bisa digeser ke samping). */}
+      {editingRow && (
+        <div ref={editorRef} className="aj-surface mb-4 scroll-mt-4 border-emerald-300 p-4">
+          <h3 className="mb-3 font-bold text-slate-900">Ubah {editingRow.sku}</h3>
+          <ProductEditor key={editingRow.id} row={editingRow} rate={rate} onDone={() => setEditing(null)} />
+        </div>
+      )}
     <div className="aj-surface mb-8 overflow-x-auto">
       <table className="min-w-full text-sm">
-        <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
           <tr>
-            <th className="px-3 py-2">SKU</th><th className="px-3 py-2">Nama</th><th className="px-3 py-2">Satuan</th><th className="px-3 py-2 text-right">Isi / Koli</th>
-            <th className="px-3 py-2 text-right">Harga RMB / satuan</th><th className="px-3 py-2 text-right">Modal / satuan</th><th className="px-3 py-2 text-right">Harga Jual / satuan</th>
+            <th className="px-3 py-2">Kode</th><th className="px-3 py-2">Nama</th><th className="px-3 py-2">Satuan</th><th className="px-3 py-2 text-right">Isi per koli</th>
+            <th className="px-3 py-2 text-right">Harga RMB</th><th className="px-3 py-2 text-right">Modal</th><th className="px-3 py-2 text-right">Harga Jual</th>
             <th className="px-3 py-2 text-right">Total Stok</th><th className="px-3 py-2" />
           </tr>
         </thead>
         <tbody>
           {rows.map((x) => (
-            <Fragment key={x.id}>
-              <tr className="border-t border-slate-100">
+              <tr key={x.id} className={`border-t border-slate-100 ${editing === x.id ? "bg-emerald-50" : ""}`}>
                 <td className="px-3 py-2 font-mono text-xs font-semibold">{x.sku}</td>
-                <td className="px-3 py-2"><Link className="hover:text-emerald-700" href={`/inventory/mutasi?productId=${x.id}`}>{x.name}</Link><div className="text-xs text-slate-500">{[x.category, x.brand].filter(Boolean).join(" / ")}</div></td>
+                <td className="px-3 py-2"><Link className="hover:text-emerald-800" href={`/inventory/mutasi?productId=${x.id}`}>{x.name}</Link><div className="text-xs text-slate-600">{[x.category, x.brand].filter(Boolean).join(" / ")}</div></td>
                 <td className="px-3 py-2">{x.unit}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{x.unitsPerKoli ? `${fmt(x.unitsPerKoli)} ${x.unit}` : "-"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{x.priceRmb != null ? `¥ ${fmt(x.priceRmb, 4)}` : "-"}{x.priceRmb != null && x.extraCostIdr ? <div className="text-xs text-slate-500">+ Rp {fmt(x.extraCostIdr)}</div> : null}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{x.priceRmb != null ? `¥ ${fmt(x.priceRmb, 4)}` : "-"}{x.priceRmb != null && x.extraCostIdr ? <div className="text-xs text-slate-600">+ Rp {fmt(x.extraCostIdr)}</div> : null}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{fmt(x.costPrice)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{fmt(x.sellingPrice)}</td>
-                <td className={`whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums ${x.minimumStock > 0 && x.totalQuantity <= x.minimumStock ? "text-red-600" : ""}`}>
-                  {x.totalKoliText}{x.unitsPerKoli && x.totalQuantity ? <div className="text-xs font-normal text-slate-500">{fmt(x.totalQuantity)} {x.unit}</div> : null}
+                <td className={`whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums ${x.minimumStock > 0 && x.totalQuantity <= x.minimumStock ? "text-red-800" : ""}`}>
+                  {x.totalKoliText}{x.unitsPerKoli && x.totalQuantity ? <div className="text-xs font-normal text-slate-600">{fmt(x.totalQuantity)} {x.unit}</div> : null}
                 </td>
-                <td className="px-3 py-2 text-right">{canManage && <button className="text-xs font-semibold text-emerald-700" onClick={() => setEditing(editing === x.id ? null : x.id)}>{editing === x.id ? "Tutup" : "Ubah"}</button>}</td>
+                <td className="px-3 py-2 text-right">{canManage && <button className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50" onClick={() => setEditing(editing === x.id ? null : x.id)}>{editing === x.id ? "Tutup" : "Ubah"}</button>}</td>
               </tr>
-              {editing === x.id && <tr className="bg-emerald-50/40"><td colSpan={9} className="px-3 py-3"><ProductEditor row={x} rate={rate} onDone={() => setEditing(null)} /></td></tr>}
-            </Fragment>
           ))}
-          {!rows.length && <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-500">Belum ada barang.</td></tr>}
+          {!rows.length && <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-600">Belum ada barang.</td></tr>}
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -83,7 +94,7 @@ function ProductEditor({ row, rate, onDone }: { row: ProductRow; rate: number | 
     }
   }
 
-  const input = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
+  const input = "min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-700";
   const field = (label: string, key: keyof typeof f, extra?: React.InputHTMLAttributes<HTMLInputElement>) => (
     <label className="space-y-1 text-xs font-semibold text-slate-700"><span>{label}</span><input className={input} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} {...extra} /></label>
   );
@@ -92,15 +103,15 @@ function ProductEditor({ row, rate, onDone }: { row: ProductRow; rate: number | 
       <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-8">
         <div className="sm:col-span-2">{field("Nama", "name")}</div>
         {field("Satuan", "unit")}
-        {field(`Isi per koli (${f.unit || "satuan"})`, "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
-        {field(`Harga RMB per ${f.unit || "lusin"}`, "priceRmb", { inputMode: "decimal", placeholder: "kosong = tanpa RMB" })}
-        {field(`Biaya tambahan per ${f.unit || "lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
-        {field(`Modal per ${f.unit || "lusin"} (Rp)`, "costPrice", { inputMode: "decimal", disabled: previewCost != null })}
-        {field(`Harga Jual per ${f.unit || "lusin"} (Rp)`, "sellingPrice", { inputMode: "decimal" })}
+        {field(`Isi per koli (${f.unit || "Lusin"})`, "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
+        {field(`Harga RMB per ${f.unit || "Lusin"}`, "priceRmb", { inputMode: "decimal", placeholder: "kosong = tanpa RMB" })}
+        {field(`Biaya tambahan per ${f.unit || "Lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
+        {field(`Modal per ${f.unit || "Lusin"} (Rp)`, "costPrice", { inputMode: "decimal", disabled: previewCost != null })}
+        {field(`Harga Jual per ${f.unit || "Lusin"} (Rp)`, "sellingPrice", { inputMode: "decimal" })}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-        <span>{previewCost != null ? <>Modal otomatis: ¥{rmb} × Rp {rate?.toLocaleString("id-ID")}{Number(f.extraCostIdr) ? ` + Rp ${Number(f.extraCostIdr).toLocaleString("id-ID")}` : ""} = <b>Rp {previewCost.toLocaleString("id-ID")}</b></> : rmb != null ? "Kurs RMB belum diatur — modal tidak dihitung otomatis." : "Isi Harga RMB agar modal ikut berubah saat kurs RMB diganti."}</span>
-        <div className="flex gap-2"><Button variant="secondary" onClick={onDone}>Batal</Button><Button onClick={save} disabled={busy}>{busy ? "Menyimpan..." : "Simpan"}</Button></div>
+        <span>{previewCost != null ? <>Modal otomatis: ¥{rmb} × Rp {rate?.toLocaleString("id-ID")}{Number(f.extraCostIdr) ? ` + Rp ${Number(f.extraCostIdr).toLocaleString("id-ID")}` : ""} = <b>Rp {previewCost.toLocaleString("id-ID")}</b></> : rmb != null ? "Kurs RMB belum diatur, jadi modal belum dihitung otomatis." : "Isi Harga RMB agar modal ikut berubah saat kurs RMB diganti."}</span>
+        <div className="flex gap-2"><Button variant="secondary" className="min-h-11" onClick={onDone}>Batal</Button><Button className="min-h-11" onClick={save} disabled={busy}>{busy ? "Menyimpan..." : "Simpan"}</Button></div>
       </div>
     </div>
   );

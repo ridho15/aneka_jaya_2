@@ -119,8 +119,8 @@ export default async function StockReportsPage({
             Laporan Persediaan Stok Barang
           </h2>
           <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-            Data stok yang sama dengan Inventory › Stok Gudang &amp; Toko: urut dari stok paling sedikit,
-            menipis = ≤ 1 koli, stok 0 di paling bawah. Valuasi = qty × harga modal master barang.
+            Sama dengan halaman Stok Gudang &amp; Toko. Stok paling sedikit di atas, stok habis di bawah.
+            Menipis = sisa 1 koli atau kurang. Nilai stok = jumlah × harga modal.
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export default async function StockReportsPage({
           {role === "OWNER" && (
             <Link
               href="/stok-barang/ai-forecast"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-800 sm:text-sm"
             >
               <span>Prediksi Stok</span>
             </Link>
@@ -158,7 +158,7 @@ export default async function StockReportsPage({
             href={printPdfUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 sm:text-sm"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-800 sm:text-sm"
           >
             <svg
               className="h-4 w-4"
@@ -221,7 +221,7 @@ export default async function StockReportsPage({
               className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
               <option value="all">Semua Status</option>
-              <option value="warning">Menipis (≤ 1 koli)</option>
+              <option value="warning">Menipis (sisa 1 koli atau kurang)</option>
               <option value="out_of_stock">Habis (Qty 0)</option>
               <option value="safe">Aman</option>
             </select>
@@ -241,7 +241,7 @@ export default async function StockReportsPage({
           <div className="flex items-end gap-2">
             <button
               type="submit"
-              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-emerald-700"
+              className="flex-1 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-emerald-800"
             >
               Terapkan Filter
             </button>
@@ -332,7 +332,7 @@ export default async function StockReportsPage({
                   href={buildPageHref({ ...filterState, pageSize: String(size) }, 1)}
                   className={`rounded-md px-2.5 py-1 font-semibold transition ${
                     pageSize === size
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-emerald-700 text-white"
                       : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                   }`}
                 >
@@ -369,7 +369,7 @@ export default async function StockReportsPage({
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-semibold text-slate-900">{item.hasName === false ? <span className="font-normal italic text-slate-400">Nama belum diisi</span> : item.productName}</p>
+                  <p className="mt-1 font-semibold text-slate-900">{item.hasName === false ? <span className="font-normal italic text-slate-600">Nama belum diisi</span> : item.productName}</p>
                   <p className="text-xs text-slate-500">
                     {item.warehouse} • {item.locationType === "STORE" ? "Toko" : "Gudang"}
                   </p>
@@ -433,13 +433,13 @@ export default async function StockReportsPage({
                     {item.sku}
                   </td>
                   <td className="px-5 py-4 font-medium text-slate-900">
-                    {item.hasName === false ? <span className="text-sm font-normal italic text-slate-400">Nama belum diisi</span> : item.productName}
+                    {item.hasName === false ? <span className="text-sm font-normal italic text-slate-600">Nama belum diisi</span> : item.productName}
                     {item.category && <div className="text-xs font-normal text-slate-500">{item.category}</div>}
                   </td>
                   <td className="px-5 py-4 text-xs text-slate-600">
-                    {item.warehouse} <span className="text-slate-400">({item.locationType === "STORE" ? "Toko" : "Gudang"})</span>
+                    {item.warehouse} <span className="text-slate-600">({item.locationType === "STORE" ? "Toko" : "Gudang"})</span>
                   </td>
-                  <td className={`px-5 py-4 text-right font-bold ${item.status === "warning" ? "text-red-600" : "text-slate-900"}`}>
+                  <td className={`px-5 py-4 text-right font-bold ${item.status === "warning" ? "text-red-800" : "text-slate-900"}`}>
                     {item.quantity.toLocaleString("id-ID")} <span className="text-xs font-normal text-slate-500">{item.unit}</span>
                     {item.koliText?.includes("koli") ? <div className="text-xs font-normal text-slate-500">{item.koliText}</div> : null}
                   </td>
@@ -467,14 +467,14 @@ export default async function StockReportsPage({
                     {item.costPrice > 0 ? (
                       rupiah(item.costPrice)
                     ) : (
-                      <span className="text-slate-400">-</span>
+                      <span className="text-slate-600">-</span>
                     )}
                   </td>
                   <td className="px-5 py-4 text-right font-bold text-slate-900">
                     {item.totalCostValuation > 0 ? (
                       rupiah(item.totalCostValuation)
                     ) : (
-                      <span className="font-normal text-slate-400">-</span>
+                      <span className="font-normal text-slate-600">-</span>
                     )}
                   </td>
                 </tr>
@@ -534,7 +534,7 @@ export default async function StockReportsPage({
                   Sebelumnya
                 </Link>
               ) : (
-                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-600">
                   Sebelumnya
                 </span>
               )}
@@ -546,7 +546,7 @@ export default async function StockReportsPage({
                   Berikutnya
                 </Link>
               ) : (
-                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-600">
                   Berikutnya
                 </span>
               )}

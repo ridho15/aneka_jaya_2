@@ -195,7 +195,7 @@ export default async function StockReportPrintPage({
                     <span className="text-amber-700">Menipis</span>
                   )}
                   {item.status === "safe" && (
-                    <span className="text-emerald-700">Aman</span>
+                    <span className="text-emerald-800">Aman</span>
                   )}
                 </td>
                 <td className="py-2 px-2 text-right text-slate-700">

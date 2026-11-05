@@ -142,7 +142,7 @@ export async function parseOpnameWorkbook(buffer: ArrayBuffer | Buffer): Promise
     const cached = qtyCell ? toNumber(cellValue(qtyCell)) : undefined;
     if (cached !== undefined && cols[koliKey] === undefined && cols[looseKey] === undefined) return cached;
     if ((toNumber(get(row, koliKey)) ?? 0) > 0 && !perKoli) {
-      warnings.push(`Baris ${row.number} (${toText(get(row, "sku"))}): ada Koli tapi Isi/Koli kosong — koli diabaikan.`);
+      warnings.push(`Baris ${row.number} (${toText(get(row, "sku"))}): ada Koli tapi Isi per koli kosong, jadi koli tidak dihitung.`);
     }
     return computed;
   };

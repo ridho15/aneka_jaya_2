@@ -8,7 +8,6 @@ const schema = z.object({
   category: z.string().trim().max(120).optional()
 });
 
-/** Daftar satuan yang dipakai + jumlah barang. */
 export const GET = inventoryRoute("inventory.master", async () => listUnitUsage());
 
 /** Ubah satuan massal, mis. semua "PCS" → "Lusin". Hanya label satuan; qty tidak dikonversi. */

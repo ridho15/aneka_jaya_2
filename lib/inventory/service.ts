@@ -286,7 +286,7 @@ type KoliItem = { quantity?: number | null; countedQty?: number | null; koli?: n
 function itemQuantity(product: { sku: string; unitsPerKoli: Prisma.Decimal | null }, item: KoliItem, field: "quantity" | "countedQty" = "quantity") {
   const perKoli = item.unitsPerKoli ?? (product.unitsPerKoli == null ? null : num(product.unitsPerKoli));
   const qty = qtyFromKoli({ quantity: item[field], koli: item.koli, loose: item.loose }, perKoli);
-  if (qty == null) throw new InventoryError("VALIDATION", `Isi per koli barang ${product.sku} belum diatur, jadi qty tidak bisa diisi dalam koli. Atur di Master Barang atau isi qty satuan.`, 400, { sku: product.sku });
+  if (qty == null) throw new InventoryError("VALIDATION", `Isi per koli untuk ${product.sku} belum ada. Isi kolom "Isi per koli" di baris ini, atau masukkan jumlah di kolom Lepas.`, 400, { sku: product.sku });
   return qty;
 }
 
@@ -378,7 +378,7 @@ export async function listBalances(query: BalanceQuery = {}) {
 
 /**
  * Matriks stok per produk × lokasi (gudang & toko) dalam satu tabel.
- * Urutan: barang yang masih ada stoknya di lokasi terpilih, dari yang PALING SEDIKIT
+ * Urutan: barang yang masih ada stoknya di lokasi terpilih, dari yang paling sedikit
  * (dalam koli bila isi per koli diketahui), lalu barang dengan stok 0 di paling bawah.
  * `lowStock` = stok ≤ 1 koli (atau ≤ minimum stok bila isi koli belum diatur).
  */
@@ -422,7 +422,7 @@ export async function stockMatrix(query: { keyword?: string; locationType?: "WAR
     data: ids.map((id) => {
       const p = productById.get(id)!;
       const perLocation = Object.fromEntries(locations.map((l) => [l.id, byKey.get(`${p.id}:${l.id}`) ?? 0]));
-      // Total gudang & toko selalu dari SEMUA lokasi aktif, tidak ikut filter kolom.
+      // Total gudang & toko selalu dari semua lokasi aktif, tidak ikut filter kolom.
       const own = balances.filter((b) => b.productId === p.id);
       const warehouseTotal = own.filter((b) => b.location.type === "WAREHOUSE").reduce((s, b) => s + num(b.quantity), 0);
       const storeTotal = own.filter((b) => b.location.type === "STORE").reduce((s, b) => s + num(b.quantity), 0);

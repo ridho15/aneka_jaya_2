@@ -14,7 +14,7 @@ export default async function LokasiPage() {
   const locations = await listLocations({ includeInactive: true });
   return (
     <AppShell>
-      <InventoryHeader title="Gudang & Toko" description="Kelola semua lokasi stok: gudang dan toko. Tandai satu lokasi sebagai default untuk penjualan dan penerimaan pembelian." />
+      <InventoryHeader title="Lokasi Stok" description="Semua gudang dan toko tempat stok disimpan. Tandai satu lokasi sebagai default untuk penjualan dan barang masuk." />
       <LocationManager locations={locations} canManage={can(role, "inventory.location")} />
     </AppShell>
   );

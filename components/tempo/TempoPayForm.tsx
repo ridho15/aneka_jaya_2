@@ -170,7 +170,7 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
               onClick={() => setAmountPaid(remainingAmount)}
               className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
                 amountPaid === remainingAmount
-                  ? "bg-emerald-600 text-white shadow-sm"
+                  ? "bg-emerald-700 text-white shadow-sm"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
@@ -267,7 +267,7 @@ export function TempoPayForm({ tempoId, remainingAmount, tipeId, rekenings }: Pr
         <button
           type="submit"
           disabled={isSubmitting || amountPaid <= 0 || amountPaid > remainingAmount}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 px-4 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3 px-4 text-sm font-bold text-white shadow-sm hover:bg-emerald-800 focus:ring-4 focus:ring-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {isSubmitting ? (
             <>

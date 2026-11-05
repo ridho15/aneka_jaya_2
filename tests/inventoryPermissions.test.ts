@@ -7,17 +7,17 @@ const inventoryMenu = (role: Role) => visibleNavLinks(role).filter((l) => l.cate
 describe("menu inventory per role", () => {
   it("Super Admin melihat semua menu", () => {
     expect(inventoryMenu("OWNER")).toEqual([
-      "Stok Gudang & Toko", "Mutasi / Kartu Stok", "Transfer Antar Gudang", "Barang Masuk", "Stock Opname",
-      "Import Opname Excel", "Stock Adjustment", "Master Barang", "Gudang & Toko"
+      "Stok Gudang & Toko", "Mutasi / Kartu Stok", "Transfer Stok", "Barang Masuk", "Stock Opname",
+      "Import Opname Excel", "Stock Adjustment", "Master Barang", "Lokasi Stok"
     ]);
   });
 
   it("Admin hanya stok, opname, transfer", () => {
-    expect(inventoryMenu("ADMIN")).toEqual(["Stok Gudang & Toko", "Transfer Antar Gudang", "Stock Opname"]);
+    expect(inventoryMenu("ADMIN")).toEqual(["Stok Gudang & Toko", "Transfer Stok", "Stock Opname"]);
   });
 
   it("Manager & Supervisor semua kecuali Master Barang, Gudang & Toko (dan Import)", () => {
-    const expected = ["Stok Gudang & Toko", "Mutasi / Kartu Stok", "Transfer Antar Gudang", "Barang Masuk", "Stock Opname", "Stock Adjustment"];
+    const expected = ["Stok Gudang & Toko", "Mutasi / Kartu Stok", "Transfer Stok", "Barang Masuk", "Stock Opname", "Stock Adjustment"];
     expect(inventoryMenu("MANAGER")).toEqual(expected);
     expect(inventoryMenu("SUPERVISOR")).toEqual(expected);
   });

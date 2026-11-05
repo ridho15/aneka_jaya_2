@@ -41,7 +41,7 @@ describe("parseOpnameWorkbook", () => {
   it("memakai kolom berjudul Harga Jual bila ada, dan memperingatkan koli tanpa isi/koli", async () => {
     const parsed = await parseOpnameWorkbook(await template([["X-1", "Barang", null, "Pcs", 100, null, 3, 4, null, 0, 0, null, null, null, null, null, 999]], "Harga Jual"));
     expect(parsed.rows[0]).toMatchObject({ sellingPrice: 999, qtyWarehouse: 4 });
-    expect(parsed.warnings.some((w) => w.includes("Isi/Koli kosong"))).toBe(true);
+    expect(parsed.warnings.some((w) => w.includes("Isi per koli kosong"))).toBe(true);
   });
 
   it("menolak file tanpa header Kode/Qty", async () => {

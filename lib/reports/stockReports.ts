@@ -2,12 +2,8 @@ import { listBalances, listLocations } from "@/lib/inventory/service";
 import { hasRealName } from "@/lib/inventory/math";
 
 /**
- * Laporan persediaan stok — sumber datanya sama dengan halaman Inventory › Stok Gudang & Toko
- * (inventory SLM), termasuk aturan koli:
- *  - Habis   : qty ≤ 0
- *  - Menipis : qty ≤ 1 koli (atau ≤ minimum stok bila isi per koli belum diatur)
- *  - Urutan  : stok paling sedikit (dalam koli) di atas, stok 0 paling bawah.
- * Nilai modal = qty × harga modal master barang (ikut kurs RMB terbaru).
+ * Laporan stok dari inventory SLM, sama dengan halaman Stok Gudang & Toko.
+ * Habis = qty ≤ 0; Menipis = ≤ 1 koli (atau ≤ minimum stok bila isi per koli kosong).
  */
 export type StockReportFilter = {
   /** Nama atau kode lokasi gudang/toko. */

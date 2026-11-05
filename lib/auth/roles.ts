@@ -11,7 +11,7 @@ export const ALL_PERMISSIONS = [
   "sdm.view", "sdm.employee.manage", "sdm.kasbon.manage", "sdm.salary.view", "sdm.savings.manage",
   "accounting.view", "accounting.journal.manage", "accounting.coa.manage", "accounting.period.manage", "accounting.rates.manage",
   "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage",
-  // Inventory gudang & toko — satu permission per menu
+  // Inventory gudang & toko: satu permission per menu
   "inventory.stock.view", "inventory.movement.view", "inventory.transfer", "inventory.receive",
   "inventory.opname", "inventory.adjust", "inventory.import", "inventory.master", "inventory.location"
 ] as const;

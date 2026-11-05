@@ -1,6 +1,6 @@
 # Inventory Gudang & Toko (SLM)
 
-Modul stok native SLM. Semua stok — gudang maupun toko — tersimpan di database SLM
+Modul stok native SLM. Semua stok (gudang maupun toko) tersimpan di database SLM
 (`slm.playgo.id`) sebagai satu kesatuan, tidak lagi bergantung pada stok Anika ERP
 (`ankjy.playgo.id`).
 
@@ -39,7 +39,7 @@ Setiap barang bisa diberi **Isi per Koli** di Master Barang, dalam satuan barang
 
 ## Harga RMB & kurs
 
-Semua harga — modal, harga jual, dan harga RMB — dicatat **per satuan barang**, yaitu per lusin
+Semua harga (modal, harga jual, dan harga RMB) dicatat **per satuan barang**, yaitu per lusin
 (atau per pack/box untuk barang bersatuan itu). Tidak ada harga per pcs. Satuan default barang
 baru (termasuk kode tanpa kolom Satuan di Excel) adalah **Lusin**.
 
@@ -53,19 +53,19 @@ baru (termasuk kode tanpa kolom Satuan di Excel) adalah **Lusin**.
 
 ## Halaman (menu "Inventory Gudang & Toko")
 
-- `/inventory` — matriks stok: tiap barang dengan kolom per gudang & toko, total gudang, total toko.
-- `/inventory/mutasi` — mutasi & kartu stok (filter barang, lokasi, jenis, tanggal, referensi).
-- `/inventory/transfer` — transfer antar gudang/toko, terima / batalkan transfer dalam perjalanan.
-- `/inventory/barang-masuk` — GRN pembelian yang belum masuk stok + barang masuk manual.
-- `/inventory/import` — **Import Opname dari Excel** (template "Stock Opname Aneka Jaya").
+- `/inventory`: matriks stok: tiap barang dengan kolom per gudang & toko, total gudang, total toko.
+- `/inventory/mutasi`: mutasi & kartu stok (filter barang, lokasi, jenis, tanggal, referensi).
+- `/inventory/transfer`: transfer antar gudang/toko, terima / batalkan transfer dalam perjalanan.
+- `/inventory/barang-masuk`: GRN pembelian yang belum masuk stok + barang masuk manual.
+- `/inventory/import`: **Import Opname Excel** (template "Stock Opname Aneka Jaya").
 - `/inventory/opname`, `/inventory/adjustment`, `/inventory/produk`, `/inventory/lokasi`.
 
 ### Import opname dari Excel
 
 1. Buat lokasi gudang & toko di `/inventory/lokasi` (mis. `GDG-PLUIT` Gudang, `TK-MEKAR` Toko).
 2. Buka `/inventory/import`, unggah file `.xlsx`, pilih lokasi untuk kolom *Qty Gudang* dan *Qty Toko*.
-3. Klik **Preview**: cek jumlah baris, barang baru, total qty per lokasi, nilai modal, dan peringatan.
-4. Klik **Posting Opname**.
+3. Klik **Cek Dulu**: cek jumlah baris, barang baru, total qty per lokasi, nilai modal, dan peringatan.
+4. Klik **Simpan Opname**.
 
 Aturan pembacaan (sheet `Opname`, kolom dicari berdasarkan judul header):
 - Qty = `Koli × Isi/Koli + Lepas` (sama dengan rumus template). Koli tanpa Isi/Koli dihitung 0 dan diberi peringatan.
@@ -83,13 +83,13 @@ Hak akses per menu:
 | --- | --- | :-: | :-: | :-: | :-: |
 | Stok Gudang & Toko | `inventory.stock.view` | ✓ | ✓ | ✓ | ✓ |
 | Mutasi / Kartu Stok | `inventory.movement.view` | ✓ | ✓ | | ✓ |
-| Transfer Antar Gudang | `inventory.transfer` | ✓ | ✓ | ✓ | |
+| Transfer Stok | `inventory.transfer` | ✓ | ✓ | ✓ | |
 | Barang Masuk | `inventory.receive` | ✓ | ✓ | | |
 | Stock Opname | `inventory.opname` | ✓ | ✓ | ✓ | |
 | Stock Adjustment | `inventory.adjust` | ✓ | ✓ | | |
 | Import Opname Excel | `inventory.import` | ✓ | | | |
 | Master Barang (+ kurs RMB) | `inventory.master` | ✓ | | | |
-| Gudang & Toko | `inventory.location` | ✓ | | | |
+| Lokasi Stok | `inventory.location` | ✓ | | | |
 
 Finance dan Viewer tidak melihat menu inventory. Permission yang sama dipakai API `/api/inventory/*`.
 

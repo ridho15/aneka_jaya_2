@@ -50,16 +50,16 @@ export function ProductCreateForm({ locations }: { locations: InvLocation[] }) {
         {field("Merk", "brand")}
         {field("Satuan", "unit")}
         {field("Barcode", "barcode")}
-        {field(`Isi per Koli (${form.unit || "lusin"})`, "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
+        {field(`Isi per Koli (${form.unit || "Lusin"})`, "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
         {field("Minimum Stok", "minimumStock", { inputMode: "decimal" })}
-        {field(`Harga RMB per ${form.unit || "lusin"}`, "priceRmb", { inputMode: "decimal", placeholder: "opsional" })}
-        {field(`Biaya tambahan per ${form.unit || "lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
-        {field(`Modal per ${form.unit || "lusin"} (Rp) — otomatis bila ada RMB`, "costPrice", { inputMode: "decimal" })}
-        {field(`Harga Jual per ${form.unit || "lusin"}`, "sellingPrice", { inputMode: "decimal" })}
+        {field(`Harga RMB per ${form.unit || "Lusin"}`, "priceRmb", { inputMode: "decimal", placeholder: "opsional" })}
+        {field(`Biaya tambahan per ${form.unit || "Lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "ongkir, CBM" })}
+        {field(`Modal per ${form.unit || "Lusin"} (Rp), terisi otomatis kalau ada harga RMB`, "costPrice", { inputMode: "decimal" })}
+        {field(`Harga Jual per ${form.unit || "Lusin"}`, "sellingPrice", { inputMode: "decimal" })}
         {field("ID Produk ERP (pemetaan, opsional)", "erpProductId", { inputMode: "numeric" })}
         <label className="space-y-1 text-sm font-semibold"><span>Stok Awal di</span>
           <select className={input} value={form.initialLocationId} onChange={set("initialLocationId")}>
-            <option value="">— Tanpa stok awal —</option>
+            <option value="">Tanpa stok awal</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{locationLabel(l)}</option>)}
           </select>
         </label>

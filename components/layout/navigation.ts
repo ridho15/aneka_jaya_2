@@ -160,7 +160,7 @@ export const NAV_LINKS: NavLink[] = [
   },
   {
     href: "/inventory/transfer",
-    label: "Transfer Antar Gudang",
+    label: "Transfer Stok",
     icon: "⇄",
     permission: "inventory.transfer",
     category: "INVENTORY GUDANG & TOKO",
@@ -202,7 +202,7 @@ export const NAV_LINKS: NavLink[] = [
   },
   {
     href: "/inventory/lokasi",
-    label: "Gudang & Toko",
+    label: "Lokasi Stok",
     icon: "⌂",
     permission: "inventory.location",
     category: "INVENTORY GUDANG & TOKO",

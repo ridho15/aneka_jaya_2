@@ -15,22 +15,22 @@ export default async function BarangMasukPage() {
   const [locations, products, pending, history] = await Promise.all([listLocations(), listProductOptions(), listPendingPurchaseReceipts(), listStockInHistory()]);
   return (
     <AppShell>
-      <InventoryHeader title="Barang Masuk" description={<>Input stok terbaru saat barang tiba di gudang/toko. Barang dari <b>PO pembelian</b>: terima di Pembelian → Pesanan (PO) → Terima Barang, stok langsung masuk ke gudang yang dipilih. Barang tanpa PO: pakai form di bawah.</>} />
+      <InventoryHeader title="Barang Masuk" description={<>Catat barang yang baru tiba di gudang atau toko. Barang dari PO: terima lewat <b>Pembelian › Pesanan (PO) › Terima Barang</b>, stoknya langsung masuk. Barang tanpa PO: isi form di bawah.</>} />
 
       <section className="mb-8">
         <h3 className="mb-3 font-bold text-slate-800">Penerimaan Pembelian (GRN) belum masuk stok</h3>
         <div className="aj-surface overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
               <tr><th className="px-3 py-2">GRN</th><th className="px-3 py-2">Tanggal</th><th className="px-3 py-2">PO / Supplier</th><th className="px-3 py-2">Barang</th><th className="px-3 py-2">Masukkan ke</th></tr>
             </thead>
             <tbody>
               {pending.map((r) => (
                 <tr key={r.id} className="border-t border-slate-100 align-top">
-                  <td className="px-3 py-2 font-mono text-xs font-semibold">{r.grnNumber}</td>
+                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs font-semibold">{r.grnNumber}</td>
                   <td className="whitespace-nowrap px-3 py-2">{fmtDate(r.receiptDate)}</td>
                   <td className="px-3 py-2">{r.purchaseOrder.poNumber}<div className="text-xs text-slate-500">{r.purchaseOrder.supplier.name}</div></td>
-                  <td className="px-3 py-2 text-xs">{r.items.map((i, idx) => <div key={idx}>{i.itemCode} — {i.itemName}: <b>{fmtQty(Number(i.quantityReceived))}</b> {i.unit}</div>)}</td>
+                  <td className="px-3 py-2 text-xs">{r.items.map((i, idx) => <div key={idx}>{i.itemCode} · {i.itemName}: <b>{fmtQty(Number(i.quantityReceived))}</b> {i.unit}</div>)}</td>
                   <td className="px-3 py-2">{locations.length ? <GrnPostForm receiptId={r.id} locations={locations} /> : <span className="text-xs text-slate-500">Buat gudang dulu</span>}</td>
                 </tr>
               ))}
@@ -47,17 +47,17 @@ export default async function BarangMasukPage() {
         <h3 className="mb-3 font-bold text-slate-800">Riwayat Barang Masuk</h3>
         <div className="aj-surface overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
               <tr><th className="px-3 py-2">Tanggal</th><th className="px-3 py-2">No. Referensi</th><th className="px-3 py-2">Sumber</th><th className="px-3 py-2">Lokasi</th><th className="px-3 py-2">Barang</th><th className="px-3 py-2 text-right">Nilai Modal</th><th className="px-3 py-2">Oleh</th></tr>
             </thead>
             <tbody>
               {history.map((h) => (
                 <tr key={h.key} className="border-t border-slate-100 align-top">
                   <td className="whitespace-nowrap px-3 py-2">{fmtDate(h.movementDate)}</td>
-                  <td className="px-3 py-2 font-mono text-xs font-semibold">{h.referenceNumber}</td>
-                  <td className="px-3 py-2 text-xs">{h.referenceType === "PURCHASE_RECEIPT" ? "GRN Pembelian" : "Manual"}</td>
+                  <td className="px-3 py-2 whitespace-nowrap font-mono text-xs font-semibold">{h.referenceNumber}</td>
+                  <td className="px-3 py-2 text-xs">{h.referenceType === "PURCHASE_RECEIPT" ? "Dari PO" : "Manual"}</td>
                   <td className="px-3 py-2">{h.locationCode}</td>
-                  <td className="px-3 py-2 text-xs">{h.items.map((i, idx) => <div key={idx}>{i.sku} — {i.name}: <b>{fmtQty(i.quantity)}</b> {i.unit}{i.koliText.includes("koli") ? ` (${i.koliText})` : ""}</div>)}</td>
+                  <td className="px-3 py-2 text-xs">{h.items.map((i, idx) => <div key={idx}>{i.sku} · {i.name}: <b>{fmtQty(i.quantity)}</b> {i.unit}{i.koliText.includes("koli") ? ` (${i.koliText})` : ""}</div>)}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{h.totalValue ? `Rp ${h.totalValue.toLocaleString("id-ID")}` : "-"}</td>
                   <td className="px-3 py-2 text-xs">{h.createdByName ?? "-"}</td>
                 </tr>

@@ -5,7 +5,7 @@ import { rmbRateSchema } from "@/lib/inventory/validation";
 /** Kurs RMB → IDR yang dipakai menghitung harga modal barang berharga RMB. */
 export const GET = inventoryRoute("inventory.master", async () => getRmbRate());
 
-/** Ganti kurs RMB. Hanya HARGA MODAL barang yang punya harga RMB yang dihitung ulang. */
+/** Ganti kurs RMB. Hanya harga modal barang yang punya harga RMB yang dihitung ulang. */
 export const PUT = inventoryRoute("inventory.master", async (request, ctx) => {
   const { rate } = await parseBody(request, rmbRateSchema);
   const result = await setRmbRate(rate, ctx.actor);

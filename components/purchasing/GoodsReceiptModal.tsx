@@ -108,7 +108,7 @@ export function GoodsReceiptModal({ isOpen, onClose, order, onSuccess, locations
           <div>
             <h3 className="font-bold text-slate-900">Penerimaan Barang (Goods Receipt)</h3>
             <p className="text-xs text-slate-500 font-mono mt-0.5">
-              PO: {order.poNumber} — Supplier: {order.supplier.name}
+              PO: {order.poNumber} · Supplier: {order.supplier.name}
             </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg">
@@ -142,17 +142,20 @@ export function GoodsReceiptModal({ isOpen, onClose, order, onSuccess, locations
                     required
                   >
                     {locations.map((l) => (
-                      <option key={l.id} value={l.id}>{l.code} — {l.name} ({l.type === "STORE" ? "Toko" : "Gudang"})</option>
+                      <option key={l.id} value={l.id}>{l.code} · {l.name} ({l.type === "STORE" ? "Toko" : "Gudang"})</option>
                     ))}
                   </select>
                   <p className="mt-1 text-xs text-emerald-700">Barang yang diterima langsung menambah stok lokasi ini.</p>
                 </>
               ) : (
-                <Input
-                  value={warehouseName}
-                  onChange={(e) => setWarehouseName(e.target.value)}
-                  required
-                />
+                <>
+                  <Input
+                    value={warehouseName}
+                    onChange={(e) => setWarehouseName(e.target.value)}
+                    required
+                  />
+                  <p className="mt-1 text-xs text-slate-600">Stok dimasukkan oleh petugas gudang lewat Inventory › Barang Masuk.</p>
+                </>
               )}
             </div>
           </div>

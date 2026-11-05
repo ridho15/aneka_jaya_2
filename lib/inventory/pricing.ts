@@ -19,7 +19,7 @@ export async function getRmbRate(): Promise<{ rate: number | null; updatedAt?: s
 }
 
 /**
- * Simpan kurs RMB lalu hitung ulang HARGA MODAL semua barang yang punya harga RMB.
+ * Simpan kurs RMB lalu hitung ulang harga modal semua barang yang punya harga RMB.
  * Harga jual dan nilai stok yang sudah tercatat (kartu stok/HPP rata-rata) tidak diubah.
  */
 export async function setRmbRate(rate: number, actor?: { id?: string; name?: string }) {

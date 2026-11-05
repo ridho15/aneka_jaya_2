@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/ToastProvider";
 
 export function RmbRateForm({ rate, updatedAt, updatedBy, rmbProducts, canManage }: { rate: number | null; updatedAt?: string; updatedBy?: string | null; rmbProducts: number; canManage: boolean }) {
@@ -10,11 +11,15 @@ export function RmbRateForm({ rate, updatedAt, updatedBy, rmbProducts, canManage
   const { showToast } = useToast();
   const [value, setValue] = useState(rate ? String(rate) : "");
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const next = Number(value);
+
+  function ask() {
+    if (!(next > 0)) return showToast("Kurs RMB harus lebih dari 0.", "error");
+    setConfirmOpen(true);
+  }
 
   async function save() {
-    const next = Number(value);
-    if (!(next > 0)) return showToast("Kurs RMB harus lebih dari 0.", "error");
-    if (!window.confirm(`Ganti kurs RMB menjadi Rp ${next.toLocaleString("id-ID")}? Harga modal ${rmbProducts} barang berharga RMB akan dihitung ulang. Harga jual dan nilai stok yang sudah tercatat tidak berubah.`)) return;
     setBusy(true);
     try {
       const res = await fetch("/api/inventory/settings/rmb-rate", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rate: next }) });
@@ -24,6 +29,7 @@ export function RmbRateForm({ rate, updatedAt, updatedBy, rmbProducts, canManage
       router.refresh();
     } finally {
       setBusy(false);
+      setConfirmOpen(false);
     }
   }
 
@@ -32,20 +38,30 @@ export function RmbRateForm({ rate, updatedAt, updatedBy, rmbProducts, canManage
       <div>
         <h3 className="font-bold text-slate-800">Kurs RMB untuk Harga Modal</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Modal per lusin (atau per satuan barang) = <b>Harga RMB per lusin × Kurs</b> + biaya tambahan per lusin. Tidak ada harga per pcs. Saat kurs diganti, hanya <b>harga modal</b> yang ikut berubah.
+          Modal = <b>Harga RMB × Kurs</b> + biaya tambahan, semuanya per satuan barang (mis. per lusin). Kalau kurs diganti, hanya <b>harga modal</b> yang ikut berubah.
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          {rate ? <>Kurs aktif: <b>Rp {rate.toLocaleString("id-ID")}</b> / RMB{updatedAt ? ` • diubah ${new Date(updatedAt).toLocaleString("id-ID")}${updatedBy ? ` oleh ${updatedBy}` : ""}` : ""}</> : "Kurs belum diatur."} • {rmbProducts} barang memakai harga RMB
+        <p className="mt-1 text-xs text-slate-600">
+          {rate ? <>Kurs aktif: <b>Rp {rate.toLocaleString("id-ID")}</b> / RMB{updatedAt ? ` · diubah ${new Date(updatedAt).toLocaleString("id-ID")}${updatedBy ? ` oleh ${updatedBy}` : ""}` : ""}</> : "Kurs belum diatur."} · {rmbProducts} barang memakai harga RMB
         </p>
       </div>
       {canManage && (
         <div className="flex items-end gap-2">
           <label className="space-y-1 text-sm font-semibold"><span>Kurs (Rp per 1 RMB)</span>
-            <input className="w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="2750" />
+            <input className="min-h-11 w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="2750" />
           </label>
-          <Button onClick={save} disabled={busy}>{busy ? "Menyimpan..." : "Simpan Kurs"}</Button>
+          <Button className="min-h-11" onClick={ask} disabled={busy}>{busy ? "Menyimpan..." : "Simpan Kurs"}</Button>
         </div>
       )}
+      <ConfirmationModal
+        isOpen={confirmOpen}
+        onClose={() => !busy && setConfirmOpen(false)}
+        onConfirm={save}
+        isLoading={busy}
+        variant="warning"
+        title={`Ganti kurs RMB jadi Rp ${next > 0 ? next.toLocaleString("id-ID") : "-"}?`}
+        description={`Harga modal ${rmbProducts} barang yang punya harga RMB akan dihitung ulang. Harga jual dan nilai stok yang sudah tercatat tidak berubah.`}
+        confirmText="Ya, ganti kurs"
+      />
     </div>
   );
 }

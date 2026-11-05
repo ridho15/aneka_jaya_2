@@ -27,7 +27,7 @@ export function Sidebar({ role }: { role: Role }) {
         <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
           {groups.map((group) => (
             <div key={group.category}>
-              <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+              <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
                 {group.category}
               </p>
               <div className="space-y-0.5">
@@ -39,7 +39,7 @@ export function Sidebar({ role }: { role: Role }) {
                       href={link.href}
                       className={`flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
                         active
-                          ? "bg-emerald-600 text-white shadow-xs"
+                          ? "bg-emerald-700 text-white shadow-xs"
                           : "text-neutral-600 hover:bg-emerald-50 hover:text-emerald-800"
                       }`}
                     >
@@ -56,7 +56,7 @@ export function Sidebar({ role }: { role: Role }) {
         </nav>
 
         {/* Footer info */}
-        <div className="border-t border-neutral-100 px-6 py-4 text-[11px] text-neutral-400">
+        <div className="border-t border-neutral-100 px-6 py-4 text-[11px] text-neutral-500">
           Operasional harian • {roleLabel(role)}
         </div>
       </div>

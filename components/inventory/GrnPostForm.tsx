@@ -24,11 +24,11 @@ export function GrnPostForm({ receiptId, locations }: { receiptId: string; locat
     }
   }
   return (
-    <div className="flex items-center gap-2">
-      <select className="rounded-md border border-slate-300 px-2 py-1 text-xs" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+    <div className="flex flex-wrap items-center gap-2">
+      <select aria-label="Lokasi tujuan" className="min-h-11 rounded-lg border border-slate-300 px-2 text-sm" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
         {locations.map((l) => <option key={l.id} value={l.id}>{locationLabel(l)}</option>)}
       </select>
-      <button type="button" disabled={busy || !locationId} onClick={post} className="rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">{busy ? "..." : "Masukkan ke stok"}</button>
+      <button type="button" disabled={busy || !locationId} onClick={post} className="min-h-11 rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">{busy ? "..." : "Masukkan ke stok"}</button>
     </div>
   );
 }

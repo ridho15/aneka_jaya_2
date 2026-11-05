@@ -25,8 +25,7 @@ export async function TempoDueSoonList({ page, keyword }: { page: number; keywor
   return (
     <>
       <div className="mb-6">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Piutang</p>
-        <h2 className="aj-page-title text-3xl font-bold">Tempo Jatuh Tempo ≤ 3 Hari</h2>
+        <h2 className="aj-page-title text-3xl font-bold">Nota Jatuh Tempo 3 Hari ke Depan</h2>
         <p className="mt-2 text-sm text-slate-600">Daftar nota tempo yang jatuh tempo hari ini sampai 3 hari ke depan ({fmtDate(fromDate)} – {fmtDate(toDate)}). Hubungi customer sebelum jatuh tempo.</p>
       </div>
       <form className="mb-4 flex gap-2">
@@ -51,7 +50,7 @@ export async function TempoDueSoonList({ page, keyword }: { page: number; keywor
                 </tr>
               );
             })}
-            {data.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-500">Tidak ada tempo yang jatuh tempo dalam 3 hari.</td></tr>}
+            {data.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-500">Tidak ada nota yang jatuh tempo dalam 3 hari ke depan.</td></tr>}
           </tbody>
         </table>
         {meta.totalPages > 1 && (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/ToastProvider";
 import { locationLabel, type InvLocation } from "./labels";
 
@@ -19,8 +20,10 @@ export function OpnameImportForm({ locations }: { locations: InvLocation[] }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [warehouseId, setWarehouseId] = useState(locations.find((l) => l.type === "WAREHOUSE")?.id ?? "");
-  const [storeId, setStoreId] = useState(locations.find((l) => l.type === "STORE")?.id ?? "");
+  // Lokasi sengaja tidak dipilih otomatis: opname mengganti stok, jadi pengguna harus memilih sendiri.
+  const [warehouseId, setWarehouseId] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [zeroUncounted, setZeroUncounted] = useState(true);
   const [updateMaster, setUpdateMaster] = useState(true);
@@ -30,8 +33,7 @@ export function OpnameImportForm({ locations }: { locations: InvLocation[] }) {
 
   async function send(dryRun: boolean) {
     if (!file) return setError("Pilih file Excel (.xlsx) dulu.");
-    if (!warehouseId && !storeId) return setError("Pilih lokasi gudang dan/atau toko.");
-    if (!dryRun && !window.confirm("Posting opname? Stok sistem di lokasi terpilih akan DIGANTI dengan qty di file.")) return;
+    if (!warehouseId && !storeId) return setError("Pilih lokasi untuk kolom Qty Gudang dan/atau Qty Toko.");
     setBusy(true); setError(null);
     try {
       const form = new FormData();
@@ -46,15 +48,17 @@ export function OpnameImportForm({ locations }: { locations: InvLocation[] }) {
       const json = await res.json();
       if (!json.success) { setError(json.message || "Import gagal."); return; }
       setSummary(json.data);
-      if (!dryRun) { showToast("Opname dari Excel berhasil diposting.", "success"); router.refresh(); }
+      if (!dryRun) { showToast("Opname dari Excel berhasil disimpan.", "success"); router.refresh(); }
     } catch {
-      setError("Koneksi gagal atau proses terlalu lama. Cek halaman Stock Opname sebelum mengulang — upload ulang file yang sama aman (tidak dobel).");
+      setError("Koneksi terputus atau proses terlalu lama. Cek dulu halaman Stock Opname. Kalau belum masuk, unggah ulang file yang sama; stok tidak akan dobel.");
     } finally {
       setBusy(false);
+      setConfirmOpen(false);
     }
   }
 
-  const input = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
+  const input = "min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
+  const pick = (id: string) => locations.find((l) => l.id === id);
   return (
     <div className="space-y-6">
       <div className="aj-surface space-y-4 p-5">
@@ -68,31 +72,42 @@ export function OpnameImportForm({ locations }: { locations: InvLocation[] }) {
           <div />
           <label className="space-y-1 text-sm font-semibold"><span>Kolom &quot;Qty Gudang&quot; masuk ke</span>
             <select className={input} value={warehouseId} onChange={(e) => { setWarehouseId(e.target.value); setSummary(null); }}>
-              <option value="">— Jangan diimpor —</option>
+              <option value="">Tidak diimpor</option>
               {locations.map((l) => <option key={l.id} value={l.id}>{locationLabel(l)}</option>)}
             </select>
           </label>
           <label className="space-y-1 text-sm font-semibold"><span>Kolom &quot;Qty Toko&quot; masuk ke</span>
             <select className={input} value={storeId} onChange={(e) => { setStoreId(e.target.value); setSummary(null); }}>
-              <option value="">— Jangan diimpor —</option>
+              <option value="">Tidak diimpor</option>
               {locations.map((l) => <option key={l.id} value={l.id}>{locationLabel(l)}</option>)}
             </select>
           </label>
         </div>
         <div className="flex flex-col gap-2 text-sm">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={zeroUncounted} onChange={(e) => { setZeroUncounted(e.target.checked); setSummary(null); }} /> Kode dengan qty 0 di file dianggap stoknya 0 (opname penuh)</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={updateMaster} onChange={(e) => setUpdateMaster(e.target.checked)} /> Perbarui master barang (nama, kategori, satuan, modal &amp; harga jual bila terisi)</label>
+          <label className="flex min-h-11 items-center gap-3"><input type="checkbox" className="h-5 w-5" checked={zeroUncounted} onChange={(e) => { setZeroUncounted(e.target.checked); setSummary(null); }} /> Barang dengan jumlah 0 di file dianggap habis (opname penuh). Matikan kalau file hanya berisi sebagian barang.</label>
+          <label className="flex min-h-11 items-center gap-3"><input type="checkbox" className="h-5 w-5" checked={updateMaster} onChange={(e) => setUpdateMaster(e.target.checked)} /> Perbarui Master Barang (nama, kategori, satuan, modal, harga jual) bila kolomnya terisi</label>
         </div>
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => send(true)} disabled={busy}>{busy ? "Memproses..." : "1. Preview"}</Button>
-          <Button onClick={() => send(false)} disabled={busy || !summary?.dryRun}>{busy ? "Memproses..." : "2. Posting Opname"}</Button>
+        {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {!summary?.dryRun && <span className="text-sm text-slate-600">Klik Cek Dulu sebelum menyimpan.</span>}
+          <Button variant="secondary" className="min-h-11" onClick={() => send(true)} disabled={busy}>{busy ? "Memproses..." : "1. Cek Dulu"}</Button>
+          <Button className="min-h-11" onClick={() => setConfirmOpen(true)} disabled={busy || !summary?.dryRun}>{busy ? "Memproses..." : "2. Simpan Opname"}</Button>
         </div>
+        <ConfirmationModal
+          isOpen={confirmOpen}
+          onClose={() => !busy && setConfirmOpen(false)}
+          onConfirm={() => send(false)}
+          isLoading={busy}
+          variant="warning"
+          title="Simpan opname dari Excel?"
+          description={`Stok di ${[pick(warehouseId)?.name, pick(storeId)?.name].filter(Boolean).join(" dan ")} akan diganti dengan jumlah di file.${zeroUncounted ? " Barang yang jumlahnya 0 di file akan dianggap habis." : ""}`}
+          confirmText="Ya, simpan opname"
+        />
       </div>
 
       {summary && (
         <div className="aj-surface space-y-4 p-5 text-sm">
-          <h3 className="font-bold text-slate-800">{summary.dryRun ? "Preview (belum disimpan)" : "Hasil posting"}</h3>
+          <h3 className="font-bold text-slate-800">{summary.dryRun ? "Hasil cek (belum disimpan)" : "Opname tersimpan"}</h3>
           <div className="grid gap-3 sm:grid-cols-4">
             <Stat label="Baris barang" value={fmt(summary.totalRows)} />
             <Stat label="Barang baru / sudah ada" value={`${fmt(summary.newProducts)} / ${fmt(summary.existingProducts)}`} />
@@ -100,7 +115,7 @@ export function OpnameImportForm({ locations }: { locations: InvLocation[] }) {
             {summary.store && <Stat label={`Qty toko → ${summary.store.locationCode}`} value={`${fmt(summary.store.totalQty)} (${summary.store.nonZero} kode)`} />}
             <Stat label="Nilai modal fisik" value={`Rp ${fmt(summary.totalCostValue)}`} />
           </div>
-          {!summary.dryRun && <p className="text-emerald-700">Dokumen opname: {[...(summary.warehouse?.documents ?? []), ...(summary.store?.documents ?? [])].join(", ")}</p>}
+          {!summary.dryRun && <p className="text-emerald-800">Dokumen opname: {[...(summary.warehouse?.documents ?? []), ...(summary.store?.documents ?? [])].join(", ")}</p>}
           {summary.warnings.length > 0 && (
             <ul className="list-disc space-y-1 rounded-lg bg-amber-50 py-2 pl-8 pr-3 text-amber-800">{summary.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
           )}

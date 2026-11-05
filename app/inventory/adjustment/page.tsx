@@ -15,22 +15,22 @@ export default async function AdjustmentPage({ searchParams }: { searchParams: P
   const [locations, products, result] = await Promise.all([listLocations(), listProductOptions(), listAdjustments({ page: Number(p.page) || 1 })]);
   return (
     <AppShell>
-      <InventoryHeader title="Stock Adjustment" description="Tambah atau kurangi stok yang ada (mis. barang rusak, hilang, bonus). Isi qty positif untuk menambah dan negatif untuk mengurangi." />
+      <InventoryHeader title="Stock Adjustment" description="Tambah atau kurangi stok yang ada, mis. barang rusak, hilang, atau bonus. Isi angka minus untuk mengurangi." />
       {can(role, "inventory.adjust") && <div className="mb-8"><InventoryDocumentForm mode="adjustment" locations={locations} products={products} /></div>}
       <div className="aj-surface overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr><th className="px-3 py-2">No. Adjustment</th><th className="px-3 py-2">Tanggal</th><th className="px-3 py-2">Lokasi</th><th className="px-3 py-2">Alasan</th><th className="px-3 py-2">Barang</th><th className="px-3 py-2">Oleh</th></tr>
           </thead>
           <tbody>
             {result.data.map((a) => (
               <tr key={a.id} className="border-t border-slate-100 align-top">
-                <td className="px-3 py-2 font-mono text-xs font-semibold">{a.adjustmentNumber}</td>
+                <td className="px-3 py-2 whitespace-nowrap font-mono text-xs font-semibold">{a.adjustmentNumber}</td>
                 <td className="whitespace-nowrap px-3 py-2">{fmtDate(a.adjustmentDate)}</td>
                 <td className="px-3 py-2">{a.location?.code}</td>
                 <td className="px-3 py-2">{a.reason}</td>
                 <td className="px-3 py-2 text-xs">{a.items.map((i) => (
-                  <div key={i.id}>{i.sku} — {i.productName}: <b className={(i.quantity ?? 0) < 0 ? "text-red-600" : "text-emerald-700"}>{(i.quantity ?? 0) > 0 ? "+" : ""}{fmtQty(i.quantity)}</b> {i.unit}{i.koliText?.includes("koli") ? ` (${i.koliText})` : ""}</div>
+                  <div key={i.id}>{i.sku} · {i.productName}: <b className={(i.quantity ?? 0) < 0 ? "text-red-800" : "text-emerald-800"}>{(i.quantity ?? 0) > 0 ? "+" : ""}{fmtQty(i.quantity)}</b> {i.unit}{i.koliText?.includes("koli") ? ` (${i.koliText})` : ""}</div>
                 ))}</td>
                 <td className="px-3 py-2 text-xs">{a.createdByName}</td>
               </tr>

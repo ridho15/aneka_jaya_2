@@ -15,21 +15,21 @@ export default async function OpnamePage({ searchParams }: { searchParams: Promi
   const [locations, products, result] = await Promise.all([listLocations(), listProductOptions(), listOpnames({ page: Number(p.page) || 1 })]);
   return (
     <AppShell>
-      <InventoryHeader title="Stock Opname" description="Hitung fisik barang lalu input qty sebenarnya. Stok sistem akan DIGANTI dengan qty fisik dan selisihnya tercatat di kartu stok." />
+      <InventoryHeader title="Stock Opname" description={<>Hitung fisik barang, lalu isi jumlah sebenarnya. Stok sistem akan <b>diganti</b> dengan hasil hitung, dan selisihnya tercatat di kartu stok.</>} />
       {can(role, "inventory.opname") && <div className="mb-8"><InventoryDocumentForm mode="opname" locations={locations} products={products} /></div>}
       <div className="aj-surface overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr><th className="px-3 py-2">No. Opname</th><th className="px-3 py-2">Tanggal</th><th className="px-3 py-2">Lokasi</th><th className="px-3 py-2">Barang (sistem → fisik = selisih)</th><th className="px-3 py-2">Oleh</th></tr>
           </thead>
           <tbody>
             {result.data.map((o) => (
               <tr key={o.id} className="border-t border-slate-100 align-top">
-                <td className="px-3 py-2 font-mono text-xs font-semibold">{o.opnameNumber}</td>
+                <td className="px-3 py-2 whitespace-nowrap font-mono text-xs font-semibold">{o.opnameNumber}</td>
                 <td className="whitespace-nowrap px-3 py-2">{fmtDate(o.opnameDate)}</td>
                 <td className="px-3 py-2">{o.location?.code}</td>
                 <td className="px-3 py-2 text-xs">{o.items.map((i) => (
-                  <div key={i.id}>{i.sku} — {i.productName}: {fmtQty(i.systemQty)} → {fmtQty(i.countedQty)}{i.koliText?.includes("koli") ? ` (${i.koliText})` : ""} = <b className={(i.differenceQty ?? 0) < 0 ? "text-red-600" : (i.differenceQty ?? 0) > 0 ? "text-emerald-700" : ""}>{(i.differenceQty ?? 0) > 0 ? "+" : ""}{fmtQty(i.differenceQty)}</b></div>
+                  <div key={i.id}>{i.sku} · {i.productName}: {fmtQty(i.systemQty)} → {fmtQty(i.countedQty)}{i.koliText?.includes("koli") ? ` (${i.koliText})` : ""} = <b className={(i.differenceQty ?? 0) < 0 ? "text-red-800" : (i.differenceQty ?? 0) > 0 ? "text-emerald-800" : ""}>{(i.differenceQty ?? 0) > 0 ? "+" : ""}{fmtQty(i.differenceQty)}</b></div>
                 ))}</td>
                 <td className="px-3 py-2 text-xs">{o.createdByName}{o.notes && <div className="text-slate-500">{o.notes}</div>}</td>
               </tr>

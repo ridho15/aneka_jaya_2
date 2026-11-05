@@ -133,7 +133,7 @@ export default async function ProductReportsPage({
           <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 text-xs font-semibold shadow-xs">
             <Link href="/reports" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Harian</Link>
             <Link href="/reports/customers" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Customer</Link>
-            <Link href="/reports/products" className="rounded-lg bg-emerald-600 px-3 py-1.5 text-white shadow-xs">Produk</Link>
+            <Link href="/reports/products" className="rounded-lg bg-emerald-700 px-3 py-1.5 text-white shadow-xs">Produk</Link>
             <Link href="/reports/stocks" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Stok</Link>
             <Link href="/reports/finance" className="rounded-lg px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900">Finance</Link>
           </div>
@@ -161,7 +161,7 @@ export default async function ProductReportsPage({
             href={printPdfUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 sm:text-sm"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-800 sm:text-sm"
           >
             <svg
               className="h-4 w-4"
@@ -221,7 +221,7 @@ export default async function ProductReportsPage({
           <div className="flex items-end gap-2">
             <button
               type="submit"
-              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-emerald-700"
+              className="flex-1 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-emerald-800"
             >
               Terapkan Filter
             </button>
@@ -311,7 +311,7 @@ export default async function ProductReportsPage({
                   href={buildPageHref({ ...filterState, pageSize: String(size) }, 1)}
                   className={`rounded-md px-2.5 py-1 font-semibold transition ${
                     pageSize === size
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-emerald-700 text-white"
                       : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                   }`}
                 >
@@ -374,7 +374,7 @@ export default async function ProductReportsPage({
                 <th className="px-5 py-3.5 text-right">Jml Transaksi</th>
                 <th className="px-5 py-3.5 text-right">Rata-rata Harga</th>
                 <th className="px-5 py-3.5 text-right">Total Omset</th>
-                <th className="px-5 py-3.5 text-right">Est. Laba Kotor</th>
+                <th className="px-5 py-3.5 text-right">Perkiraan Laba Kotor</th>
                 <th className="px-5 py-3.5 text-right">Stok Gudang</th>
                 <th className="px-5 py-3.5 text-right">Stok Toko</th>
               </tr>
@@ -407,7 +407,7 @@ export default async function ProductReportsPage({
                     {rupiah(item.totalOmset)}
                   </td>
                   <td className="px-5 py-4 text-right text-xs">
-                    {grossProfit(item) == null ? <span className="text-slate-400" title="Modal belum diisi di Master Barang">-</span> : <span className={grossProfit(item)! < 0 ? "font-semibold text-red-600" : "font-semibold text-emerald-700"}>{rupiah(grossProfit(item)!)}</span>}
+                    {grossProfit(item) == null ? <span className="text-slate-600">Modal belum diisi</span> : <span className={grossProfit(item)! < 0 ? "font-semibold text-red-800" : "font-semibold text-emerald-800"}>{rupiah(grossProfit(item)!)}</span>}
                   </td>
                   <td className="whitespace-nowrap px-5 py-4 text-right text-xs text-slate-700">{stockOf(item.code)?.warehouseKoliText ?? "-"}</td>
                   <td className="whitespace-nowrap px-5 py-4 text-right text-xs text-slate-700">{stockOf(item.code)?.storeKoliText ?? "-"}</td>
@@ -467,7 +467,7 @@ export default async function ProductReportsPage({
                   Sebelumnya
                 </Link>
               ) : (
-                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-600">
                   Sebelumnya
                 </span>
               )}
@@ -479,7 +479,7 @@ export default async function ProductReportsPage({
                   Berikutnya
                 </Link>
               ) : (
-                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-400">
+                <span className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3.5 py-1.5 font-semibold text-slate-600">
                   Berikutnya
                 </span>
               )}

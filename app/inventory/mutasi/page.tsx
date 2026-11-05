@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { InventoryMovementType } from "@prisma/client";
 import { AppShell } from "@/components/layout/AppShell";
-import { InventoryHeader, MOVEMENT_LABEL, Pager, filterInput, fmtDate, fmtQty } from "@/components/inventory/ui";
+import { InventoryHeader, MOVEMENT_LABEL, Pager, filterButton, filterInput, fmtDate, fmtQty } from "@/components/inventory/ui";
 import { locationLabel } from "@/components/inventory/labels";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
@@ -23,11 +23,11 @@ export default async function MutasiStokPage({ searchParams }: { searchParams: S
   const isCard = Boolean(p.productId && p.locationId);
   return (
     <AppShell>
-      <InventoryHeader title="Mutasi / Kartu Stok" description="Riwayat semua pergerakan stok: barang masuk, transfer, penjualan, opname, dan adjustment. Pilih satu barang + satu lokasi untuk melihat kartu stok dengan saldo berjalan." />
+      <InventoryHeader title="Mutasi / Kartu Stok" description="Riwayat semua pergerakan stok. Pilih satu barang dan satu lokasi untuk melihat kartu stok lengkap dengan sisa stok per transaksi." />
       <form className="mb-4 flex flex-wrap gap-2">
         <select name="productId" defaultValue={p.productId ?? ""} className={`${filterInput} max-w-xs`}>
           <option value="">Semua barang</option>
-          {products.map((x) => <option key={x.id} value={x.id}>{x.sku} — {x.name}</option>)}
+          {products.map((x) => <option key={x.id} value={x.id}>{x.sku} · {x.name}</option>)}
         </select>
         <select name="locationId" defaultValue={p.locationId ?? ""} className={filterInput}>
           <option value="">Semua lokasi</option>
@@ -40,11 +40,11 @@ export default async function MutasiStokPage({ searchParams }: { searchParams: S
         <input name="reference" defaultValue={p.reference} placeholder="No. referensi" className={filterInput} />
         <input type="date" name="from" defaultValue={p.from} className={filterInput} />
         <input type="date" name="to" defaultValue={p.to} className={filterInput} />
-        <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white">Filter</button>
+        <button className={filterButton}>Filter</button>
       </form>
       <div className="aj-surface overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr>
               <th className="px-3 py-2">Tanggal</th><th className="px-3 py-2">Jenis</th><th className="px-3 py-2">Referensi</th>
               <th className="px-3 py-2">Barang</th><th className="px-3 py-2">Lokasi</th>
@@ -60,10 +60,10 @@ export default async function MutasiStokPage({ searchParams }: { searchParams: S
                 <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{m.referenceNumber}</td>
                 <td className="px-3 py-2"><div className="font-semibold">{m.productName}</div><div className="text-xs text-slate-500">{m.sku}</div></td>
                 <td className="whitespace-nowrap px-3 py-2">{m.locationCode}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{m.quantityIn ? <>{fmtQty(m.quantityIn)}{m.quantityKoliText.includes("koli") && <div className="text-[11px] text-slate-400">{m.quantityKoliText}</div>}</> : ""}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-red-600">{m.quantityOut ? <>{fmtQty(m.quantityOut)}{m.quantityKoliText.includes("koli") && <div className="text-[11px] text-slate-400">{m.quantityKoliText}</div>}</> : ""}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums">{fmtQty(m.balanceAfter)}{m.balanceKoliText.includes("koli") && <div className="text-[11px] font-normal text-slate-400">{m.balanceKoliText}</div>}</td>
-                <td className="px-3 py-2 text-xs text-slate-600">{m.notes}{m.createdByName && <div className="text-slate-400">oleh {m.createdByName}</div>}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{m.quantityIn ? <>{fmtQty(m.quantityIn)}{m.quantityKoliText.includes("koli") && <div className="text-[11px] text-slate-600">{m.quantityKoliText}</div>}</> : ""}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-red-600">{m.quantityOut ? <>{fmtQty(m.quantityOut)}{m.quantityKoliText.includes("koli") && <div className="text-[11px] text-slate-600">{m.quantityKoliText}</div>}</> : ""}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums">{fmtQty(m.balanceAfter)}{m.balanceKoliText.includes("koli") && <div className="text-[11px] font-normal text-slate-600">{m.balanceKoliText}</div>}</td>
+                <td className="px-3 py-2 text-xs text-slate-600">{m.notes}{m.createdByName && <div className="text-slate-600">oleh {m.createdByName}</div>}</td>
               </tr>
             ))}
             {!result.data.length && <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-500">Belum ada mutasi.</td></tr>}

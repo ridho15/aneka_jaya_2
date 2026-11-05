@@ -45,7 +45,7 @@ describe('inventory', { tags: ['inventory'] }, () => {
   test('Admin: Tempo hanya jatuh tempo ≤ 3 hari, tanpa nominal', async ({ app, browser, screen }) => {
     await asRole(browser, 'ADMIN');
     await app.open('/tempo');
-    await expect(screen.getByRole('heading', 'Tempo Jatuh Tempo ≤ 3 Hari')).toBeVisible();
+    await expect(screen.getByRole('heading', 'Nota Jatuh Tempo 3 Hari ke Depan')).toBeVisible();
     await expect(screen.getByText(/Rp\s?\d/)).toHaveCount(0);
   });
 
