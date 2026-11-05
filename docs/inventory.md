@@ -29,7 +29,25 @@ Jaminan data:
 - `/inventory/mutasi` — mutasi & kartu stok (filter barang, lokasi, jenis, tanggal, referensi).
 - `/inventory/transfer` — transfer antar gudang/toko, terima / batalkan transfer dalam perjalanan.
 - `/inventory/barang-masuk` — GRN pembelian yang belum masuk stok + barang masuk manual.
+- `/inventory/import` — **Import Opname dari Excel** (template "Stock Opname Aneka Jaya").
 - `/inventory/opname`, `/inventory/adjustment`, `/inventory/produk`, `/inventory/lokasi`.
+
+### Import opname dari Excel
+
+1. Buat lokasi gudang & toko di `/inventory/lokasi` (mis. `GDG-PLUIT` Gudang, `TK-MEKAR` Toko).
+2. Buka `/inventory/import`, unggah file `.xlsx`, pilih lokasi untuk kolom *Qty Gudang* dan *Qty Toko*.
+3. Klik **Preview**: cek jumlah baris, barang baru, total qty per lokasi, nilai modal, dan peringatan.
+4. Klik **Posting Opname**.
+
+Aturan pembacaan (sheet `Opname`, kolom dicari berdasarkan judul header):
+- Qty = `Koli × Isi/Koli + Lepas` (sama dengan rumus template). Koli tanpa Isi/Koli dihitung 0 dan diberi peringatan.
+- Kolom Harga Jual yang tidak berjudul diambil dari kolom tepat setelah "Modal Lama di Sistem".
+- Barang yang belum ada dibuat otomatis (satuan default `PCS` bila kosong). Bila "Perbarui master" dicentang,
+  modal/harga jual 0 atau kosong **tidak** menimpa data yang sudah ada.
+- "Opname penuh" (default): kode dengan qty 0 di file ikut dijadikan 0 di lokasi tersebut.
+  Matikan bila file hanya berisi sebagian barang.
+- Opname diposting per 250 barang. Upload ulang file yang **sama persis** tidak membuat opname ganda.
+- HPP rata-rata saldo hasil opname memakai modal di master barang, sehingga nilai persediaan langsung terhitung.
 
 Permission: `inventory.view`, `inventory.manage` (master data & barang masuk),
 `inventory.transfer`, `inventory.adjust` (opname & adjustment). Super Admin & Supervisor
@@ -71,6 +89,7 @@ Referensi barang di body boleh `productId` (ID SLM), `sku`, atau `erpProductId`.
 | POST | `/api/inventory/stock-in` | barang masuk manual |
 | POST | `/api/inventory/purchase-receipts/{id}/post` | masukkan GRN pembelian ke stok |
 | POST | `/api/inventory/import-erp` | impor awal dari ERP (Super Admin) |
+| POST | `/api/inventory/import-opname` | import opname dari Excel (multipart, default preview) |
 
 Contoh transfer gudang → toko:
 

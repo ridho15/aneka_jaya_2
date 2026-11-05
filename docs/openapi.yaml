@@ -873,6 +873,28 @@ paths:
       description: Khusus Super Admin (OWNER). Default dryRun=true (hanya menghitung). Kirim {"dryRun":false} untuk menulis; saldo lokal di-SET sama dengan qty ERP sehingga aman diulang.
       requestBody: { content: { application/json: { schema: { type: object, properties: { dryRun: { type: boolean, default: true }, maxPages: { type: integer } } } } } }
       responses: { "200": { description: Ringkasan impor. }, "403": { $ref: "#/components/responses/Forbidden" }, "502": { $ref: "#/components/responses/BadGateway" } }
+  /api/inventory/import-opname:
+    post:
+      tags: [Inventory]
+      summary: Import stock opname dari file Excel template Aneka Jaya.
+      description: Permission inventory.adjust. multipart/form-data. Default dryRun=true (preview). Barang baru dibuat otomatis; stok tiap lokasi diganti dengan qty di file. Upload ulang file yang sama tidak membuat opname ganda.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                warehouseLocationId: { type: string, description: Lokasi untuk kolom Qty Gudang (ID atau kode). }
+                storeLocationId: { type: string, description: Lokasi untuk kolom Qty Toko (ID atau kode). }
+                opnameDate: { type: string, format: date }
+                dryRun: { type: boolean, default: true }
+                zeroUncounted: { type: boolean, default: true }
+                updateMaster: { type: boolean, default: true }
+      responses: { "200": { description: Ringkasan import (preview atau hasil posting). }, "400": { $ref: "#/components/responses/BadRequest" } }
   /api/inventory/purchase-receipts/{id}/post:
     post:
       tags: [Inventory]

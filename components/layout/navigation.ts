@@ -179,6 +179,13 @@ export const NAV_LINKS: NavLink[] = [
     category: "INVENTORY GUDANG & TOKO",
   },
   {
+    href: "/inventory/import",
+    label: "Import Opname Excel",
+    icon: "⇪",
+    permission: "inventory.adjust",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
     href: "/inventory/adjustment",
     label: "Stock Adjustment",
     icon: "±",

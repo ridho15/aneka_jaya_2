@@ -539,12 +539,12 @@ export async function createOpname(input: OpnameInput, actor?: InventoryActor) {
       if (seen.has(product.id)) throw new InventoryError("VALIDATION", `Produk ${product.sku} tercantum lebih dari sekali dalam opname.`);
       seen.add(product.id);
       const systemQty = await currentQuantity(tx, product.id, location.id);
-      lines.push({ productId: product.id, systemQty, countedQty: round2(item.countedQty), differenceQty: round2(item.countedQty - systemQty), notes: item.notes });
+      lines.push({ productId: product.id, systemQty, countedQty: round2(item.countedQty), differenceQty: round2(item.countedQty - systemQty), notes: item.notes, unitCost: num(product.costPrice) });
     }
     const opname = await tx.inventoryOpname.create({
       data: {
         opnameNumber, opnameDate: date, locationId: location.id, notes: input.notes, idempotencyKey: input.idempotencyKey,
-        createdByUserId: actor?.id, createdByName: actor?.name, items: { create: lines }
+        createdByUserId: actor?.id, createdByName: actor?.name, items: { create: lines.map(({ unitCost: _unitCost, ...line }) => line) }
       },
       include: { items: true }
     });
@@ -554,7 +554,7 @@ export async function createOpname(input: OpnameInput, actor?: InventoryActor) {
       await postMovement(tx, {
         productId: line.productId, locationId: location.id, delta: line.differenceQty, type: "OPNAME", movementDate: date,
         referenceType: "OPNAME", referenceId: opname.id, referenceNumber: opnameNumber, allowNegative: true,
-        idempotencyKey: `opname:${opname.id}:${i}`, notes: `Opname: sistem ${line.systemQty} → fisik ${line.countedQty}`
+        unitCost: line.unitCost, idempotencyKey: `opname:${opname.id}:${i}`, notes: `Opname: sistem ${line.systemQty} → fisik ${line.countedQty}`
       }, actor);
     }
     return opname;
@@ -598,7 +598,7 @@ export async function createAdjustment(input: AdjustmentInput, actor?: Inventory
     for (let i = 0, list = input.items; i < list.length; i++) {
       const item = list[i];
       await postMovement(tx, {
-        productId: products[i].id, locationId: location.id, delta: item.quantity, unitCost: item.unitCost,
+        productId: products[i].id, locationId: location.id, delta: item.quantity, unitCost: item.unitCost ?? num(products[i].costPrice),
         type: item.quantity > 0 ? "ADJUSTMENT_IN" : "ADJUSTMENT_OUT", movementDate: date,
         referenceType: "ADJUSTMENT", referenceId: adjustment.id, referenceNumber: adjustmentNumber,
         idempotencyKey: `adjustment:${adjustment.id}:${i}`, notes: item.notes || input.reason
