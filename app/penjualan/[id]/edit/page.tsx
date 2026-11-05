@@ -38,7 +38,7 @@ export default async function EditPenjualanPage({ params }: { params: Promise<{ 
           {isCancelled
             ? "Transaksi ini sudah dibatalkan dan tidak dapat diubah."
             : sale.approvalStatus === "draft"
-              ? "Perbarui data pesanan atau klik 'Finalkan & Simpan Penjualan' untuk memotong stok gudang Aneka Jaya."
+              ? "Perbarui data pesanan atau klik 'Finalkan & Simpan Penjualan' untuk memotong stok SLM."
               : "Edit transaksi penjualan yang tersimpan."}
         </p>
       </div>

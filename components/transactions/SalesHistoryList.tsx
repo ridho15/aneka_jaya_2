@@ -6,12 +6,16 @@ import type { Sale } from "@/lib/types/sales";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 import { formatJakartaDateTime } from "@/lib/date/jakarta";
 import { parseReceiptPhotos } from "@/lib/deliveryOrders/photos";
+import { approvalLabel } from "@/lib/sales/approvalLabel";
 
 type Props = {
   sales: Sale[];
   canManage: boolean;
   canViewTransactionNumber: boolean;
 };
+
+const rowLink =
+  "inline-flex min-h-9 items-center rounded-md px-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50";
 
 export function nextExpandedSaleId(
   currentId: string | null,
@@ -30,6 +34,17 @@ function rupiah(value: number) {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+const shortDate = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "short", year: "2-digit" });
+const shortTime = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" });
+
+/** Tanggal ringkas satu baris, mis. "09 Okt 26 15.56". */
+function saleDateShort(sale: Sale) {
+  const raw = sale.transactionAt || sale.saleDate;
+  const date = new Date(sale.transactionAt ? raw : `${raw}T00:00:00+07:00`);
+  if (Number.isNaN(date.getTime())) return raw;
+  return sale.transactionAt ? `${shortDate.format(date)} ${shortTime.format(date)}` : shortDate.format(date);
 }
 
 function saleDateLabel(sale: Sale) {
@@ -331,7 +346,7 @@ export function SalesHistoryList({
   canViewTransactionNumber,
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
-  const columnCount = canViewTransactionNumber ? 12 : 11;
+  const columnCount = canViewTransactionNumber ? 9 : 8;
   const toggle = (id: string) =>
     setExpandedSaleId((current) => nextExpandedSaleId(current, id));
 
@@ -386,7 +401,7 @@ export function SalesHistoryList({
                   <Badge value="Belum Cetak" tone="slate" />
                 ) : null}
                 <Badge
-                  value={sale.approvalStatus || "approved"}
+                  value={approvalLabel(sale.approvalStatus)}
                   tone={statusTone(sale.approvalStatus || "approved")}
                 />
                 {stockReleaseBadge(sale)}
@@ -493,25 +508,22 @@ export function SalesHistoryList({
       </div>
 
       <div className="hidden overflow-x-auto md:block">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+        <table className="min-w-full whitespace-nowrap text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
             <tr>
-              <th className="w-12 px-3 py-3">
+              <th className="w-10 px-2 py-2.5">
                 <span className="sr-only">Item</span>
               </th>
-              <th className="px-5 py-3">Aksi</th>
-              <th className="px-5 py-3">Tanggal</th>
+              <th className="px-2 py-2.5">Aksi</th>
+              <th className="px-2 py-2.5">Tanggal</th>
               {canViewTransactionNumber && (
-                <th className="px-5 py-3">No Transaksi</th>
+                <th className="px-2 py-2.5">No Transaksi</th>
               )}
-              <th className="px-5 py-3 min-w-[180px]">Customer</th>
-              <th className="px-5 py-3">Tipe</th>
-              <th className="px-5 py-3">Pembayaran</th>
-              <th className="px-5 py-3 text-right">Total</th>
-              <th className="px-5 py-3">Approval</th>
-              <th className="px-5 py-3">Stok Gudang AJ</th>
-              <th className="px-5 py-3">Status Packing</th>
-              <th className="px-5 py-3">Pembuat</th>
+              <th className="px-2 py-2.5">Customer</th>
+              <th className="px-2 py-2.5">Tipe · Bayar</th>
+              <th className="px-2 py-2.5 text-right">Total</th>
+              <th className="px-2 py-2.5">Status</th>
+              <th className="hidden px-2 py-2.5 2xl:table-cell">Pembuat</th>
             </tr>
           </thead>
           <tbody>
@@ -520,12 +532,15 @@ export function SalesHistoryList({
               const isMj =
                 sale.source === "MJ" ||
                 sale.createdByUserId === "integration:mj";
+              const editable = canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled";
+              const delivery = unifiedDeliveryStatus(sale);
+              const stockProblem = sale.stockReleaseStatus === "pending" || sale.stockReleaseStatus === "failed";
               return (
                 <Fragment key={sale.id}>
                   <tr
                     className={`border-b transition-colors ${isMj ? "border-amber-200/90 bg-amber-50/80 hover:bg-amber-100/70" : "border-slate-100 hover:bg-slate-50/80"}`}
                   >
-                    <td className="px-3 py-4">
+                    <td className="px-2 py-2">
                       <ExpandButton
                         sale={sale}
                         expanded={expanded}
@@ -533,120 +548,81 @@ export function SalesHistoryList({
                         compact
                       />
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-col gap-1.5 min-w-[135px]">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            className="flex-1 whitespace-nowrap rounded-md bg-emerald-600 px-2.5 py-1 text-center text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
-                            href={`/penjualan/${sale.id}`}
-                          >
-                            Detail
+                    <td className="px-2 py-2">
+                      <div className="flex items-center">
+                        <Link className={rowLink} href={`/penjualan/${sale.id}`}>
+                          Detail
+                        </Link>
+                        <Link
+                          className={rowLink}
+                          href={`/print/sales/${sale.id}/continuous`}
+                          title={sale.isPrinted ? `Cetak Nota Continuous Form · sudah dicetak${sale.printCount ? ` ${sale.printCount}x` : ""}${sale.printedAt ? ` pada ${sale.printedAt}` : ""}` : "Cetak Nota Continuous Form"}
+                        >
+                          Cetak{sale.isPrinted && <span className="sr-only"> (sudah dicetak)</span>}
+                        </Link>
+                        {editable && (
+                          <Link className={rowLink} href={`/penjualan/${sale.id}/edit`}>
+                            Edit
                           </Link>
-                          <Link
-                            className="flex-1 whitespace-nowrap rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-center text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs"
-                            href={`/print/sales/${sale.id}/continuous`}
-                            title="Cetak Nota Continuous Form"
-                          >
-                            Cetak
-                          </Link>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
-                            <Link
-                              className="flex-1 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 py-1 text-center text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs"
-                              href={`/penjualan/${sale.id}/edit`}
-                            >
-                              Edit
-                            </Link>
-                          ) : (
-                            <span className="flex-1 text-center text-xs text-slate-300">—</span>
-                          )}
-                          {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
-                            <TransactionCancelButton
-                              id={sale.id}
-                              kind="sales"
-                              transactionLabel={sale.transactionNumber || sale.customerName}
-                              triggerLabel="Batal"
-                              triggerClassName="w-full whitespace-nowrap rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1 text-center text-xs font-bold text-rose-700 hover:bg-rose-100 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                            />
-                          ) : (
-                            <span className="flex-1 text-center text-xs text-slate-300">—</span>
-                          )}
-                        </div>
+                        )}
+                        {editable && (
+                          <TransactionCancelButton
+                            id={sale.id}
+                            kind="sales"
+                            transactionLabel={sale.transactionNumber || sale.customerName}
+                            triggerLabel="Batal"
+                            triggerClassName="inline-flex min-h-9 items-center rounded-md px-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          />
+                        )}
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-slate-600">
-                      {saleDateLabel(sale)}
+                    <td className="px-2 py-2 tabular-nums text-slate-600" title={saleDateLabel(sale)}>
+                      {saleDateShort(sale)}
                     </td>
                     {canViewTransactionNumber && (
-                      <td className="px-5 py-4 font-mono text-xs text-slate-700">
+                      <td className="max-w-[130px] truncate px-2 py-2 font-mono text-xs text-slate-700" title={sale.transactionNumber || sale.id}>
                         {sale.transactionNumber || sale.id}
                       </td>
                     )}
-                    <td className="px-5 py-4 min-w-[180px]">
-                      <DeliveryOrderBadges sale={sale} />
-                      <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                        {sale.customerName}
+                    <td className="max-w-[200px] px-2 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate font-semibold text-slate-900" title={`${sale.customerName}${sale.customerLocation ? ` · ${sale.customerLocation}` : ""}`}>
+                          {sale.customerName}
+                        </span>
                         {isMj && (
-                          <span className="inline-flex items-center rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                            MJ
-                          </span>
+                          <span className="shrink-0 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>
                         )}
-                        {sale.isPrinted ? (
-                          <span
-                            title={`Tercetak${sale.printCount ? ` (${sale.printCount}x)` : ""}${sale.printedAt ? ` pada ${sale.printedAt}` : ""}`}
-                            className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 shadow-xs"
-                          >
-                            Cetak
-                          </span>
-                        ) : isMj ? (
-                          <span
-                            title="Belum dicetak"
-                            className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
-                          >
-                            Belum Cetak
-                          </span>
-                        ) : null}
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {sale.customerLocation || "—"}
-                      </p>
                     </td>
-                    <td className="px-5 py-4 font-semibold">
-                      {sale.tipeCodeSnapshot || sale.tipeId || "W"}
+                    <td className="px-2 py-2 text-slate-700">
+                      <b>{sale.tipeCodeSnapshot || sale.tipeId || "W"}</b> · {sale.paymentMethod}
                     </td>
-                    <td className="px-5 py-4">{sale.paymentMethod}</td>
-                    <td className="px-5 py-4 text-right font-semibold">
+                    <td className="px-2 py-2 text-right font-semibold tabular-nums">
                       {rupiah(sale.total)}
                     </td>
-                    <td className="px-5 py-4">
-                      <Badge
-                        value={sale.approvalStatus || "approved"}
-                        tone={statusTone(sale.approvalStatus || "approved")}
-                      />
+                    <td className="px-2 py-2">
+                      {/* Disetujui adalah kondisi normal; hanya status lain yang perlu terlihat. */}
+                      <div className="flex items-center gap-1.5">
+                        {(sale.approvalStatus || "approved") !== "approved" && (
+                          <Badge
+                            value={approvalLabel(sale.approvalStatus)}
+                            tone={statusTone(sale.approvalStatus)}
+                          />
+                        )}
+                        {stockProblem && stockReleaseBadge(sale)}
+                        <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${delivery.className}`}>{delivery.label}</span>
+                        {sale.doPackingStatus === "sudah" && sale.doStatus !== "selesai" && sale.doStatus !== "selesai_setengah" && (
+                          <span className="text-xs font-semibold text-emerald-800">Dipacking</span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-5 py-4">
-                      {stockReleaseBadge(sale)}
-                    </td>
-                    <td className="px-5 py-4">
-                      {sale.doPackingStatus === "sudah" ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-                          Sudah
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                          Belum
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">
+                    <td className="hidden px-2 py-2 text-slate-600 2xl:table-cell">
                       {sale.createdByNameSnapshot || "—"}
                     </td>
                   </tr>
                   {expanded && (
                     <tr className="border-b border-slate-200 bg-slate-50/60">
-                      <td colSpan={columnCount} className="px-5 py-4">
+                      <td colSpan={columnCount} className="whitespace-normal px-5 py-4">
                         <SalesItemsDetail sale={sale} />
                       </td>
                     </tr>

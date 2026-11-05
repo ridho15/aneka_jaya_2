@@ -11,6 +11,7 @@ import { listSalesRecordsPageForUser } from "@/lib/sales/access";
 import { listBookkeepingTypes, listRekeningAccounts, type RekeningAccount } from "@/lib/business/masterData";
 import type { Sale } from "@/lib/types/sales";
 import { SalesHistoryList } from "@/components/transactions/SalesHistoryList";
+import { approvalLabel } from "@/lib/sales/approvalLabel";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,10 @@ function pageHref(params: SearchParams, page: number) {
   }
   next.set("page", String(page));
   return `/penjualan?${next.toString()}`;
+}
+
+function hasExtraFilter(params: SearchParams) {
+  return ["tipe", "rekening", "approvalStatus", "syncStatus", "cctvStatus"].some((key) => Boolean(valueOf(params, key)));
 }
 
 function filtersFromParams(params: SearchParams): SalesRecordFilters {
@@ -104,9 +109,8 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
     <AppShell>
       <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">SalesRecord</p>
           <h2 className="aj-page-title text-3xl font-bold">Riwayat Penjualan</h2>
-          <p className="mt-2 text-sm text-slate-600">Cari, filter, dan cetak transaksi penjualan yang tersimpan permanen.</p>
+          <p className="mt-2 text-sm text-slate-600">Cari dan cetak transaksi penjualan.</p>
         </div>
         {can(role, "penjualan.create") && <Link href="/penjualan/input" className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700">+ Input Penjualan</Link>}
       </div>
@@ -117,18 +121,25 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
         activeFilters={activeFilters}
         emptyText="Filter aktif: semua transaksi."
         className="mb-5"
-        formClassName="grid gap-3 md:grid-cols-3 xl:grid-cols-9"
-        actionsClassName="md:col-span-3 xl:col-span-9"
+        formClassName="flex flex-wrap items-end gap-3"
+        actionsClassName="items-end"
       >
-        <label className="text-sm font-medium text-slate-700">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
-        <label className="text-sm font-medium text-slate-700">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
-        <label className="text-sm font-medium text-slate-700">Keyword<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Customer / No transaksi / Barang" className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700 md:w-40">Dari tanggal<Input type="date" name="from" defaultValue={valueOf(params, "from") || ""} className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700 md:w-40">Sampai tanggal<Input type="date" name="to" defaultValue={valueOf(params, "to") || ""} className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700 md:min-w-56 md:flex-1">Cari<Input name="keyword" defaultValue={valueOf(params, "keyword") || ""} placeholder="Customer / No transaksi / Barang" className="mt-1" /></label>
+        <label className="text-sm font-medium text-slate-700 md:w-36">Pembayaran<Select name="paymentMethod" defaultValue={valueOf(params, "paymentMethod") || ""} className="mt-1"><option value="">Semua</option>{paymentMethods.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <details className="group order-last w-full" open={hasExtraFilter(params)}>
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-emerald-800 underline">
+            Filter lainnya (tipe, rekening, approval, ERP, packing)
+          </summary>
+          <div className="mt-2 grid gap-3 md:grid-cols-5">
         <label className="text-sm font-medium text-slate-700">Tipe<Select name="tipe" defaultValue={valueOf(params, "tipe") || ""} className="mt-1"><option value="">Semua</option>{activeTipeOptions.map((item) => <option key={item.id} value={item.code}>{item.code}</option>)}</Select></label>
-        <label className="text-sm font-medium text-slate-700">Pembayaran<Select name="paymentMethod" defaultValue={valueOf(params, "paymentMethod") || ""} className="mt-1"><option value="">Semua</option>{paymentMethods.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
         <label className="text-sm font-medium text-slate-700">Rekening / bank<Select name="rekening" defaultValue={valueOf(params, "rekening") || ""} className="mt-1"><option value="">Semua</option>{activeRekeningOptions.map((item) => <option key={item.id} value={item.id}>{rekeningLabel(item)}</option>)}</Select></label>
-        <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{approvalStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
+        <label className="text-sm font-medium text-slate-700">Approval<Select name="approvalStatus" defaultValue={valueOf(params, "approvalStatus") || ""} className="mt-1"><option value="">Semua</option>{approvalStatuses.map((item) => <option key={item} value={item}>{approvalLabel(item)}</option>)}</Select></label>
         <label className="text-sm font-medium text-slate-700">ERP Sync<Select name="syncStatus" defaultValue={valueOf(params, "syncStatus") || ""} className="mt-1"><option value="">Semua</option>{syncStatuses.map((item) => <option key={item} value={item}>{item}</option>)}</Select></label>
         <label className="text-sm font-medium text-slate-700">Status Packing (DO)<Select name="cctvStatus" defaultValue={valueOf(params, "cctvStatus") || ""} className="mt-1"><option value="">Semua</option><option value="detected">Sudah Dipacking</option><option value="undetected">Belum Dipacking</option></Select></label>
+          </div>
+        </details>
       </ResponsiveFilterPanel>
 
       <section className="aj-surface">

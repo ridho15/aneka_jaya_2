@@ -109,13 +109,13 @@ test("Input Penjualan can submit a local SLM transaction with ERP product data",
   });
 
   await page.goto("/penjualan/input", { waitUntil: "networkidle" });
-  await expect(page.getByText("Produk ERP siap digunakan.")).toBeVisible();
+  await expect(page.getByPlaceholder("Cari kode / nama barang ERP").first()).toBeEnabled();
   await expect(page.getByText("Sistem SLM")).toBeVisible();
 
   await page.getByRole("textbox", { name: "Nama customer" }).fill("Customer E2E Lokal");
   await page.getByRole("combobox", { name: "Barang" }).fill("BRG");
   await page.getByRole("option", { name: /BRG-001/ }).click();
-  await expect(page.getByText(/Stok ERP:\s*8/)).toBeVisible();
+  await expect(page.getByText(/Stok\s*8/)).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Harga" })).toHaveValue("25.000");
   await page.getByRole("spinbutton", { name: "Qty" }).fill("2");
   await expect(page.getByText(/Rp\s?50\.000/).first()).toBeVisible();
@@ -199,7 +199,7 @@ test("Input Penjualan can submit mixed ERP and manual products in one AJ transac
   await page.getByLabel("Diskon (%)").fill("10");
 
   await page.getByRole("button", { name: "+ Tambah barang" }).click();
-  await page.getByRole("button", { name: "Barang baru/manual" }).last().click();
+  await page.getByRole("button", { name: "Barang baru (tidak ada di ERP)" }).last().click();
   await page.getByRole("button", { name: "Generate SKU" }).click();
   await expect(page.getByPlaceholder("SKU produk baru").last()).toHaveValue(/^SLM-AJ-\d{10}-[A-Z0-9]{4}$/);
   await page.getByPlaceholder("Nama produk baru").fill("QA Mixed Manual Product");

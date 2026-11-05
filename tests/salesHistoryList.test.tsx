@@ -55,8 +55,8 @@ describe("SalesHistoryList", () => {
     const ownerHtml = renderToStaticMarkup(<SalesHistoryList sales={[]} canManage={false} canViewTransactionNumber />);
     const otherHtml = renderToStaticMarkup(<SalesHistoryList sales={[]} canManage={false} canViewTransactionNumber={false} />);
 
-    expect(ownerHtml).toContain('colSpan="12"');
-    expect(otherHtml).toContain('colSpan="11"');
+    expect(ownerHtml).toContain('colSpan="9"');
+    expect(otherHtml).toContain('colSpan="8"');
   });
 
   it("renders Status Packing column header and DO packing status badges", () => {

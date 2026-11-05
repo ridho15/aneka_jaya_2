@@ -88,7 +88,7 @@ export function CctvPackingWidget({
                 {detection?.cameraName || "Meja Packing Utama"}
               </p>
               <p className="text-slate-500 text-[11px] mt-0.5">
-                {detection?.sourceLabel ? `Platform: ${detection.sourceLabel}` : "Area Gudang Aneka Jaya"}
+                {detection?.sourceLabel ? `Platform: ${detection.sourceLabel}` : "Area Gudang SLM"}
               </p>
             </div>
 

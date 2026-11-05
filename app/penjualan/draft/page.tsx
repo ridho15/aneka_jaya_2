@@ -80,7 +80,7 @@ export default async function DraftPenjualanPage({ searchParams }: { searchParam
           </div>
           <h2 className="aj-page-title text-3xl font-bold">Draft Penjualan</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Daftar pesanan sementara yang belum difinalisasi. Stok barang di gudang Aneka Jaya{" "}
+            Daftar pesanan sementara yang belum difinalisasi. Stok barang di gudang SLM{" "}
             <span className="font-semibold text-rose-700">belum dipotong</span>.
           </p>
         </div>

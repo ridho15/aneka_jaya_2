@@ -316,7 +316,7 @@ export default async function SalesDetailPage({ params }: { params: Promise<{ id
           Integrasi Gudang Aneka Jaya (AJ ERP)
         </h3>
         <p className="mb-4 text-xs text-slate-500">
-          Transaksi kasir memotong stok fisik secara langsung di gudang pusat Aneka Jaya dan mencatat kartu stok otomatis.
+          Transaksi kasir memotong stok fisik secara langsung di gudang SLM dan mencatat kartu stok otomatis.
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>

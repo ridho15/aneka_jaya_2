@@ -400,7 +400,7 @@ export async function getFinancialAiForecast(options: { forceRefresh?: boolean }
     priorityReceivablesCount: priorityCollections.length
   };
 
-  const aiPrompt = `Anda adalah seorang Chief Financial Officer (CFO) dan penasihat keuangan senior untuk bisnis distributor "SLM & Aneka Jaya".
+  const aiPrompt = `Anda adalah seorang Chief Financial Officer (CFO) dan penasihat keuangan senior untuk bisnis distributor "SLM".
 Berdasarkan data keuangan matematis terverifikasi berikut:
 ${JSON.stringify(promptPayload, null, 2)}
 
@@ -512,7 +512,7 @@ export async function askFinancialCfo(question: string): Promise<CfoAdviceRespon
   // Get active financial forecast context
   const context = await getFinancialAiForecast();
 
-  const cfoPrompt = `Anda adalah Chief Financial Officer (CFO) virtual untuk Owner bisnis distributor "SLM & Aneka Jaya".
+  const cfoPrompt = `Anda adalah Chief Financial Officer (CFO) virtual untuk Owner bisnis distributor "SLM".
 Konteks data keuangan terbaru perusahaan saat ini:
 - Saldo Kas Likuid Operasional: Rp ${context.baseMetrics.currentCashBalance.toLocaleString("id-ID")}
 - Omzet 30 Hari Terakhir: Rp ${context.baseMetrics.past30DaysRevenue.toLocaleString("id-ID")} (${context.baseMetrics.totalSalesCount} transaksi aktif)

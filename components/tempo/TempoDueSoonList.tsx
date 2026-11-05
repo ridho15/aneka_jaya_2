@@ -7,7 +7,7 @@ const PAGE_SIZE = 20;
 const fmtDate = (value: string | Date) => new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 
 function reminderText(customer: string, nota: string, dueDate: string | Date) {
-  return `Halo ${customer}, kami dari Aneka Jaya ingin mengingatkan nota ${nota} jatuh tempo pada ${fmtDate(dueDate)}. Terima kasih.`;
+  return `Halo ${customer}, kami dari SLM ingin mengingatkan nota ${nota} jatuh tempo pada ${fmtDate(dueDate)}. Terima kasih.`;
 }
 
 function daysLabel(dueDate: string | Date, todayKey: string) {

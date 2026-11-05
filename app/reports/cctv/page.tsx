@@ -590,7 +590,7 @@ export default async function CctvReportsMultiTabPage({ searchParams }: Props) {
                 </div>
 
                 <h3 className="mt-3 text-base font-bold text-slate-900 tracking-tight">{cam.name}</h3>
-                <p className="text-xs text-slate-500">Meja Packing Gudang Aneka Jaya</p>
+                <p className="text-xs text-slate-500">Meja Packing Gudang SLM</p>
 
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                   <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
