@@ -41,12 +41,13 @@ describe("laporan stok (sumber inventory SLM)", () => {
       meta: { page: 1, pageSize: 5000, total: 3, totalPages: 1 }
     } as never);
     const r = await getStockInventoryReport({ locationType: "STORE" });
-    expect(vi.mocked(listBalances).mock.calls[0][0]).toMatchObject({ locationType: "STORE", includeZero: true });
+    expect(vi.mocked(listBalances).mock.calls[0][0]).toMatchObject({ locationType: "STORE", includeZero: true, all: true });
     expect(r.items.map((i) => i.sku)).toEqual(["B", "A", "Z"]);
     expect(r.items.map((i) => i.status)).toEqual(["warning", "safe", "out_of_stock"]);
     expect(r.summary.totalCostValuation).toBe(600 * 1000 + 60 * 2000);
     expect(r.summary.totalSellValuation).toBe(600 * 1500);
     expect(r.warehouses).toEqual(["Toko Pusat", "Gudang Pluit"]);
+    expect(r.summary.unitTotals).toEqual([{ unit: "Lusin", quantity: 660 }]);
   });
 
   it("filter lokasi & status", async () => {

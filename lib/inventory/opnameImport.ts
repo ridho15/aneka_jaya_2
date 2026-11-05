@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/db/prisma";
 import { InventoryError } from "./errors";
-import { round2 } from "./math";
+import { hasRealName, round2 } from "./math";
 import { DEFAULT_UNIT } from "./config";
 import { createOpname, type InventoryActor } from "./service";
 import { costFromRmb, getRmbRate } from "./pricing";
@@ -21,6 +21,8 @@ export type OpnameImportRow = {
   rowNumber: number;
   sku: string;
   name: string;
+  /** true bila kolom Nama Produk di file berisi nama asli (bukan kosong / sama dengan kode). */
+  hasNameInFile: boolean;
   category?: string;
   unit?: string;
   costPrice?: number;
@@ -77,8 +79,12 @@ function isFormula(cell: ExcelJS.Cell) {
 function toNumber(v: unknown): number | undefined {
   if (v === null || v === undefined || v === "") return undefined;
   if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
-  const cleaned = String(v).replace(/rp/i, "").replace(/\s/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
-  const n = Number(cleaned);
+  let text = String(v).replace(/rp/i, "").replace(/\s/g, "");
+  // Format Indonesia "1.250,5": titik = ribuan, koma = desimal. Tanpa koma, titik ribuan hanya
+  // dianggap ada bila polanya jelas (lebih dari satu grup, mis. "1.250.000"); "2.500" tetap 2,5.
+  if (text.includes(",")) text = text.replace(/\./g, "").replace(",", ".");
+  else if (/^-?\d{1,3}(\.\d{3}){2,}$/.test(text)) text = text.replace(/\./g, "");
+  const n = Number(text);
   return Number.isFinite(n) ? n : undefined;
 }
 
@@ -163,6 +169,7 @@ export async function parseOpnameWorkbook(buffer: ArrayBuffer | Buffer): Promise
       rowNumber: r,
       sku: sku.slice(0, 80),
       name: (name || sku).slice(0, 255),
+      hasNameInFile: Boolean(name && hasRealName(name, sku)),
       category: toText(get(row, "category"))?.slice(0, 120),
       unit: toText(get(row, "unit"))?.slice(0, 20),
       costPrice: toNumber(get(row, "costPrice")),
@@ -203,6 +210,11 @@ export type OpnameImportSummary = {
 };
 
 const CHUNK = 250;
+
+/** Kunci idempoten per batch dari isinya: file & opsi sama → batch sama → tidak diposting dua kali. */
+function batchKey(locationId: string, date: string | undefined, lines: string[]) {
+  return createHash("sha256").update([locationId, date ?? "", ...lines].join("\n")).digest("hex").slice(0, 40);
+}
 
 export async function importOpnameWorkbook(parsed: ParsedOpnameWorkbook, options: OpnameImportOptions, actor?: InventoryActor): Promise<OpnameImportSummary> {
   if (!options.warehouseLocationId && !options.storeLocationId) {
@@ -262,7 +274,8 @@ export async function importOpnameWorkbook(parsed: ParsedOpnameWorkbook, options
       await prisma.inventoryProduct.update({
         where: { sku: r.sku },
         data: {
-          name: r.name,
+          // Nama kosong / sama dengan kode di file tidak menimpa nama barang yang sudah ada.
+          ...(r.hasNameInFile ? { name: r.name } : {}),
           ...(r.category ? { category: r.category } : {}),
           ...(r.unit ? { unit: r.unit } : {}),
           // modal/harga 0 atau kosong tidak menimpa data yang sudah ada
@@ -292,7 +305,7 @@ export async function importOpnameWorkbook(parsed: ParsedOpnameWorkbook, options
       const opname = await createOpname({
         locationId: loc.id,
         opnameDate: date,
-        idempotencyKey: `xlsx-opname:${parsed.fileHash}:${loc.id}:${part}`,
+        idempotencyKey: `xlsx-opname:${batchKey(loc.id, date, rows.slice(i, i + CHUNK).map((r) => `${r.sku}=${r[key]}`))}`,
         notes: `Import Excel opname (${parsed.sheetName}) bagian ${part}/${Math.ceil(rows.length / CHUNK)}`,
         items: rows.slice(i, i + CHUNK).map((r) => ({ sku: r.sku, countedQty: r[key] }))
       }, actor);

@@ -281,15 +281,18 @@ async function inventoryCostFor(item: { productId?: string | null; productRef?: 
   const erpId = item.productId && /^\d+$/.test(item.productId) ? Number(item.productId) : undefined;
   const ref = (item.productRef || "").trim();
   const firstToken = ref.split(/\s+/)[0];
-  const or = [
+  // Dicoba berurutan: ID ERP, ID lokal, SKU persis, lalu kode di depan productRef.
+  const candidates = [
     ...(erpId ? [{ erpProductId: erpId }] : []),
     ...(item.productId && !erpId ? [{ id: item.productId }] : []),
     ...(ref ? [{ sku: ref }] : []),
     ...(firstToken && firstToken !== ref ? [{ sku: firstToken }] : [])
   ];
-  if (!or.length) return 0;
-  const product = await prisma.inventoryProduct.findFirst({ where: { OR: or }, select: { costPrice: true } });
-  return product ? Number(product.costPrice) : 0;
+  for (const where of candidates) {
+    const product = await prisma.inventoryProduct.findFirst({ where, select: { costPrice: true } });
+    if (product) return Number(product.costPrice);
+  }
+  return 0;
 }
 
 export async function postSalesCogsJournal(

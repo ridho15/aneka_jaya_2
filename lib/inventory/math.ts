@@ -19,7 +19,9 @@ export function applyDelta(balance: { quantity: number; avgCost: number }, delta
 /** Qty dalam satuan barang dari input koli + lepas. Tanpa isi per koli, koli tidak bisa dihitung. */
 export function qtyFromKoli(input: { quantity?: number | null; koli?: number | null; loose?: number | null }, unitsPerKoli?: number | null) {
   const hasKoli = input.koli != null && input.koli !== 0;
-  if (input.quantity != null && !hasKoli && input.loose == null) return round2(input.quantity);
+  const hasLoose = input.loose != null && input.loose !== 0;
+  // Qty langsung dipakai kecuali koli/lepas benar-benar diisi (koli & lepas kosong/0 tidak menimpa qty).
+  if (input.quantity != null && !hasKoli && !hasLoose) return round2(input.quantity);
   if (hasKoli && !(unitsPerKoli && unitsPerKoli > 0)) return null;
   return round2((input.koli ?? 0) * (unitsPerKoli ?? 0) + (input.loose ?? 0));
 }

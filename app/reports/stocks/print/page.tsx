@@ -132,9 +132,9 @@ export default async function StockReportPrintPage({
             </b>
           </div>
           <div>
-            <span className="block text-slate-500">Total Kuantitas Fisik</span>
+            <span className="block text-slate-500">Jumlah Fisik per Satuan</span>
             <b className="text-sm font-bold text-slate-900">
-              {report.summary.totalQuantity.toLocaleString("id-ID")} Unit
+              {(report.summary.unitTotals ?? []).length ? (report.summary.unitTotals ?? []).map((u) => `${u.quantity.toLocaleString("id-ID")} ${u.unit}`).join(" · ") : "0"}
             </b>
           </div>
           <div>
@@ -221,8 +221,8 @@ export default async function StockReportPrintPage({
                 <td colSpan={4} className="py-2.5 px-2 text-center uppercase">
                   Total Persediaan
                 </td>
-                <td className="py-2.5 px-2 text-right text-slate-950 font-black">
-                  {report.summary.totalQuantity.toLocaleString("id-ID")}
+                <td className="py-2.5 px-2 text-right text-slate-950 font-bold">
+                  {(report.summary.unitTotals ?? []).length ? (report.summary.unitTotals ?? []).map((u) => `${u.quantity.toLocaleString("id-ID")} ${u.unit}`).join(" · ") : "0"}
                 </td>
                 <td colSpan={3} className="py-2.5 px-2 text-right text-slate-500">
                   {report.summary.totalItems} Baris Item

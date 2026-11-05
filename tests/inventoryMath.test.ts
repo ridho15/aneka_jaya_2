@@ -70,3 +70,15 @@ describe("koli", async () => {
     expect(formatKoli(1280, 40, "Box")).toBe("32 koli");
   });
 });
+
+describe("perbaikan review", async () => {
+  const { qtyFromKoli } = await import("@/lib/inventory/math");
+  const { opnameSchema } = await import("@/lib/inventory/validation");
+  it("koli/lepas null atau 0 tidak menimpa qty langsung", () => {
+    expect(qtyFromKoli({ quantity: 10, koli: null, loose: null }, 60)).toBe(10);
+    expect(qtyFromKoli({ quantity: 10, koli: 0, loose: 0 }, 60)).toBe(10);
+    const parsed = opnameSchema.parse({ locationId: "a", items: [{ sku: "A", countedQty: 10, koli: null, loose: null }] });
+    expect(parsed.items[0]).toMatchObject({ countedQty: 10 });
+    expect((parsed.items[0] as { koli?: number }).koli).toBeUndefined();
+  });
+});

@@ -16,6 +16,7 @@ import type {
 import { recordAudit } from "@/lib/audit/store";
 import { postPurchaseInvoiceJournal, type PurchasingActor } from "@/lib/purchasing/postingHooks";
 import { isLocalInventory } from "@/lib/inventory/config";
+import { can, type Role } from "@/lib/auth/roles";
 import { postPurchaseReceiptToInventory } from "@/lib/inventory/service";
 
 // =====================================================================
@@ -422,7 +423,9 @@ export async function createPurchaseReceipt(
   });
 
   // Masukkan barang yang diterima ke stok gudang/toko (inventory SLM).
-  const inventoryLocationId = await resolveReceiptLocationId(input);
+  // Stok hanya bertambah bila penerima punya akses Barang Masuk; selain itu GRN menunggu di
+  // Inventory › Barang Masuk untuk dimasukkan oleh petugas yang berwenang.
+  const inventoryLocationId = actor.role && can(actor.role as Role, "inventory.receive") ? await resolveReceiptLocationId(input) : undefined;
   if (inventoryLocationId) {
     try {
       return await postPurchaseReceiptToInventory(receipt.id, inventoryLocationId, { id: actor.id, name: actor.name }).then((posted) => ({ ...receipt, ...posted }));

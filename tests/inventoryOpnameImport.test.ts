@@ -49,4 +49,16 @@ describe("parseOpnameWorkbook", () => {
     wb.addWorksheet("A").addRow(["foo", "bar"]);
     await expect(parseOpnameWorkbook(Buffer.from(await wb.xlsx.writeBuffer()))).rejects.toMatchObject({ code: "VALIDATION" });
   });
+
+  it("angka teks: 2.500 = 2,5; 1.250.000 dan 1.250,5 format Indonesia", async () => {
+    const parsed = await parseOpnameWorkbook(await template([
+      ["T-1", "A", null, "Lusin", "1.250.000", null, 0, "2.500", null, 0, "1.250,5", null]
+    ]));
+    expect(parsed.rows[0]).toMatchObject({ costPrice: 1250000, qtyWarehouse: 2.5, qtyStore: 1250.5 });
+  });
+
+  it("nama kosong / sama dengan kode ditandai supaya tidak menimpa nama di master", async () => {
+    const parsed = await parseOpnameWorkbook(await template([["N-1", null, null, null, 0, null, 0, 1], ["N-2", "N-2", null, null, 0, null, 0, 1], ["N-3", "Kaos Polos", null, null, 0, null, 0, 1]]));
+    expect(parsed.rows.map((r) => r.hasNameInFile)).toEqual([false, false, true]);
+  });
 });

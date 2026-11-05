@@ -49,6 +49,8 @@ export type StockReportResult = {
   summary: {
     totalItems: number;
     totalQuantity: number;
+    /** Total qty per satuan (Lusin, Pack, …): satuan berbeda tidak dijumlah jadi satu angka. */
+    unitTotals: { unit: string; quantity: number }[];
     totalCostValuation: number;
     totalSellValuation: number;
     warningCount: number;
@@ -85,8 +87,7 @@ export async function getStockInventoryReport(filter: StockReportFilter = {}): P
       sku: filter.sku || undefined,
       keyword: filter.productKeyword || undefined,
       includeZero: true,
-      page: 1,
-      pageSize: 5000
+      all: true
     })
   ]);
 
@@ -127,6 +128,10 @@ export async function getStockInventoryReport(filter: StockReportFilter = {}): P
     summary: {
       totalItems: items.length,
       totalQuantity: sum((i) => i.quantity),
+      unitTotals: Array.from(items.reduce((m, i) => m.set(i.unit, (m.get(i.unit) ?? 0) + i.quantity), new Map<string, number>()))
+        .map(([unit, quantity]) => ({ unit, quantity: Math.round(quantity * 100) / 100 }))
+        .filter((u) => u.quantity !== 0)
+        .sort((a, b) => b.quantity - a.quantity),
       totalCostValuation: sum((i) => i.totalCostValuation),
       totalSellValuation: sum((i) => i.totalSellValuation),
       warningCount: items.filter((i) => i.status === "warning").length,

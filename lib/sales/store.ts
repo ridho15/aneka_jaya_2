@@ -990,6 +990,18 @@ async function updatePrismaSalesRecord(
   return toSale(row);
 }
 
+/**
+ * Retur yang sudah diposting sudah mengembalikan stok. Membatalkan/mengedit nota sesudahnya akan
+ * mengembalikan seluruh qty lagi, jadi stok dobel.
+ */
+async function assertNoPostedReturns(saleId: string, action: string) {
+  if (typeof prisma?.salesReturn?.count !== "function") return;
+  const posted = await prisma.salesReturn.count({ where: { salesRecordId: saleId, status: "POSTED" } });
+  if (posted > 0) {
+    throw Object.assign(new Error(`Nota ini sudah punya ${posted} retur yang diposting, jadi tidak bisa ${action} lagi. Untuk sisa barang, buat retur tambahan.`), { code: "SALES_HAS_RETURNS" });
+  }
+}
+
 export async function updateSalesRecord(id: string, input: PenjualanInput): Promise<Sale> {
   const before = await getSalesRecord(id);
   if (!before) throw Object.assign(new Error("Transaksi penjualan tidak ditemukan."), { code: "SALES_NOT_FOUND" });
@@ -1001,6 +1013,7 @@ export async function updateSalesRecord(id: string, input: PenjualanInput): Prom
 
   const isDraft = input.isDraft === true;
   const isKeepingDraft = before.approvalStatus === "draft" && isDraft;
+  if (!isKeepingDraft) await assertNoPostedReturns(id, "diedit");
   const isFinalizingDraft = before.approvalStatus === "draft" && !isDraft;
 
   const nowIso = new Date().toISOString();
@@ -1187,6 +1200,7 @@ export async function cancelSalesRecord(id: string, reason: string): Promise<Sal
   if (!before) throw new Error("Transaksi penjualan tidak ditemukan.");
   if (before.source === "MJ") throw new Error("Cancel invoice MJ menunggu kontrak cancel/reversal AJ dan tidak boleh mengubah status lokal.");
   if (before.approvalStatus === "cancelled") throw new Error("Transaksi sudah dibatalkan.");
+  await assertNoPostedReturns(id, "dibatalkan");
   const requiresErpCancellation = before.syncTarget === "erp" && before.syncStatus === "synced";
   const actor = await getCurrentUser();
   let erpCancellation: SalesCancellationResult | undefined;

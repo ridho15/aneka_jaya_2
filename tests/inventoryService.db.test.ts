@@ -256,4 +256,16 @@ suite("inventory service (postgres)", () => {
     expect(r.updated).toBe(2);
     expect((await svc.getProduct(`BU1-${sku}`)).unit).toBe("Lusin");
   });
+
+  it("parseDate memakai tanggal & jam WIB walau server UTC", () => {
+    const d = svc.parseDate("2026-11-05", new Date("2026-11-04T20:00:00Z")); // 03:00 WIB tgl 5
+    expect(d.toISOString()).toBe("2026-11-04T20:00:00.000Z");
+  });
+
+  it("matriks: total gudang tetap terisi saat filter Toko", async () => {
+    const m = await svc.stockMatrix({ keyword: sku, locationType: "STORE" });
+    const row = m.data.find((r) => r.sku === sku)!;
+    expect(row.warehouseTotal).toBeGreaterThan(0);
+    expect(row.total).toBe(row.warehouseTotal + row.storeTotal);
+  });
 });

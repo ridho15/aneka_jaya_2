@@ -9,7 +9,26 @@ import { MjIntegrationError } from "@/lib/integrations/mj/errors";
 import { InventoryError, inventoryErrorBody } from "./errors";
 import type { InventoryActor } from "./service";
 
-export type InventoryContext = { actor: InventoryActor; source: "session" | "api" };
+export type InventoryContext = { actor: InventoryActor; source: "session" | "api"; canSeeCost: boolean };
+
+/**
+ * Token integrasi (Bearer) hanya boleh memakai operasi stok harian. Master barang, gudang/toko,
+ * import Excel, dan kurs RMB tetap khusus pengguna yang login dengan hak aksesnya.
+ */
+const BEARER_PERMISSIONS: Permission[] = [
+  "inventory.stock.view", "inventory.movement.view", "inventory.transfer", "inventory.receive", "inventory.opname", "inventory.adjust"
+];
+
+/** Field harga modal yang hanya boleh dilihat role yang mengurus modal/barang masuk. */
+const COST_FIELDS = new Set(["costPrice", "priceRmb", "extraCostIdr", "avgCost", "stockValue", "unitCost", "totalValue"]);
+
+function withoutCost(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutCost);
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([k]) => !COST_FIELDS.has(k)).map(([k, v]) => [k, withoutCost(v)]));
+  }
+  return value;
+}
 
 /**
  * Bungkus route inventory. Mendukung dua jenis pemanggil:
@@ -27,16 +46,20 @@ export function inventoryRoute<P extends Record<string, string> = Record<string,
       const params = ((await context?.params) ?? {}) as P;
       let ctx: InventoryContext;
       if (/^Bearer\s+/i.test(request.headers.get("authorization") || "")) {
+        if (!BEARER_PERMISSIONS.includes(permission)) {
+          return NextResponse.json({ success: false, message: "Token integrasi tidak boleh mengakses fitur ini.", code: "FORBIDDEN" }, { status: 403 });
+        }
         const principal = await authenticateMjRequest(request, options.bucket ?? (request.method === "GET" ? "read" : "mutation"));
-        ctx = { actor: { id: `api:${principal.clientCode}`, name: `API ${principal.clientCode}` }, source: "api" };
+        ctx = { actor: { id: `api:${principal.clientCode}`, name: `API ${principal.clientCode}` }, source: "api", canSeeCost: false };
       } else {
         const user = await getCurrentUser();
         if (!can(user.role, permission)) {
           return NextResponse.json({ success: false, message: "Tidak punya akses ke modul inventory ini.", code: "FORBIDDEN" }, { status: 403 });
         }
-        ctx = { actor: { id: user.id, name: user.name }, source: "session" };
+        ctx = { actor: { id: user.id, name: user.name }, source: "session", canSeeCost: can(user.role, "inventory.master") || can(user.role, "inventory.receive") };
       }
-      const data = await handler(request, ctx, params);
+      const raw = await handler(request, ctx, params);
+      const data = ctx.canSeeCost || raw instanceof Response ? raw : withoutCost(raw);
       if (data instanceof Response) return data;
       const body = data && typeof data === "object" && "data" in data && "meta" in data ? { success: true, ...(data as object) } : { success: true, data };
       return NextResponse.json(body, { status: options.status ?? 200 });

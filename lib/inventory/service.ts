@@ -5,6 +5,7 @@ import { InventoryError } from "./errors";
 import { applyDelta, formatKoli, hasRealName, qtyFromKoli, round2, splitKoli } from "./math";
 export { hasRealName } from "./math";
 import { applyRmbCost } from "./pricing";
+import { JAKARTA_TIME_ZONE, jakartaMonthKey } from "@/lib/date/jakarta";
 import { DEFAULT_UNIT } from "./config";
 import type {
   AdjustmentInput,
@@ -106,13 +107,19 @@ function isDocumentNumberConflict(error: unknown) {
   return e?.code === "P2002" && /Number/.test(String(e.meta?.target ?? ""));
 }
 
+/** Deadlock / konflik serialisasi Postgres: transaksi dibatalkan utuh, jadi aman diulang. */
+function isRetryableConflict(error: unknown) {
+  const e = error as { code?: string; message?: string; meta?: { code?: string } };
+  return e?.code === "P2034" || e?.meta?.code === "40P01" || /40P01|deadlock detected/i.test(String(e?.message ?? ""));
+}
+
 /** Transaksi inventory; otomatis diulang bila nomor dokumen otomatis bentrok karena input bersamaan. */
 export async function runInventoryTransaction<T>(fn: (tx: Tx) => Promise<T>, client: PrismaClient = prisma): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     try {
       return await client.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, timeout: 30_000, maxWait: 10_000 });
     } catch (error) {
-      if (attempt < 4 && isDocumentNumberConflict(error)) continue;
+      if (attempt < 4 && (isDocumentNumberConflict(error) || isRetryableConflict(error))) continue;
       throw error;
     }
   }
@@ -126,10 +133,9 @@ export async function runInventoryTransaction<T>(fn: (tx: Tx) => Promise<T>, cli
 export function parseDate(value?: string, now = new Date()) {
   if (!value) return now;
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const [y, m, d] = value.split("-").map(Number);
-    const date = new Date(now);
-    date.setFullYear(y, m - 1, d);
-    return date;
+    // Tanggal dari form adalah tanggal WIB; gabungkan dengan jam WIB saat ini (server bisa UTC).
+    const time = new Intl.DateTimeFormat("en-GB", { timeZone: JAKARTA_TIME_ZONE, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(now);
+    return new Date(`${value}T${time}+07:00`);
   }
   return new Date(value);
 }
@@ -139,7 +145,7 @@ export function parseDate(value?: string, now = new Date()) {
  * (dilepas saat transaksi selesai) sehingga input bersamaan tetap mendapat nomor unik.
  */
 async function nextNumber(tx: Tx, prefix: string, date: Date, lastNumber: (startsWith: string) => Promise<string | undefined>) {
-  const ym = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
+  const ym = jakartaMonthKey(date).replace("-", "");
   const start = `${prefix}-${ym}-`;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`inventory-doc:${start}`}))`;
   const last = await lastNumber(start);
@@ -312,6 +318,8 @@ export type BalanceQuery = {
   includeZero?: boolean;
   page?: number;
   pageSize?: number;
+  /** Ambil semua baris tanpa paginasi (untuk laporan & ekspor). */
+  all?: boolean;
 };
 
 export async function listBalances(query: BalanceQuery = {}) {
@@ -363,7 +371,7 @@ export async function listBalances(query: BalanceQuery = {}) {
   const filtered = query.lowStockOnly ? mapped.filter((r) => r.isLowStock) : mapped;
   const total = filtered.length;
   return {
-    data: filtered.slice((page - 1) * pageSize, page * pageSize),
+    data: query.all ? filtered : filtered.slice((page - 1) * pageSize, page * pageSize),
     meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
   };
 }
@@ -404,7 +412,7 @@ export async function stockMatrix(query: { keyword?: string; locationType?: "WAR
   const [products, balances] = ids.length
     ? await Promise.all([
         prisma.inventoryProduct.findMany({ where: { id: { in: ids } } }),
-        prisma.inventoryBalance.findMany({ where: { productId: { in: ids }, locationId: { in: locationIds } } })
+        prisma.inventoryBalance.findMany({ where: { productId: { in: ids }, location: { isActive: true } }, include: { location: { select: { type: true } } } })
       ])
     : [[], []];
   const productById = new Map(products.map((p) => [p.id, serializeProduct(p)]));
@@ -414,14 +422,18 @@ export async function stockMatrix(query: { keyword?: string; locationType?: "WAR
     data: ids.map((id) => {
       const p = productById.get(id)!;
       const perLocation = Object.fromEntries(locations.map((l) => [l.id, byKey.get(`${p.id}:${l.id}`) ?? 0]));
-      const warehouseTotal = locations.filter((l) => l.type === "WAREHOUSE").reduce((s, l) => s + perLocation[l.id], 0);
-      const storeTotal = locations.filter((l) => l.type === "STORE").reduce((s, l) => s + perLocation[l.id], 0);
+      // Total gudang & toko selalu dari SEMUA lokasi aktif, tidak ikut filter kolom.
+      const own = balances.filter((b) => b.productId === p.id);
+      const warehouseTotal = own.filter((b) => b.location.type === "WAREHOUSE").reduce((s, b) => s + num(b.quantity), 0);
+      const storeTotal = own.filter((b) => b.location.type === "STORE").reduce((s, b) => s + num(b.quantity), 0);
       const perLocationKoli = Object.fromEntries(locations.map((l) => [l.id, koliInfo(perLocation[l.id], p.unitsPerKoli, p.unit).koliText]));
       const sum = round2(warehouseTotal + storeTotal);
-      const lowStock = sum > 0 && (p.unitsPerKoli ? sum <= p.unitsPerKoli : p.minimumStock > 0 && sum <= p.minimumStock);
+      // Penanda merah & urutan memakai stok di lokasi yang sedang ditampilkan.
+      const scopeTotal = round2(locations.reduce((s, l) => s + perLocation[l.id], 0));
+      const lowStock = scopeTotal > 0 && (p.unitsPerKoli ? scopeTotal <= p.unitsPerKoli : p.minimumStock > 0 && scopeTotal <= p.minimumStock);
       return { productId: p.id, sku: p.sku, name: p.name, category: p.category, hasName: hasRealName(p.name, p.sku), unit: p.unit, unitsPerKoli: p.unitsPerKoli, minimumStock: p.minimumStock, perLocation, perLocationKoli,
         warehouseKoliText: koliInfo(warehouseTotal, p.unitsPerKoli, p.unit).koliText, storeKoliText: koliInfo(storeTotal, p.unitsPerKoli, p.unit).koliText, totalKoliText: koliInfo(sum, p.unitsPerKoli, p.unit).koliText,
-        warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: sum, lowStock };
+        warehouseTotal: round2(warehouseTotal), storeTotal: round2(storeTotal), total: sum, scopeTotal, lowStock };
     }),
     meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
   };
@@ -755,9 +767,20 @@ export async function postPurchaseReceiptToInventory(receiptId: string, location
       const unitCost = num(item.purchaseOrderItem?.unitPriceIdr);
       const product = await tx.inventoryProduct.upsert({
         where: { sku: item.itemCode },
-        create: { sku: item.itemCode, name: item.itemName, unit: item.unit && item.unit.toUpperCase() !== "PCS" ? item.unit : DEFAULT_UNIT, costPrice: unitCost },
+        create: { sku: item.itemCode, name: item.itemName, unit: item.unit?.trim() || DEFAULT_UNIT, costPrice: unitCost },
         update: {}
       });
+      // Qty & harga GRN mengikuti satuan di PO. Satuan beda (mis. PCS vs Lusin) berarti angka
+      // salah skala, jadi ditolak daripada mencatat stok 12x lipat.
+      const grnUnit = item.unit?.trim();
+      if (grnUnit && grnUnit.toLowerCase() !== product.unit.toLowerCase()) {
+        throw new InventoryError(
+          "VALIDATION",
+          `Satuan di PO untuk ${item.itemCode} adalah ${grnUnit}, sedangkan di Master Barang ${product.unit}. Samakan satuan PO dengan Master Barang lalu ulangi.`,
+          400,
+          { sku: item.itemCode, grnUnit, productUnit: product.unit }
+        );
+      }
       await postMovement(tx, {
         productId: product.id, locationId: location.id, delta: qty, unitCost, type: "PURCHASE_RECEIPT", movementDate: receipt.receiptDate,
         referenceType: "PURCHASE_RECEIPT", referenceId: receipt.id, referenceNumber: receipt.grnNumber,

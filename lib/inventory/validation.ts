@@ -3,6 +3,8 @@ import { DEFAULT_UNIT } from "./config";
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().nullable().transform((v) => (v ? v : undefined));
 const dateString = z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Tanggal tidak valid");
+/** Angka opsional: null / "" dianggap tidak diisi (bukan 0). */
+const optNum = <T extends z.ZodTypeAny>(schema: T) => z.preprocess((v) => (v === null || v === "" ? undefined : v), schema.optional());
 const qty = z.coerce.number().finite();
 
 export const locationSchema = z.object({
@@ -54,10 +56,10 @@ const itemNotes = optionalText(500);
  * atau dalam koli: `koli` × isi per koli barang + `loose` (lepas, satuan barang).
  */
 const koliFields = {
-  koli: z.coerce.number().finite().optional(),
-  loose: z.coerce.number().finite().optional(),
-  /** Isi 1 koli (dalam satuan barang). Bila diisi, dipakai untuk menghitung dan disimpan ke master barang. */
-  unitsPerKoli: z.coerce.number().positive("Isi per koli harus lebih dari 0").optional()
+  koli: optNum(z.coerce.number().finite()),
+  loose: optNum(z.coerce.number().finite()),
+  /** Isi per koli (dalam satuan barang). Bila diisi, dipakai untuk menghitung dan disimpan ke master barang. */
+  unitsPerKoli: optNum(z.coerce.number().positive("Isi per koli harus lebih dari 0"))
 };
 const hasQty = (field: "quantity" | "countedQty") => (v: Record<string, unknown>) => v[field] != null || v.koli != null || v.loose != null;
 
@@ -81,9 +83,9 @@ export const opnameSchema = z.object({
   idempotencyKey: optionalText(120),
   items: z.array(productRef.and(z.object({
     countedQty: qty.min(0, "Qty fisik tidak boleh negatif").optional(),
-    koli: z.coerce.number().finite().min(0, "Koli tidak boleh negatif").optional(),
-    loose: z.coerce.number().finite().min(0, "Qty lepas tidak boleh negatif").optional(),
-    unitsPerKoli: z.coerce.number().positive("Isi per koli harus lebih dari 0").optional(),
+    koli: optNum(z.coerce.number().finite().min(0, "Koli tidak boleh negatif")),
+    loose: optNum(z.coerce.number().finite().min(0, "Qty lepas tidak boleh negatif")),
+    unitsPerKoli: optNum(z.coerce.number().positive("Isi per koli harus lebih dari 0")),
     notes: itemNotes
   }).refine(hasQty("countedQty"), "Isi qty fisik atau koli"))).min(1, "Minimal satu barang")
 });

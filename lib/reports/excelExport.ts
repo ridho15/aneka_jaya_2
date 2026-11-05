@@ -309,8 +309,7 @@ export function generateStockReportExcel(report: StockReportResult): string {
   rows.push(`
     <Row ss:Height="22">
       <Cell ss:MergeAcross="3" ss:StyleID="TotalLabel"><Data ss:Type="String">TOTAL PERSEDIAAN</Data></Cell>
-      <Cell ss:StyleID="TotalNumber"><Data ss:Type="Number">${report.summary.totalQuantity}</Data></Cell>
-      <Cell ss:MergeAcross="2" ss:StyleID="TotalLabel"><Data ss:Type="String">-</Data></Cell>
+      <Cell ss:MergeAcross="3" ss:StyleID="TotalLabel"><Data ss:Type="String">${escapeXml((report.summary.unitTotals ?? []).map((u) => `${u.quantity} ${u.unit}`).join(" · ") || "0")}</Data></Cell>
       ${totalValuationCell}
     </Row>
   `);

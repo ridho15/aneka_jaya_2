@@ -274,12 +274,12 @@ export default async function StockReportsPage({
 
         <section className="aj-surface rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Total Kuantitas Fisik
+            Jumlah Fisik per Satuan
           </p>
-          <p className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
-            {report.summary.totalQuantity.toLocaleString("id-ID")}
+          <p className="mt-2 text-lg font-black leading-snug text-slate-900 sm:text-xl">
+            {(report.summary.unitTotals ?? []).length ? (report.summary.unitTotals ?? []).map((u) => `${u.quantity.toLocaleString("id-ID")} ${u.unit}`).join(" · ") : "0"}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Unit barang di gudang</p>
+          <p className="mt-1 text-xs text-slate-500">Satuan berbeda tidak dijumlahkan</p>
         </section>
 
         <section className="aj-surface rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -498,8 +498,8 @@ export default async function StockReportsPage({
                   <td colSpan={4} className="px-5 py-4 text-center uppercase tracking-wider">
                     Total Persediaan (Semua {report.summary.totalItems} Item)
                   </td>
-                  <td className="px-5 py-4 text-right text-base text-emerald-800">
-                    {report.summary.totalQuantity.toLocaleString("id-ID")}
+                  <td className="px-5 py-4 text-right text-xs text-emerald-800">
+                    {(report.summary.unitTotals ?? []).length ? (report.summary.unitTotals ?? []).map((u) => `${u.quantity.toLocaleString("id-ID")} ${u.unit}`).join(" · ") : "0"}
                   </td>
                   <td colSpan={3} className="px-5 py-4 text-right text-xs text-slate-500">
                     {report.summary.totalItems} Baris Item

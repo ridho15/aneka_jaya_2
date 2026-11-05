@@ -2,17 +2,19 @@ import { AppShell } from "@/components/layout/AppShell";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { listPurchaseOrders, listSuppliers } from "@/lib/purchasing/purchasingStore";
 import { listLocations } from "@/lib/inventory/service";
+import { can } from "@/lib/auth/roles";
 import { PurchaseOrderView, type PurchaseOrderData } from "@/components/purchasing/PurchaseOrderView";
 
 export const dynamic = "force-dynamic";
 
 export default async function PembelianPesananPage() {
-  await requirePermission("purchasing.view");
+  const role = await requirePermission("purchasing.view");
 
   const [rawOrders, rawSuppliers, locations] = await Promise.all([
     listPurchaseOrders(),
     listSuppliers({ isActive: true }),
-    listLocations().catch(() => [])
+    // Pilihan gudang hanya untuk yang boleh memasukkan stok; lainnya GRN menunggu di Barang Masuk.
+    can(role, "inventory.receive") ? listLocations().catch(() => []) : Promise.resolve([])
   ]);
   const inventoryLocations = locations.map((l) => ({ id: l.id, code: l.code, name: l.name, type: l.type, isDefault: l.isDefault }));
 
