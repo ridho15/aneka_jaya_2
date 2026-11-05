@@ -10,7 +10,7 @@ import { listSalesRecords } from "@/lib/sales/store";
 import { listExpenseRecords } from "@/lib/expenses/store";
 import { getOperationalProfitSetting } from "@/lib/settings/profit";
 import { listBookkeepingTypes } from "@/lib/business/masterData";
-import { listProducts } from "@/lib/api/products";
+import { listCatalogProducts } from "@/lib/inventory/catalog";
 import { jakartaMonthKey } from "@/lib/date/jakarta";
 import { buildDashboardProfitDetails } from "@/lib/dashboard/summary";
 import { ProfitDetailView } from "@/components/dashboard/ProfitDetailView";
@@ -55,7 +55,7 @@ export default async function DashboardProfitDetailPage({
       listExpenseRecords(),
       getOperationalProfitSetting(),
       listBookkeepingTypes(),
-      listProducts(),
+      listCatalogProducts(),
     ]);
 
   const activeTipes = tipes.filter((t) => t.isActive && t.code !== "AJ");

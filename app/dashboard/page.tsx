@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { PaymentBreakdownChart, type PaymentPeriod } from "@/components/dashboard/PaymentBreakdownChart";
-import { listProducts } from "@/lib/api/products";
+import { listCatalogProducts } from "@/lib/inventory/catalog";
 import { getOpenCloudStatus } from "@/lib/opencloud/auth";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole, getCurrentUser } from "@/lib/auth/session";
@@ -131,7 +131,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
 
   const params = await searchParams || {};
   const filters = dashboardFilters(params);
-  const products = await listProducts();
+  const products = await listCatalogProducts();
   const cloud = getOpenCloudStatus();
   const audit = await listAudit({ role });
   const activities = audit.slice(0, 5);
@@ -263,7 +263,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
         <section className="aj-surface p-5 sm:p-6">
           <p className="text-xs font-bold uppercase tracking-[0.13em] text-emerald-600">Koneksi</p>
           <h2 className="mt-1 text-lg font-bold tracking-tight">Status sistem</h2>
-          <Status label="ERP Integration API" ok={products.success} text={products.success ? "Terhubung dan siap digunakan" : products.message} />
+          <Status label="Master Barang SLM" ok={products.success && products.data.length > 0} text={products.success ? `${products.data.length.toLocaleString("id-ID")} barang · sumber harga modal dashboard` : products.message} />
           <Status label="OpenCloud Storage" ok={cloud.configured} text={cloud.message} />
           <Status label="WhatsApp" ok={whatsappStatus.ready} text={whatsappStatus.message} />
           <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-emerald-950">

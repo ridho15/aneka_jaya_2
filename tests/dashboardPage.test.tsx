@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth/session", () => ({ getCurrentRole: mocks.getCurrentRole, getCurrentUser: mocks.getCurrentUser }));
-vi.mock("@/lib/api/products", () => ({ listProducts: mocks.listProducts }));
+vi.mock("@/lib/inventory/catalog", () => ({ listCatalogProducts: mocks.listProducts }));
 vi.mock("@/lib/sales/store", () => ({ listSalesRecords: mocks.listSalesRecords }));
 vi.mock("@/lib/expenses/store", () => ({ listExpenseRecords: mocks.listExpenseRecords }));
 vi.mock("@/lib/tempo/store", () => ({ listTempoReceivables: mocks.listTempoReceivables, listTempoPayments: mocks.listTempoPayments, listTempoPaymentReversals: mocks.listTempoPaymentReversals }));
