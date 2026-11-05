@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { stockViewType } from "@/lib/inventory/config";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { can } from "@/lib/auth/roles";
@@ -29,7 +30,7 @@ function buildPageHref(
   targetPage: number,
 ) {
   const q = new URLSearchParams();
-  if (params.type && params.type !== "STORE") q.set("type", params.type);
+  if (params.type) q.set("type", params.type);
   if (params.warehouse) q.set("warehouse", params.warehouse);
   if (params.keyword) q.set("keyword", params.keyword);
   if (params.sku) q.set("sku", params.sku);
@@ -56,8 +57,8 @@ export default async function StockReportsPage({
   if (!can(role, "stock.view") && !can(role, "reports.view")) redirect("/");
 
   const params = await searchParams;
-  // Sama dengan halaman Stok Gudang & Toko: default Toko, bisa diganti ke Gudang / Gudang + Toko.
-  const typeParam = params?.type === "WAREHOUSE" || params?.type === "ALL" ? params.type : "STORE";
+  // Sama dengan halaman Stok Gudang & Toko: Super Admin default Gudang + Toko, role lain Toko.
+  const typeParam = stockViewType(params?.type, role);
   const locationType = typeParam === "ALL" ? undefined : typeParam;
   const warehouse = params?.warehouse || "";
   const keyword = params?.keyword || "";

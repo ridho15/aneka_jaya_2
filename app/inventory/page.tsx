@@ -6,7 +6,7 @@ import { InventoryHeader, Pager, filterButton, filterInput, fmtQty } from "@/com
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { stockMatrix } from "@/lib/inventory/service";
-import { inventorySource } from "@/lib/inventory/config";
+import { inventorySource, stockViewType } from "@/lib/inventory/config";
 
 export const dynamic = "force-dynamic";
 type SP = Promise<{ keyword?: string; type?: string; page?: string; missing?: string }>;
@@ -19,8 +19,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
   const canEditMaster = can(role, "inventory.master");
   const canAdjust = can(role, "inventory.adjust");
   const missingName = canEditMaster && params.missing === "1";
-  // Default Toko; ALL = Gudang + Toko.
-  const typeParam = params.type === "WAREHOUSE" || params.type === "ALL" ? params.type : "STORE";
+  const typeParam = stockViewType(params.type, role);
   const type = typeParam === "ALL" ? undefined : typeParam;
   const matrix = await stockMatrix({ keyword: params.keyword, locationType: type, page: Number(params.page) || 1, pageSize: 50, missingName });
   const scopeLabel = typeParam === "STORE" ? "Total Toko" : typeParam === "WAREHOUSE" ? "Total Gudang" : "Total Semua";
@@ -54,7 +53,27 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
         <span>Urut dari stok paling sedikit. Barang yang stoknya habis ada di paling bawah.</span>
         <LowChip /> <span>= sisa 1 koli atau kurang</span>
       </p>
-      <div className="aj-surface overflow-x-auto">
+      <ul className="aj-surface divide-y divide-slate-100 md:hidden" aria-label="Daftar stok">
+        {matrix.data.map((row) => (
+          <MobileStockRow
+            key={row.productId}
+            row={row}
+            scopeLabel={scopeLabel.replace("Total ", "")}
+            scopeQty={row.scopeTotal}
+            scopeKoli={scopeKoli(row)}
+            parts={typeParam === "STORE"
+              ? [["Gudang", row.warehouseTotal, row.warehouseKoliText], ["Semua", row.total, row.totalKoliText]]
+              : typeParam === "WAREHOUSE"
+                ? [["Toko", row.storeTotal, row.storeKoliText], ["Semua", row.total, row.totalKoliText]]
+                : [["Gudang", row.warehouseTotal, row.warehouseKoliText], ["Toko", row.storeTotal, row.storeKoliText]]}
+            canMovement={canMovement}
+            canEditMaster={canEditMaster}
+            canAdjust={canAdjust}
+          />
+        ))}
+        {!matrix.data.length && <li className="px-4 py-8 text-center text-sm text-slate-600">{missingName ? "Semua barang di sini sudah punya nama." : "Belum ada barang."}</li>}
+      </ul>
+      <div className="aj-surface hidden overflow-x-auto md:block">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
             <tr>
@@ -144,5 +163,52 @@ function ProductCell({ row, canMovement, canEditMaster, canAdjust }: { row: Matr
       </div>
       {!row.hasName && canEditMaster && <InlineNameForm productId={row.productId} sku={row.sku} />}
     </div>
+  );
+}
+
+type MobileRow = MatrixRow & { perLocation: Record<string, number> };
+
+/** Satu barang = satu kartu 2 baris: nama + stok lokasi yang difilter, lalu kode, lokasi lain, dan aksi. */
+function MobileStockRow({ row, scopeLabel, scopeQty, scopeKoli, parts, canMovement, canEditMaster, canAdjust }: {
+  row: MobileRow;
+  scopeLabel: string;
+  scopeQty: number;
+  scopeKoli: string;
+  parts: Array<[string, number, string]>;
+  canMovement: boolean;
+  canEditMaster: boolean;
+  canAdjust: boolean;
+}) {
+  const short = (qty: number, koli: string) => (qty === 0 ? "–" : row.unitsPerKoli && koli.includes("koli") ? koli : `${fmtQty(qty)} ${row.unit}`);
+  const name = row.hasName ? row.name : "Nama belum diisi";
+  return (
+    <li className={`px-4 py-3 ${row.lowStock ? "bg-red-50" : ""}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            {canMovement && row.hasName
+              ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="truncate font-semibold text-slate-900">{name}</Link>
+              : <span className={`truncate ${row.hasName ? "font-semibold text-slate-900" : "italic text-slate-600"}`}>{name}</span>}
+            {row.lowStock && <LowChip />}
+          </div>
+          <div className="mt-1 flex items-center gap-3 text-xs text-slate-600">
+            <span className="min-w-0 truncate">
+              <span className="font-mono font-semibold text-slate-800">{row.sku}</span>
+              {parts.filter(([, qty]) => qty !== 0 && qty !== scopeQty).map(([label, qty, koli]) => <span key={label}> · {label} {short(qty, koli)}</span>)}
+            </span>
+            {!row.hasName && canEditMaster && (
+              <Link href={`/inventory/produk?keyword=${encodeURIComponent(row.sku)}&edit=${row.productId}`} className="-my-3 inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-emerald-800 underline">Isi nama</Link>
+            )}
+            {canAdjust && (
+              <Link href={`/inventory/adjustment?productId=${row.productId}`} className="-my-3 inline-flex min-h-11 shrink-0 items-center text-sm font-semibold text-emerald-800 underline">Koreksi</Link>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className={`text-sm font-bold tabular-nums ${row.lowStock ? "text-red-800" : "text-slate-900"}`}>{short(scopeQty, scopeKoli)}</div>
+          <div className="text-[11px] text-slate-500">{scopeLabel}</div>
+        </div>
+      </div>
+    </li>
   );
 }

@@ -17,3 +17,11 @@ export function isLocalInventory() {
 
 /** Satuan default barang inventory. Semua harga (modal, jual, RMB) dicatat per satuan ini, bukan per pcs. */
 export const DEFAULT_UNIT = "Lusin";
+
+export type StockViewType = "STORE" | "WAREHOUSE" | "ALL";
+
+/** Tampilan stok bawaan: Super Admin melihat Gudang + Toko, role lain Toko. Pilihan di URL tetap menang. */
+export function stockViewType(requested: string | undefined, role: string): StockViewType {
+  if (requested === "STORE" || requested === "WAREHOUSE" || requested === "ALL") return requested;
+  return role === "OWNER" ? "ALL" : "STORE";
+}
