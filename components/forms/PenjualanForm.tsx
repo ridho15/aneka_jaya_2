@@ -219,6 +219,8 @@ export function PenjualanForm({
     message: string;
   }>();
   const [createdSale, setCreatedSale] = useState<CreatedSale>();
+  // Lokasi, ekspedisi, jadwal kirim & catatan sudah punya default; disembunyikan sampai dibutuhkan.
+  const [showExtra, setShowExtra] = useState(Boolean(sale));
   const [products, setProducts] = useState<Product[]>([]);
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [productQuery, setProductQuery] = useState("");
@@ -1187,6 +1189,7 @@ export function PenjualanForm({
               <Field label="No. HP customer">
                 <Input placeholder="08xxx" {...register("customerPhone")} />
               </Field>
+              <div className={showExtra || errors.deliveryAt ? "contents" : "hidden"}>
               <Field label="Lokasi customer">
                 <Input placeholder="Toko" {...register("customerLocation")} />
               </Field>
@@ -1196,6 +1199,7 @@ export function PenjualanForm({
                   {...register("shippingMethod")}
                 />
               </Field>
+              </div>
               <div className="sm:col-span-2">
                 <p className="mb-1 text-sm font-medium text-slate-700">
                   Status Pembayaran
@@ -1315,6 +1319,7 @@ export function PenjualanForm({
                   <div className="mt-4 grid grid-cols-3 gap-3 border-t border-emerald-100 pt-3 text-sm"><div><p className="text-xs text-slate-500">Total</p><b>{rupiah(total)}</b></div><div><p className="text-xs text-slate-500">Dibayar sekarang</p><b className="text-emerald-700">{rupiah(initialPaymentAmount)}</b></div><div><p className="text-xs text-slate-500">Sisa Tempo</p><b className="text-amber-700">{rupiah(Math.max(0, total - initialPaymentAmount))}</b></div></div>
                 </div>
               )}
+              <div className={showExtra || errors.deliveryAt ? "contents" : "hidden"}>
               <Field label="Tanggal & jam kirim" error={errors.deliveryAt?.message}>
                 <Input type="datetime-local" {...register("deliveryAt", { onChange: () => { deliveryTouchedRef.current = true; } })} />
               </Field>
@@ -1327,6 +1332,17 @@ export function PenjualanForm({
                   />
                 </Field>
               </div>
+              </div>
+              {!(showExtra || errors.deliveryAt) && (
+                <button
+                  type="button"
+                  className="min-h-11 justify-self-start text-left text-sm font-semibold text-emerald-800 underline sm:col-span-2 lg:col-span-4"
+                  aria-expanded={false}
+                  onClick={() => setShowExtra(true)}
+                >
+                  Ubah lokasi, ekspedisi, jadwal kirim &amp; catatan ({watch("customerLocation") || "-"} · {watch("shippingMethod") || "-"})
+                </button>
+              )}
               {allowTestTransaction && targetsErp && (
                 <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
                   <input

@@ -8,7 +8,7 @@ import { listAdjustments, listLocations, listProductOptions } from "@/lib/invent
 
 export const dynamic = "force-dynamic";
 
-export default async function AdjustmentPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function AdjustmentPage({ searchParams }: { searchParams: Promise<{ page?: string; productId?: string; locationId?: string }> }) {
   const role = await getCurrentRole();
   if (!can(role, "inventory.adjust")) redirect("/no-access");
   const p = await searchParams;
@@ -16,7 +16,7 @@ export default async function AdjustmentPage({ searchParams }: { searchParams: P
   return (
     <AppShell>
       <InventoryHeader title="Stock Adjustment" description="Tambah atau kurangi stok yang ada, mis. barang rusak, hilang, atau bonus. Isi angka minus untuk mengurangi." />
-      {can(role, "inventory.adjust") && <div className="mb-8"><InventoryDocumentForm mode="adjustment" locations={locations} products={products} /></div>}
+      {can(role, "inventory.adjust") && <div className="mb-8"><InventoryDocumentForm key={p.productId ?? "new"} mode="adjustment" locations={locations} products={products} initialProductId={p.productId} initialLocationId={p.locationId} /></div>}
       <div className="aj-surface overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">

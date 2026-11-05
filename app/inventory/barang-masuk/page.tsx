@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { InventoryDocumentForm } from "@/components/inventory/InventoryDocumentForm";
-import { GrnPostForm } from "@/components/inventory/GrnPostForm";
+import { GrnPostAll, GrnPostForm } from "@/components/inventory/GrnPostForm";
 import { InventoryHeader, fmtDate, fmtQty } from "@/components/inventory/ui";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
@@ -15,10 +15,11 @@ export default async function BarangMasukPage() {
   const [locations, products, pending, history] = await Promise.all([listLocations(), listProductOptions(), listPendingPurchaseReceipts(), listStockInHistory()]);
   return (
     <AppShell>
-      <InventoryHeader title="Barang Masuk" description={<>Catat barang yang baru tiba di gudang atau toko. Barang dari PO: terima lewat <b>Pembelian › Pesanan (PO) › Terima Barang</b>, stoknya langsung masuk. Barang tanpa PO: isi form di bawah.</>} />
+      <InventoryHeader title="Barang Masuk" description={<>Catat barang yang baru tiba di gudang atau toko. Barang dari PO yang sudah diterima di Pembelian muncul di bawah: pilih lokasi lalu klik <b>Masukkan ke stok</b>. Barang tanpa PO: isi form manual.</>} />
 
       <section className="mb-8">
         <h3 className="mb-3 font-bold text-slate-800">Penerimaan Pembelian (GRN) belum masuk stok</h3>
+        {pending.length > 1 && locations.length > 0 && <GrnPostAll receiptIds={pending.map((r) => r.id)} locations={locations} />}
         <div className="aj-surface overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useToast } from "@/components/ui/ToastProvider";
-import { koliText, koliToQty, locationLabel, type InvLocation, type InvProduct } from "./labels";
+import { koliText, koliToQty, locationLabel, qtyToKoliFields, type InvLocation, type InvProduct } from "./labels";
+import { useRememberedLocation } from "./rememberedLocation";
 
 type Mode = "transfer" | "opname" | "adjustment" | "stock-in";
 type Row = { productId: string; koli: string; perKoli: string; loose: string; unitCost: string; notes: string };
@@ -36,18 +37,33 @@ const SUBMIT_LABEL: Record<Mode, string> = {
 export const fieldClass =
   "min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1";
 
-export function InventoryDocumentForm({ mode, locations, products }: { mode: Mode; locations: InvLocation[]; products: InvProduct[] }) {
+type Props = { mode: Mode; locations: InvLocation[]; products: InvProduct[]; initialLocationId?: string; initialProductId?: string };
+
+const emptyRow = (product: InvProduct | undefined, productId: string): Row => ({
+  productId, koli: "", perKoli: product?.unitsPerKoli ? String(product.unitsPerKoli) : "", loose: "", unitCost: "", notes: ""
+});
+
+const qtyField = fieldClass.replace("w-full ", "");
+
+export function InventoryDocumentForm({ mode, locations, products, initialLocationId, initialProductId }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
-  const [locationId, setLocationId] = useState("");
-  const [toLocationId, setToLocationId] = useState("");
+  const locationIds = useMemo(() => locations.map((l) => l.id), [locations]);
+  const validInitial = initialLocationId && locationIds.includes(initialLocationId) ? initialLocationId : "";
+  const [locationId, setLocationId] = useRememberedLocation(mode, locationIds, validInitial);
+  const [toLocationId, setToLocationId] = useRememberedLocation("transfer-to", locationIds);
   const [date, setDate] = useState(today);
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [reference, setReference] = useState("");
   const [receiveNow, setReceiveNow] = useState(true);
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows, setRows] = useState<Row[]>(() => {
+    const p = products.find((x) => x.id === initialProductId);
+    return p ? [emptyRow(p, p.id)] : [];
+  });
+  const [rowFilter, setRowFilter] = useState("");
+  const [filling, setFilling] = useState(false);
   const [snapshot, setSnapshot] = useState<Snapshot>({ locationId: "", status: "ready", qty: {} });
   const [reloadKey, setReloadKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -84,6 +100,38 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
       });
     return () => { active = false; };
   }, [locationId, reloadKey]);
+
+  const prefilledRow = (p: InvProduct, quantity: number): Row => ({ ...emptyRow(p, p.id), ...qtyToKoliFields(quantity, p.unitsPerKoli) });
+
+  /** Opname: semua barang yang ada stoknya di lokasi ini langsung masuk daftar berisi stok sistem. */
+  function loadAllForOpname() {
+    const taken = new Set(rows.map((r) => r.productId));
+    const added = products.filter((p) => !taken.has(p.id) && (systemQty[p.id] ?? 0) !== 0).map((p) => prefilledRow(p, systemQty[p.id]));
+    setRows((prev) => [...prev, ...added]);
+    showToast(added.length ? `${added.length} barang dimuat. Ubah hanya yang jumlahnya beda.` : "Tidak ada barang lain yang punya stok di lokasi ini.", added.length ? "success" : "info");
+  }
+
+  /** Transfer: isi barang yang di tujuan tinggal 1 koli atau kurang, 1 koli per barang (atau sisa stok asal). */
+  async function fillLowAtDestination() {
+    if (!toLocationId || stockStatus !== "ready") return;
+    setFilling(true);
+    try {
+      const res = await fetch(`/api/inventory/stocks?locationId=${encodeURIComponent(toLocationId)}&includeZero=1&pageSize=5000`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+      const dest = Object.fromEntries((json.data as { productId: string; quantity: number }[]).map((b) => [b.productId, b.quantity]));
+      const taken = new Set(rows.map((r) => r.productId));
+      const added = products
+        .filter((p) => !taken.has(p.id) && p.unitsPerKoli && (systemQty[p.id] ?? 0) > 0 && (dest[p.id] ?? 0) <= p.unitsPerKoli)
+        .map((p) => prefilledRow(p, Math.min(p.unitsPerKoli!, systemQty[p.id])));
+      setRows((prev) => [...prev, ...added]);
+      showToast(added.length ? `${added.length} barang menipis di tujuan ditambahkan. Cek jumlahnya sebelum simpan.` : "Tidak ada barang menipis di tujuan yang stoknya tersedia di asal.", added.length ? "success" : "info");
+    } catch {
+      showToast("Stok lokasi tujuan gagal dimuat. Coba lagi.", "error");
+    } finally {
+      setFilling(false);
+    }
+  }
 
   const numOrNull = (v: string) => (v.trim() === "" ? null : Number(v));
   const rowQty = (row: Row) => {
@@ -145,7 +193,7 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
         return;
       }
       showToast("Tersimpan. Stok sudah diperbarui.", "success");
-      setRows([]); setNotes(""); setReason(""); setReference("");
+      setRows([]); setRowFilter(""); setNotes(""); setReason(""); setReference("");
       setReloadKey((k) => k + 1);
       router.refresh();
     } catch {
@@ -225,10 +273,37 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
         </p>
       )}
 
+      {(mode === "opname" || mode === "transfer") && locationId && (
+        <div className="flex flex-wrap items-center gap-3">
+          {mode === "opname" && (
+            <Button type="button" variant="secondary" className="min-h-11" disabled={stockStatus !== "ready"} onClick={loadAllForOpname}>
+              Muat semua barang di lokasi ini
+            </Button>
+          )}
+          {mode === "transfer" && (
+            <Button type="button" variant="secondary" className="min-h-11" disabled={!toLocationId || stockStatus !== "ready" || filling} onClick={fillLowAtDestination}>
+              {filling ? "Memuat..." : "Isi barang yang menipis di tujuan"}
+            </Button>
+          )}
+          <span className="text-sm text-slate-600">
+            {mode === "opname" ? "Isi otomatis dengan stok sistem, lalu ubah hanya yang hasil hitungnya beda." : "Barang yang di tujuan tinggal 1 koli atau kurang, diisi 1 koli."}
+          </span>
+        </div>
+      )}
+
+      {rows.length > 10 && (
+        <label className="block text-sm font-semibold text-slate-700 sm:w-96">
+          <span>Cari di daftar ({rows.length} barang)</span>
+          <input className={`${fieldClass} mt-1`} value={rowFilter} onChange={(e) => setRowFilter(e.target.value)} placeholder="Kode / nama barang" />
+        </label>
+      )}
+
       {rows.length > 0 && (
         <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
           {rows.map((row, i) => {
             const p = productMap.get(row.productId);
+            const needle = rowFilter.trim().toLowerCase();
+            if (needle && !`${p?.sku} ${p?.name}`.toLowerCase().includes(needle)) return null;
             const unit = p?.unit ?? "";
             const q = rowQty(row);
             const sys = systemQty[row.productId] ?? 0;
@@ -247,16 +322,16 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
                 <div>
                   <span className="mb-1 block text-xs font-semibold text-slate-700">{QTY_LABEL[mode]}</span>
                   <div className="flex flex-wrap items-end gap-2">
-                    <label className="text-xs text-slate-700">Koli
-                      <input className={`${fieldClass} mt-0.5 w-20`} inputMode="decimal" placeholder="0" value={row.koli} onChange={(e) => updateRow(i, { koli: e.target.value })} />
+                    <label className="flex flex-col text-xs text-slate-700">Koli
+                      <input className={`${qtyField} mt-0.5 w-20`} inputMode="decimal" placeholder="0" value={row.koli} onChange={(e) => updateRow(i, { koli: e.target.value })} />
                     </label>
                     <span className="pb-3 text-sm text-slate-600" aria-hidden>×</span>
-                    <label className="text-xs text-slate-700">Isi per koli ({unit})
-                      <input className={`${fieldClass} mt-0.5 w-24 ${perKoliChanged ? "border-amber-500 bg-amber-50" : ""}`} inputMode="decimal" placeholder="isi" value={row.perKoli} onChange={(e) => updateRow(i, { perKoli: e.target.value })} />
+                    <label className="flex flex-col text-xs text-slate-700">Isi per koli ({unit})
+                      <input className={`${qtyField} mt-0.5 w-24 ${perKoliChanged ? "border-amber-500 bg-amber-50" : ""}`} inputMode="decimal" placeholder="isi" value={row.perKoli} onChange={(e) => updateRow(i, { perKoli: e.target.value })} />
                     </label>
                     <span className="pb-3 text-sm text-slate-600" aria-hidden>+</span>
-                    <label className="text-xs text-slate-700">Lepas ({unit})
-                      <input className={`${fieldClass} mt-0.5 w-20`} inputMode="decimal" placeholder="0" value={row.loose} onChange={(e) => updateRow(i, { loose: e.target.value })} />
+                    <label className="flex flex-col text-xs text-slate-700">Lepas ({unit})
+                      <input className={`${qtyField} mt-0.5 w-20`} inputMode="decimal" placeholder="0" value={row.loose} onChange={(e) => updateRow(i, { loose: e.target.value })} />
                     </label>
                   </div>
                   <p className="mt-1 text-xs text-slate-600">
@@ -290,7 +365,7 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
           options={productOptions}
           onSelect={(productId) => {
             setError(null);
-            setRows((prev) => [...prev, { productId, koli: "", perKoli: productMap.get(productId)?.unitsPerKoli ? String(productMap.get(productId)?.unitsPerKoli) : "", loose: "", unitCost: "", notes: "" }]);
+            setRows((prev) => [...prev, emptyRow(productMap.get(productId), productId)]);
           }}
           placeholder="+ Tambah barang"
           searchPlaceholder="Cari kode / nama barang..."
@@ -316,7 +391,7 @@ export function InventoryDocumentForm({ mode, locations, products }: { mode: Mod
         isLoading={submitting}
         variant="warning"
         title="Simpan opname?"
-        description={`Stok sistem ${rows.length} barang akan diganti dengan jumlah fisik yang Anda isi. ${changedCount} barang jumlahnya berubah.`}
+        description={`${rows.length} barang dicek, ${changedCount} barang jumlahnya berubah. Stok sistem diganti dengan jumlah fisik; barang yang tidak berubah tercatat cocok.`}
         confirmText="Ya, simpan opname"
       />
     </div>

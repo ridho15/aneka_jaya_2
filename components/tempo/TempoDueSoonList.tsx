@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { listTempoReceivablesPage, getTempoMetricsSummary } from "@/lib/tempo/store";
+import { getSalesRecord } from "@/lib/sales/store";
+import { waNumber } from "@/lib/tempo/whatsapp";
 
 const PAGE_SIZE = 20;
 const fmtDate = (value: string | Date) => new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+
+function reminderText(customer: string, nota: string, dueDate: string | Date) {
+  return `Halo ${customer}, kami dari Aneka Jaya ingin mengingatkan nota ${nota} jatuh tempo pada ${fmtDate(dueDate)}. Terima kasih.`;
+}
 
 function daysLabel(dueDate: string | Date, todayKey: string) {
   const due = new Date(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date(dueDate)));
@@ -21,6 +27,10 @@ export async function TempoDueSoonList({ page, keyword }: { page: number; keywor
   const summary = await getTempoMetricsSummary({});
   const { fromDate, toDate } = summary.comingSoonH3;
   const { data, meta } = await listTempoReceivablesPage({ page, pageSize: PAGE_SIZE, filters: { keyword, dueFrom: fromDate, dueTo: toDate } });
+  const contacts = new Map(await Promise.all(data.map(async (row) => {
+    const sale = await getSalesRecord(row.salesId).catch(() => undefined);
+    return [row.id, { phone: waNumber(sale?.customerPhone), nota: sale?.transactionNumber || row.salesId }] as const;
+  })));
   const href = (p: number) => `/tempo?${new URLSearchParams({ ...(keyword ? { keyword } : {}), page: String(p) }).toString()}`;
   return (
     <>
@@ -35,7 +45,7 @@ export async function TempoDueSoonList({ page, keyword }: { page: number; keywor
       <section className="aj-surface overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
-            <tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">No. Tempo</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Jatuh Tempo</th><th className="px-5 py-3">Sisa Waktu</th></tr>
+            <tr><th className="px-5 py-3">Customer</th><th className="px-5 py-3">No. Tempo</th><th className="px-5 py-3">Tipe</th><th className="px-5 py-3">Jatuh Tempo</th><th className="px-5 py-3">Sisa Waktu</th><th className="px-5 py-3">Ingatkan</th></tr>
           </thead>
           <tbody>
             {data.map((row) => {
@@ -47,10 +57,24 @@ export async function TempoDueSoonList({ page, keyword }: { page: number; keywor
                   <td className="px-5 py-3"><span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{row.tipeCodeSnapshot}</span></td>
                   <td className="px-5 py-3 text-slate-700">{fmtDate(row.dueDate)}</td>
                   <td className="px-5 py-3"><span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${label.className}`}>{label.text}</span></td>
+                  <td className="px-5 py-2">
+                    {contacts.get(row.id)?.phone ? (
+                      <a
+                        href={`https://wa.me/${contacts.get(row.id)?.phone}?text=${encodeURIComponent(reminderText(row.customerName, contacts.get(row.id)?.nota ?? row.salesId, row.dueDate))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-11 items-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white hover:bg-emerald-800"
+                      >
+                        WhatsApp
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-500">No. HP belum ada</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
-            {data.length === 0 && <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-500">Tidak ada nota yang jatuh tempo dalam 3 hari ke depan.</td></tr>}
+            {data.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-slate-500">Tidak ada nota yang jatuh tempo dalam 3 hari ke depan.</td></tr>}
           </tbody>
         </table>
         {meta.totalPages > 1 && (

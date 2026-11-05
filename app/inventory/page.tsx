@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
+import { InlineNameForm } from "@/components/inventory/InlineNameForm";
 import { InventoryHeader, Pager, filterButton, filterInput, fmtQty } from "@/components/inventory/ui";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
@@ -8,7 +9,7 @@ import { stockMatrix } from "@/lib/inventory/service";
 import { inventorySource } from "@/lib/inventory/config";
 
 export const dynamic = "force-dynamic";
-type SP = Promise<{ keyword?: string; type?: string; page?: string }>;
+type SP = Promise<{ keyword?: string; type?: string; page?: string; missing?: string }>;
 
 export default async function InventoryStockPage({ searchParams }: { searchParams: SP }) {
   const role = await getCurrentRole();
@@ -16,10 +17,12 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
   const params = await searchParams;
   const canMovement = can(role, "inventory.movement.view");
   const canEditMaster = can(role, "inventory.master");
+  const canAdjust = can(role, "inventory.adjust");
+  const missingName = canEditMaster && params.missing === "1";
   // Default Toko; ALL = Gudang + Toko.
   const typeParam = params.type === "WAREHOUSE" || params.type === "ALL" ? params.type : "STORE";
   const type = typeParam === "ALL" ? undefined : typeParam;
-  const matrix = await stockMatrix({ keyword: params.keyword, locationType: type, page: Number(params.page) || 1, pageSize: 50 });
+  const matrix = await stockMatrix({ keyword: params.keyword, locationType: type, page: Number(params.page) || 1, pageSize: 50, missingName });
   const scopeLabel = typeParam === "STORE" ? "Total Toko" : typeParam === "WAREHOUSE" ? "Total Gudang" : "Total Semua";
   const scopeKoli = (row: (typeof matrix.data)[number]) => (typeParam === "STORE" ? row.storeKoliText : typeParam === "WAREHOUSE" ? row.warehouseKoliText : row.totalKoliText);
   return (
@@ -40,6 +43,11 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
           <option value="WAREHOUSE">Gudang</option>
           <option value="ALL">Gudang + Toko</option>
         </select>
+        {canEditMaster && (
+          <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-700">
+            <input type="checkbox" name="missing" value="1" defaultChecked={missingName} className="h-5 w-5" /> Nama belum diisi saja
+          </label>
+        )}
         <button className={filterButton}>Tampilkan</button>
       </form>
       <p className="mb-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
@@ -69,7 +77,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
               return (
                 <tr key={row.productId} className={`border-t border-slate-100 ${row.lowStock ? "bg-red-50" : ""}`}>
                   <td className={`sticky left-0 z-10 px-3 py-2 ${row.lowStock ? "bg-red-50" : "bg-white"}`}>
-                    <ProductCell row={row} canMovement={canMovement} canEditMaster={canEditMaster} />
+                    <ProductCell row={row} canMovement={canMovement} canEditMaster={canEditMaster} canAdjust={canAdjust} />
                   </td>
                   <td className={`whitespace-nowrap px-3 py-2 text-right font-bold tabular-nums ${row.lowStock ? "text-red-800" : "text-slate-900"}`}>
                     {qty(row.scopeTotal, scopeKoli(row))}
@@ -87,13 +95,13 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
             })}
             {!matrix.data.length && (
               <tr><td colSpan={matrix.locations.length + 4} className="px-3 py-8 text-center text-slate-600">
-                Belum ada barang.{can(role, "inventory.master") && <> Mulai dari <Link className="text-emerald-800 underline" href="/inventory/lokasi">Lokasi Stok</Link> lalu <Link className="text-emerald-800 underline" href="/inventory/produk">Master Barang</Link>.</>}
+                {missingName ? "Semua barang di sini sudah punya nama." : "Belum ada barang."}{!missingName && can(role, "inventory.master") && <> Mulai dari <Link className="text-emerald-800 underline" href="/inventory/lokasi">Lokasi Stok</Link> lalu <Link className="text-emerald-800 underline" href="/inventory/produk">Master Barang</Link>.</>}
               </td></tr>
             )}
           </tbody>
         </table>
       </div>
-      <Pager basePath="/inventory" params={{ keyword: params.keyword, type: typeParam }} page={matrix.meta.page} totalPages={matrix.meta.totalPages} />
+      <Pager basePath="/inventory" params={{ keyword: params.keyword, type: typeParam, missing: missingName ? "1" : undefined }} page={matrix.meta.page} totalPages={matrix.meta.totalPages} />
     </AppShell>
   );
 }
@@ -112,24 +120,25 @@ function LowChip() {
 type MatrixRow = { productId: string; sku: string; name: string; category: string | null; hasName: boolean; unit: string; unitsPerKoli: number | null; lowStock: boolean };
 
 /** Kode tanpa nama ditandai agar mudah dilengkapi. */
-function ProductCell({ row, canMovement, canEditMaster }: { row: MatrixRow; canMovement: boolean; canEditMaster: boolean }) {
+function ProductCell({ row, canMovement, canEditMaster, canAdjust }: { row: MatrixRow; canMovement: boolean; canEditMaster: boolean; canAdjust: boolean }) {
   const title = row.hasName
     ? <span className="font-semibold leading-snug text-slate-900">{row.name}</span>
     : <span className="text-sm italic text-slate-600">Nama belum diisi</span>;
   return (
-    <div className="min-w-[200px] max-w-[300px]">
+    <div className={row.hasName || !canEditMaster ? "min-w-[200px] max-w-[300px]" : "w-[240px] sm:w-[300px]"}>
       <div className="flex flex-wrap items-center gap-2">
         {canMovement && row.hasName ? <Link href={`/inventory/mutasi?productId=${row.productId}`} className="hover:text-emerald-800">{title}</Link> : title}
         {row.lowStock && <LowChip />}
-        {!row.hasName && canEditMaster && (
-          <Link href={`/inventory/produk?keyword=${encodeURIComponent(row.sku)}&edit=${row.productId}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-800 underline">Isi nama</Link>
-        )}
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-600">
         <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-800">{row.sku}</span>
         {row.category && <span>{row.category} ·</span>}
         <span>{row.unit}{row.unitsPerKoli ? ` · isi ${fmtQty(row.unitsPerKoli)} ${row.unit}/koli` : ""}</span>
+        {canAdjust && (
+          <Link href={`/inventory/adjustment?productId=${row.productId}`} className="ml-1 inline-flex min-h-11 items-center px-1 text-sm font-semibold text-emerald-800 underline">Koreksi</Link>
+        )}
       </div>
+      {!row.hasName && canEditMaster && <InlineNameForm productId={row.productId} sku={row.sku} />}
     </div>
   );
 }

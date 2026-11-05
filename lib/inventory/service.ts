@@ -382,7 +382,7 @@ export async function listBalances(query: BalanceQuery = {}) {
  * (dalam koli bila isi per koli diketahui), lalu barang dengan stok 0 di paling bawah.
  * `lowStock` = stok ≤ 1 koli (atau ≤ minimum stok bila isi koli belum diatur).
  */
-export async function stockMatrix(query: { keyword?: string; locationType?: "WAREHOUSE" | "STORE"; page?: number; pageSize?: number; hideZero?: boolean } = {}) {
+export async function stockMatrix(query: { keyword?: string; locationType?: "WAREHOUSE" | "STORE"; page?: number; pageSize?: number; hideZero?: boolean; missingName?: boolean } = {}) {
   const page = Math.max(1, Math.floor(query.page || 1));
   const pageSize = Math.min(200, Math.max(1, Math.floor(query.pageSize || 50)));
   const locations = await listLocations({ type: query.locationType });
@@ -391,13 +391,17 @@ export async function stockMatrix(query: { keyword?: string; locationType?: "WAR
   const like = keyword ? `%${keyword}%` : null;
   const scope = locationIds.length ? Prisma.sql`b."locationId" IN (${Prisma.join(locationIds)})` : Prisma.sql`FALSE`;
   const keywordSql = like ? Prisma.sql`AND (p."sku" ILIKE ${like} OR p."name" ILIKE ${like} OR p."barcode" ILIKE ${like})` : Prisma.empty;
+  // Sama dengan hasRealName(): nama kosong atau hanya mengulang kode.
+  const missingNameSql = query.missingName
+    ? Prisma.sql`AND (btrim(p."name") = '' OR regexp_replace(lower(p."name"), '[^a-z0-9]', '', 'g') = regexp_replace(lower(p."sku"), '[^a-z0-9]', '', 'g'))`
+    : Prisma.empty;
   const base = Prisma.sql`
     SELECT p."id", p."name",
       COALESCE(SUM(b."quantity") FILTER (WHERE ${scope}), 0) AS "total",
       COALESCE(NULLIF(p."unitsPerKoli", 0), 1) AS "perKoli"
     FROM "InventoryProduct" p
     LEFT JOIN "InventoryBalance" b ON b."productId" = p."id"
-    WHERE p."isActive" = TRUE ${keywordSql}
+    WHERE p."isActive" = TRUE ${keywordSql} ${missingNameSql}
     GROUP BY p."id"`;
   const having = query.hideZero ? Prisma.sql`WHERE t."total" > 0` : Prisma.empty;
   const [countRows, ordered] = await Promise.all([

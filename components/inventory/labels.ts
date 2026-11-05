@@ -23,3 +23,12 @@ export function koliText(quantity: number, unitsPerKoli: number | null | undefin
   if (!koli) return `${fmt(quantity)} ${unit}`;
   return `${sign}${fmt(koli)} koli${loose ? ` + ${fmt(loose)} ${unit}` : ""}`;
 }
+
+/** Pecah qty jadi isian form koli + lepas (kebalikan koliToQty). */
+export function qtyToKoliFields(quantity: number, unitsPerKoli?: number | null) {
+  const fmt = (n: number) => String(Math.round(n * 100) / 100);
+  if (!unitsPerKoli || unitsPerKoli <= 0 || quantity < 0) return { koli: "", loose: fmt(quantity) };
+  const koli = Math.floor((quantity + 1e-9) / unitsPerKoli);
+  const loose = Math.round((quantity - koli * unitsPerKoli) * 100) / 100;
+  return { koli: koli ? String(koli) : "", loose: loose || !koli ? fmt(loose) : "" };
+}
