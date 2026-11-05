@@ -2,7 +2,7 @@ import type { InventoryMovementType } from "@prisma/client";
 import { inventoryRoute, searchParams } from "@/lib/inventory/http";
 import { listMovements } from "@/lib/inventory/service";
 
-const TYPES = ["INITIAL", "PURCHASE_RECEIPT", "TRANSFER_OUT", "TRANSFER_IN", "OPNAME", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "SALE_OUT", "SALE_REVERSAL"];
+const TYPES = ["INITIAL", "PURCHASE_RECEIPT", "TRANSFER_OUT", "TRANSFER_IN", "OPNAME", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "SALE_OUT", "SALE_REVERSAL", "SALE_RETURN"];
 
 /** Mutasi stok / kartu stok. */
 export const GET = inventoryRoute("inventory.movement.view", async (request) => {

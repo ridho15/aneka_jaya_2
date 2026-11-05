@@ -1259,6 +1259,7 @@ enum InventoryMovementType {
   ADJUSTMENT_OUT
   SALE_OUT
   SALE_REVERSAL
+  SALE_RETURN
 }
 
 enum InventoryDocumentStatus {

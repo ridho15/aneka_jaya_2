@@ -10,7 +10,8 @@ export const MOVEMENT_LABEL: Record<string, string> = {
   ADJUSTMENT_IN: "Adjustment +",
   ADJUSTMENT_OUT: "Adjustment −",
   SALE_OUT: "Penjualan",
-  SALE_REVERSAL: "Batal Penjualan"
+  SALE_REVERSAL: "Batal Penjualan",
+  SALE_RETURN: "Retur Penjualan"
 };
 
 export function fmtQty(value: number | null | undefined) {

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/ToastProvider";
 import { PurchaseOrderModal } from "./PurchaseOrderModal";
-import { GoodsReceiptModal } from "./GoodsReceiptModal";
+import { GoodsReceiptModal, type InventoryLocationOption } from "./GoodsReceiptModal";
 
 export interface PurchaseOrderItemData {
   id: string;
@@ -61,9 +61,10 @@ export interface PurchaseOrderData {
 interface Props {
   initialOrders: PurchaseOrderData[];
   suppliers: Array<{ id: string; code: string; name: string; currency: string }>;
+  inventoryLocations?: InventoryLocationOption[];
 }
 
-export function PurchaseOrderView({ initialOrders, suppliers }: Props) {
+export function PurchaseOrderView({ initialOrders, suppliers, inventoryLocations = [] }: Props) {
   const { showToast } = useToast();
   const [orders, setOrders] = useState<PurchaseOrderData[]>(initialOrders);
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
@@ -420,6 +421,7 @@ export function PurchaseOrderView({ initialOrders, suppliers }: Props) {
         isOpen={Boolean(grnOrder)}
         onClose={() => setGrnOrder(null)}
         order={grnOrder}
+        locations={inventoryLocations}
         onSuccess={refreshOrders}
       />
     </div>

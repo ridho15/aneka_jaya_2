@@ -857,3 +857,50 @@ export async function listPendingPurchaseReceipts(limit = 50) {
     take: limit
   });
 }
+
+/** Retur penjualan: barang kembali ke lokasi stok asal penjualan. Aman diulang. */
+export async function returnSaleStockLocal(input: { returnId: string; returnNumber: string; returnDate: string; items: (SaleStockItem & { lineId: string })[] }, actor?: InventoryActor) {
+  return runInventoryTransaction(async (tx) => {
+    const date = parseDate(input.returnDate);
+    const lines = [];
+    for (const item of input.items) {
+      if (!(item.quantity > 0)) continue;
+      const product = await resolveSaleProduct(tx, item);
+      const location = await resolveSaleLocation(tx, item.warehouseId);
+      lines.push({ lineId: item.lineId, productId: product.id, locationId: location.id, quantity: item.quantity });
+    }
+    lines.sort((a, b) => `${a.productId}:${a.locationId}`.localeCompare(`${b.productId}:${b.locationId}`));
+    for (const line of lines) {
+      await postMovement(tx, {
+        productId: line.productId, locationId: line.locationId, delta: Math.abs(line.quantity), type: "SALE_RETURN", movementDate: date,
+        referenceType: "SALES_RETURN", referenceId: input.returnId, referenceNumber: input.returnNumber,
+        idempotencyKey: `sales-return:${input.returnId}:${line.lineId}`, notes: `Retur penjualan ${input.returnNumber}`
+      }, actor);
+    }
+    return { status: "returned" as const, lines: lines.length };
+  });
+}
+
+/** Riwayat barang masuk (GRN pembelian & input manual), dikelompokkan per dokumen. */
+export async function listStockInHistory(limit = 30) {
+  const rows = await prisma.inventoryMovement.findMany({
+    where: { type: "PURCHASE_RECEIPT" },
+    include: { product: { select: { sku: true, name: true, unit: true, unitsPerKoli: true } }, location: { select: { code: true, name: true } } },
+    orderBy: [{ movementDate: "desc" }, { createdAt: "desc" }],
+    take: limit * 40
+  });
+  const groups = new Map<string, { key: string; referenceType: string; referenceNumber: string; movementDate: string; locationCode: string; locationName: string; createdByName: string | null; notes: string | null; items: { sku: string; name: string; quantity: number; unit: string; koliText: string; unitCost: number }[]; totalValue: number }>();
+  for (const m of rows) {
+    const key = `${m.referenceType}:${m.referenceNumber}:${m.locationId}`;
+    let g = groups.get(key);
+    if (!g) {
+      if (groups.size >= limit) continue;
+      g = { key, referenceType: m.referenceType, referenceNumber: m.referenceNumber ?? "-", movementDate: m.movementDate.toISOString(), locationCode: m.location.code, locationName: m.location.name, createdByName: m.createdByName, notes: m.notes, items: [], totalValue: 0 };
+      groups.set(key, g);
+    }
+    const qty = num(m.quantity);
+    g.items.push({ sku: m.product.sku, name: m.product.name, quantity: qty, unit: m.product.unit, koliText: koliInfo(qty, m.product.unitsPerKoli, m.product.unit).koliText, unitCost: num(m.unitCost) });
+    g.totalValue = round2(g.totalValue + qty * num(m.unitCost));
+  }
+  return Array.from(groups.values());
+}

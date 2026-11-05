@@ -596,7 +596,7 @@ components:
       properties:
         id: { type: string }
         movementDate: { type: string, format: date-time }
-        type: { type: string, enum: [INITIAL, PURCHASE_RECEIPT, TRANSFER_OUT, TRANSFER_IN, OPNAME, ADJUSTMENT_IN, ADJUSTMENT_OUT, SALE_OUT, SALE_REVERSAL] }
+        type: { type: string, enum: [INITIAL, PURCHASE_RECEIPT, TRANSFER_OUT, TRANSFER_IN, OPNAME, ADJUSTMENT_IN, ADJUSTMENT_OUT, SALE_OUT, SALE_REVERSAL, SALE_RETURN] }
         sku: { type: string }
         locationCode: { type: string }
         quantityIn: { type: number }

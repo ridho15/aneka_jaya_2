@@ -22,17 +22,23 @@ interface PurchaseOrder {
   items: PoItem[];
 }
 
+export type InventoryLocationOption = { id: string; code: string; name: string; type: "WAREHOUSE" | "STORE"; isDefault: boolean };
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   order: PurchaseOrder | null;
   onSuccess: () => void;
+  /** Gudang/toko inventory SLM. Bila tersedia, barang yang diterima langsung masuk stok lokasi terpilih. */
+  locations?: InventoryLocationOption[];
 }
 
-export function GoodsReceiptModal({ isOpen, onClose, order, onSuccess }: Props) {
+export function GoodsReceiptModal({ isOpen, onClose, order, onSuccess, locations = [] }: Props) {
   const { showToast } = useToast();
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split("T")[0]);
   const [warehouseName, setWarehouseName] = useState("Gudang Utama");
+  const defaultLocation = locations.find((l) => l.isDefault && l.type === "WAREHOUSE") ?? locations.find((l) => l.type === "WAREHOUSE") ?? locations[0];
+  const [locationId, setLocationId] = useState(defaultLocation?.id ?? "");
   const [notes, setNotes] = useState("");
   const [receivedQtyMap, setReceivedQtyMap] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +79,8 @@ export function GoodsReceiptModal({ isOpen, onClose, order, onSuccess }: Props) 
         body: JSON.stringify({
           purchaseOrderId: order.id,
           receiptDate,
-          warehouseName,
+          warehouseName: locations.find((l) => l.id === locationId)?.name ?? warehouseName,
+          inventoryLocationId: locationId || undefined,
           notes: notes.trim() || undefined,
           items: itemsToReceive
         })
@@ -126,11 +133,27 @@ export function GoodsReceiptModal({ isOpen, onClose, order, onSuccess }: Props) 
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
                 Lokasi Gudang Penerima
               </label>
-              <Input
-                value={warehouseName}
-                onChange={(e) => setWarehouseName(e.target.value)}
-                required
-              />
+              {locations.length ? (
+                <>
+                  <select
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={locationId}
+                    onChange={(e) => setLocationId(e.target.value)}
+                    required
+                  >
+                    {locations.map((l) => (
+                      <option key={l.id} value={l.id}>{l.code} — {l.name} ({l.type === "STORE" ? "Toko" : "Gudang"})</option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-emerald-700">Barang yang diterima langsung menambah stok lokasi ini.</p>
+                </>
+              ) : (
+                <Input
+                  value={warehouseName}
+                  onChange={(e) => setWarehouseName(e.target.value)}
+                  required
+                />
+              )}
             </div>
           </div>
 

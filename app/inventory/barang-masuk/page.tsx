@@ -5,17 +5,17 @@ import { GrnPostForm } from "@/components/inventory/GrnPostForm";
 import { InventoryHeader, fmtDate, fmtQty } from "@/components/inventory/ui";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
-import { listLocations, listPendingPurchaseReceipts, listProductOptions } from "@/lib/inventory/service";
+import { listLocations, listPendingPurchaseReceipts, listProductOptions, listStockInHistory } from "@/lib/inventory/service";
 
 export const dynamic = "force-dynamic";
 
 export default async function BarangMasukPage() {
   const role = await getCurrentRole();
   if (!can(role, "inventory.receive")) redirect("/no-access");
-  const [locations, products, pending] = await Promise.all([listLocations(), listProductOptions(), listPendingPurchaseReceipts()]);
+  const [locations, products, pending, history] = await Promise.all([listLocations(), listProductOptions(), listPendingPurchaseReceipts(), listStockInHistory()]);
   return (
     <AppShell>
-      <InventoryHeader title="Barang Masuk" description="Tambahkan stok ke gudang/toko dari pembelian. Penerimaan barang (GRN) dari menu Pembelian yang belum masuk stok tampil di bawah dan bisa langsung dimasukkan ke gudang." />
+      <InventoryHeader title="Barang Masuk" description={<>Input stok terbaru saat barang tiba di gudang/toko. Barang dari <b>PO pembelian</b>: terima di Pembelian → Pesanan (PO) → Terima Barang, stok langsung masuk ke gudang yang dipilih. Barang tanpa PO: pakai form di bawah.</>} />
 
       <section className="mb-8">
         <h3 className="mb-3 font-bold text-slate-800">Penerimaan Pembelian (GRN) belum masuk stok</h3>
@@ -42,6 +42,31 @@ export default async function BarangMasukPage() {
 
       <h3 className="mb-3 font-bold text-slate-800">Barang masuk manual (tanpa PO)</h3>
       <InventoryDocumentForm mode="stock-in" locations={locations} products={products} />
+
+      <section className="mt-8">
+        <h3 className="mb-3 font-bold text-slate-800">Riwayat Barang Masuk</h3>
+        <div className="aj-surface overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr><th className="px-3 py-2">Tanggal</th><th className="px-3 py-2">No. Referensi</th><th className="px-3 py-2">Sumber</th><th className="px-3 py-2">Lokasi</th><th className="px-3 py-2">Barang</th><th className="px-3 py-2 text-right">Nilai Modal</th><th className="px-3 py-2">Oleh</th></tr>
+            </thead>
+            <tbody>
+              {history.map((h) => (
+                <tr key={h.key} className="border-t border-slate-100 align-top">
+                  <td className="whitespace-nowrap px-3 py-2">{fmtDate(h.movementDate)}</td>
+                  <td className="px-3 py-2 font-mono text-xs font-semibold">{h.referenceNumber}</td>
+                  <td className="px-3 py-2 text-xs">{h.referenceType === "PURCHASE_RECEIPT" ? "GRN Pembelian" : "Manual"}</td>
+                  <td className="px-3 py-2">{h.locationCode}</td>
+                  <td className="px-3 py-2 text-xs">{h.items.map((i, idx) => <div key={idx}>{i.sku} — {i.name}: <b>{fmtQty(i.quantity)}</b> {i.unit}{i.koliText.includes("koli") ? ` (${i.koliText})` : ""}</div>)}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">{h.totalValue ? `Rp ${h.totalValue.toLocaleString("id-ID")}` : "-"}</td>
+                  <td className="px-3 py-2 text-xs">{h.createdByName ?? "-"}</td>
+                </tr>
+              ))}
+              {!history.length && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">Belum ada barang masuk.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </AppShell>
   );
 }

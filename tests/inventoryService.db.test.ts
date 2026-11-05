@@ -210,4 +210,25 @@ suite("inventory service (postgres)", () => {
     expect(p.stocks.find((s) => s.locationId === toko.id)?.quantity).toBe(60);
     expect(p.stocks.find((s) => s.locationId === gudang.id)?.koliText).toBe("2 koli + 4 Lusin");
   });
+
+  it("retur penjualan mengembalikan stok ke lokasi asal (aman diulang)", async () => {
+    const retSku = `RET-${sku}`;
+    await svc.createProduct({ sku: retSku, name: "Barang Retur", unit: "Lusin", minimumStock: 0, costPrice: 0, sellingPrice: 0, isActive: true, initialStock: [{ locationId: toko.id, quantity: 10 }] });
+    await svc.releaseSaleStockLocal({ reference: `SALE-RET-${sku}`, saleDate: new Date().toISOString(), items: [{ productRef: retSku, warehouseId: toko.id, quantity: 6 }] });
+    const input = { returnId: `ret-${sku}`, returnNumber: `RTR-${sku}`, returnDate: new Date().toISOString(), items: [{ lineId: "l1", productRef: retSku, warehouseId: toko.id, quantity: 2 }] };
+    await svc.returnSaleStockLocal(input);
+    await svc.returnSaleStockLocal(input);
+    const p = await svc.getProduct(retSku);
+    expect(p.stocks.find((s) => s.locationId === toko.id)?.quantity).toBe(6);
+    const card = await svc.listMovements({ productId: p.id, type: "SALE_RETURN" });
+    expect(card.data).toHaveLength(1);
+  });
+
+  it("riwayat barang masuk dikelompokkan per dokumen", async () => {
+    await svc.createStockIn({ locationId: gudang.id, referenceNumber: `SJ-${sku}`, items: [{ sku, quantity: 3, unitCost: 1000 }, { sku: `KOLI-${sku}`, koli: 1 }] });
+    const history = await svc.listStockInHistory();
+    const doc = history.find((h) => h.referenceNumber === `SJ-${sku}`)!;
+    expect(doc.items).toHaveLength(2);
+    expect(doc.items.find((i) => i.sku === `KOLI-${sku}`)?.koliText).toBe("1 koli");
+  });
 });

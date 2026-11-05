@@ -9,6 +9,8 @@ import { recordAudit } from "@/lib/audit/store";
 import type { Role } from "@/lib/auth/roles";
 import { jakartaDateKey } from "@/lib/date/jakarta";
 import { applySalesReturnToTempo } from "@/lib/tempo/store";
+import { isLocalInventory } from "@/lib/inventory/config";
+import { returnSaleStockLocal } from "@/lib/inventory/service";
 
 export interface ReturnActor {
   id: string;
@@ -220,6 +222,21 @@ export async function postSalesReturn(returnId: string, actor: ReturnActor) {
   const diff = Math.abs(totalDebit - totalCredit);
   if (diff > 0.01) {
     throw new Error(`Jurnal Retur Penjualan tidak seimbang! Debit=${totalDebit}, Kredit=${totalCredit}`);
+  }
+
+  // Barang retur kembali ke stok gudang/toko asal penjualan (inventory SLM). Idempotent,
+  // dan dijalankan sebelum jurnal agar retur tidak terposting bila stok gagal dikembalikan.
+  if (isLocalInventory()) {
+    const saleItems = await prisma.salesRecordItem.findMany({ where: { salesRecordId: returnRecord.salesRecordId } });
+    await returnSaleStockLocal({
+      returnId: returnRecord.id,
+      returnNumber: returnRecord.returnNumber,
+      returnDate: returnRecord.returnDate.toISOString(),
+      items: returnRecord.items.map((item) => {
+        const origin = saleItems.find((s) => s.id === item.salesRecordItemId) ?? saleItems.find((s) => s.productRef === item.productRef);
+        return { lineId: item.id, productId: origin?.productId ?? undefined, productRef: item.productRef, warehouseId: origin?.warehouseId ?? undefined, quantity: Number(item.quantity) };
+      })
+    }, { id: actor.id, name: actor.name });
   }
 
   const journal = await postJournalEntry(

@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { listPurchaseOrders, listSuppliers } from "@/lib/purchasing/purchasingStore";
+import { listLocations } from "@/lib/inventory/service";
 import { PurchaseOrderView, type PurchaseOrderData } from "@/components/purchasing/PurchaseOrderView";
 
 export const dynamic = "force-dynamic";
@@ -8,10 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function PembelianPesananPage() {
   await requirePermission("purchasing.view");
 
-  const [rawOrders, rawSuppliers] = await Promise.all([
+  const [rawOrders, rawSuppliers, locations] = await Promise.all([
     listPurchaseOrders(),
-    listSuppliers({ isActive: true })
+    listSuppliers({ isActive: true }),
+    listLocations().catch(() => [])
   ]);
+  const inventoryLocations = locations.map((l) => ({ id: l.id, code: l.code, name: l.name, type: l.type, isDefault: l.isDefault }));
 
   const orders: PurchaseOrderData[] = rawOrders.map((o) => ({
     id: o.id,
@@ -83,7 +86,7 @@ export default async function PembelianPesananPage() {
           </p>
         </div>
 
-        <PurchaseOrderView initialOrders={orders} suppliers={suppliers} />
+        <PurchaseOrderView initialOrders={orders} suppliers={suppliers} inventoryLocations={inventoryLocations} />
       </div>
     </AppShell>
   );

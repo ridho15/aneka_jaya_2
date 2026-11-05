@@ -75,6 +75,7 @@ describe("global navigation", () => {
       "MENU UTAMA",
       "OPERASIONAL & TRANSAKSI",
       "INVENTORY GUDANG & TOKO",
+      "PEMBELIAN & IMPOR VALAS",
       "AKUNTANSI & BUKU BESAR",
       "SDM & PERSONALIA",
       "PUSAT LAPORAN",
