@@ -3,15 +3,18 @@ import { PengeluaranForm } from "@/components/forms/PengeluaranForm";
 import { listBookkeepingTypes, listRekeningAccounts } from "@/lib/business/masterData";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { listEmployees } from "@/lib/sdm/employeeStore";
+import { listAccounts } from "@/lib/accounting/accountStore";
+import { selectableExpenseAccounts } from "@/lib/expenses/coa";
 
 export const dynamic = "force-dynamic";
 
 export default async function InputPengeluaranPage() {
   await requirePermission("pengeluaran.create");
-  const [tipes, rekenings, employees] = await Promise.all([
+  const [tipes, rekenings, employees, accounts] = await Promise.all([
     listBookkeepingTypes(),
     listRekeningAccounts(),
-    listEmployees({ isActive: true })
+    listEmployees({ isActive: true }),
+    listAccounts({ category: "EXPENSE", isActive: true }).catch(() => [])
   ]);
   return (
     <AppShell>
@@ -20,7 +23,7 @@ export default async function InputPengeluaranPage() {
         <h2 className="aj-page-title text-3xl font-bold">Input Pengeluaran</h2>
         <p className="mt-2 text-sm text-slate-600">Catat pengeluaran perusahaan beserta bukti pembayarannya.</p>
       </div>
-      <PengeluaranForm tipes={tipes} rekenings={rekenings} employees={employees} />
+      <PengeluaranForm tipes={tipes} rekenings={rekenings} employees={employees} coaAccounts={selectableExpenseAccounts(accounts)} />
     </AppShell>
   );
 }

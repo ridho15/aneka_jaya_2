@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import {
   getAccountingReconciliationReport,
+  postUnpostedExpenses,
   reclassifyLegacyExpense
 } from "@/lib/accounting/reconciliationStore";
 
@@ -25,6 +26,18 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
+  const body = await request.clone().json().catch(() => ({}));
+  if (body?.action === "post_unposted") {
+    if (!can(user.role, "accounting.journal.manage")) {
+      return NextResponse.json({ success: false, message: "Akses ditolak. Posting jurnal hanya untuk Super Admin." }, { status: 403 });
+    }
+    try {
+      const result = await postUnpostedExpenses({ id: user.id, name: user.name, role: user.role });
+      return NextResponse.json({ success: true, data: result, message: `${result.posted} pengeluaran berhasil dijurnal, ${result.skipped.length} dilewati.` });
+    } catch (error) {
+      return NextResponse.json({ success: false, message: error instanceof Error ? error.message : "Gagal posting pengeluaran." }, { status: 500 });
+    }
+  }
   if (!can(user.role, "accounting.coa.manage")) {
     return NextResponse.json({ success: false, message: "Akses ditolak. Memerlukan hak akses finance/owner." }, { status: 403 });
   }

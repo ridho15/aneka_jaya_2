@@ -5,10 +5,12 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/currency";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Button } from "@/components/ui/Button";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import type {
   AccountingReconciliationReport,
   ReconciliationItem,
-  LegacyExpenseAuditItem
+  LegacyExpenseAuditItem,
+  UnpostedPostingResult
 } from "@/lib/accounting/reconciliationStore";
 
 interface Props {
@@ -39,6 +41,34 @@ export function ReconciliationView({ initialReport, employees }: Props) {
       showToast("Terjadi gangguan jaringan saat memuat rekonsiliasi.", "error");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const [confirmPost, setConfirmPost] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
+  const [postResult, setPostResult] = useState<UnpostedPostingResult | null>(null);
+  const unposted = report.unpostedExpenses ?? [];
+  const readyToPost = unposted.filter((item) => !item.blockedReason);
+  const readyAmount = readyToPost.reduce((sum, item) => sum + item.amount, 0);
+
+  const handlePostUnposted = async () => {
+    setIsPosting(true);
+    try {
+      const res = await fetch("/api/accounting/reconciliation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "post_unposted" })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.message || "Gagal posting pengeluaran.");
+      setPostResult(json.data);
+      showToast(json.message, json.data.skipped.length ? "warning" : "success");
+      await refreshReport();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Terjadi kesalahan.", "error");
+    } finally {
+      setIsPosting(false);
+      setConfirmPost(false);
     }
   };
 
@@ -164,6 +194,67 @@ export function ReconciliationView({ initialReport, employees }: Props) {
           </span>
         </div>
       </div>
+
+      {unposted.length > 0 && (
+        <section className="aj-surface space-y-4 p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Pengeluaran disetujui yang belum dijurnal</h3>
+              <p className="mt-0.5 text-xs text-slate-600">
+                {readyToPost.length} siap diposting ({formatCurrency(readyAmount)}). Jurnal memakai tanggal pengeluaran aslinya dan akun di kolom Akun.
+                Baris dengan alasan di kolom Status tidak ikut diposting.
+              </p>
+            </div>
+            <Button type="button" className="min-h-11" disabled={!readyToPost.length || isPosting} onClick={() => setConfirmPost(true)}>
+              {isPosting ? "Memposting..." : `Posting ${readyToPost.length} pengeluaran`}
+            </Button>
+          </div>
+          {postResult && (
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Hasil terakhir: <b>{postResult.posted}</b> dijurnal ({formatCurrency(postResult.postedAmount)}), <b>{postResult.skipped.length}</b> dilewati.
+            </p>
+          )}
+          <div className="max-h-[28rem] overflow-auto rounded-lg border border-slate-200">
+            <table className="min-w-full whitespace-nowrap text-left text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-xs font-semibold text-slate-600">
+                <tr>
+                  <th className="px-3 py-2">Tanggal</th>
+                  <th className="px-3 py-2">Keterangan</th>
+                  <th className="px-3 py-2 text-right">Nominal</th>
+                  <th className="px-3 py-2">Akun</th>
+                  <th className="px-3 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unposted.map((item) => (
+                  <tr key={item.id} className="border-t border-slate-100">
+                    <td className="px-3 py-2 tabular-nums">{item.expenseDate}</td>
+                    <td className="max-w-[320px] truncate px-3 py-2" title={`${item.vendorName} · ${item.description}`}>
+                      <Link href={`/pengeluaran/${item.id}`} className="font-semibold text-slate-900 hover:text-emerald-800 hover:underline">{item.description || item.category}</Link>
+                      <span className="ml-1.5 text-xs text-slate-500">{item.vendorName}</span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(item.amount)}</td>
+                    <td className="px-3 py-2"><span className="font-mono text-xs">{item.accountCode}</span> {item.accountName}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {item.blockedReason ? <span className="text-amber-800">{item.blockedReason}</span> : <span className="font-semibold text-emerald-800">Siap</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ConfirmationModal
+            isOpen={confirmPost}
+            onClose={() => setConfirmPost(false)}
+            onConfirm={handlePostUnposted}
+            isLoading={isPosting}
+            variant="warning"
+            title={`Posting ${readyToPost.length} pengeluaran ke jurnal?`}
+            description={`Total ${formatCurrency(readyAmount)} akan masuk Buku Besar dengan tanggal aslinya, jadi laba rugi bulan-bulan tersebut ikut berubah. Pengeluaran yang perlu review atau periodenya sudah tutup buku tidak ikut.`}
+            confirmText="Ya, posting sekarang"
+          />
+        </section>
+      )}
 
       {/* Section 1: Subledger vs General Ledger Equilibrium Table */}
       <section className="aj-surface p-5 sm:p-6 space-y-4">

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { postJournalEntry, reverseJournalEntry } from "@/lib/accounting/journalStore";
 import { getAccountByCode, ensureStandardAccounts } from "@/lib/accounting/accountStore";
 import type { Role } from "@/lib/auth/roles";
+import { expenseDebitAccountCode } from "@/lib/expenses/coa";
 
 /**
  * Otomatis mem-posting jurnal untuk Pengeluaran yang disetujui (Approved).
@@ -12,6 +13,17 @@ import type { Role } from "@/lib/auth/roles";
  * - Uang Muka: Debit Uang Muka Operasional (1-1002) vs Kredit Kas & Bank (1-1001)
  * - Gaji: Debit Beban Gaji (6-1002) vs Kredit Kas & Bank (1-1001)
  */
+/** Akun debit pengeluaran menurut kategori; dipakai saat posting dan pratinjau rekonsiliasi. */
+export function expenseDebitAccountFor(expense: { categoryCode?: string | null; coaId?: string | null; salaryPaymentType?: string | null }) {
+  if (expense.categoryCode === "employee_loan") return "1-1003";
+  if (expense.categoryCode === "operational_advance") return "1-1002";
+  if (expense.categoryCode === "salary") {
+    const payable = expense.coaId?.includes("2-1002") || expense.salaryPaymentType === "PAYABLE";
+    return payable ? "2-1002" : "6-1002";
+  }
+  return expenseDebitAccountCode(expense.coaId);
+}
+
 export async function postExpenseJournal(
   expenseId: string,
   actor?: { id: string; name: string; role: Role }
@@ -44,30 +56,17 @@ export async function postExpenseJournal(
   const cashAccount = await getAccountByCode("1-1001");
   if (!cashAccount) throw new Error("Akun perkiraan Kas & Bank (1-1001) tidak ditemukan.");
 
-  let debitAccountCode = "6-1001";
+  const debitAccountCode = expenseDebitAccountFor(expense);
   let description = expense.description || `Pengeluaran ${expense.tipeCodeSnapshot || ""}`;
 
   if (expense.categoryCode === "employee_loan") {
-    debitAccountCode = "1-1003"; // Piutang Karyawan
     description = `Pencairan Kasbon: ${expense.employee?.name || expense.vendorName || "Karyawan"} - ${expense.purpose || expense.description || ""}`;
   } else if (expense.categoryCode === "operational_advance") {
-    debitAccountCode = "1-1002"; // Uang Muka Operasional
     description = `Pencairan Uang Muka Operasional: ${expense.employee?.name || expense.vendorName || "Karyawan"} - ${expense.purpose || expense.description || ""}`;
   } else if (expense.categoryCode === "salary") {
-    const isPayable =
-      expense.coaId === "2-1002" ||
-      expense.coaId?.includes("2-1002") ||
-      (expense as any).salaryPaymentType === "PAYABLE";
-    if (isPayable) {
-      debitAccountCode = "2-1002"; // Pelunasan Utang Gaji
-      description = `Pelunasan Utang Gaji: ${expense.employee?.name || expense.vendorName || "Karyawan"} Periode ${expense.salaryPeriod || ""}`;
-    } else {
-      debitAccountCode = "6-1002"; // Beban Gaji Karyawan Langsung
-      description = `Pembayaran Gaji: ${expense.employee?.name || expense.vendorName || "Karyawan"} Periode ${expense.salaryPeriod || ""}`;
-    }
-  } else if (expense.coaId && /^[0-9]+-[0-9]+/.test(expense.coaId)) {
-    // If user explicitly picked a COA code
-    debitAccountCode = expense.coaId;
+    description = debitAccountCode === "2-1002"
+      ? `Pelunasan Utang Gaji: ${expense.employee?.name || expense.vendorName || "Karyawan"} Periode ${expense.salaryPeriod || ""}`
+      : `Pembayaran Gaji: ${expense.employee?.name || expense.vendorName || "Karyawan"} Periode ${expense.salaryPeriod || ""}`;
   }
 
   const debitAccount = await getAccountByCode(debitAccountCode);

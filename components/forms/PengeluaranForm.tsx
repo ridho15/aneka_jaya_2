@@ -1,4 +1,5 @@
 "use client";
+import { coaLabel, type ExpenseCoaOption } from "@/lib/expenses/coa";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,7 +30,10 @@ type Props = {
   rekenings: RekeningAccount[];
   expense?: Expense;
   employees?: EmployeeOption[];
+  coaAccounts?: ExpenseCoaOption[];
 };
+
+const DEFAULT_COA: ExpenseCoaOption = { code: "6-1001", name: "Beban Operasional Umum" };
 
 type CreatedExpense = {
   id: string;
@@ -40,7 +44,7 @@ type CreatedExpense = {
   retryable?: boolean;
 };
 
-export function PengeluaranForm({ tipes, rekenings, expense, employees = [] }: Props) {
+export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coaAccounts = [] }: Props) {
   const router = useRouter();
   const isEdit = Boolean(expense);
   const activeTipes = useMemo(() => tipes.filter((t) => t.isActive), [tipes]);
@@ -96,7 +100,7 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [] }: P
       tipeNameSnapshot: expense?.tipeNameSnapshot || defaultTipe.name,
       rekeningId: expense?.rekeningId || defaultRekening?.id || "",
       rekeningNameSnapshot: expense?.rekeningNameSnapshot || defaultRekening?.name || "",
-      coaId: expense?.coaId || "Kas",
+      coaId: expense?.coaId || DEFAULT_COA.code,
       coaNameSnapshot: expense?.coaNameSnapshot || "Kas",
       categoryCode: initialCategoryCode,
       category: expense?.category || labelForCategoryCode(initialCategoryCode),
@@ -124,6 +128,9 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [] }: P
   const salaryPeriod = watch("salaryPeriod");
   const purpose = watch("purpose");
   const coaId = watch("coaId");
+  // Akun dari menu Akuntansi > COA; daftar standar dipakai bila belum termuat.
+  const coaOptions = coaAccounts.length ? coaAccounts : [DEFAULT_COA];
+  const legacyCoa = coaId && !coaOptions.some((o) => o.code === coaId) && !/^\d+-\d+/.test(coaId) ? coaId : null;
   const coaNameSnapshot = watch("coaNameSnapshot");
 
   const selectedEmployee = useMemo(() => employees.find((e) => e.id === employeeId), [employees, employeeId]);
@@ -158,12 +165,15 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [] }: P
       if (!getValues("salaryPeriod")) {
         setValue("salaryPeriod", currentMonthJakarta());
       }
-    } else if (newCode === "employee_loan" || newCode === "operational_advance") {
-      setValue("coaId", "Kas");
-      setValue("coaNameSnapshot", "Kas");
-    } else if (newCode === "goods_purchase") {
-      setValue("coaId", "Pembelian");
-      setValue("coaNameSnapshot", "Pembelian");
+    } else if (newCode === "employee_loan") {
+      setValue("coaId", "1-1003");
+      setValue("coaNameSnapshot", "1-1003 Piutang Karyawan");
+    } else if (newCode === "operational_advance") {
+      setValue("coaId", "1-1002");
+      setValue("coaNameSnapshot", "1-1002 Uang Muka Operasional");
+    } else if (!/^\d+-\d+/.test(getValues("coaId") || "") || ["6-1002", "2-1002", "1-1002", "1-1003"].includes(getValues("coaId"))) {
+      setValue("coaId", DEFAULT_COA.code);
+      setValue("coaNameSnapshot", coaLabel(DEFAULT_COA));
     }
   };
 
@@ -224,8 +234,8 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [] }: P
       tipeNameSnapshot: defaultTipe.name,
       rekeningId: defaultRek?.id || "",
       rekeningNameSnapshot: defaultRek?.name || "",
-      coaId: "Kas",
-      coaNameSnapshot: "Kas",
+      coaId: DEFAULT_COA.code,
+      coaNameSnapshot: coaLabel(DEFAULT_COA),
       categoryCode: "operational_expense",
       category: labelForCategoryCode("operational_expense"),
       employeeId: "",
@@ -386,18 +396,23 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [] }: P
             )}
           </Field>
           <Field label="COA" error={errors.coaId?.message}>
-            <Select
-              {...register("coaId")}
-              onChange={(event) => {
-                setValue("coaId", event.target.value);
-                setValue("coaNameSnapshot", event.currentTarget.selectedOptions[0]?.text || event.target.value);
-              }}
-            >
-              <option value="Kas">Kas</option>
-              <option value="Operasional">Operasional</option>
-              <option value="Transport">Transport</option>
-              <option value="Pembelian">Pembelian</option>
-            </Select>
+            {categoryCode === "operational_expense" || categoryCode === "goods_purchase" ? (
+              <Select
+                {...register("coaId")}
+                onChange={(event) => {
+                  setValue("coaId", event.target.value, { shouldDirty: true });
+                  setValue("coaNameSnapshot", event.currentTarget.selectedOptions[0]?.text || event.target.value);
+                }}
+              >
+                {legacyCoa && <option value={legacyCoa}>{legacyCoa} (pilihan lama)</option>}
+                {coaOptions.map((option) => <option key={option.code} value={option.code}>{coaLabel(option)}</option>)}
+              </Select>
+            ) : (
+              <p className="flex min-h-10 items-center rounded-sm border border-neutral-200 bg-neutral-50 px-3 text-sm text-slate-700">
+                {coaNameSnapshot || coaId}
+                <span className="ml-1.5 text-xs text-slate-500">(otomatis dari kategori)</span>
+              </p>
+            )}
           </Field>
 
           {/* Kategori Pengeluaran (5 Stable Standard Options) */}

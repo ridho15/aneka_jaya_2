@@ -4,6 +4,8 @@ import { ensureStandardAccounts, getAccountByCode } from "@/lib/accounting/accou
 import { getGeneralLedger } from "@/lib/accounting/ledgerStore";
 import type { Role } from "@/lib/auth/roles";
 import { recordAudit } from "@/lib/audit/store";
+import { expenseDebitAccountFor, postExpenseJournal } from "@/lib/accounting/postingHooks";
+import { jakartaMonthKey } from "@/lib/date/jakarta";
 
 export interface ReconciliationItem {
   id: string;
@@ -33,6 +35,25 @@ export interface LegacyExpenseAuditItem {
   reason: string;
 }
 
+export interface UnpostedExpenseItem {
+  id: string;
+  expenseDate: string;
+  vendorName: string;
+  description: string;
+  category: string;
+  amount: number;
+  accountCode: string;
+  accountName: string;
+  /** Alasan tidak ikut posting massal; kosong = siap diposting. */
+  blockedReason: string | null;
+}
+
+export interface UnpostedPostingResult {
+  posted: number;
+  postedAmount: number;
+  skipped: Array<{ id: string; description: string; reason: string }>;
+}
+
 export interface AccountingReconciliationReport {
   generatedAt: string;
   isOverallReconciled: boolean;
@@ -47,6 +68,7 @@ export interface AccountingReconciliationReport {
     unpostedExpensesAmount: number;
   };
   legacyAuditItems: LegacyExpenseAuditItem[];
+  unpostedExpenses: UnpostedExpenseItem[];
 }
 
 export async function getAccountingReconciliationReport(): Promise<AccountingReconciliationReport> {
@@ -318,7 +340,8 @@ export async function getAccountingReconciliationReport(): Promise<AccountingRec
       unpostedExpensesCount,
       unpostedExpensesAmount
     },
-    legacyAuditItems
+    legacyAuditItems,
+    unpostedExpenses: await listUnpostedExpenses().catch(() => [])
   };
 }
 
@@ -368,4 +391,85 @@ export async function reclassifyLegacyExpense(
   });
 
   return updated;
+}
+
+const REVIEW_WORDS = ["kasbon", "pinjaman", "gaji", "salary", "uang muka", "advance"];
+
+/** Sama dengan kriteria antrean review historis: beban operasional yang teksnya menyebut kasbon/gaji/uang muka. */
+function needsManualReview(expense: { categoryCode: string | null; description: string | null; category: string | null }) {
+  if (expense.categoryCode !== "operational_expense") return false;
+  const text = `${expense.description || ""} ${expense.category || ""}`.toLowerCase();
+  return REVIEW_WORDS.some((word) => text.includes(word));
+}
+
+/** Pengeluaran disetujui yang belum punya jurnal, beserta akun yang akan dipakai saat diposting. */
+export async function listUnpostedExpenses(limit = 500): Promise<UnpostedExpenseItem[]> {
+  if (typeof prisma?.expenseRecord?.findMany !== "function") return [];
+  const [rows, accounts, closedPeriods] = await Promise.all([
+    prisma.expenseRecord.findMany({
+      where: { approvalStatus: "approved", postingStatus: { not: "posted" }, journalEntryId: null },
+      orderBy: { expenseDate: "asc" },
+      take: limit
+    }),
+    prisma.account.findMany({ select: { code: true, name: true, isActive: true } }),
+    prisma.accountingPeriod.findMany({ where: { isClosed: true }, select: { periodKey: true } })
+  ]);
+  const accountByCode = new Map(accounts.map((a) => [a.code, a]));
+  const closed = new Set(closedPeriods.map((p) => p.periodKey));
+  return rows.map((row) => {
+    const accountCode = expenseDebitAccountFor(row);
+    const account = accountByCode.get(accountCode);
+    const periodKey = jakartaMonthKey(row.expenseDate);
+    let blockedReason: string | null = null;
+    if (Number(row.amount) <= 0) blockedReason = "Nominal 0, tidak perlu jurnal.";
+    else if (needsManualReview(row)) blockedReason = "Perlu review: teks menyebut kasbon/gaji/uang muka. Reklasifikasi dulu di tabel review.";
+    else if (closed.has(periodKey)) blockedReason = `Periode ${periodKey} sudah tutup buku.`;
+    else if (!account) blockedReason = `Akun ${accountCode} belum ada di COA.`;
+    else if (!account.isActive) blockedReason = `Akun ${accountCode} nonaktif.`;
+    return {
+      id: row.id,
+      expenseDate: row.expenseDate.toISOString().slice(0, 10),
+      vendorName: row.vendorName,
+      description: row.description,
+      category: row.category,
+      amount: Number(row.amount),
+      accountCode,
+      accountName: account?.name ?? "-",
+      blockedReason
+    };
+  });
+}
+
+/**
+ * Posting massal pengeluaran lama yang siap (tidak diblokir). Satu gagal tidak menghentikan yang lain;
+ * jurnal idempoten per pengeluaran, jadi aman dijalankan ulang.
+ */
+export async function postUnpostedExpenses(actor: { id: string; name: string; role: Role }): Promise<UnpostedPostingResult> {
+  const items = await listUnpostedExpenses(5000);
+  const result: UnpostedPostingResult = { posted: 0, postedAmount: 0, skipped: [] };
+  for (const item of items) {
+    if (item.blockedReason) {
+      result.skipped.push({ id: item.id, description: item.description, reason: item.blockedReason });
+      continue;
+    }
+    try {
+      const journal = await postExpenseJournal(item.id, actor);
+      if (journal) {
+        result.posted += 1;
+        result.postedAmount += item.amount;
+      } else {
+        result.skipped.push({ id: item.id, description: item.description, reason: "Tidak dijurnal (status atau nominal berubah)." });
+      }
+    } catch (error) {
+      result.skipped.push({ id: item.id, description: item.description, reason: error instanceof Error ? error.message : "Gagal posting." });
+    }
+  }
+  await recordAudit({
+    entityType: "expense",
+    entityId: "expense-backfill",
+    action: "update",
+    afterValue: { posted: result.posted, postedAmount: result.postedAmount, skipped: result.skipped.length },
+    reason: `Posting jurnal pengeluaran lama oleh ${actor.name}`
+  });
+  return result;
 }
