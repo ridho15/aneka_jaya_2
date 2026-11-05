@@ -37,25 +37,33 @@ const INVENTORY_MANAGER: Permission[] = [
   "inventory.stock.view", "inventory.movement.view", "inventory.transfer", "inventory.receive", "inventory.opname", "inventory.adjust"
 ];
 
+/** Akuntansi & Buku Besar serta Pusat Laporan: hanya Super Admin. */
+const OWNER_ONLY = (p: Permission) => p.startsWith("accounting.") || p === "reports.view" || p === "reports.finance_view";
+
+/** SDM & Personalia dan Sistem & Monitoring yang terlihat oleh Manager (dan Supervisor). */
+const MANAGER_SDM_SYSTEM: Permission[] = [
+  "sdm.view", "sdm.employee.manage", "sdm.savings.manage", "sdm.salary.view",
+  "audit.view", "erp_sync.retry", "settings.view", "guide.view"
+];
+
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   OWNER: [...ALL_PERMISSIONS],
-  SUPERVISOR: ALL_PERMISSIONS.filter((p) => p !== "reports.view" && p !== "reports.finance_view" && p !== "sdm.salary.view" && !p.startsWith("inventory.")).concat(INVENTORY_MANAGER),
+  // Gaji tetap rahasia dari Supervisor.
+  SUPERVISOR: ALL_PERMISSIONS.filter((p) => !OWNER_ONLY(p) && p !== "sdm.salary.view" && !p.startsWith("inventory.")).concat(INVENTORY_MANAGER),
   ADMIN: [
     "penjualan.create", "penjualan.manage", "do.view", "do.process", "do.assign",
     "inventory.stock.view", "inventory.opname", "inventory.transfer"
   ],
   FINANCE: [
     "pengeluaran.view", "pengeluaran.create", "tempo.view", "tempo.mark_paid",
-    "reports.finance_view", "master_data.view", "guide.view",
+    "master_data.view", "guide.view",
     "sdm.view", "sdm.kasbon.manage", "sdm.salary.view", "sdm.savings.manage",
-    "accounting.view", "accounting.journal.manage", "accounting.coa.manage", "accounting.rates.manage",
     "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage"
   ],
   MANAGER: [
     "pengeluaran.view", "approval.view", "approval.approve", "tempo.view",
-    "reports.finance_view", "audit.view", "master_data.view", "guide.view",
-    "sdm.view", "sdm.employee.manage", "sdm.savings.manage",
-    "accounting.view", "accounting.period.manage",
+    "master_data.view",
+    ...MANAGER_SDM_SYSTEM,
     "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage",
     ...INVENTORY_MANAGER
   ],

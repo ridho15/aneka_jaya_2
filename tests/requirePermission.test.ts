@@ -46,7 +46,7 @@ describe("requirePermission", () => {
   });
 
   it("uses the provided fallback for alternate permission lists", async () => {
-    mocks.role = "MANAGER";
+    mocks.role = "ADMIN";
 
     await expect(requirePermission(["settings.view", "users.manage"], "/settings")).rejects.toThrow("NEXT_REDIRECT:/settings");
   });
