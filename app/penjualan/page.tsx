@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const PAGE_SIZE = 10;
-const paymentMethods: Sale["paymentMethod"][] = ["Cash", "TF", "Tempo", "Other"];
+const paymentMethods: Sale["paymentMethod"][] = ["Cash", "TF", "Split", "Tempo", "Other"];
 const approvalStatuses = ["draft", "pending_approval", "approved", "rejected", "cancelled"];
 const syncStatuses = ["local", "pending", "synced", "failed"];
 

@@ -5,6 +5,7 @@ import { postJournalEntry, reverseJournalEntry, type JournalLineInput } from "@/
 import { getAccountByCode, ensureStandardAccounts } from "@/lib/accounting/accountStore";
 import { assertPeriodOpen } from "@/lib/accounting/periodStore";
 import type { Role } from "@/lib/auth/roles";
+import { parsePaymentSplits } from "@/lib/sales/payments";
 
 export interface SalesPostingActor {
   id: string;
@@ -202,15 +203,35 @@ export async function postSalesInvoiceJournal(
       });
     }
   } else {
-    // Penjualan Tunai / Transfer (Lunas)
-    lines.push({
-      accountId: bankAccount.id,
-      accountCodeSnapshot: bankAccount.code,
-      accountNameSnapshot: bankAccount.name,
-      debit: totalSale,
-      credit: 0,
-      memo: `Penerimaan Kas/Bank Penjualan: ${sale.customerName} (${sale.transactionNumber || sale.id})`
-    });
+    // Penjualan Tunai / Transfer (Lunas). Split: satu baris debit per rekening penerima.
+    const splits = paymentMethod === "SPLIT" ? parsePaymentSplits(sale.paymentSplits) ?? [] : [];
+    const splitTotal = splits.reduce((sum, part) => sum + part.amount, 0);
+    if (splits.length && Math.abs(splitTotal - totalSale) < 1) {
+      for (const part of splits) {
+        let partAccount = defaultCashAccount;
+        if (part.rekeningId) {
+          const rek = await prisma.rekeningAccount.findUnique({ where: { id: part.rekeningId }, include: { account: true } });
+          if (rek?.account) partAccount = rek.account;
+        }
+        lines.push({
+          accountId: partAccount.id,
+          accountCodeSnapshot: partAccount.code,
+          accountNameSnapshot: partAccount.name,
+          debit: part.amount,
+          credit: 0,
+          memo: `Penerimaan ${part.method === "TF" ? "Transfer" : "Tunai"} (Split) ${part.rekeningNameSnapshot || ""}: ${sale.customerName} (${sale.transactionNumber || sale.id})`
+        });
+      }
+    } else {
+      lines.push({
+        accountId: bankAccount.id,
+        accountCodeSnapshot: bankAccount.code,
+        accountNameSnapshot: bankAccount.name,
+        debit: totalSale,
+        credit: 0,
+        memo: `Penerimaan Kas/Bank Penjualan: ${sale.customerName} (${sale.transactionNumber || sale.id})`
+      });
+    }
 
     // Kredit Pendapatan Penjualan (DPP)
     lines.push({

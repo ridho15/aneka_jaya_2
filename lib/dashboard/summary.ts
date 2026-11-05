@@ -1,3 +1,4 @@
+import { isPaidPaymentMethod, salePaymentParts } from "@/lib/sales/payments";
 import type { AuditLog } from "@/lib/audit/store";
 import type { Expense } from "@/lib/types/expenses";
 import type { Product } from "@/lib/types/product";
@@ -200,8 +201,8 @@ export function buildDashboardSalesMetrics(
   const penjualanApproved = daftarPenjualan.filter((penjualan) => penjualan.approvalStatus === "approved");
   const penjualanBulanIni = penjualanApproved.filter((penjualan) => penjualan.saleDate?.startsWith(kunciBulanIni));
   const penjualanHariIni = penjualanApproved.filter((penjualan) => penjualan.saleDate === kunciHariIni);
-  const pembayaranDiterimaBulanIni = penjualanBulanIni.filter((penjualan) => penjualan.paymentMethod === "Cash" || penjualan.paymentMethod === "TF");
-  const pembayaranDiterimaHariIni = penjualanHariIni.filter((penjualan) => penjualan.paymentMethod === "Cash" || penjualan.paymentMethod === "TF");
+  const pembayaranDiterimaBulanIni = penjualanBulanIni.filter((penjualan) => isPaidPaymentMethod(penjualan.paymentMethod));
+  const pembayaranDiterimaHariIni = penjualanHariIni.filter((penjualan) => isPaidPaymentMethod(penjualan.paymentMethod));
 
   return {
     paidSales: penjualanApproved,
@@ -440,7 +441,7 @@ export function buildPaymentBreakdown(
   pembayaranTempo: TempoPayment[] = [],
   reversalTempo: TempoPaymentReversal[] = []
 ): PaymentBreakdown {
-  const penjualanLunas = daftarPenjualan.filter((penjualan) => penjualan.approvalStatus === "approved" && (penjualan.paymentMethod === "Cash" || penjualan.paymentMethod === "TF"));
+  const penjualanLunas = daftarPenjualan.filter((penjualan) => penjualan.approvalStatus === "approved" && isPaidPaymentMethod(penjualan.paymentMethod));
   const petaPembayaranById = new Map(pembayaranTempo.map((pembayaran) => [pembayaran.id, pembayaran]));
 
   // Hitung pembatalan uang kas dari tempo
@@ -448,25 +449,28 @@ export function buildPaymentBreakdown(
     .filter((reversal) => petaPembayaranById.get(reversal.tempoPaymentId)?.paymentMethod === "Cash")
     .reduce((total, reversal) => total + reversal.amount, 0);
 
+  // Split dipecah: bagian Cash ke tunai, bagian TF ke rekening tujuannya.
+  const bagianPembayaran = penjualanLunas.flatMap((penjualan) => salePaymentParts(penjualan));
+
   // Hitung total uang tunai masuk (penjualan cash + pelunasan tempo cash - reversal)
-  const totalTunai = penjualanLunas
-    .filter((penjualan) => penjualan.paymentMethod === "Cash")
-    .reduce((total, penjualan) => total + (Number(penjualan.total) || 0), 0)
+  const totalTunai = bagianPembayaran
+    .filter((bagian) => bagian.method === "Cash")
+    .reduce((total, bagian) => total + bagian.amount, 0)
     + pembayaranTempo.filter((pembayaran) => pembayaran.paymentMethod === "Cash").reduce((total, pembayaran) => total + pembayaran.amountPaid, 0)
     - reversalTunai;
 
   // Kelompokkan transfer bank berdasarkan rekening tujuan
   const totalTransferPerRekening = new Map<string, { label: string; rekeningId?: string; value: number }>();
 
-  for (const penjualan of penjualanLunas) {
-    if (penjualan.paymentMethod !== "TF") continue;
-    const label = (penjualan.rekeningId && labelRekening[penjualan.rekeningId]) || penjualan.rekeningNameSnapshot || penjualan.transferAccount || "TF tanpa rekening";
-    const kunci = penjualan.rekeningId || penjualan.rekeningNameSnapshot || penjualan.transferAccount || label;
+  for (const bagian of bagianPembayaran) {
+    if (bagian.method !== "TF") continue;
+    const label = (bagian.rekeningId && labelRekening[bagian.rekeningId]) || bagian.rekeningNameSnapshot || bagian.transferAccount || "TF tanpa rekening";
+    const kunci = bagian.rekeningId || bagian.rekeningNameSnapshot || bagian.transferAccount || label;
     const dataLama = totalTransferPerRekening.get(kunci);
     totalTransferPerRekening.set(kunci, {
       label,
-      rekeningId: penjualan.rekeningId || penjualan.rekeningNameSnapshot || penjualan.transferAccount,
-      value: (dataLama?.value || 0) + (Number(penjualan.total) || 0)
+      rekeningId: bagian.rekeningId || bagian.rekeningNameSnapshot || bagian.transferAccount,
+      value: (dataLama?.value || 0) + bagian.amount
     });
   }
 

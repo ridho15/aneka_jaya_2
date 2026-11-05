@@ -161,7 +161,7 @@ export async function getFinancialAiForecast(options: { forceRefresh?: boolean }
     const total = Number(s.total) || 0;
     past30TotalRevenue += total;
 
-    if (s.paymentMethod === "Cash" || s.paymentMethod === "TF") {
+    if (s.paymentMethod === "Cash" || s.paymentMethod === "TF" || s.paymentMethod === "Split") {
       past30CashInflow += total;
     } else if (Number(s.initialPaymentAmount) > 0) {
       past30CashInflow += Number(s.initialPaymentAmount);

@@ -1,3 +1,4 @@
+import { isPaidPaymentMethod, salePaymentParts } from "@/lib/sales/payments";
 import type { Expense } from "@/lib/types/expenses";
 import type { Sale } from "@/lib/types/sales";
 import type { TempoPayment, TempoPaymentReversal, TempoReceivable } from "@/lib/tempo/store";
@@ -38,7 +39,6 @@ export type FinanceReportSummary = {
 };
 
 const finalTempoStatuses = ["paid", "cancelled", "written_off"];
-const isPaidPaymentMethod = (value: string): value is "Cash" | "TF" => value === "Cash" || value === "TF";
 
 export function buildPaidSalesReport(sales: Sale[], reportDate: string, tempoPaymentsInput: Array<TempoPayment & { customerName?: string; salesId?: string; tipeCodeSnapshot?: string }> = [], tempoReversalsInput: TempoPaymentReversal[] = []): PaidSalesReport {
   const eligibleSales = sales.filter((sale) => sale.saleDate === reportDate && isPaidPaymentMethod(sale.paymentMethod) && (!sale.approvalStatus || sale.approvalStatus === "approved"));
@@ -55,16 +55,19 @@ export function buildPaidSalesReport(sales: Sale[], reportDate: string, tempoPay
 
   for (const sale of paidSales) {
     const amount = Number(sale.total) || 0;
-    if (sale.paymentMethod === "Cash") totalCash += amount;
-    if (sale.paymentMethod === "TF") totalTf += amount;
+    const parts = salePaymentParts(sale);
+    const cashPart = parts.filter((part) => part.method === "Cash").reduce((sum, part) => sum + part.amount, 0);
+    const tfPart = parts.filter((part) => part.method === "TF").reduce((sum, part) => sum + part.amount, 0);
+    totalCash += cashPart;
+    totalTf += tfPart;
     if (sale.syncTarget === "erp" && (sale.syncStatus === "pending" || sale.syncStatus === "failed")) {
       unsyncedErpCount += 1;
       unsyncedErpTotal += amount;
     }
     const tipe = sale.tipeCodeSnapshot || "W";
     const current = byTipeMap.get(tipe) || { tipe, cash: 0, tf: 0, total: 0 };
-    if (sale.paymentMethod === "Cash") current.cash += amount;
-    if (sale.paymentMethod === "TF") current.tf += amount;
+    current.cash += cashPart;
+    current.tf += tfPart;
     current.total += amount;
     byTipeMap.set(tipe, current);
   }

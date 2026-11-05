@@ -29,7 +29,12 @@ export const penjualanSchema = z.object({
   customerLocation: z.preprocess((value) => !String(value ?? "").trim() ? "Toko" : value, z.string().trim().max(200)),
   deliveryDate: z.string().optional(),
   shippingMethod: z.preprocess((value) => !String(value ?? "").trim() ? "di Tempat" : value, z.string().trim().max(100)),
-  paymentMethod: z.enum(["Cash", "TF", "Tempo", "Other"], { required_error: "Pilih metode pembayaran" }),
+  paymentMethod: z.enum(["Cash", "TF", "Tempo", "Other", "Split"], { required_error: "Pilih metode pembayaran" }),
+  /** Split: nominal Cash; sisanya TF ke rekeningId. */
+  splitCashAmount: z.preprocess((value) => value === "" || value === undefined || Number.isNaN(value) ? 0 : value, z.coerce.number().finite().min(0, "Nominal Cash tidak boleh negatif")).optional(),
+  /** Diskon nota (form): dibagi ke barang sebelum dikirim ke server. */
+  orderDiscount: z.preprocess((value) => value === "" || value === undefined || Number.isNaN(value) ? 0 : value, z.coerce.number().finite().min(0, "Diskon tidak boleh negatif")).optional(),
+  orderDiscountType: z.enum(["amount", "percent"]).optional(),
   dueDate: z.string().optional(),
   initialPaymentAmount: z.preprocess((value) => value === "" || value === undefined || Number.isNaN(value) ? 0 : value, z.coerce.number().finite().min(0, "Pembayaran awal tidak boleh negatif")).default(0),
   initialPaymentMethod: z.enum(["Cash", "TF", "Other"]).optional(),
@@ -55,7 +60,9 @@ export const penjualanSchema = z.object({
     uomIdSnapshot: z.coerce.number().int().positive().optional(),
     quantity: z.coerce.number().positive("Quantity harus lebih dari 0"),
     unitPrice: z.coerce.number().min(0, "Harga satuan tidak boleh negatif"),
-    discount: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Diskon tidak boleh negatif")).default(0)
+    discount: z.preprocess((value) => value === "" || Number.isNaN(value) ? 0 : value, z.coerce.number().min(0, "Diskon tidak boleh negatif")).default(0),
+    /** Form: diskon barang dalam rupiah (bawaan) atau persen. Server selalu menerima rupiah. */
+    discountType: z.enum(["amount", "percent"]).optional()
   })).min(1, "Minimal satu barang diperlukan")
 }).superRefine((data, ctx) => {
   if (data.deliveryDate && Number.isNaN(Date.parse(data.deliveryDate))) {
@@ -69,6 +76,10 @@ export const penjualanSchema = z.object({
     } catch {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Tanggal dan jam kirim tidak valid", path: ["deliveryAt"] });
     }
+  }
+  if (!data.isDraft && data.paymentMethod === "Split") {
+    if (!data.rekeningId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih rekening tujuan TF untuk Split", path: ["rekeningId"] });
+    if (!(Number(data.splitCashAmount) > 0)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Isi nominal Cash untuk Split", path: ["splitCashAmount"] });
   }
   if (!data.isDraft && data.paymentMethod === "TF" && !data.rekeningId && !data.transferAccount) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pilih rekening penerima untuk TF", path: ["rekeningId"] });
@@ -84,4 +95,7 @@ export const penjualanSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Pembayaran awal hanya tersedia untuk transaksi Tempo", path: ["initialPaymentAmount"] });
   }
 });
-export type PenjualanInput = z.infer<typeof penjualanSchema>;
+export type PenjualanInput = z.infer<typeof penjualanSchema> & {
+  /** Diisi server untuk metode Split (bukan dari form). */
+  paymentSplits?: import("@/lib/types/sales").SalePaymentSplit[];
+};

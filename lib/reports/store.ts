@@ -6,6 +6,7 @@ import type { Expense } from "@/lib/types/expenses";
 import type { Sale } from "@/lib/types/sales";
 import type { TempoPayment, TempoPaymentReversal, TempoReceivable, TempoStatus } from "@/lib/tempo/store";
 import { jakartaDateKey } from "@/lib/date/jakarta";
+import { parsePaymentSplits } from "@/lib/sales/payments";
 
 function dateStart(value: string) {
   return new Date(`${value}T00:00:00.000`);
@@ -40,6 +41,7 @@ function toReportSale(row: Awaited<ReturnType<typeof prisma.salesRecord.findMany
     customerName: row.customerName,
     customerLocation: row.customerLocation || undefined,
     paymentMethod: row.paymentMethod as Sale["paymentMethod"],
+    paymentSplits: parsePaymentSplits(row.paymentSplits),
     initialPaymentAmount: Number(row.initialPaymentAmount || 0),
     initialPaymentMethod: row.initialPaymentMethod as Sale["initialPaymentMethod"] || undefined,
     initialPaymentRekeningId: row.initialPaymentRekeningId || undefined,
@@ -140,7 +142,7 @@ export async function getPaidSalesReport(reportDate: string) {
     where: {
       saleDate: { gte: dateStart(reportDate), lte: dateEnd(reportDate) },
       approvalStatus: "approved",
-      paymentMethod: { in: ["Cash", "TF"] }
+      paymentMethod: { in: ["Cash", "TF", "Split"] }
     },
     orderBy: { createdAt: "desc" }
   }), prisma.tempoPayment.findMany({ include: { tempoReceivable: true }, orderBy: { createdAt: "desc" } }), prisma.tempoPaymentReversal.findMany({ where: { reversalDate: { gte: dateStart(reportDate), lte: dateEnd(reportDate) } }, orderBy: { createdAt: "desc" } })]);

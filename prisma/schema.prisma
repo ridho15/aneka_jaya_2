@@ -200,6 +200,8 @@ model SalesRecord {
   initialPaymentNotes   String?
   rekeningId            String?
   rekeningNameSnapshot  String?
+  /// Metode SPLIT: [{method:"Cash"|"TF", amount, rekeningId, rekeningNameSnapshot}].
+  paymentSplits         Json?
   transferAccount       String?
   notes                 String?
   total                 Decimal   @db.Decimal(18, 2)

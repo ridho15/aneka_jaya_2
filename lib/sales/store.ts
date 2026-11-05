@@ -1,10 +1,12 @@
 import "server-only";
 import { rememberCustomerFromSale, customerNameKey } from "@/lib/customers/store";
+import { buildSplitPayment } from "@/lib/sales/splitPayment";
+import { parsePaymentSplits } from "@/lib/sales/payments";
 import { readJsonArray, writeJsonArray } from "@/lib/data/jsonStore";
 import type { Sale } from "@/lib/types/sales";
 import { prisma } from "@/lib/db/prisma";
 import type { Role } from "@/lib/auth/roles";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { PenjualanInput } from "@/lib/validation/penjualanSchema";
 import { recordAudit } from "@/lib/audit/store";
 import { findTipe, listAllRekeningAccounts, resolveSalesRekening, type BookkeepingType, type RekeningAccount } from "@/lib/business/masterData";
@@ -328,6 +330,7 @@ function toSale(row: SalesRecordWithItems): Sale {
     initialPaymentNotes: row.initialPaymentNotes || undefined,
     rekeningId: row.rekeningId || undefined,
     rekeningNameSnapshot: row.rekeningNameSnapshot || undefined,
+    paymentSplits: parsePaymentSplits(row.paymentSplits),
     transferAccount: row.transferAccount || undefined,
     notes: row.notes || undefined,
     total: Number(row.total),
@@ -587,6 +590,7 @@ async function saveSalesRecordInner(sale: Sale, options?: { tempo?: TempoCreatio
         initialPaymentNotes: sale.initialPaymentNotes,
         rekeningId: sale.rekeningId,
         rekeningNameSnapshot: sale.rekeningNameSnapshot,
+        paymentSplits: sale.paymentMethod === "Split" && sale.paymentSplits ? serializeJson(sale.paymentSplits) : undefined,
         transferAccount: sale.transferAccount,
         notes: sale.notes,
         total: sale.total,
@@ -944,6 +948,7 @@ async function updatePrismaSalesRecord(
         initialPaymentNotes: input.initialPaymentNotes !== undefined ? input.initialPaymentNotes : before.initialPaymentNotes,
         rekeningId: rekening?.id,
         rekeningNameSnapshot,
+        paymentSplits: input.paymentMethod === "Split" && input.paymentSplits ? serializeJson(input.paymentSplits) : Prisma.DbNull,
         transferAccount: input.transferAccount,
         notes: input.notes,
         total,
@@ -1049,7 +1054,11 @@ async function updateSalesRecordInner(id: string, input: PenjualanInput): Promis
   const normalizedInput: PenjualanInput = { ...input, transactionAt, deliveryAt, saleDate: computedSaleDate, dueDate };
   const total = saleTotal(normalizedInput);
   const tipe = await findTipe(normalizedInput.tipeId || before.tipeId);
-  const rekening = await resolveRekeningForUpdate(before, normalizedInput, tipe);
+  const split = normalizedInput.paymentMethod === "Split"
+    ? (isKeepingDraft ? await buildSplitPayment(normalizedInput, tipe.id, total).catch(() => undefined) : await buildSplitPayment(normalizedInput, tipe.id, total))
+    : undefined;
+  if (split) normalizedInput.paymentSplits = split.paymentSplits;
+  const rekening = split ? split.rekening : await resolveRekeningForUpdate(before, normalizedInput, tipe);
   const rekeningNameSnapshot = rekeningSnapshotForUpdate(before, rekening);
   const nextSyncStatus = before.syncTarget === "erp" ? "pending" : "local";
 

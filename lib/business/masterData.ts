@@ -188,7 +188,7 @@ export async function saveRekeningAccounts(rows: RekeningAccount[]): Promise<voi
 }
 
 export class MasterDataError extends Error {
-  constructor(message: string, readonly code: "BOOKKEEPING_TYPE_NOT_FOUND" | "REKENING_NOT_FOUND") {
+  constructor(message: string, readonly code: "BOOKKEEPING_TYPE_NOT_FOUND" | "REKENING_NOT_FOUND" | "VALIDATION_ERROR") {
     super(message);
     this.name = "MasterDataError";
   }

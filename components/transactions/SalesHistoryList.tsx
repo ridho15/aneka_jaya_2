@@ -15,6 +15,19 @@ type Props = {
   productNames?: Record<string, string>;
 };
 
+/** "TF BCA - Hery", "Cash + TF BCA" untuk Split, atau nama metode saja. */
+export function paymentLabel(sale: Pick<Sale, "paymentMethod" | "rekeningNameSnapshot" | "transferAccount" | "paymentSplits">) {
+  if (sale.paymentMethod === "TF") {
+    const rekening = sale.rekeningNameSnapshot || sale.transferAccount;
+    return rekening ? `TF ${rekening}` : "TF";
+  }
+  if (sale.paymentMethod === "Split") {
+    const tf = sale.paymentSplits?.find((part) => part.method === "TF")?.rekeningNameSnapshot || sale.rekeningNameSnapshot;
+    return `Cash + TF${tf ? ` ${tf}` : ""}`;
+  }
+  return sale.paymentMethod;
+}
+
 const rowLink =
   "inline-flex min-h-9 items-center rounded-md px-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50";
 
@@ -386,7 +399,7 @@ export function SalesHistoryList({
                   <p className="mt-1 text-xs text-slate-500">
                     {saleDateLabel(sale)} •{" "}
                     {sale.tipeCodeSnapshot || sale.tipeId || "W"} •{" "}
-                    {sale.paymentMethod}
+                    {paymentLabel(sale)}
                   </p>
                 </div>
                 <p className="shrink-0 text-right font-bold text-slate-900">
@@ -588,7 +601,7 @@ export function SalesHistoryList({
                       {saleDateShort(sale)}
                     </td>
                     {canViewTransactionNumber && (
-                      <td className="max-w-[130px] truncate px-2 py-2 font-mono text-xs text-slate-700" title={sale.transactionNumber || sale.id}>
+                      <td className="max-w-[130px] truncate px-2 py-2 font-mono text-[11px] text-slate-500" title={sale.transactionNumber || sale.id}>
                         {sale.transactionNumber || sale.id}
                       </td>
                     )}
@@ -602,8 +615,8 @@ export function SalesHistoryList({
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-slate-700">
-                      <b>{sale.tipeCodeSnapshot || sale.tipeId || "W"}</b> · {sale.paymentMethod}
+                    <td className="max-w-[190px] truncate px-2 py-2 text-slate-700" title={paymentLabel(sale)}>
+                      <b>{sale.tipeCodeSnapshot || sale.tipeId || "W"}</b> · {paymentLabel(sale)}
                     </td>
                     <td className="px-2 py-2 text-right font-semibold tabular-nums">
                       {rupiah(sale.total)}

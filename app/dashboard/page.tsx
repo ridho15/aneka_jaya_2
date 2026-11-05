@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { PaymentBreakdownChart, type PaymentPeriod } from "@/components/dashboard/PaymentBreakdownChart";
+import { salePaymentParts } from "@/lib/sales/payments";
 import { listCatalogProducts } from "@/lib/inventory/catalog";
 import { getOpenCloudStatus } from "@/lib/opencloud/auth";
 import { can } from "@/lib/auth/roles";
@@ -94,10 +95,11 @@ function rekeningOptions(sales: Sale[], rekenings: RekeningAccount[]) {
   const options = new Map<string, string>();
   for (const rekening of rekenings) options.set(rekening.id, rekeningLabel(rekening));
   for (const sale of sales) {
-    if (sale.paymentMethod !== "Cash" && sale.paymentMethod !== "TF") continue;
-    const value = sale.rekeningId || sale.rekeningNameSnapshot;
-    const label = sale.rekeningNameSnapshot || sale.transferAccount || sale.rekeningId;
-    if (value && label) options.set(value, label);
+    for (const part of salePaymentParts(sale)) {
+      const value = part.rekeningId || part.rekeningNameSnapshot;
+      const label = part.rekeningNameSnapshot || part.transferAccount || part.rekeningId;
+      if (value && label) options.set(value, label);
+    }
   }
   return Array.from(options.entries()).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -173,7 +175,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
   const paymentTempo = paymentPeriod.error ? [] : allTempoPayments.filter((payment) => payment.paymentDate >= paymentPeriod.from && payment.paymentDate <= paymentPeriod.to);
   const paymentReversals = paymentPeriod.error ? [] : allTempoReversals.filter((reversal) => reversal.reversalDate >= paymentPeriod.from && reversal.reversalDate <= paymentPeriod.to);
   const paymentBreakdown = buildPaymentBreakdown(paymentSales, rekeningLabels, paymentTempo, paymentReversals);
-  paymentPeriod.transactionCount = paymentSales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF")).length + paymentTempo.filter((payment) => payment.paymentMethod === "Cash" || payment.paymentMethod === "TF").length;
+  paymentPeriod.transactionCount = paymentSales.filter((sale) => sale.approvalStatus === "approved" && (sale.paymentMethod === "Cash" || sale.paymentMethod === "TF" || sale.paymentMethod === "Split")).length + paymentTempo.filter((payment) => payment.paymentMethod === "Cash" || payment.paymentMethod === "TF").length;
   const rekenings = rekeningOptions(allSales, allRekenings);
   const whatsappStatus = getWhatsappProviderStatus();
   const dataSourceNotice = dashboardDataSourceNotice();

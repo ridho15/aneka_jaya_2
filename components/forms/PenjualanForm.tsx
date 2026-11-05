@@ -57,31 +57,37 @@ export function synchronizedDeliveryAt(transactionAt: string | undefined, curren
 }
 const itemGross = (item: { quantity?: number; unitPrice?: number }) =>
   Number(item.quantity || 0) * Number(item.unitPrice || 0);
+type DiscountType = "amount" | "percent";
+/** Diskon dalam rupiah (bawaan) atau persen dari dasar; tidak pernah melebihi dasarnya. */
+const discountValue = (base: number, value: number | undefined, type: DiscountType | undefined) => {
+  const raw = Number(value || 0);
+  if (!(raw > 0) || base <= 0) return 0;
+  return type === "percent" ? Math.round((base * clampDiscountPercent(raw)) / 100) : Math.min(Math.round(raw), base);
+};
 const itemDiscountAmount = (item: {
   quantity?: number;
   unitPrice?: number;
   discount?: number;
-}) =>
-  Math.round(
-    (itemGross(item) * clampDiscountPercent(Number(item.discount || 0))) / 100,
-  );
+  discountType?: DiscountType;
+}) => discountValue(itemGross(item), item.discount, item.discountType);
 const itemNetTotal = (item: {
   quantity?: number;
   unitPrice?: number;
   discount?: number;
+  discountType?: DiscountType;
 }) => Math.max(0, itemGross(item) - itemDiscountAmount(item));
-const discountPercentFromAmount = (
-  amount: number | undefined,
-  quantity: number,
-  unitPrice: number,
-) => {
-  const gross = quantity * unitPrice;
-  if (!gross) return 0;
-  return Math.min(
-    100,
-    Number(((Number(amount || 0) / gross) * 100).toFixed(2)),
-  );
-};
+
+/** Bagi diskon nota ke barang sesuai porsi nilai bersihnya; sisa pembulatan ke barang terakhir. */
+export function allocateOrderDiscount(nets: number[], orderDiscount: number) {
+  const total = nets.reduce((sum, n) => sum + n, 0);
+  const discount = Math.min(Math.max(0, Math.round(orderDiscount)), total);
+  if (!discount || !total) return nets.map(() => 0);
+  const shares = nets.map((n) => Math.floor((discount * n) / total));
+  const rest = discount - shares.reduce((sum, n) => sum + n, 0);
+  const last = nets.reduce((best, n, i) => (n > 0 ? i : best), 0);
+  shares[last] += rest;
+  return shares;
+}
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const generateManualSku = (tipeCode?: string | null) => {
   const now = new Date();
@@ -284,6 +290,9 @@ export function PenjualanForm({
       customerLocation: sale?.customerLocation || "Toko",
       shippingMethod: sale?.shippingMethod || "di Tempat",
       paymentMethod: sale?.paymentMethod || "Cash",
+      splitCashAmount: sale?.paymentSplits?.find((part) => part.method === "Cash")?.amount ?? 0,
+      orderDiscount: 0,
+      orderDiscountType: "amount",
       dueDate: sale?.dueDate,
       initialPaymentAmount: sale?.initialPaymentAmount || 0,
       initialPaymentMethod: sale?.initialPaymentMethod,
@@ -307,11 +316,8 @@ export function PenjualanForm({
           uomIdSnapshot: item.uomIdSnapshot,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          discount: discountPercentFromAmount(
-            item.discount,
-            item.quantity,
-            item.unitPrice,
-          ),
+          discount: item.discount || 0,
+          discountType: "amount" as const,
         }))
         : [
           {
@@ -344,7 +350,12 @@ export function PenjualanForm({
     selectedTipe && erpTypeCodeSet.has(selectedTipe.code.trim().toUpperCase()),
   );
   const selectedLooksAj = selectedTipe?.code.trim().toUpperCase() === "AJ";
-  const total = values.reduce((sum, item) => sum + itemNetTotal(item), 0);
+  const itemsNetTotal = values.reduce((sum, item) => sum + itemNetTotal(item), 0);
+  const orderDiscountValue = watch("orderDiscount");
+  const orderDiscountType = (watch("orderDiscountType") || "amount") as DiscountType;
+  const orderDiscountAmount = discountValue(itemsNetTotal, orderDiscountValue, orderDiscountType);
+  const total = Math.max(0, itemsNetTotal - orderDiscountAmount);
+  const splitCashAmount = Number(watch("splitCashAmount") || 0);
   const subtotal = values.reduce(
     (sum, item) =>
       sum + Number(item.quantity || 0) * Number(item.unitPrice || 0),
@@ -353,7 +364,7 @@ export function PenjualanForm({
   const discountTotal = values.reduce(
     (sum, item) => sum + itemDiscountAmount(item),
     0,
-  );
+  ) + orderDiscountAmount;
   const filteredRekenings = useMemo(
     () => rekeningForTipe(tipeId),
     [rekeningForTipe, tipeId],
@@ -374,6 +385,8 @@ export function PenjualanForm({
     );
   }, [rekenings, sale?.rekeningId, sale?.rekeningNameSnapshot, sale?.tipeId]);
   const rekeningOptions = useMemo(() => {
+    // Split: rekening di sini untuk bagian TF, jadi Kas Walk In tidak ditawarkan.
+    if (paymentMethod === "Split") return filteredRekenings.filter((rekening) => rekening.id !== cashWalkInRekening?.id);
     if (paymentMethod !== "Cash") return filteredRekenings;
     const options = cashWalkInRekening ? [cashWalkInRekening] : [];
     if (
@@ -402,7 +415,9 @@ export function PenjualanForm({
       paymentMethod === "Other" ||
       (paymentMethod === "Cash"
         ? Boolean(cashWalkInRekening)
-        : filteredRekenings.length > 0));
+        : paymentMethod === "Split"
+          ? Boolean(cashWalkInRekening) && filteredRekenings.some((rekening) => rekening.id !== cashWalkInRekening?.id)
+          : filteredRekenings.length > 0));
   const effectiveProducts = useMemo(
     () => mergeProductsWithSaleItems(products, sale),
     [products, sale],
@@ -448,6 +463,9 @@ export function PenjualanForm({
     }
     if (!masterDataReady) {
       reasons.push("Data tipe pembukuan atau rekening belum siap.");
+    }
+    if (paymentMethod === "Split" && !(splitCashAmount > 0 && splitCashAmount < total)) {
+      reasons.push("Split: isi bagian Cash lebih dari 0 dan lebih kecil dari total.");
     }
 
     // 2. Kesiapan Rincian Barang
@@ -542,6 +560,7 @@ export function PenjualanForm({
     productOptions,
     productState.status,
     rekeningId,
+    splitCashAmount,
     targetsErp,
     total,
     transactionAt,
@@ -793,8 +812,13 @@ export function PenjualanForm({
         cashWalkInRekening?.name || CASH_WALK_IN_REKENING_NAME,
       );
     }
+    if ((paymentMethod === "Split" || paymentMethod === "TF") && (!getValues("rekeningId") || getValues("rekeningId") === cashWalkInRekening?.id)) {
+      const firstTransfer = filteredRekenings.find((rekening) => rekening.id !== cashWalkInRekening?.id);
+      setValue("rekeningId", firstTransfer?.id || "");
+      setValue("rekeningNameSnapshot", firstTransfer?.name || "");
+    }
     previousPaymentMethodRef.current = paymentMethod;
-  }, [cashWalkInRekening, isEdit, paymentMethod, setValue]);
+  }, [cashWalkInRekening, filteredRekenings, getValues, isEdit, paymentMethod, setValue]);
 
   useEffect(() => {
     if (paymentMethod !== "Tempo") {
@@ -862,10 +886,19 @@ export function PenjualanForm({
         deliveryAt: finalDeliveryAt,
         clientRequestId: data.clientRequestId || clientRequestId,
         allowDuplicate: Boolean(data.allowDuplicate),
-        items: data.items.map((item) => ({
-          ...item,
-          discount: itemDiscountAmount(item),
-        })),
+        items: (() => {
+          // Server menerima diskon rupiah per barang; diskon nota dibagi ke barang.
+          const nets = data.items.map((item) => itemNetTotal(item));
+          const orderShare = allocateOrderDiscount(nets, discountValue(nets.reduce((a, b) => a + b, 0), data.orderDiscount, data.orderDiscountType));
+          return data.items.map((item, i) => ({
+            ...item,
+            discount: itemDiscountAmount(item) + orderShare[i],
+            discountType: undefined,
+          }));
+        })(),
+        orderDiscount: undefined,
+        orderDiscountType: undefined,
+        splitCashAmount: data.paymentMethod === "Split" ? data.splitCashAmount : undefined,
       };
       const response = await fetch(
         isEdit && sale
@@ -1227,7 +1260,7 @@ export function PenjualanForm({
                   Status Pembayaran
                 </p>
                 <div className="inline-flex flex-wrap border border-neutral-300 bg-white">
-                  {["Cash", "TF", "Tempo", "Other"].map((method, i) => (
+                  {["Cash", "TF", "Split", "Tempo", "Other"].map((method, i) => (
                     <label
                       key={method}
                       className={`cursor-pointer${i > 0 ? " border-l border-neutral-300" : ""}`}
@@ -1250,9 +1283,22 @@ export function PenjualanForm({
                   </span>
                 )}
               </div>
+              {paymentMethod === "Split" && (
+                <Field label="Bagian Cash (Kas Walk In)" error={errors.splitCashAmount?.message}>
+                  <MoneyInput
+                    value={splitCashAmount}
+                    min={0}
+                    placeholder="0"
+                    onValueChange={(value) => setValue("splitCashAmount", value, { shouldDirty: true, shouldValidate: true })}
+                  />
+                  <span className="mt-1 block text-xs font-normal text-slate-600">
+                    Sisa TF: <b className="tabular-nums">{rupiah(Math.max(0, total - splitCashAmount))}</b>
+                  </span>
+                </Field>
+              )}
               {paymentMethod !== "Tempo" && (
                 <Field
-                  label="Rekening penerima"
+                  label={paymentMethod === "Split" ? "Bagian TF ke rekening" : paymentMethod === "TF" ? "TF ke rekening" : "Rekening penerima"}
                   error={errors.rekeningId?.message}
                 >
                   <Select
@@ -1406,11 +1452,11 @@ export function PenjualanForm({
               onRetry={refreshProducts}
             />
             <StockDependencyState state={stockState} />
-            <div className="hidden grid-cols-[minmax(160px,1fr)_64px_112px_64px_104px_56px] gap-2 border-b border-neutral-200 bg-neutral-50 px-5 py-2.5 text-xs font-semibold text-neutral-600 md:grid sm:px-6">
+            <div className="hidden grid-cols-[minmax(160px,1fr)_64px_112px_112px_104px_56px] gap-2 border-b border-neutral-200 bg-neutral-50 px-5 py-2.5 text-xs font-semibold text-neutral-600 md:grid sm:px-6">
               <span>Barang</span>
               <span>Qty</span>
               <span>Harga satuan</span>
-              <span>Disc %</span>
+              <span>Diskon</span>
               <span className="text-right">Subtotal</span>
               <span />
             </div>
@@ -1531,7 +1577,7 @@ export function PenjualanForm({
                       type="hidden"
                       {...register(`items.${index}.productInputMode`)}
                     />
-                    <div className="grid grid-cols-3 gap-2 md:grid-cols-[minmax(160px,1fr)_64px_112px_64px_104px_56px] md:items-start">
+                    <div className="grid grid-cols-3 gap-2 md:grid-cols-[minmax(160px,1fr)_64px_112px_112px_104px_56px] md:items-start">
                       <Field
                         compact
                         className="col-span-3 md:col-span-1"
@@ -1765,23 +1811,18 @@ export function PenjualanForm({
                       </Field>
                       <Field
                         compact
-                        label="Disc %"
+                        label="Diskon"
                         error={errors.items?.[index]?.discount?.message}
                       >
-                        <Input
-                          type="number"
-                          inputMode="decimal"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={values[index]?.discount ?? 0}
-                          onChange={(event) =>
-                            setValue(
-                              `items.${index}.discount`,
-                              clampDiscountPercent(Number(event.target.value)),
-                              { shouldDirty: true, shouldValidate: true },
-                            )
-                          }
+                        <DiscountInput
+                          label={`Diskon barang #${index + 1}`}
+                          value={values[index]?.discount}
+                          type={(values[index]?.discountType || "amount") as DiscountType}
+                          onValue={(value) => setValue(`items.${index}.discount`, value, { shouldDirty: true, shouldValidate: true })}
+                          onType={(type) => {
+                            setValue(`items.${index}.discountType`, type, { shouldDirty: true });
+                            setValue(`items.${index}.discount`, 0, { shouldDirty: true, shouldValidate: true });
+                          }}
                         />
                       </Field>
                       <div className="col-span-2 flex items-baseline justify-between gap-2 self-center md:col-span-1 md:block md:self-auto md:pt-2.5 md:text-right">
@@ -1874,8 +1915,20 @@ export function PenjualanForm({
                 <dt className="text-neutral-500">Subtotal</dt>
                 <dd>{rupiah(subtotal)}</dd>
               </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-neutral-500">Diskon nota</dt>
+                <dd className="w-36">
+                  <DiscountInput
+                    label="Diskon nota"
+                    value={orderDiscountValue}
+                    type={orderDiscountType}
+                    onValue={(value) => setValue("orderDiscount", value, { shouldDirty: true })}
+                    onType={(type) => { setValue("orderDiscountType", type, { shouldDirty: true }); setValue("orderDiscount", 0, { shouldDirty: true }); }}
+                  />
+                </dd>
+              </div>
               <div className="flex justify-between">
-                <dt className="text-neutral-500">Diskon</dt>
+                <dt className="text-neutral-500">Total diskon</dt>
                 <dd>{rupiah(discountTotal)}</dd>
               </div>
               <div className="border-t border-neutral-300 pt-4">
@@ -2622,6 +2675,27 @@ function ManualProductFields({
           ? referenceState.message
           : "SKU akan dicek ke ERP. Jika belum ada, produk dibuat otomatis di Aneka Jaya ERP sebelum transaksi disimpan."}
       </p>
+    </div>
+  );
+}
+
+/** Isian diskon dengan tombol Rp / % (bawaan Rp). */
+function DiscountInput({ label, value, type, onValue, onType }: { label: string; value?: number; type: DiscountType; onValue: (value: number) => void; onType: (type: DiscountType) => void }) {
+  return (
+    <div className="flex">
+      <button
+        type="button"
+        aria-label={`${label}: ganti ke ${type === "amount" ? "persen" : "rupiah"}`}
+        onClick={() => onType(type === "amount" ? "percent" : "amount")}
+        className="min-h-10 w-9 shrink-0 rounded-l-sm border border-r-0 border-neutral-300 bg-neutral-50 text-xs font-bold text-neutral-700 hover:bg-emerald-50"
+      >
+        {type === "amount" ? "Rp" : "%"}
+      </button>
+      {type === "amount" ? (
+        <MoneyInput aria-label={label} className="rounded-l-none" value={value || 0} min={0} placeholder="0" onValueChange={(v) => onValue(v)} />
+      ) : (
+        <Input aria-label={label} className="rounded-l-none" type="number" inputMode="decimal" min="0" max="100" step="0.01" value={value ?? 0} onChange={(event) => onValue(clampDiscountPercent(Number(event.target.value)))} />
+      )}
     </div>
   );
 }

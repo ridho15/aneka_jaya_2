@@ -20,6 +20,7 @@ import { listErpPaginated } from "@/lib/api/pagination";
 import type { ManualSalesProduct } from "@/lib/types/sales";
 import { releaseSaleStock, stockReleaseErrorFrom } from "@/lib/api/stockReleases";
 import { isLocalInventory, DEFAULT_UNIT } from "@/lib/inventory/config";
+import { buildSplitPayment } from "@/lib/sales/splitPayment";
 import { createProduct as createInventoryProduct } from "@/lib/inventory/service";
 import { syncErpSalesPayment } from "@/lib/api/salesPayments";
 import { jakartaTimestampFromLocal, transactionDateKey } from "@/lib/date/jakarta";
@@ -815,7 +816,11 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     const total = input.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice - (item.discount || 0)), 0);
     const user = await getCurrentUser();
     const tipe = await findTipe(input.tipeId);
-    const rekening = await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
+    // Draft boleh belum lengkap; pembagian Split divalidasi saat disimpan final.
+    const split = input.paymentMethod === "Split"
+      ? (input.isDraft ? await buildSplitPayment(input, tipe.id, total).catch(() => undefined) : await buildSplitPayment(input, tipe.id, total))
+      : undefined;
+    const rekening = split ? split.rekening : await resolveSalesRekening(input.paymentMethod, tipe.id, input.rekeningId);
     const initialRekening = input.paymentMethod === "Tempo" && input.initialPaymentAmount > 0 && input.initialPaymentMethod
       ? await resolveSalesRekening(input.initialPaymentMethod, tipe.id, input.initialPaymentRekeningId)
       : undefined;
@@ -823,6 +828,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     const approvalStatus: NonNullable<Sale["approvalStatus"]> = isDraft ? "draft" : "approved";
     const isSyncEnabled = await isErpTransactionSyncEnabled();
     const target = salesTargetForTypeCode(tipe.code, process.env, isSyncEnabled);
+    if (target === "erp" && input.paymentMethod === "Split") return failure("Pembayaran Split hanya untuk transaksi yang tersimpan di SLM, tidak untuk tipe yang dikirim ke ERP.", "VALIDATION_ERROR");
     const isTestTransaction = target === "erp" && user.role === "OWNER" && input.isTestTransaction === true;
     const testReference = isTestTransaction ? `TEST-${tipe.code.toUpperCase()}-${Date.now()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}` : undefined;
     const customerName = testReference ? `[TEST ${tipe.code.toUpperCase()}] ${input.customerName}` : input.customerName;
@@ -835,7 +841,7 @@ export async function createSale(input: PenjualanInput): Promise<ApiResponse<unk
     const saleDate = transactionDateKey(transactionAt);
     const deliveryAt = input.deliveryAt ? jakartaTimestampFromLocal(input.deliveryAt) : undefined;
     if (deliveryAt && deliveryAt < transactionAt) return failure("Tanggal dan jam kirim tidak boleh sebelum waktu transaksi", "VALIDATION_ERROR");
-    const effectiveInput = { ...input, saleDate, transactionAt, deliveryAt, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, initialPaymentRekeningId: initialRekening?.id, initialPaymentRekeningNameSnapshot: initialRekening?.name };
+    const effectiveInput = { ...input, saleDate, transactionAt, deliveryAt, customerName, notes, isTestTransaction, items: effectiveItems, rekeningId: rekening?.id, rekeningNameSnapshot: rekening?.name, paymentSplits: split?.paymentSplits, initialPaymentRekeningId: initialRekening?.id, initialPaymentRekeningNameSnapshot: initialRekening?.name };
 
     const saleId = `S-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     const erpReference = `SLM-${saleId}`;
