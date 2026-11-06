@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">SLM</string>
+    <string name="offline_title">Tidak bisa terhubung</string>
+    <string name="offline_body">Periksa koneksi internet, lalu coba lagi.</string>
+    <string name="retry">Coba lagi</string>
+    <string name="download_started">Mengunduh %1$s</string>
+    <string name="download_saved">Tersimpan di Download: %1$s</string>
+    <string name="no_app">Aplikasi untuk membuka link ini tidak ada di HP.</string>
+    <string name="rawbt_missing">Cetak thermal butuh aplikasi RawBT. Pasang dari Play Store.</string>
+</resources>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { AndroidAppLink } from "@/components/auth/AndroidAppLink";
 import { APP_BRAND_INITIALS, APP_BRAND_NAME, APP_BRAND_TITLE } from "@/lib/appBrand";
 
 export function LoginPageShell() {
@@ -52,10 +53,11 @@ export function LoginPageShell() {
             <div className="mt-7 lg:mt-0">
               <p className="hidden text-sm font-bold text-neutral-950 lg:block">{APP_BRAND_TITLE}</p>
               <h2 className="mt-2 text-2xl font-bold leading-tight text-neutral-950">Masuk ke sistem</h2>
-              <p className="mt-2 text-sm leading-6 text-neutral-500">Masuk dengan username dan password akun Aneka Jaya Anda.</p>
+              <p className="mt-2 text-sm leading-6 text-neutral-500">Masuk dengan username dan password akun SLM Anda.</p>
             </div>
 
             <LoginForm className="mt-6" />
+            <AndroidAppLink />
 
             <div className="mt-5 border-t border-neutral-200 pt-4">
               <p className="text-sm leading-6 text-neutral-500">Hubungi Super Admin jika tidak bisa masuk.</p>
