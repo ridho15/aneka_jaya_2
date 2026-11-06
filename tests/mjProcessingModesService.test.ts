@@ -4,13 +4,14 @@ import { immutablePayloadHash } from "@/lib/integrations/mj/hash";
 vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({
-  salesFind: vi.fn(), salesCreate: vi.fn(), salesUpdate: vi.fn(), salesUpdateMany: vi.fn(),
+  salesFind: vi.fn(), salesFindMany: vi.fn(), salesCreate: vi.fn(), salesUpdate: vi.fn(), salesUpdateMany: vi.fn(),
   tipeFind: vi.fn(), rekeningFind: vi.fn(), attemptCount: vi.fn(), attemptCreate: vi.fn(),
   tempoReceivableFind: vi.fn(), tempoReceivableUpdate: vi.fn(), tempoReceivableUpdateMany: vi.fn(), tempoPaymentFind: vi.fn(), tempoPaymentCreate: vi.fn(), tempoPaymentUpdate: vi.fn(),
   tempoPaymentReversalUpsert: vi.fn(), auditLogCreate: vi.fn(),
   customerMappingFind: vi.fn(), customerMappingUpsert: vi.fn(),
   createCustomer: vi.fn(), createInvoice: vi.fn(), releaseStock: vi.fn(), createPayment: vi.fn(),
-  cancelErpSales: vi.fn()
+  cancelErpSales: vi.fn(), postInvoiceJournal: vi.fn(), postCogsJournal: vi.fn(), reverseJournals: vi.fn(),
+  journalFind: vi.fn(), tempoPaymentFindMany: vi.fn(), tempoPaymentFindUniqueRaw: vi.fn(), postTempoJournal: vi.fn(), reverseTempoJournal: vi.fn()
 }));
 
 vi.mock("@/lib/db/prisma", () => {
@@ -23,11 +24,12 @@ vi.mock("@/lib/db/prisma", () => {
     integrationStageAttempt: { create: mocks.attemptCreate, count: mocks.attemptCount }
   };
   return { prisma: {
-    salesRecord: { findUnique: mocks.salesFind, update: mocks.salesUpdate, updateMany: mocks.salesUpdateMany },
+    salesRecord: { findUnique: mocks.salesFind, findMany: mocks.salesFindMany, update: mocks.salesUpdate, updateMany: mocks.salesUpdateMany },
     bookkeepingType: { findFirst: mocks.tipeFind }, rekeningAccount: { findFirst: mocks.rekeningFind },
     integrationStageAttempt: { count: mocks.attemptCount, create: mocks.attemptCreate, update: vi.fn() },
     tempoReceivable: { findUnique: mocks.tempoReceivableFind, update: mocks.tempoReceivableUpdate, updateMany: mocks.tempoReceivableUpdateMany },
-    tempoPayment: { findUnique: mocks.tempoPaymentFind, create: mocks.tempoPaymentCreate, update: mocks.tempoPaymentUpdate, updateMany: vi.fn() },
+    tempoPayment: { findUnique: mocks.tempoPaymentFind, findMany: mocks.tempoPaymentFindMany, create: mocks.tempoPaymentCreate, update: mocks.tempoPaymentUpdate, updateMany: vi.fn() },
+    journalEntry: { findFirst: mocks.journalFind },
     tempoPaymentReversal: { upsert: mocks.tempoPaymentReversalUpsert },
     auditLog: { create: mocks.auditLogCreate },
     integrationCustomerMapping: { findUnique: mocks.customerMappingFind, upsert: mocks.customerMappingUpsert },
@@ -44,7 +46,18 @@ vi.mock("@/lib/integrations/mj/erp", () => ({
   deterministicReference: (kind: string, external: string, suffix = "") => `${kind}-${external}-${suffix}`
 }));
 
-import { cancelMjInvoice, createOrResumeMjInvoice, recordMjPrintEvent, recordMjTempoPayment } from "@/lib/integrations/mj/service";
+vi.mock("@/lib/tempo/postingHooks", () => ({
+  postTempoPaymentJournal: mocks.postTempoJournal,
+  reverseTempoPaymentJournal: mocks.reverseTempoJournal
+}));
+
+vi.mock("@/lib/sales/postingHooks", () => ({
+  postSalesInvoiceJournal: mocks.postInvoiceJournal,
+  postSalesCogsJournal: mocks.postCogsJournal,
+  reverseSalesJournals: mocks.reverseJournals
+}));
+
+import { cancelMjInvoice, createOrResumeMjInvoice, recordMjPrintEvent, recordMjTempoPayment, retryFailedMjJournals } from "@/lib/integrations/mj/service";
 
 const principal = { clientId: "client-1", clientCode: "mj-sandbox", environment: "sandbox", tokenId: "token-1" };
 const base = {
@@ -71,6 +84,15 @@ describe("MJ processing mode orchestration", () => {
     vi.clearAllMocks();
     mocks.tipeFind.mockResolvedValue({ id: "SLM", code: "SLM", name: "SLM", isActive: true });
     mocks.salesCreate.mockResolvedValue({});
+    mocks.postInvoiceJournal.mockResolvedValue({ id: "j-1" });
+    mocks.postCogsJournal.mockResolvedValue({ id: "j-2" });
+    mocks.reverseJournals.mockResolvedValue({ invoiceReversed: true, cogsReversed: true });
+    mocks.journalFind.mockResolvedValue(null);
+    mocks.tempoReceivableFind.mockResolvedValue(null);
+    mocks.tempoPaymentFind.mockResolvedValue(null);
+    mocks.tempoPaymentFindMany.mockResolvedValue([]);
+    mocks.postTempoJournal.mockResolvedValue({ id: "tj-1" });
+    mocks.reverseTempoJournal.mockResolvedValue({ id: "rj-1" });
   });
 
   it.each([
@@ -289,5 +311,158 @@ describe("MJ processing mode orchestration", () => {
         userId: "integration:mj-sandbox"
       })
     }));
+  });
+
+  describe("outlet SLM: sales and HPP journals for record_only", () => {
+    const payload = {
+      ...base, processing_mode: "record_only" as const, stock_release_reference: "MJ-STOCK-S-1",
+      payment: { ...base.payment, account: { mode: "manual" as const, account_reference: "CASH-MJ", name: "Kas MJ" } },
+      items: [{ product_reference: "SKU-MJ", product_name: "Produk Lokal", quantity: 2, unit_price: 50_000, discount: 0, subtotal: 100_000 }]
+    };
+
+    it("stores the release reference and posts revenue then HPP for a new invoice", async () => {
+      const saved = row("record_only", { integrationPayloadHash: immutablePayloadHash(payload), journalEntryId: null, cogsStatus: null });
+      mocks.salesFind.mockResolvedValueOnce(null).mockResolvedValueOnce(saved).mockResolvedValue(saved);
+
+      await expect(createOrResumeMjInvoice(payload, principal)).resolves.toMatchObject({ status: "created" });
+
+      expect(mocks.salesCreate.mock.calls[0][0].data.stockReleaseReference).toBe("MJ-STOCK-S-1");
+      expect(mocks.postInvoiceJournal).toHaveBeenCalledWith("sale-1");
+      expect(mocks.postCogsJournal).toHaveBeenCalledWith("sale-1");
+    });
+
+    it("keeps the invoice when posting fails (closed period) and does not throw", async () => {
+      const saved = row("record_only", { integrationPayloadHash: immutablePayloadHash(payload), journalEntryId: null, cogsStatus: null });
+      mocks.salesFind.mockResolvedValueOnce(null).mockResolvedValueOnce(saved).mockResolvedValue(saved);
+      mocks.postInvoiceJournal.mockRejectedValueOnce(new Error("Periode akuntansi sudah ditutup."));
+
+      await expect(createOrResumeMjInvoice(payload, principal)).resolves.toMatchObject({ status: "created" });
+      expect(mocks.postCogsJournal).not.toHaveBeenCalled();
+      const failed = mocks.attemptCreate.mock.calls.map((c) => c[0].data).find((d: { stage: string }) => d.stage === "journal");
+      expect(failed).toBeDefined();
+    });
+
+    it("does not post again on replay when the journals already exist", async () => {
+      const saved = row("record_only", { integrationPayloadHash: immutablePayloadHash(payload), journalEntryId: "j-1", cogsStatus: "COMPLETE" });
+      mocks.salesFind.mockResolvedValue(saved);
+
+      await expect(createOrResumeMjInvoice(payload, principal)).resolves.toMatchObject({ status: "already_processed" });
+      expect(mocks.postInvoiceJournal).not.toHaveBeenCalled();
+      expect(mocks.postCogsJournal).not.toHaveBeenCalled();
+    });
+
+    it("posts the missing journals when MJ replays an invoice that was saved without them", async () => {
+      const saved = row("record_only", { integrationPayloadHash: immutablePayloadHash(payload), journalEntryId: null, cogsStatus: null });
+      mocks.salesFind.mockResolvedValue(saved);
+
+      await expect(createOrResumeMjInvoice(payload, principal)).resolves.toMatchObject({ status: "already_processed" });
+      expect(mocks.postInvoiceJournal).toHaveBeenCalledTimes(1);
+    });
+
+    it("reverses both journals when the invoice is cancelled", async () => {
+      const posted = row("record_only", { journalEntryId: "j-1", cogsJournalEntryId: "j-2", cogsStatus: "COMPLETE" });
+      mocks.salesFind.mockResolvedValue(row("record_only", { approvalStatus: "cancelled" }));
+
+      await expect(cancelMjInvoice(posted, "Dibatalkan MJ", principal)).resolves.toMatchObject({ status: "cancelled" });
+      expect(mocks.reverseJournals).toHaveBeenCalledWith("sale-1", expect.objectContaining({ id: "integration:mj-sandbox" }), "Dibatalkan MJ");
+    });
+
+    it("flags a failed reversal but still cancels", async () => {
+      const posted = row("record_only", { journalEntryId: "j-1", cogsJournalEntryId: "j-2", cogsStatus: "COMPLETE" });
+      mocks.salesFind.mockResolvedValue(row("record_only", { approvalStatus: "cancelled" }));
+      mocks.reverseJournals.mockResolvedValueOnce({ invoiceReversed: true, cogsReversed: false });
+
+      await expect(cancelMjInvoice(posted, "Dibatalkan MJ", principal)).resolves.toMatchObject({ status: "cancelled" });
+      const stages = mocks.attemptCreate.mock.calls.map((c) => c[0].data.stage);
+      expect(stages).toContain("journal_reverse");
+    });
+
+    it("retry job only picks invoices with a failed journal attempt and reposts them", async () => {
+      const failed = row("record_only", { journalEntryId: null, cogsStatus: null });
+      mocks.salesFindMany.mockResolvedValueOnce([failed]);
+      mocks.salesFind.mockResolvedValue(row("record_only", { journalEntryId: "j-1", cogsStatus: "COMPLETE" }));
+
+      await expect(retryFailedMjJournals()).resolves.toEqual({ attempted: 1, succeeded: 1, failed: 0 });
+
+      const where = mocks.salesFindMany.mock.calls[0][0].where;
+      expect(where).toMatchObject({ source: "MJ", integrationProcessingMode: "record_only", integrationAttempts: { some: { stage: "journal", status: "failed" } } });
+      expect(mocks.postInvoiceJournal).toHaveBeenCalledWith("sale-1");
+    });
+
+    it("retry job reports a still-failing invoice without throwing", async () => {
+      mocks.salesFindMany.mockResolvedValueOnce([row("record_only", { journalEntryId: null, cogsStatus: null })]);
+      mocks.salesFind.mockResolvedValue(row("record_only", { journalEntryId: null, cogsStatus: null }));
+      mocks.postInvoiceJournal.mockRejectedValueOnce(new Error("Periode akuntansi sudah ditutup."));
+
+      await expect(retryFailedMjJournals()).resolves.toEqual({ attempted: 1, succeeded: 0, failed: 1 });
+    });
+
+    describe("Tempo payments", () => {
+      const receivable = { id: "tempo-1", salesId: "sale-1", paidAmount: 0, remainingAmount: 100_000, originalAmount: 100_000, status: "open" };
+      const payInput = { payment_reference: "PAY-1", payment_date: "2026-08-12", amount: 25_000, payment_method: "Cash" as const, account: { mode: "slm" as const, rekening_id: "cash" } };
+      const arrange = () => {
+        mocks.tempoReceivableFind.mockResolvedValue(receivable);
+        mocks.tempoPaymentCreate.mockResolvedValue({});
+        mocks.tempoPaymentUpdate.mockResolvedValue({});
+        mocks.tempoReceivableUpdate.mockResolvedValue({ paidAmount: 25_000, remainingAmount: 75_000 });
+        mocks.rekeningFind.mockResolvedValue({ id: "cash", name: "Kas", erpCoaId: null });
+      };
+
+      it("posts Dr Kas / Cr Piutang for a later payment", async () => {
+        arrange();
+        const invoice = row("record_only", { paymentMethod: "Tempo", total: 100_000 });
+        mocks.salesFind.mockResolvedValue(invoice);
+        mocks.tempoPaymentFind.mockResolvedValueOnce(null).mockResolvedValue({ id: "pay-row", amountPaid: 25_000 });
+
+        await expect(recordMjTempoPayment(invoice, payInput)).resolves.toMatchObject({ status: "created" });
+        expect(mocks.postTempoJournal).toHaveBeenCalledTimes(1);
+      });
+
+      it("keeps the payment and flags it when the journal cannot be posted", async () => {
+        arrange();
+        const invoice = row("record_only", { paymentMethod: "Tempo", total: 100_000 });
+        mocks.salesFind.mockResolvedValue(invoice);
+        mocks.tempoPaymentFind.mockResolvedValueOnce(null).mockResolvedValue({ id: "pay-row", amountPaid: 25_000 });
+        mocks.postTempoJournal.mockRejectedValueOnce(new Error("Periode akuntansi sudah ditutup."));
+
+        await expect(recordMjTempoPayment(invoice, payInput)).resolves.toMatchObject({ status: "created" });
+        expect(mocks.tempoPaymentUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { erpPaymentError: expect.stringContaining("JOURNAL_POST_FAILED") } }));
+      });
+
+      it("does not post a second journal when one already exists", async () => {
+        arrange();
+        const invoice = row("record_only", { paymentMethod: "Tempo", total: 100_000 });
+        mocks.salesFind.mockResolvedValue(invoice);
+        mocks.tempoPaymentFind.mockResolvedValueOnce(null).mockResolvedValue({ id: "pay-row", amountPaid: 25_000 });
+        mocks.journalFind.mockResolvedValue({ id: "tj-existing" });
+
+        await recordMjTempoPayment(invoice, payInput);
+        expect(mocks.postTempoJournal).not.toHaveBeenCalled();
+      });
+
+      it("reverses the journals of later payments when the invoice is cancelled", async () => {
+        mocks.tempoPaymentFindMany.mockResolvedValue([{ id: "pay-1" }, { id: "pay-2" }]);
+        mocks.salesFind.mockResolvedValue(row("record_only", { approvalStatus: "cancelled" }));
+
+        await expect(cancelMjInvoice(row("record_only", { paymentMethod: "Tempo" }), "Dibatalkan MJ", principal)).resolves.toMatchObject({ status: "cancelled" });
+        expect(mocks.reverseTempoJournal).toHaveBeenCalledWith("pay-1", expect.objectContaining({ id: "integration:mj-sandbox" }), "Dibatalkan MJ");
+        expect(mocks.reverseTempoJournal).toHaveBeenCalledWith("pay-2", expect.anything(), "Dibatalkan MJ");
+      });
+
+      it("retry job reposts payment journals that failed earlier", async () => {
+        mocks.salesFindMany.mockResolvedValueOnce([]);
+        mocks.tempoPaymentFindMany.mockResolvedValueOnce([{ id: "pay-9" }]);
+        mocks.tempoPaymentFind.mockResolvedValue({ id: "pay-9", amountPaid: 1000 });
+
+        await expect(retryFailedMjJournals()).resolves.toEqual({ attempted: 1, succeeded: 1, failed: 0 });
+        expect(mocks.postTempoJournal).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("does not touch journals when a cancelled invoice has none", async () => {
+      mocks.salesFind.mockResolvedValue(row("record_only", { approvalStatus: "cancelled" }));
+      await cancelMjInvoice(row("record_only"), "Dibatalkan MJ", principal);
+      expect(mocks.reverseJournals).not.toHaveBeenCalled();
+    });
   });
 });

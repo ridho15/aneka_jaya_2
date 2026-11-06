@@ -97,6 +97,8 @@ const ajAlreadyProcessedSchema = z.object({
 const recordOnlySchema = z.object({
   ...common,
   processing_mode: z.literal("record_only"),
+  // Release reference of the stock MJ already took from SLM, so HPP is booked at the real FIFO cost.
+  stock_release_reference: z.string().trim().min(1).max(150).optional(),
   payment: paymentSchema(localAccountSchema),
   items: z.array(localItemSchema).min(1).max(500)
 }).strict();
@@ -180,11 +182,56 @@ export const mjPrintEventSchema = z.object({
   metadata: z.record(z.unknown()).optional()
 }).passthrough();
 
+export const mjStockReleaseItemSchema = z.object({
+  product_id: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  productId: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  sku: z.string().trim().min(1).optional(),
+  product_ref: z.string().trim().min(1).optional(),
+  productRef: z.string().trim().min(1).optional(),
+  warehouse_id: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  warehouseId: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  location_id: z.string().trim().min(1).optional(),
+  locationId: z.string().trim().min(1).optional(),
+  rack_id: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  rackId: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  quantity: z.number().finite().positive("Quantity pelepasan stok harus lebih dari 0"),
+  unit_price: z.number().finite().nonnegative().optional(),
+  unitPrice: z.number().finite().nonnegative().optional(),
+  discount: z.number().finite().nonnegative().optional(),
+}).refine(
+  (item) => Boolean(item.product_id || item.productId || item.sku || item.product_ref || item.productRef),
+  { message: "Setiap item pelepasan stok wajib memiliki product_id, sku, atau product_ref" }
+);
+
+export const mjStockReleaseSchema = z.object({
+  reference: z.string().trim().min(1, "Reference pelepasan stok wajib diisi").max(100),
+  sale_date: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Format sale_date tidak valid").optional(),
+  saleDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Format saleDate tidak valid").optional(),
+  source_number: z.string().trim().max(100).optional(),
+  sourceNumber: z.string().trim().max(100).optional(),
+  warehouse_id: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  warehouseId: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  notes: z.string().trim().max(1000).optional(),
+  items: z.array(mjStockReleaseItemSchema).min(1, "Minimal satu item barang untuk pelepasan stok")
+});
+
+export const mjStockReplaceSchema = mjStockReleaseSchema.extend({
+  old_reference: z.string().trim().min(1, "old_reference wajib diisi").max(100)
+});
+
+export const mjStockCancelSchema = z.object({
+  reference: z.string().trim().min(1, "Reference pembatalan rilis stok wajib diisi").max(100),
+  reason: z.string().trim().max(500).optional().default("Pembatalan rilis stok kasir")
+});
+
 export type MjInvoiceInput = z.infer<typeof mjInvoiceSchema>;
 export type MjAjInvoiceInput = Extract<MjInvoiceInput, { processing_mode: "slm_process_aj" | "aj_already_processed" }>;
 export type MjTempoPaymentInput = z.infer<typeof mjTempoPaymentSchema>;
 export type MjPrintEventInput = z.infer<typeof mjPrintEventSchema>;
 export type MjStockAdjustmentInput = z.infer<typeof mjStockAdjustmentSchema>;
+export type MjStockReleaseInput = z.infer<typeof mjStockReleaseSchema>;
+export type MjStockReplaceInput = z.infer<typeof mjStockReplaceSchema>;
+export type MjStockCancelInput = z.infer<typeof mjStockCancelSchema>;
 
 export function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;

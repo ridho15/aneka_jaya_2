@@ -9,6 +9,8 @@ import { cancelMjErpSales, createMjErpCustomer, createMjErpInvoice, createMjPaym
 import { getMjTransactionMode, isErpTransactionSyncEnabled } from "@/lib/settings/erpSync";
 import type { SalesCancellationResult } from "@/lib/api/salesCancellations";
 import { createDeliveryOrderForSale } from "@/lib/deliveryOrders/store";
+import { postSalesCogsJournal, postSalesInvoiceJournal, reverseSalesJournals } from "@/lib/sales/postingHooks";
+import { postTempoPaymentJournal, reverseTempoPaymentJournal } from "@/lib/tempo/postingHooks";
 
 const includeInvoice = { items: { orderBy: { sortOrder: "asc" as const } }, integrationAttempts: { orderBy: { startedAt: "asc" as const } } };
 type InvoiceRow = Prisma.SalesRecordGetPayload<{ include: typeof includeInvoice }>;
@@ -134,6 +136,7 @@ async function createLocalInvoice(input: MjInvoiceInput, principal: MjIntegratio
         rekeningNameSnapshot: accountSnapshot ? String((accountSnapshot as Record<string, unknown>).name || "") : null,
         notes: input.notes, total: input.total, approvalStatus: "approved", syncTarget: stage.syncTarget, syncStatus: stage.invoice,
         stockReleaseStatus: stage.stock, erpPaymentStatus: stage.payment,
+        ...(input.processing_mode === "record_only" && input.stock_release_reference ? { stockReleaseReference: input.stock_release_reference } : {}),
         source: "MJ", externalReference: input.external_reference, integrationPayloadHash: payloadHash,
         integrationClientId: principal.clientId, integrationProcessingMode: input.processing_mode,
         externalCustomerId: customerExternalId, erpCustomerId, erpInvoiceId, erpInvoiceNumber,
@@ -314,6 +317,64 @@ async function normalizeLegacyHash(row: InvoiceRow, input: MjInvoiceInput, hash:
   return true;
 }
 
+const TEMPO_JOURNAL_FAILED = "JOURNAL_POST_FAILED";
+
+/** Dr Kas / Cr Piutang for a later Tempo payment of a record_only invoice. Idempotent; a failure is kept on the payment and retried by the job. */
+async function ensureMjTempoPaymentJournal(paymentId: string) {
+  const existing = await prisma.journalEntry.findFirst({ where: { sourceType: "TEMPO_PAYMENT", sourceId: paymentId, postingType: "REPAYMENT" }, select: { id: true } });
+  if (existing) {
+    await prisma.tempoPayment.updateMany({ where: { id: paymentId, erpPaymentError: { startsWith: TEMPO_JOURNAL_FAILED } }, data: { erpPaymentError: null } });
+    return true;
+  }
+  const payment = await prisma.tempoPayment.findUnique({ where: { id: paymentId } });
+  if (!payment) return false;
+  try {
+    await postTempoPaymentJournal(payment as never);
+    await prisma.tempoPayment.update({ where: { id: paymentId }, data: { erpPaymentError: null } });
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Jurnal pembayaran Tempo gagal diposting.";
+    await prisma.tempoPayment.update({ where: { id: paymentId }, data: { erpPaymentError: `${TEMPO_JOURNAL_FAILED}: ${message}`.slice(0, 500) } });
+    return false;
+  }
+}
+
+/** MJ is an outlet of SLM (one book): a record_only invoice books revenue/cash and HPP. A failure is kept as a stage attempt and retried when MJ replays the invoice. */
+async function ensureMjSalesJournals(row: InvoiceRow) {
+  if (row.journalEntryId && row.cogsStatus) return row;
+  await attempt(row, "journal", async () => {
+    try {
+      if (!row.journalEntryId) await postSalesInvoiceJournal(row.id);
+      if (!row.cogsStatus) await postSalesCogsJournal(row.id);
+      return { success: true };
+    } catch (error) {
+      return { success: false, code: "JOURNAL_POST_FAILED", message: error instanceof Error ? error.message : "Jurnal penjualan gagal diposting." };
+    }
+  });
+  return (await prisma.salesRecord.findUnique({ where: { id: row.id }, include: includeInvoice })) ?? row;
+}
+
+/** Retries journals that failed earlier (e.g. closed period). Limited to invoices with a failed journal attempt, so older invoices are never backfilled by accident. */
+export async function retryFailedMjJournals(limit = 25) {
+  const rows = await prisma.salesRecord.findMany({
+    where: {
+      source: "MJ", integrationProcessingMode: "record_only", approvalStatus: "approved",
+      OR: [{ journalEntryId: null }, { cogsStatus: null }],
+      integrationAttempts: { some: { stage: "journal", status: "failed" } }
+    },
+    include: includeInvoice, take: limit, orderBy: { createdAt: "asc" }
+  });
+  let succeeded = 0;
+  for (const row of rows) {
+    const after = await ensureMjSalesJournals(row);
+    if (after.journalEntryId && after.cogsStatus) succeeded += 1;
+  }
+  const payments = await prisma.tempoPayment.findMany({ where: { erpPaymentError: { startsWith: TEMPO_JOURNAL_FAILED } }, select: { id: true }, take: limit, orderBy: { createdAt: "asc" } });
+  for (const payment of payments) if (await ensureMjTempoPaymentJournal(payment.id)) succeeded += 1;
+  const attempted = rows.length + payments.length;
+  return { attempted, succeeded, failed: attempted - succeeded };
+}
+
 export async function createOrResumeMjInvoice(input: MjInvoiceInput, principal: MjIntegrationPrincipal) {
   const mjMode = await getMjTransactionMode();
   if (mjMode === "disabled") {
@@ -341,6 +402,7 @@ export async function createOrResumeMjInvoice(input: MjInvoiceInput, principal: 
     row = await processRelease(row, input);
     row = await processInitialPayment(row, input);
   }
+  if (input.processing_mode === "record_only" && row.approvalStatus === "approved") row = await ensureMjSalesJournals(row);
   return { status: existed ? "already_processed" as const : "created" as const, invoice: invoiceSnapshot(row) };
 }
 
@@ -503,7 +565,10 @@ export async function recordMjTempoPayment(row: InvoiceRow, input: MjTempoPaymen
   const existing = await prisma.tempoPayment.findUnique({ where: { externalPaymentReference: input.payment_reference } });
   if (existing) {
     if (Number(existing.amountPaid) !== input.amount || existing.paymentDate.toISOString().slice(0, 10) !== input.payment_date) throw new MjIntegrationError("PAYMENT_REFERENCE_CONFLICT", "payment_reference sudah digunakan dengan payload berbeda.", 409);
-    if (existing.erpPaymentSyncedAt) return { status: "already_processed" as const, payment_id: existing.id, invoice: await invoiceSnapshotWithTempo(row) };
+    if (existing.erpPaymentSyncedAt) {
+      if (processingMode(row) === "record_only") await ensureMjTempoPaymentJournal(existing.id);
+      return { status: "already_processed" as const, payment_id: existing.id, invoice: await invoiceSnapshotWithTempo(row) };
+    }
   }
   const account = await resolvePaymentAccount(row, input);
   const isSyncEnabled = await isErpTransactionSyncEnabled();
@@ -526,6 +591,7 @@ export async function recordMjTempoPayment(row: InvoiceRow, input: MjTempoPaymen
   const paymentStage = localOnly ? "not_required" : remaining === 0 ? "paid" : "partial";
   await prisma.tempoPayment.update({ where: { id: paymentId }, data: { erpPaymentStatus: paymentStage, erpPaymentError: null, erpPaymentSyncedAt: new Date(), erpPaymentAttemptedAt: localOnly ? null : new Date() } });
   if (!localOnly) await prisma.salesRecord.update({ where: { id: row.id }, data: { erpPaymentStatus: paymentStage, erpPaymentReference: reference, erpPaymentSyncedAt: new Date(), erpPaymentError: null } });
+  if (processingMode(row) === "record_only") await ensureMjTempoPaymentJournal(paymentId);
   const updated = await findMjInvoice(row.externalReference!);
   return { status: existing ? "already_processed" as const : "created" as const, payment_id: paymentId, remaining_amount: remaining, invoice: await invoiceSnapshotWithTempo(updated) };
 }
@@ -557,6 +623,10 @@ export async function cancelMjInvoice(row: InvoiceRow, reason: string, principal
     }
     erpCancellation = result.data as SalesCancellationResult | undefined;
   }
+
+  const laterTempoPayments = processingMode(row) === "record_only"
+    ? await prisma.tempoPayment.findMany({ where: { tempoReceivable: { salesId: row.id }, NOT: { externalPaymentReference: { endsWith: ":INITIAL" } } }, select: { id: true } })
+    : [];
 
   await prisma.$transaction(async (tx) => {
     await tx.salesRecord.update({
@@ -656,6 +726,28 @@ export async function cancelMjInvoice(row: InvoiceRow, reason: string, principal
       });
     }
   });
+
+  if (laterTempoPayments.length) {
+    const paymentActor = { id: `integration:${principal.clientCode}`, name: `Integration ${principal.clientCode.toUpperCase()}`, role: "OWNER" as const };
+    await attempt(row, "journal_reverse_payments", async () => {
+      try {
+        for (const payment of laterTempoPayments) await reverseTempoPaymentJournal(payment.id, paymentActor, reason);
+        return { success: true };
+      } catch (error) {
+        return { success: false, code: "JOURNAL_REVERSE_FAILED", message: error instanceof Error ? error.message : "Jurnal pembayaran Tempo belum berhasil dibalik; balik manual dari modul akuntansi." };
+      }
+    });
+  }
+  if (row.journalEntryId || row.cogsJournalEntryId) {
+    const actor = { id: `integration:${principal.clientCode}`, name: `Integration ${principal.clientCode.toUpperCase()}`, role: "OWNER" as const };
+    await attempt(row, "journal_reverse", async () => {
+      const result = await reverseSalesJournals(row.id, actor, reason);
+      const missed = (row.journalEntryId && !result.invoiceReversed) || (row.cogsJournalEntryId && !result.cogsReversed);
+      return missed
+        ? { success: false, code: "JOURNAL_REVERSE_FAILED", message: "Jurnal penjualan belum berhasil dibalik; balik manual dari modul akuntansi." }
+        : { success: true };
+    });
+  }
 
   const updated = await findMjInvoice(row.externalReference!);
   return { status: "cancelled" as const, invoice: await invoiceSnapshotWithTempo(updated) };

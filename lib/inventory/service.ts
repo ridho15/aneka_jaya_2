@@ -879,44 +879,79 @@ export async function emptyStockLocation(tx: Tx, productId: string, requestedWar
   });
 }
 
-export async function releaseSaleStockLocal(input: { reference: string; saleDate: string; sourceNumber?: string; items: SaleStockItem[] }, actor?: InventoryActor) {
+type SaleReleaseInput = { reference: string; saleDate: string; sourceNumber?: string; items: SaleStockItem[] };
+
+async function releaseSaleInTx(tx: Tx, input: SaleReleaseInput, actor?: InventoryActor) {
+  // A reference that was reversed (sale edit, then a failed re-release restored it) must release again; only an unreversed one is a replay.
+  const released = await tx.inventoryMovement.count({ where: { referenceType: "SALE", referenceNumber: input.reference } });
+  const reversed = await tx.inventoryMovement.count({ where: { referenceType: "SALE_REVERSAL", referenceNumber: input.reference } });
+  if (released > reversed) return { status: "already_released" as const };
+  const round = reversed > 0 ? `:r${reversed}` : "";
+  const date = parseDate(input.saleDate);
+  const lines = [];
+  for (let i = 0; i < input.items.length; i++) {
+    const item = input.items[i];
+    const product = await resolveSaleProduct(tx, item);
+    // Barang tanpa stok di mana pun dan tanpa lokasi pilihan dipotong dari Ruko.
+    const location = (await emptyStockLocation(tx, product.id, item.warehouseId)) ?? (await resolveSaleLocation(tx, item.warehouseId));
+    // Penjualan di SLM tidak tertahan karena stok kurang (stok minus muncul di Laporan Consignment); integrasi MJ meminta allowNegative: false.
+    lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity, allowNegative: item.allowNegative ?? true });
+  }
+  // Urutan kunci yang konsisten mencegah deadlock antar penjualan paralel.
+  lines.sort((a, b) => `${a.productId}:${a.locationId}`.localeCompare(`${b.productId}:${b.locationId}`));
+  for (const line of lines) {
+    await postMovement(tx, {
+      productId: line.productId, locationId: line.locationId, delta: -Math.abs(line.quantity), type: "SALE_OUT", movementDate: date, allowNegative: line.allowNegative || undefined,
+      referenceType: "SALE", referenceNumber: input.reference, idempotencyKey: `sale:${input.reference}:${line.index}${round}`,
+      notes: `Penjualan ${input.sourceNumber || input.reference}`
+    }, actor);
+  }
+  return { status: "released" as const };
+}
+
+export async function releaseSaleStockLocal(input: SaleReleaseInput, actor?: InventoryActor) {
+  return runInventoryTransaction((tx) => releaseSaleInTx(tx, input, actor));
+}
+
+/** Revisi MJ menyimpan rilis stok sebagai rantai referensi: X, X-REV1, X-REV2. */
+function saleReferenceBase(reference: string) {
+  return reference.replace(/-REV\d+$/i, "");
+}
+
+async function reverseSaleChainInTx(tx: Tx, reference: string, reason: string, actor?: InventoryActor) {
+  const base = saleReferenceBase(reference);
+  const chainPattern = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(-REV\\d+)?$`, "i");
+  const candidates = await tx.inventoryMovement.findMany({ where: { referenceType: "SALE", referenceNumber: { startsWith: base } }, orderBy: { createdAt: "asc" } });
+  const movements = candidates.filter((m) => m.referenceNumber && chainPattern.test(m.referenceNumber));
+  for (const m of movements) {
+    await postMovement(tx, {
+      productId: m.productId, locationId: m.locationId, delta: -num(m.quantity), unitCost: num(m.unitCost), type: "SALE_REVERSAL", movementDate: new Date(),
+      referenceType: "SALE_REVERSAL", referenceId: m.id, referenceNumber: m.referenceNumber ?? undefined, idempotencyKey: `sale-rev:${m.id}`,
+      allowNegative: true, notes: `Pembatalan: ${reason}`
+    }, actor);
+  }
+  return movements.length;
+}
+
+export async function cancelSaleStockLocal(input: { reference: string; reason: string; mustExist?: boolean }, actor?: InventoryActor) {
   return runInventoryTransaction(async (tx) => {
-    const already = await tx.inventoryMovement.findFirst({ where: { referenceType: "SALE", referenceNumber: input.reference } });
-    if (already) return { status: "already_released" as const };
-    const date = parseDate(input.saleDate);
-    const lines = [];
-    for (let i = 0; i < input.items.length; i++) {
-      const item = input.items[i];
-      const product = await resolveSaleProduct(tx, item);
-      // Barang tanpa stok di mana pun dan tanpa lokasi pilihan dipotong dari Ruko.
-      const location = (await emptyStockLocation(tx, product.id, item.warehouseId)) ?? (await resolveSaleLocation(tx, item.warehouseId));
-      // Penjualan tidak boleh tertahan karena stok kurang; stok minus tercatat dan muncul di Laporan Consignment.
-      lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity, allowNegative: true });
+    // Membalik seluruh rantai revisi, jadi penunjuk lama di MJ (X) tetap membatalkan X-REV1 bila MJ sempat mati setelah revisi.
+    const count = await reverseSaleChainInTx(tx, input.reference, input.reason, actor);
+    // An unknown reference must not read as a successful reversal, or the caller believes stock came back when it did not.
+    if (input.mustExist && count === 0) {
+      throw new InventoryError("NOT_FOUND", `Rilis stok dengan referensi ${input.reference} tidak ditemukan.`, 404);
     }
-    // Urutan kunci yang konsisten mencegah deadlock antar penjualan paralel.
-    lines.sort((a, b) => `${a.productId}:${a.locationId}`.localeCompare(`${b.productId}:${b.locationId}`));
-    for (const line of lines) {
-      await postMovement(tx, {
-        productId: line.productId, locationId: line.locationId, delta: -Math.abs(line.quantity), type: "SALE_OUT", movementDate: date, allowNegative: line.allowNegative || undefined,
-        referenceType: "SALE", referenceNumber: input.reference, idempotencyKey: `sale:${input.reference}:${line.index}`,
-        notes: `Penjualan ${input.sourceNumber || input.reference}`
-      }, actor);
-    }
-    return { status: "released" as const };
+    return { status: "reversed" as const };
   });
 }
 
-export async function cancelSaleStockLocal(input: { reference: string; reason: string }, actor?: InventoryActor) {
+/** Edit transaksi MJ: balik rilis lama dan lepas yang baru dalam satu transaksi database; gagal di mana pun berarti rilis lama tetap utuh. */
+export async function replaceSaleStockLocal(input: SaleReleaseInput & { oldReference: string }, actor?: InventoryActor) {
   return runInventoryTransaction(async (tx) => {
-    const movements = await tx.inventoryMovement.findMany({ where: { referenceType: "SALE", referenceNumber: input.reference }, orderBy: { createdAt: "asc" } });
-    for (const m of movements) {
-      await postMovement(tx, {
-        productId: m.productId, locationId: m.locationId, delta: -num(m.quantity), unitCost: num(m.unitCost), type: "SALE_REVERSAL", movementDate: new Date(),
-        referenceType: "SALE_REVERSAL", referenceId: m.id, referenceNumber: input.reference, idempotencyKey: `sale-rev:${m.id}`,
-        allowNegative: true, notes: `Pembatalan: ${input.reason}`
-      }, actor);
-    }
-    return { status: "reversed" as const };
+    const count = await reverseSaleChainInTx(tx, input.oldReference, "Revisi transaksi kasir MJ", actor);
+    if (count === 0) throw new InventoryError("NOT_FOUND", `Rilis stok dengan referensi ${input.oldReference} tidak ditemukan.`, 404);
+    await releaseSaleInTx(tx, input, actor);
+    return { status: "replaced" as const };
   });
 }
 

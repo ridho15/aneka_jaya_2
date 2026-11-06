@@ -70,6 +70,12 @@ describe("MJ processing-mode validation", () => {
     expect(mjInvoiceSchema.safeParse({ ...recordOnly, items: [{ ...recordOnly.items[0], product_name: "" }] }).success).toBe(false);
   });
 
+  it("accepts a stock_release_reference only on record_only", () => {
+    expect(mjInvoiceSchema.safeParse({ ...recordOnly, stock_release_reference: "MJ-STOCK-S-1" }).success).toBe(true);
+    expect(mjInvoiceSchema.safeParse({ ...recordOnly, stock_release_reference: "" }).success).toBe(false);
+    expect(mjInvoiceSchema.safeParse({ ...slmProcessAj, stock_release_reference: "MJ-STOCK-S-1" }).success).toBe(false);
+  });
+
   it("requires due date for Tempo and allows a partial initial payment", () => {
     const invalid = { ...slmProcessAj, payment: { method: "Tempo" as const, status: "partial" as const, paid_amount: 25_000, account: { mode: "manual" as const, aj_coa_reference: "1112.01" } } };
     expect(mjInvoiceSchema.safeParse(invalid).success).toBe(false);

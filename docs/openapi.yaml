@@ -473,6 +473,7 @@ components:
         - type: object
           properties:
             processing_mode: { const: record_only }
+            stock_release_reference: { type: string, maxLength: 150, description: Referensi pelepasan stok MJ di SLM; dipakai untuk HPP FIFO. }
             payment: { $ref: "#/components/schemas/MjPayment" }
             items: { type: array, minItems: 1, items: { $ref: "#/components/schemas/MjRecordOnlyItem" } }
     MjTempoPaymentInput:
@@ -1173,6 +1174,115 @@ paths:
           description: Daftar lokasi inventaris.
         "401":
           description: AUTH_INVALID
+        "429":
+          description: RATE_LIMITED
+  /api/integrations/mj/stocks/release:
+    post:
+      summary: Pelepasan stok penjualan MJ dari SLM.
+      description: "Mengurangi stok SLM untuk satu referensi. Idempotent: referensi yang sama menjawab already_released. Stok kurang ditolak (STOCK_INSUFFICIENT)."
+      security: [{ mjBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference, items]
+              properties:
+                reference: { type: string, maxLength: 100 }
+                sale_date: { type: string, format: date }
+                source_number: { type: string }
+                warehouse_id: { type: string }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    properties:
+                      sku: { type: string }
+                      product_id: { type: string }
+                      warehouse_id: { type: string }
+                      quantity: { type: number, exclusiveMinimum: 0 }
+      responses:
+        "201":
+          description: Stok dilepas (200 already_released untuk referensi yang sama).
+        "400":
+          description: VALIDATION_FAILED
+        "401":
+          description: AUTH_INVALID
+        "404":
+          description: PRODUCT_INVALID atau referensi tidak ditemukan
+        "409":
+          description: STOCK_INSUFFICIENT atau REFERENCE_CONFLICT
+        "429":
+          description: RATE_LIMITED
+  /api/integrations/mj/stocks/cancel:
+    post:
+      summary: Pembatalan pelepasan stok MJ.
+      description: "Membalik seluruh rantai revisi referensi (X, X-REV1, ...). Referensi yang tidak pernah ada dijawab 404."
+      security: [{ mjBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference]
+              properties:
+                reference: { type: string, maxLength: 100 }
+                reason: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: Stok dikembalikan.
+        "400":
+          description: VALIDATION_FAILED
+        "401":
+          description: AUTH_INVALID
+        "404":
+          description: PRODUCT_INVALID atau referensi tidak ditemukan
+        "409":
+          description: STOCK_INSUFFICIENT atau REFERENCE_CONFLICT
+        "429":
+          description: RATE_LIMITED
+  /api/integrations/mj/stocks/replace:
+    post:
+      summary: Penggantian atomik pelepasan stok saat edit transaksi MJ.
+      description: "Membalik rilis lama (old_reference beserta rantai revisinya) dan melepas item baru dalam satu transaksi database. Gagal di mana pun berarti rilis lama tetap utuh."
+      security: [{ mjBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [old_reference, reference, items]
+              properties:
+                old_reference: { type: string, maxLength: 100 }
+                reference: { type: string, maxLength: 100 }
+                sale_date: { type: string, format: date }
+                source_number: { type: string }
+                warehouse_id: { type: string }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    properties:
+                      sku: { type: string }
+                      product_id: { type: string }
+                      warehouse_id: { type: string }
+                      quantity: { type: number, exclusiveMinimum: 0 }
+      responses:
+        "200":
+          description: Rilis diganti.
+        "400":
+          description: VALIDATION_FAILED
+        "401":
+          description: AUTH_INVALID
+        "404":
+          description: PRODUCT_INVALID atau referensi tidak ditemukan
+        "409":
+          description: STOCK_INSUFFICIENT atau REFERENCE_CONFLICT
         "429":
           description: RATE_LIMITED
   /api/integrations/mj/stocks/adjust:
