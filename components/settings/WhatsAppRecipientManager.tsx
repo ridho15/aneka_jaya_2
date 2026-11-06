@@ -12,6 +12,7 @@ export type WhatsAppRecipient = {
   receivesDailyReport: boolean;
   receivesStockAlert: boolean;
   receivesTempoReminder: boolean;
+  receivesPackingReminder: boolean;
   isActive: boolean;
 };
 
@@ -21,6 +22,7 @@ const emptyForm: Omit<WhatsAppRecipient, "id"> & { id?: string } = {
   receivesDailyReport: true,
   receivesStockAlert: true,
   receivesTempoReminder: true,
+  receivesPackingReminder: false,
   isActive: true
 };
 
@@ -120,6 +122,7 @@ export function WhatsAppRecipientManager({ initialRecipients, recipients: propRe
               <th className="px-5 py-3">Daily</th>
               <th className="px-5 py-3">Stock</th>
               <th className="px-5 py-3">Tempo</th>
+              <th className="px-5 py-3">Packing</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3">Aksi</th>
             </tr>
@@ -132,6 +135,7 @@ export function WhatsAppRecipientManager({ initialRecipients, recipients: propRe
                 <td className="px-5 py-4">{row.receivesDailyReport ? "Ya" : "Tidak"}</td>
                 <td className="px-5 py-4">{row.receivesStockAlert ? "Ya" : "Tidak"}</td>
                 <td className="px-5 py-4">{row.receivesTempoReminder ? "Ya" : "Tidak"}</td>
+                <td className="px-5 py-4">{row.receivesPackingReminder ? "Ya" : "Tidak"}</td>
                 <td className="px-5 py-4">{row.isActive ? "Aktif" : "Nonaktif"}</td>
                 <td className="px-5 py-4">
                   <div className="flex gap-2">
@@ -153,7 +157,7 @@ export function WhatsAppRecipientManager({ initialRecipients, recipients: propRe
             ))}
             {recipients.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-slate-500">
+                <td colSpan={8} className="px-5 py-10 text-center text-slate-500">
                   Belum ada recipient WhatsApp.
                 </td>
               </tr>
@@ -194,6 +198,9 @@ export function WhatsAppRecipientManager({ initialRecipients, recipients: propRe
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.receivesTempoReminder} onChange={(event) => setField("receivesTempoReminder", event.target.checked)} /> Terima tempo reminder
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.receivesPackingReminder} onChange={(event) => setField("receivesPackingReminder", event.target.checked)} /> Terima pengingat packing
           </label>
           <div className="flex gap-2 pt-2">
             <Button type="button" onClick={save}>Simpan</Button>

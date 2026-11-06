@@ -39,6 +39,7 @@ function toRecipient(row: {
   receivesDailyReport: boolean;
   receivesStockAlert: boolean;
   receivesTempoReminder: boolean;
+  receivesPackingReminder: boolean;
   createdAt: Date;
   updatedAt: Date;
 }): WhatsAppRecipient {
@@ -50,6 +51,7 @@ function toRecipient(row: {
     receivesDailyReport: row.receivesDailyReport,
     receivesStockAlert: row.receivesStockAlert,
     receivesTempoReminder: row.receivesTempoReminder,
+    receivesPackingReminder: row.receivesPackingReminder,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
   };
@@ -132,7 +134,8 @@ export async function createWhatsappRecipient(input: WhatsAppRecipientInput) {
       isActive: input.isActive ?? true,
       receivesDailyReport: input.receivesDailyReport ?? false,
       receivesStockAlert: input.receivesStockAlert ?? false,
-      receivesTempoReminder: input.receivesTempoReminder ?? false
+      receivesTempoReminder: input.receivesTempoReminder ?? false,
+      receivesPackingReminder: input.receivesPackingReminder ?? false
     }
   });
   const recipient = toRecipient(row);
@@ -157,7 +160,8 @@ export async function updateWhatsappRecipient(id: string, input: Partial<WhatsAp
       isActive: input.isActive,
       receivesDailyReport: input.receivesDailyReport,
       receivesStockAlert: input.receivesStockAlert,
-      receivesTempoReminder: input.receivesTempoReminder
+      receivesTempoReminder: input.receivesTempoReminder,
+      receivesPackingReminder: input.receivesPackingReminder
     }
   });
   const recipient = toRecipient(row);

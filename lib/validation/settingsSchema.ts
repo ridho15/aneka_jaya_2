@@ -65,7 +65,8 @@ export const whatsappRecipientCreateSchema = z.object({
   isActive: z.boolean().optional(),
   receivesDailyReport: z.boolean().optional(),
   receivesStockAlert: z.boolean().optional(),
-  receivesTempoReminder: z.boolean().optional()
+  receivesTempoReminder: z.boolean().optional(),
+  receivesPackingReminder: z.boolean().optional()
 });
 
 export const whatsappRecipientUpdateSchema = whatsappRecipientCreateSchema.partial().extend({
