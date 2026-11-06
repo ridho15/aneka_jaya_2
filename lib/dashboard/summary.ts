@@ -47,8 +47,16 @@ export type DashboardOperationalProfitSummary = {
   monthlyExpenses: number;
   todayRevenue: number;
   todayExpenses: number;
+  /** Laba = omset − modal. */
   grossProfit: number;
+  /** Nett profit = laba − pengeluaran. */
   nettProfit: number;
+  monthlyCogs: number;
+  todayCogs: number;
+  todayGrossProfit: number;
+  todayNettProfit: number;
+  /** Nota yang sebagian modalnya belum ada di Master Barang, jadi modalnya memakai estimasi GP. */
+  monthlyEstimatedSalesCount: number;
   monthlySalesCount: number;
   todaySalesCount: number;
 };
@@ -354,6 +362,19 @@ function hitungGrossProfitPenjualan(
   return Math.round(totalProfit);
 }
 
+/** true bila ada item nota yang modalnya tidak ditemukan sehingga labanya memakai estimasi GP. */
+function memakaiEstimasiModal(penjualan: Sale, petaHargaModal: Map<string, number>) {
+  if (!Array.isArray(penjualan.items) || penjualan.items.length === 0) return true;
+  return penjualan.items.some((item) => {
+    const manual = Number(item.manualProduct?.costPrice);
+    if (Number.isFinite(manual) && manual > MINIMUM_REAL_COST_THRESHOLD) return false;
+    const id = item.productId?.trim().toLowerCase() ?? "";
+    const ref = item.productRef?.trim().toLowerCase() ?? "";
+    const cost = (id && petaHargaModal.get(id)) || (ref && petaHargaModal.get(ref)) || 0;
+    return !(cost > MINIMUM_REAL_COST_THRESHOLD);
+  });
+}
+
 // ============================================================================
 // 7. RINGKASAN PROFIT OPERASIONAL DASHBOARD
 // ============================================================================
@@ -385,8 +406,10 @@ export function buildOperationalProfitSummary(
   const totalPengeluaranBulanIni = pengeluaranBulanIni.reduce((total, pengeluaran) => total + (Number(pengeluaran.amount) || 0), 0);
   const totalPengeluaranHariIni = pengeluaranHariIni.reduce((total, pengeluaran) => total + (Number(pengeluaran.amount) || 0), 0);
 
-  // Akumulasikan gross profit bulan ini
-  const totalGrossProfit = penjualanBulanIni.reduce((total, penjualan) => total + hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal), 0);
+  // Laba = omset − modal. Modal = omset − laba per nota, jadi angka di layar selalu tersambung.
+  const labaBulanIni = penjualanBulanIni.reduce((total, penjualan) => total + hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal), 0);
+  const labaHariIni = penjualanHariIni.reduce((total, penjualan) => total + hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal), 0);
+  const notaEstimasi = penjualanBulanIni.filter((penjualan) => memakaiEstimasiModal(penjualan, petaHargaModal)).length;
 
   return {
     grossProfitPercent: persen,
@@ -394,8 +417,13 @@ export function buildOperationalProfitSummary(
     monthlyExpenses: totalPengeluaranBulanIni,
     todayRevenue: omsetHariIni,
     todayExpenses: totalPengeluaranHariIni,
-    grossProfit: totalGrossProfit,
-    nettProfit: totalGrossProfit - totalPengeluaranBulanIni,
+    grossProfit: labaBulanIni,
+    nettProfit: labaBulanIni - totalPengeluaranBulanIni,
+    monthlyCogs: omsetBulanIni - labaBulanIni,
+    todayCogs: omsetHariIni - labaHariIni,
+    todayGrossProfit: labaHariIni,
+    todayNettProfit: labaHariIni - totalPengeluaranHariIni,
+    monthlyEstimatedSalesCount: notaEstimasi,
     monthlySalesCount: penjualanBulanIni.length,
     todaySalesCount: penjualanHariIni.length
   };

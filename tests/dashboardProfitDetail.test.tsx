@@ -155,12 +155,12 @@ describe("Dashboard Profit Details Unit & Component Tests", () => {
 
     // Check financial pillars
     expect(html).toContain("Rekonsiliasi Sumber Data Profit");
-    expect(html).toContain("Kalkulasi Laba Bersih Operasional");
+    expect(html).toContain("Kalkulasi Laba dan Nett Profit");
     expect(html).toContain("1. Total Omzet Jual");
     expect(html).toContain("2. Total Modal / HPP");
-    expect(html).toContain("3. Gross Profit (Laba Kotor)");
+    expect(html).toContain("3. Laba (Omset − Modal)");
     expect(html).toContain("4. Pengeluaran Operasional");
-    expect(html).toContain("5. Nett Profit (Laba Bersih)");
+    expect(html).toContain("5. Nett Profit");
 
     // Check tabs
     expect(html).toContain("Sumber Penjualan (1)");

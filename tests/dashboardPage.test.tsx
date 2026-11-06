@@ -87,8 +87,9 @@ describe("DashboardPage data source notice", () => {
     const html = renderToStaticMarkup(await DashboardPage({ searchParams: Promise.resolve({}) }));
 
     expect(html).toContain("Ringkasan penjualan");
-    expect(html).toContain("Modal Riil + Estimasi 20%");
-    expect(html).toContain("Nett profit (perkiraan)");
+    expect(html).toContain("Omset − modal");
+    expect(html).toContain("Laba − pengeluaran");
+    expect(html).toContain("estimasi GP 20%");
     expect(html).not.toContain("Profit SLM");
   });
 
