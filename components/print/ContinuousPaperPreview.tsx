@@ -40,7 +40,8 @@ export const DEFAULT_PRINT_SETTINGS: PrintSettings = {
   paddingTop: "0.6cm",
   paddingRight: "0.3cm",
   paddingBottom: "0.2cm",
-  paddingLeft: "1.3cm",
+  // 1,3 cm membuat kolom kanan mepet garis sobek di printer LX-310; 0,8 cm memberi ruang seimbang kiri-kanan.
+  paddingLeft: "0.8cm",
   unitFormat: "short",
   showTearLine: true,
 };
@@ -605,7 +606,7 @@ export function ContinuousPaperPreview({
                     min={0.6}
                     max={2.0}
                     step={0.1}
-                    value={parseFloat(settings.paddingLeft) || 1.3}
+                    value={parseFloat(settings.paddingLeft) || 0.8}
                     onChange={(e) =>
                       updateSetting(
                         "paddingLeft",
