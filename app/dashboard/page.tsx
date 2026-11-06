@@ -210,7 +210,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
           </div>
           {(() => {
             const p = operationalProfit;
-            const gp = p.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 });
             const rows: Array<{ label: string; today: number; month: number; todayId: string; monthId: string; strong?: boolean; sub?: [string, string] }> = [
               { label: "Omset", today: p.todayRevenue, month: p.monthlyRevenue, todayId: "dashboard-kpi-operational-today-revenue", monthId: "dashboard-kpi-operational-month-revenue", sub: [`${p.todaySalesCount} trx`, `${p.monthlySalesCount} trx`] },
               { label: "Gross profit", today: p.todayGrossProfit, month: p.grossProfit, todayId: "dashboard-kpi-operational-today-gross-profit", monthId: "dashboard-kpi-operational-gross-profit", strong: true },
@@ -240,11 +239,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
                     ))}
                   </tbody>
                 </table>
-                <p data-testid="dashboard-profit-notes" className="border-t border-slate-100 px-3 py-2 text-[11px] leading-4 text-slate-500 sm:px-4">
-                  Gross profit = Omset − modal · Nett profit = Gross profit − pengeluaran
-                  {p.monthlyEstimatedSalesCount ? ` · ${p.monthlyEstimatedSalesCount} nota bulan ini memakai estimasi GP ${gp}%` : ""}
-                  {p.hasMjSales ? " · MJ tanpa markup 10%" : ""}
-                </p>
               </div>
             );
           })()}
