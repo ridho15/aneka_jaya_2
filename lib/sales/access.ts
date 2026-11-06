@@ -24,9 +24,9 @@ export function salesRecordScopeForUser(user: CurrentUser): SalesRecordScope | u
 }
 
 export function canViewSalesRecord(user: CurrentUser, sale: Sale): boolean {
-  if (!can(user.role, "penjualan.create") && !can(user.role, "reports.view")) return false;
+  if (!can(user.role, "penjualan.create") && !can(user.role, "reports.view") && !can(user.role, "penjualan.manage")) return false;
   if (sale.source === "MJ") return true;
-  return user.role !== "ADMIN" || sale.createdByUserId === user.id;
+  return true;
 }
 
 export async function listSalesRecordsPageForUser(

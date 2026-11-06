@@ -114,17 +114,17 @@ export default async function SalesInvoicePage({
       ? "Kas Walk In / Tunai"
       : matchedRekening?.bank && matchedRekening.bank !== "Cash"
         ? matchedRekening.bank
-        : "Maybank",
+        : (sale.rekeningNameSnapshot || matchedRekening?.name || "-"),
     accountNumber: isCash
       ? undefined
       : matchedRekening?.accountNumber && matchedRekening.accountNumber !== "-"
         ? matchedRekening.accountNumber
-        : "8167960828",
+        : undefined,
     accountHolder: isCash
       ? undefined
       : matchedRekening?.name && !matchedRekening.name.toLowerCase().includes("kas")
         ? matchedRekening.name
-        : "Tsani Salim",
+        : undefined,
     notes:
       sale.paymentMethod === "Tempo" && sale.dueDate
         ? `Jatuh tempo: ${formatJakartaDate(sale.dueDate)}`

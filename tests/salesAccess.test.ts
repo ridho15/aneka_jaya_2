@@ -45,15 +45,16 @@ describe("sales record access", () => {
     expect(salesRecordScopeForUser({ id: "owner-1", name: "Owner", role: "OWNER" })).toBeUndefined();
   });
 
-  it("allows Admin to view only their own sale and lets Owner view all sales", () => {
+  it("allows Admin and Owner to view sales records for printing and inspection", () => {
     expect(canViewSalesRecord({ id: "admin-1", name: "Admin", role: "ADMIN" }, sale)).toBe(true);
-    expect(canViewSalesRecord({ id: "admin-2", name: "Admin Lain", role: "ADMIN" }, sale)).toBe(false);
+    expect(canViewSalesRecord({ id: "admin-2", name: "Admin Lain", role: "ADMIN" }, sale)).toBe(true);
     expect(canViewSalesRecord({ id: "owner-1", name: "Owner", role: "OWNER" }, sale)).toBe(true);
+    expect(canViewSalesRecord({ id: "viewer-1", name: "Viewer", role: "VIEWER" }, sale)).toBe(false);
   });
 
-  it("returns not-found semantics for another Admin's transaction", async () => {
+  it("allows Admin to access sales records across users for operational printing", async () => {
     mocks.getSalesRecord.mockResolvedValue(sale);
-    await expect(getSalesRecordForUser("S-1", { id: "admin-2", name: "Admin Lain", role: "ADMIN" })).resolves.toBeUndefined();
+    await expect(getSalesRecordForUser("S-1", { id: "admin-2", name: "Admin Lain", role: "ADMIN" })).resolves.toEqual(sale);
   });
 
   it("passes the server-derived Admin scope to pagination", async () => {

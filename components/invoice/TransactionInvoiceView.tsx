@@ -145,7 +145,7 @@ export function TransactionInvoiceView({
     } finally {
       setIsExportingImage(false);
     }
-  }, [customer?.name, id, isExportingImage, isTempoSale, title, transactionNumber, vendor?.name]);
+  }, [customer, id, isExportingImage, isTempoSale, title, transactionNumber, vendor]);
 
   // Export / Print as PDF
   const handlePrintPdf = useCallback(() => {
@@ -506,7 +506,13 @@ export function TransactionInvoiceView({
               </span>
             ) : (
               <span>
-                {payment.method} • {payment.bankName || "Maybank"} • {payment.accountNumber || "8167960828"}
+                {[
+                  payment.method,
+                  payment.bankName && payment.bankName !== "-" ? payment.bankName : undefined,
+                  payment.accountNumber,
+                ]
+                  .filter(Boolean)
+                  .join(" • ")}
                 {payment.accountHolder ? ` a.n. ${payment.accountHolder}` : ""}
               </span>
             )}
