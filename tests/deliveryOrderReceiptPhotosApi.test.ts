@@ -82,7 +82,7 @@ describe("Delivery Order Receipt Photos Store & API", () => {
       expect(mocks.deliveryOrder.update).toHaveBeenCalledWith({
         where: { id: "do-100" },
         data: { receiptPhotoUrl: newPhotos },
-        include: { items: true }
+        include: { items: { orderBy: [{ salesRecordItem: { sortOrder: "asc" } }, { id: "asc" }] } }
       });
       expect(mocks.salesRecord.update).toHaveBeenCalledWith({
         where: { id: "sale-200" },

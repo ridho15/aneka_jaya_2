@@ -5,6 +5,8 @@ import { InventoryError } from "./errors";
 import { applyDelta, formatKoli, hasRealName, qtyFromKoli, round2, splitKoli } from "./math";
 export { hasRealName } from "./math";
 import { applyRmbCost } from "./pricing";
+import { ensureOpeningLayer, productHasLayers, valueMovement } from "./costing";
+import { postInventoryDocumentJournalSafely } from "@/lib/accounting/inventoryPosting";
 import { JAKARTA_TIME_ZONE, jakartaMonthKey } from "@/lib/date/jakarta";
 import { DEFAULT_UNIT } from "./config";
 import type {
@@ -33,6 +35,8 @@ type MovementLine = {
   idempotencyKey?: string;
   notes?: string;
   allowNegative?: boolean;
+  /** Sumber lapisan FIFO bila bukan bawaan tipe pergerakan. */
+  layerSource?: string;
 };
 
 const num = (value: Prisma.Decimal | number | null | undefined) => (value == null ? 0 : Number(value));
@@ -80,8 +84,11 @@ export async function postMovement(tx: Tx, line: MovementLine, actor?: Inventory
       { productId: line.productId, sku: product?.sku, locationId: line.locationId, available: balance.quantity, requested: Math.abs(line.delta) }
     );
   }
+  const valued = line.type !== "TRANSFER_IN" && line.type !== "TRANSFER_OUT";
+  // Lapisan saldo awal dibuat dari stok sebelum pergerakan ini, jadi harus sebelum saldo diperbarui.
+  const hadLayersBefore = valued ? (await ensureOpeningLayer(tx, line.productId)) || (await productHasLayers(tx, line.productId)) : true;
   await tx.inventoryBalance.update({ where: { id: balance.id }, data: { quantity: next.quantity, avgCost: next.avgCost } });
-  return tx.inventoryMovement.create({
+  const movement = await tx.inventoryMovement.create({
     data: {
       movementDate: line.movementDate,
       type: line.type,
@@ -99,6 +106,16 @@ export async function postMovement(tx: Tx, line: MovementLine, actor?: Inventory
       createdByUserId: actor?.id,
       createdByName: actor?.name
     }
+  });
+  if (!valued) return movement;
+  const v = await valueMovement(
+    tx,
+    { id: movement.id, productId: line.productId, type: line.type, quantity: round2(line.delta), movementDate: line.movementDate },
+    { unitCost: line.delta > 0 ? line.unitCost : undefined, layerSource: line.layerSource, hadLayersBefore }
+  );
+  return tx.inventoryMovement.update({
+    where: { id: movement.id },
+    data: { totalCost: v.totalCost, costComplete: v.complete, costNote: v.note, ...(line.delta < 0 ? { unitCost: v.unitCost } : {}) }
   });
 }
 
@@ -631,6 +648,12 @@ export async function listTransfers(query: { status?: "IN_TRANSIT" | "RECEIVED" 
 // ---------------------------------------------------------------------
 
 export async function createOpname(input: OpnameInput, actor?: InventoryActor) {
+  const opname = await createOpnameRecord(input, actor);
+  await postInventoryDocumentJournalSafely("OPNAME", opname.id);
+  return opname;
+}
+
+async function createOpnameRecord(input: OpnameInput, actor?: InventoryActor) {
   return runInventoryTransaction(async (tx) => {
     if (input.idempotencyKey) {
       const existing = await tx.inventoryOpname.findUnique({ where: { idempotencyKey: input.idempotencyKey }, include: { items: true } });
@@ -686,6 +709,12 @@ export async function listOpnames(query: { locationId?: string; page?: number; p
 // ---------------------------------------------------------------------
 
 export async function createAdjustment(input: AdjustmentInput, actor?: InventoryActor) {
+  const adjustment = await createAdjustmentRecord(input, actor);
+  await postInventoryDocumentJournalSafely("ADJUSTMENT", adjustment.id);
+  return adjustment;
+}
+
+async function createAdjustmentRecord(input: AdjustmentInput, actor?: InventoryActor) {
   return runInventoryTransaction(async (tx) => {
     if (input.idempotencyKey) {
       const existing = await tx.inventoryAdjustment.findUnique({ where: { idempotencyKey: input.idempotencyKey }, include: { items: true } });
@@ -736,10 +765,12 @@ export async function listAdjustments(query: { locationId?: string; page?: numbe
 // ---------------------------------------------------------------------
 
 export async function createStockIn(input: StockInInput, actor?: InventoryActor) {
-  return runInventoryTransaction(async (tx) => {
+  const result = await runInventoryTransaction(async (tx) => {
     const location = await requireLocation(tx, input.locationId);
     const date = parseDate(input.movementDate);
     const referenceNumber = input.referenceNumber || `IN-${date.toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString(36).toUpperCase()}`;
+    // Identitas dokumen untuk jurnal; sama untuk permintaan ulang dengan idempotencyKey yang sama.
+    const documentId = input.idempotencyKey ? `key:${input.idempotencyKey}` : crypto.randomUUID();
     const movements = [];
     for (let i = 0, list = input.items; i < list.length; i++) {
       const item = list[i];
@@ -748,12 +779,14 @@ export async function createStockIn(input: StockInInput, actor?: InventoryActor)
       if (!(quantity > 0)) throw new InventoryError("VALIDATION", `Qty masuk ${product.sku} harus lebih dari 0.`);
       movements.push(await postMovement(tx, {
         productId: product.id, locationId: location.id, delta: quantity, unitCost: item.unitCost ?? num(product.costPrice),
-        type: "PURCHASE_RECEIPT", movementDate: date, referenceType: "STOCK_IN", referenceNumber,
+        type: "PURCHASE_RECEIPT", movementDate: date, referenceType: "STOCK_IN", referenceId: documentId, referenceNumber,
         idempotencyKey: input.idempotencyKey ? `stock-in:${input.idempotencyKey}:${i}` : undefined, notes: item.notes || input.notes
       }, actor));
     }
-    return { referenceNumber, locationId: location.id, movements: movements.map((m) => ({ id: m.id, productId: m.productId, quantity: num(m.quantity), balanceAfter: num(m.balanceAfter) })) };
+    return { referenceNumber, documentId: movements[0]?.referenceId ?? documentId, locationId: location.id, movements: movements.map((m) => ({ id: m.id, productId: m.productId, quantity: num(m.quantity), balanceAfter: num(m.balanceAfter) })) };
   });
+  await postInventoryDocumentJournalSafely("STOCK_IN", result.documentId);
+  return result;
 }
 
 /** Posting penerimaan barang pembelian (GRN) ke lokasi inventory. Aman diulang (idempotent). */
@@ -927,7 +960,7 @@ export async function listPendingPurchaseReceipts(limit = 50) {
 }
 
 /** Retur penjualan: barang kembali ke lokasi stok asal penjualan. Aman diulang. */
-export async function returnSaleStockLocal(input: { returnId: string; returnNumber: string; returnDate: string; items: (SaleStockItem & { lineId: string })[] }, actor?: InventoryActor) {
+export async function returnSaleStockLocal(input: { returnId: string; returnNumber: string; returnDate: string; items: (SaleStockItem & { lineId: string; unitCost?: number })[] }, actor?: InventoryActor) {
   return runInventoryTransaction(async (tx) => {
     const date = parseDate(input.returnDate);
     const lines = [];
@@ -935,12 +968,12 @@ export async function returnSaleStockLocal(input: { returnId: string; returnNumb
       if (!(item.quantity > 0)) continue;
       const product = await resolveSaleProduct(tx, item);
       const location = await resolveSaleLocation(tx, item.warehouseId);
-      lines.push({ lineId: item.lineId, productId: product.id, locationId: location.id, quantity: item.quantity });
+      lines.push({ lineId: item.lineId, productId: product.id, locationId: location.id, quantity: item.quantity, unitCost: item.unitCost });
     }
     lines.sort((a, b) => `${a.productId}:${a.locationId}`.localeCompare(`${b.productId}:${b.locationId}`));
     for (const line of lines) {
       await postMovement(tx, {
-        productId: line.productId, locationId: line.locationId, delta: Math.abs(line.quantity), type: "SALE_RETURN", movementDate: date,
+        productId: line.productId, locationId: line.locationId, delta: Math.abs(line.quantity), type: "SALE_RETURN", movementDate: date, unitCost: line.unitCost,
         referenceType: "SALES_RETURN", referenceId: input.returnId, referenceNumber: input.returnNumber,
         idempotencyKey: `sales-return:${input.returnId}:${line.lineId}`, notes: `Retur penjualan ${input.returnNumber}`
       }, actor);

@@ -997,6 +997,10 @@ async function updatePrismaSalesRecord(
     await syncDeliveryOrderForSale(id, undefined, { previousShipped }).catch((err) => {
       console.error("[DO] Failed to sync delivery order on sales update:", err);
     });
+    // Stok lama dibatalkan dan dilepas ulang saat edit, jadi HPP dihitung ulang dari pergerakan yang baru.
+    await postSalesCogsJournal(id).catch((err) => {
+      console.error("[JOURNAL] Failed to re-post sales COGS journal on update:", err);
+    });
   }
   return toSale(row);
 }

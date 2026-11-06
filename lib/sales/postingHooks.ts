@@ -6,6 +6,7 @@ import { getAccountByCode, ensureStandardAccounts } from "@/lib/accounting/accou
 import { assertPeriodOpen } from "@/lib/accounting/periodStore";
 import type { Role } from "@/lib/auth/roles";
 import { parsePaymentSplits } from "@/lib/sales/payments";
+import { reverseStaleCogsJournal, saleStockCost } from "@/lib/accounting/inventoryPosting";
 
 export interface SalesPostingActor {
   id: string;
@@ -351,47 +352,54 @@ export async function postSalesCogsJournal(
   const inventoryAccount = await getAccountByCode("1-1005");
   if (!inventoryAccount) throw new Error("Akun Persediaan Barang Dagang (1-1005) tidak ditemukan.");
 
-  // Hitung modal riil per item
+  // HPP dari biaya FIFO barang yang benar-benar keluar dari stok SLM. Bila penjualan tidak memotong stok SLM
+  // (mis. ERP / barang manual tanpa master), pakai modal yang tercatat; tanpa modal, HPP ditandai belum lengkap.
   let totalCogs = 0;
-  for (const item of sale.items) {
-    const qty = Number(item.quantity) || 0;
-    if (qty <= 0) continue;
+  const incompleteNotes: string[] = [];
+  const stockCost = await saleStockCost(sale.stockReleaseReference);
+  if (stockCost) {
+    totalCogs = Math.round(stockCost.total);
+    incompleteNotes.push(...stockCost.notes);
+  } else {
+    for (const item of sale.items) {
+      const qty = Number(item.quantity) || 0;
+      if (qty <= 0) continue;
 
-    let unitCost = 0;
+      let unitCost = 0;
+      const manualData = item.manualProduct as Record<string, unknown> | null;
+      const manualCost = Number(manualData?.costPrice);
+      if (Number.isFinite(manualCost) && manualCost > MINIMUM_REAL_COST_THRESHOLD) unitCost = manualCost;
 
-    // Prioritas 1: Input manual barang (jika > Rp 1.000)
-    const manualData = item.manualProduct as Record<string, unknown> | null;
-    const manualCost = Number(manualData?.costPrice);
-    if (Number.isFinite(manualCost) && manualCost > MINIMUM_REAL_COST_THRESHOLD) {
-      unitCost = manualCost;
-    }
-
-    // Prioritas 2: Harga modal master barang inventory SLM (ikut kurs RMB terbaru)
-    if (unitCost <= 0) {
-      const inventoryCost = await inventoryCostFor(item);
-      if (inventoryCost > MINIMUM_REAL_COST_THRESHOLD) unitCost = inventoryCost;
-    }
-
-    // Prioritas 3: Cari harga beli / HPP dari item penerimaan barang pembelian (PO / GRN / Invoice)
-    if (unitCost <= 0 && item.productRef) {
-      const latestPurchaseItem = await prisma.purchaseOrderItem.findFirst({
-        where: { itemCode: item.productRef },
-        orderBy: { purchaseOrder: { orderDate: "desc" } },
-        select: { unitPriceIdr: true }
-      });
-      if (latestPurchaseItem && Number(latestPurchaseItem.unitPriceIdr) > MINIMUM_REAL_COST_THRESHOLD) {
-        unitCost = Number(latestPurchaseItem.unitPriceIdr);
+      if (unitCost <= 0) {
+        const inventoryCost = await inventoryCostFor(item);
+        if (inventoryCost > MINIMUM_REAL_COST_THRESHOLD) unitCost = inventoryCost;
       }
-    }
 
-    // Fallback: Jika belum ada modal riil, gunakan estimasi berbasis harga jual (margin 15%)
-    if (unitCost <= 0) {
-      const sellPrice = Number(item.unitPrice) || 0;
-      unitCost = Math.round(sellPrice * 0.85); // 85% HPP fallback
-    }
+      if (unitCost <= 0 && item.productRef) {
+        const latestPurchaseItem = await prisma.purchaseOrderItem.findFirst({
+          where: { itemCode: item.productRef },
+          orderBy: { purchaseOrder: { orderDate: "desc" } },
+          select: { unitPriceIdr: true }
+        });
+        if (latestPurchaseItem && Number(latestPurchaseItem.unitPriceIdr) > MINIMUM_REAL_COST_THRESHOLD) {
+          unitCost = Number(latestPurchaseItem.unitPriceIdr);
+        }
+      }
 
-    totalCogs += Math.round(qty * unitCost);
+      if (unitCost <= 0) {
+        incompleteNotes.push(`${item.productRef}: modal belum diketahui`);
+        continue;
+      }
+      totalCogs += Math.round(qty * unitCost);
+    }
   }
+
+  const cogsStatus = incompleteNotes.length ? "INCOMPLETE" : "COMPLETE";
+  const cogsNote = incompleteNotes.length ? incompleteNotes.join("; ").slice(0, 1000) : null;
+  await prisma.salesRecord.update({ where: { id: sale.id }, data: { cogsStatus, cogsNote } }).catch(() => undefined);
+
+  const cogsSourceId = sale.stockReleaseReference && stockCost ? sale.stockReleaseReference : sale.id;
+  await reverseStaleCogsJournal(sale.cogsJournalEntryId, cogsSourceId, effectiveActor);
 
   if (totalCogs <= 0) return null;
 
@@ -418,11 +426,11 @@ export async function postSalesCogsJournal(
     {
       entryDate: sale.saleDate,
       sourceType: "SALES",
-      sourceId: sale.id,
+      sourceId: cogsSourceId,
       postingType: "COGS",
       tipeId: sale.tipeId,
       tipeCodeSnapshot: sale.tipeCodeSnapshot,
-      description: `HPP & Pengurangan Persediaan: ${sale.transactionNumber || sale.id} (${sale.customerName})`,
+      description: `HPP & Pengurangan Persediaan: ${sale.transactionNumber || sale.id} (${sale.customerName})${cogsNote ? " · HPP belum lengkap" : ""}`,
       lines
     },
     effectiveActor

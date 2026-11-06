@@ -11,6 +11,7 @@ import { jakartaDateKey } from "@/lib/date/jakarta";
 import { applySalesReturnToTempo } from "@/lib/tempo/store";
 import { isLocalInventory } from "@/lib/inventory/config";
 import { returnSaleStockLocal } from "@/lib/inventory/service";
+import { saleUnitCost } from "@/lib/accounting/inventoryPosting";
 
 export interface ReturnActor {
   id: string;
@@ -61,10 +62,17 @@ export async function createSalesReturn(input: SalesReturnInput, actor: ReturnAc
   let subtotalAmount = 0;
   let totalCostPrice = 0;
 
-  const itemsData = input.items.map((item) => {
+  // Modal retur bawaan = modal FIFO saat barang itu dijual, supaya persediaan & HPP kembali dengan nilai yang sama.
+  const saleCosts = await Promise.all(input.items.map(async (item) => {
+    if (Number(item.unitCostPrice) > 0) return Number(item.unitCostPrice);
+    const origin = sale.items.find((s) => s.id === item.salesRecordItemId) ?? sale.items.find((s) => s.productRef === item.productRef);
+    return (await saleUnitCost(sale.stockReleaseReference, { productId: origin?.productId, sku: item.productRef }).catch(() => null)) ?? 0;
+  }));
+
+  const itemsData = input.items.map((item, index) => {
     const qty = Number(item.quantity);
     const unitPrice = Number(item.unitPrice);
-    const unitCost = Number(item.unitCostPrice) || 0;
+    const unitCost = saleCosts[index];
 
     const totalAmount = Math.round(qty * unitPrice);
     const totalCost = Math.round(qty * unitCost);
@@ -234,7 +242,7 @@ export async function postSalesReturn(returnId: string, actor: ReturnActor) {
       returnDate: returnRecord.returnDate.toISOString(),
       items: returnRecord.items.map((item) => {
         const origin = saleItems.find((s) => s.id === item.salesRecordItemId) ?? saleItems.find((s) => s.productRef === item.productRef);
-        return { lineId: item.id, productId: origin?.productId ?? undefined, productRef: item.productRef, warehouseId: origin?.warehouseId ?? undefined, quantity: Number(item.quantity) };
+        return { lineId: item.id, productId: origin?.productId ?? undefined, productRef: item.productRef, warehouseId: origin?.warehouseId ?? undefined, quantity: Number(item.quantity), unitCost: Number(item.unitCostPrice) || undefined };
       })
     }, { id: actor.id, name: actor.name });
   }

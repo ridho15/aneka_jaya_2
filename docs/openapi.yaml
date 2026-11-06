@@ -928,6 +928,40 @@ paths:
       security: [{ localSessionCookie: [] }, { mjBearer: [] }]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [rate], properties: { rate: { type: number, example: 2750 } } } } } }
       responses: { "200": { description: "{ rate, previousRate, updatedProducts }" }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/inventory/settings/cbm-rate:
+    get:
+      tags: [Inventory]
+      summary: Tarif ongkir per CBM (Rp) untuk harga modal barang impor.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      responses: { "200": { description: "{ rate, updatedAt, updatedBy }" } }
+    put:
+      tags: [Inventory]
+      summary: Ganti tarif CBM global; modal barang berharga RMB tanpa tarif khusus dihitung ulang.
+      description: Permission inventory.master. Modal = priceRmb × kurs + cbmPerUnit × tarif CBM + extraCostIdr. Harga jual dan nilai stok tercatat tidak berubah.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [rate], properties: { rate: { type: number, example: 4500000 } } } } } }
+      responses: { "200": { description: "{ rate, previousRate, updatedProducts }" }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/inventory/import-shipment:
+    post:
+      tags: [Inventory]
+      summary: Import packing list supplier ke Master Barang (pratinjau atau simpan).
+      description: Permission inventory.master. multipart/form-data. mode=preview (bawaan) mengembalikan baris file, petunjuk Master Barang, terjemahan nama, kurs RMB dan tarif CBM. mode=save membuat/memperbarui barang dan, bila addStock=true, mencatat Barang Masuk (Dr Persediaan, Cr Utang Barang Diterima Belum Dibayar). File yang sama tidak menambah stok dua kali.
+      security: [{ localSessionCookie: [] }, { mjBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                mode: { type: string, enum: [preview, save], default: preview }
+                overrides: { type: string, description: "JSON per SKU: { [sku]: { pcsPerUnit?, name? } }" }
+                addStock: { type: boolean, default: false }
+                locationId: { type: string }
+                movementDate: { type: string, format: date }
+      responses: { "200": { description: Pratinjau atau ringkasan simpan. }, "400": { $ref: "#/components/responses/BadRequest" } }
   /api/inventory/purchase-receipts/{id}/post:
     post:
       tags: [Inventory]
