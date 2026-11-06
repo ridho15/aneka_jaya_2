@@ -1,4 +1,5 @@
 import "server-only";
+import { LEDGER_JOURNAL_STATUS } from "@/lib/accounting/ledgerStatus";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { getAccountById, listAccounts } from "@/lib/accounting/accountStore";
@@ -66,7 +67,7 @@ export async function getGeneralLedger(
 
   // 1. Hitung Saldo Awal (Mutasi sebelum startDate pada jurnal berstatus POSTED)
   const priorJournalWhere: Prisma.JournalEntryWhereInput = {
-    status: "POSTED",
+    status: LEDGER_JOURNAL_STATUS,
     entryDate: { lt: startDate }
   };
   if (filters.tipeId) {
@@ -92,7 +93,7 @@ export async function getGeneralLedger(
 
   // 2. Ambil Mutasi Dalam Periode
   const periodJournalWhere: Prisma.JournalEntryWhereInput = {
-    status: "POSTED",
+    status: LEDGER_JOURNAL_STATUS,
     entryDate: {
       gte: startDate,
       lte: endDate
@@ -226,13 +227,13 @@ export async function getTrialBalance(
 
   // Ambil seluruh journal line berstatus POSTED
   const priorJournalWhere: Prisma.JournalEntryWhereInput = {
-    status: "POSTED",
+    status: LEDGER_JOURNAL_STATUS,
     entryDate: { lt: startDate },
     ...(filters.tipeId ? { tipeId: filters.tipeId } : {})
   };
 
   const periodJournalWhere: Prisma.JournalEntryWhereInput = {
-    status: "POSTED",
+    status: LEDGER_JOURNAL_STATUS,
     entryDate: { gte: startDate, lte: endDate },
     ...(filters.tipeId ? { tipeId: filters.tipeId } : {})
   };

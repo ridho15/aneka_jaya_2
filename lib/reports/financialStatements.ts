@@ -1,4 +1,5 @@
 import "server-only";
+import { LEDGER_JOURNAL_STATUS } from "@/lib/accounting/ledgerStatus";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { listAccounts } from "@/lib/accounting/accountStore";
@@ -105,7 +106,7 @@ export async function getIncomeStatement(filters: {
   endDate.setHours(23, 59, 59, 999);
 
   const journalWhere: Prisma.JournalEntryWhereInput = {
-    status: "POSTED",
+    status: LEDGER_JOURNAL_STATUS,
     entryDate: { gte: startDate, lte: endDate },
     ...(filters.tipeId ? { tipeId: filters.tipeId } : {})
   };
@@ -292,7 +293,7 @@ export async function getBalanceSheet(filters: {
 
   // Ambil seluruh jurnal berstatus POSTED hingga asOfDate
   const journalWhere: Prisma.JournalEntryWhereInput = {
-    status: "POSTED",
+    status: LEDGER_JOURNAL_STATUS,
     entryDate: { lte: asOfDate },
     ...(filters.tipeId ? { tipeId: filters.tipeId } : {})
   };
