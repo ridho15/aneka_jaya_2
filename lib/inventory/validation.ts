@@ -34,6 +34,12 @@ export const productSchema = z.object({
   /** Harga beli RMB per satuan; modal dihitung otomatis dari kurs RMB. */
   priceRmb: z.coerce.number().min(0).optional().nullable(),
   extraCostIdr: z.coerce.number().min(0).optional(),
+  /** Isi pcs per satuan (12 lusin, 10/20/24 pack). */
+  pcsPerUnit: z.coerce.number().int().positive().optional().nullable(),
+  /** CBM per satuan; ongkir per satuan = cbmPerUnit × tarif CBM. */
+  cbmPerUnit: z.coerce.number().min(0).optional().nullable(),
+  /** Tarif CBM khusus barang ini (Rp/CBM); kosong = tarif global. */
+  cbmRateIdr: z.coerce.number().min(0).optional().nullable(),
   sellingPrice: z.coerce.number().min(0).default(0),
   erpProductId: z.coerce.number().int().positive().optional().nullable(),
   isActive: z.boolean().default(true),

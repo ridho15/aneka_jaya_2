@@ -1312,6 +1312,12 @@ model InventoryProduct {
   priceRmb     Decimal? @db.Decimal(18, 4)
   /// Biaya tambahan per satuan (Rp): ongkir/CBM, bea, dll.
   extraCostIdr Decimal  @default(0) @db.Decimal(18, 2)
+  /// Isi pcs per satuan (12 = lusin, 10/20/24 = pack), dipakai import packing list supplier.
+  pcsPerUnit   Int?
+  /// Volume pengiriman per satuan (CBM). Ongkir per satuan = cbmPerUnit × tarif CBM.
+  cbmPerUnit   Decimal? @db.Decimal(18, 6)
+  /// Tarif CBM khusus barang ini (Rp per CBM); kosong = tarif CBM global.
+  cbmRateIdr   Decimal? @db.Decimal(18, 2)
   sellingPrice Decimal  @default(0) @db.Decimal(18, 2)
   erpProductId Int?     @unique
   /// Foto barang (path /uploads/products/...), diunggah dari Master Barang / Stok.

@@ -264,13 +264,20 @@ export async function createProduct(input: ProductInput, actor?: InventoryActor)
 export async function updateProduct(idOrSku: string, input: Partial<Omit<ProductInput, "initialStock">>) {
   const product = await prisma.inventoryProduct.findFirst({ where: { OR: [{ id: idOrSku }, { sku: idOrSku }] } });
   if (!product) throw new InventoryError("NOT_FOUND", "Produk tidak ditemukan.", 404);
-  const data = await applyRmbCost(input, { priceRmb: product.priceRmb == null ? null : num(product.priceRmb), extraCostIdr: num(product.extraCostIdr) });
+  const data = await applyRmbCost(input, {
+    priceRmb: product.priceRmb == null ? null : num(product.priceRmb),
+    extraCostIdr: num(product.extraCostIdr),
+    cbmPerUnit: product.cbmPerUnit == null ? null : num(product.cbmPerUnit),
+    cbmRateIdr: product.cbmRateIdr == null ? null : num(product.cbmRateIdr)
+  });
   return serializeProduct(await prisma.inventoryProduct.update({ where: { id: product.id }, data }));
 }
 
-function serializeProduct<T extends { minimumStock: Prisma.Decimal; costPrice: Prisma.Decimal; sellingPrice: Prisma.Decimal; unitsPerKoli: Prisma.Decimal | null; priceRmb: Prisma.Decimal | null; extraCostIdr: Prisma.Decimal }>(p: T) {
+function serializeProduct<T extends { minimumStock: Prisma.Decimal; costPrice: Prisma.Decimal; sellingPrice: Prisma.Decimal; unitsPerKoli: Prisma.Decimal | null; priceRmb: Prisma.Decimal | null; extraCostIdr: Prisma.Decimal; cbmPerUnit?: Prisma.Decimal | null; cbmRateIdr?: Prisma.Decimal | null }>(p: T) {
   return {
     ...p,
+    cbmPerUnit: p.cbmPerUnit == null ? null : num(p.cbmPerUnit),
+    cbmRateIdr: p.cbmRateIdr == null ? null : num(p.cbmRateIdr),
     minimumStock: num(p.minimumStock),
     costPrice: num(p.costPrice),
     sellingPrice: num(p.sellingPrice),

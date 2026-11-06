@@ -20,7 +20,7 @@ const BEARER_PERMISSIONS: Permission[] = [
 ];
 
 /** Field harga modal yang hanya boleh dilihat role yang mengurus modal/barang masuk. */
-const COST_FIELDS = new Set(["costPrice", "priceRmb", "extraCostIdr", "avgCost", "stockValue", "unitCost", "totalValue"]);
+const COST_FIELDS = new Set(["costPrice", "priceRmb", "extraCostIdr", "cbmPerUnit", "cbmRateIdr", "avgCost", "stockValue", "unitCost", "totalValue"]);
 
 function withoutCost(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(withoutCost);
