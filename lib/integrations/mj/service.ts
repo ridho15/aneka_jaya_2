@@ -354,13 +354,21 @@ async function ensureMjSalesJournals(row: InvoiceRow) {
   return (await prisma.salesRecord.findUnique({ where: { id: row.id }, include: includeInvoice })) ?? row;
 }
 
-/** Retries journals that failed earlier (e.g. closed period). Limited to invoices with a failed journal attempt, so older invoices are never backfilled by accident. */
+/**
+ * Retries journals that never got posted (closed period, or the request died after the invoice was saved).
+ * Only invoices created since the first MJ journal were posted are considered, so older invoices are never backfilled by accident.
+ */
 export async function retryFailedMjJournals(limit = 25) {
+  const firstPosted = await prisma.salesRecord.findFirst({
+    where: { source: "MJ", integrationProcessingMode: "record_only", journalEntryId: { not: null } },
+    orderBy: { createdAt: "asc" },
+    select: { createdAt: true }
+  });
   const rows = await prisma.salesRecord.findMany({
     where: {
       source: "MJ", integrationProcessingMode: "record_only", approvalStatus: "approved",
       OR: [{ journalEntryId: null }, { cogsStatus: null }],
-      integrationAttempts: { some: { stage: "journal", status: "failed" } }
+      ...(firstPosted ? { createdAt: { gte: firstPosted.createdAt } } : { integrationAttempts: { some: { stage: "journal", status: "failed" } } })
     },
     include: includeInvoice, take: limit, orderBy: { createdAt: "asc" }
   });

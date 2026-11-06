@@ -4,7 +4,7 @@ import { immutablePayloadHash } from "@/lib/integrations/mj/hash";
 vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({
-  salesFind: vi.fn(), salesFindMany: vi.fn(), salesCreate: vi.fn(), salesUpdate: vi.fn(), salesUpdateMany: vi.fn(),
+  salesFind: vi.fn(), salesFindMany: vi.fn(), salesFindFirst: vi.fn(), salesCreate: vi.fn(), salesUpdate: vi.fn(), salesUpdateMany: vi.fn(),
   tipeFind: vi.fn(), rekeningFind: vi.fn(), attemptCount: vi.fn(), attemptCreate: vi.fn(),
   tempoReceivableFind: vi.fn(), tempoReceivableUpdate: vi.fn(), tempoReceivableUpdateMany: vi.fn(), tempoPaymentFind: vi.fn(), tempoPaymentCreate: vi.fn(), tempoPaymentUpdate: vi.fn(),
   tempoPaymentReversalUpsert: vi.fn(), auditLogCreate: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock("@/lib/db/prisma", () => {
     integrationStageAttempt: { create: mocks.attemptCreate, count: mocks.attemptCount }
   };
   return { prisma: {
-    salesRecord: { findUnique: mocks.salesFind, findMany: mocks.salesFindMany, update: mocks.salesUpdate, updateMany: mocks.salesUpdateMany },
+    salesRecord: { findUnique: mocks.salesFind, findFirst: mocks.salesFindFirst, findMany: mocks.salesFindMany, update: mocks.salesUpdate, updateMany: mocks.salesUpdateMany },
     bookkeepingType: { findFirst: mocks.tipeFind }, rekeningAccount: { findFirst: mocks.rekeningFind },
     integrationStageAttempt: { count: mocks.attemptCount, create: mocks.attemptCreate, update: vi.fn() },
     tempoReceivable: { findUnique: mocks.tempoReceivableFind, update: mocks.tempoReceivableUpdate, updateMany: mocks.tempoReceivableUpdateMany },
@@ -88,6 +88,7 @@ describe("MJ processing mode orchestration", () => {
     mocks.postCogsJournal.mockResolvedValue({ id: "j-2" });
     mocks.reverseJournals.mockResolvedValue({ invoiceReversed: true, cogsReversed: true });
     mocks.journalFind.mockResolvedValue(null);
+    mocks.salesFindFirst.mockResolvedValue({ createdAt: new Date("2026-11-06T00:00:00Z") });
     mocks.tempoReceivableFind.mockResolvedValue(null);
     mocks.tempoPaymentFind.mockResolvedValue(null);
     mocks.tempoPaymentFindMany.mockResolvedValue([]);
@@ -377,7 +378,7 @@ describe("MJ processing mode orchestration", () => {
       expect(stages).toContain("journal_reverse");
     });
 
-    it("retry job only picks invoices with a failed journal attempt and reposts them", async () => {
+    it("retry job only picks invoices created since the first posted journal and reposts them", async () => {
       const failed = row("record_only", { journalEntryId: null, cogsStatus: null });
       mocks.salesFindMany.mockResolvedValueOnce([failed]);
       mocks.salesFind.mockResolvedValue(row("record_only", { journalEntryId: "j-1", cogsStatus: "COMPLETE" }));
@@ -385,7 +386,8 @@ describe("MJ processing mode orchestration", () => {
       await expect(retryFailedMjJournals()).resolves.toEqual({ attempted: 1, succeeded: 1, failed: 0 });
 
       const where = mocks.salesFindMany.mock.calls[0][0].where;
-      expect(where).toMatchObject({ source: "MJ", integrationProcessingMode: "record_only", integrationAttempts: { some: { stage: "journal", status: "failed" } } });
+      // Boundary: nothing older than the first posted MJ journal is ever picked up.
+      expect(where).toMatchObject({ source: "MJ", integrationProcessingMode: "record_only", createdAt: { gte: new Date("2026-11-06T00:00:00Z") } });
       expect(mocks.postInvoiceJournal).toHaveBeenCalledWith("sale-1");
     });
 
@@ -464,5 +466,12 @@ describe("MJ processing mode orchestration", () => {
       await cancelMjInvoice(row("record_only"), "Dibatalkan MJ", principal);
       expect(mocks.reverseJournals).not.toHaveBeenCalled();
     });
+  });
+
+  it("without any posted MJ journal yet, retry only considers invoices with a failed journal attempt", async () => {
+    mocks.salesFindFirst.mockResolvedValueOnce(null);
+    mocks.salesFindMany.mockResolvedValueOnce([]);
+    await retryFailedMjJournals();
+    expect(mocks.salesFindMany.mock.calls.at(-1)?.[0].where).toMatchObject({ integrationAttempts: { some: { stage: "journal", status: "failed" } } });
   });
 });

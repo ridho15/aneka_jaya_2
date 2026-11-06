@@ -19,6 +19,7 @@ export class MjIntegrationError extends Error {
 }
 
 export function mjErrorResponse(error: unknown) {
+  if (!(error instanceof MjIntegrationError)) console.error("[mj-integration] unexpected error", error);
   const value = error instanceof MjIntegrationError
     ? error
     : new MjIntegrationError("INTERNAL_ERROR", "Terjadi kesalahan internal.", 500);
