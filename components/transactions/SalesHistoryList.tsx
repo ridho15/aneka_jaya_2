@@ -92,6 +92,12 @@ function saleDateShort(sale: Sale) {
   return sale.transactionAt ? `${shortDate.format(date)} ${shortTime.format(date)}` : shortDate.format(date);
 }
 
+/** Jam saja (tanggal sudah ada di judul hari), untuk kartu HP. */
+function saleTimeLabel(sale: Sale) {
+  if (!sale.transactionAt) return sale.saleDate;
+  return new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit" }).format(new Date(sale.transactionAt));
+}
+
 function saleDateLabel(sale: Sale) {
   return sale.transactionAt
     ? formatJakartaDateTime(sale.transactionAt)
@@ -208,12 +214,12 @@ export function DeliveryStatusBadge({ status }: { status?: string }) {
   );
 }
 
-export function DeliveryOrderBadges({ sale }: { sale: Sale }) {
+export function DeliveryOrderBadges({ sale, wrap = false }: { sale: Sale; wrap?: boolean }) {
   const { label, className } = unifiedDeliveryStatus(sale);
   const printOfficer = (sale.printedBy || "").trim();
 
   return (
-    <div data-testid="do-badges-container" className="mb-1 flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
+    <div data-testid="do-badges-container" className={wrap ? "contents" : "mb-1 flex items-center gap-1.5 flex-nowrap whitespace-nowrap"}>
       <span
         data-testid="do-status-badge"
         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold border shadow-xs ${className}`}
@@ -421,141 +427,65 @@ export function SalesHistoryList({
             )}
             <article
               key={sale.id}
-              className={`rounded-lg p-4 shadow-sm transition-all ${isMj ? "border-2 border-amber-300 bg-amber-50/60 ring-1 ring-amber-200" : "border border-slate-200 bg-white"}`}
+              className={`rounded-lg px-3 py-2.5 shadow-sm ${isMj ? "border-2 border-amber-300 bg-amber-50/60" : "border border-slate-200 bg-white"}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <DeliveryOrderBadges sale={sale} />
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate font-semibold text-slate-900">
-                      {sale.customerName}
-                    </p>
-                    {isMj && (
-                      <span className="inline-flex items-center rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                        MJ
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {saleDateLabel(sale)} •{" "}
-                    {sale.tipeCodeSnapshot || sale.tipeId || "W"} •{" "}
-                    {paymentLabel(sale)}
+                  <p className="flex items-center gap-1.5 font-semibold text-slate-900">
+                    <span className="truncate">{sale.customerName}</span>
+                    {isMj && <span className="shrink-0 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {saleTimeLabel(sale)} · {sale.tipeCodeSnapshot || sale.tipeId || "W"} · {paymentLabel(sale)}
                   </p>
                 </div>
-                <p className="shrink-0 text-right font-bold text-slate-900">
-                  {rupiah(sale.total)}
-                </p>
+                <p className="shrink-0 text-right font-bold text-slate-900">{rupiah(sale.total)}</p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {sale.source === "MJ" && (
-                  <Badge
-                    value={`MJ · ${sale.integrationProcessingMode || "slm_process_aj"}`}
-                    tone="amber"
-                  />
+              {/* Status: hanya yang perlu perhatian; yang normal (disetujui, stok terpotong) tidak ditampilkan. */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                <DeliveryOrderBadges sale={sale} wrap />
+                {sale.approvalStatus && sale.approvalStatus !== "approved" && (
+                  <Badge value={approvalLabel(sale.approvalStatus)} tone={statusTone(sale.approvalStatus)} />
                 )}
-                {sale.isPrinted ? (
-                  <Badge
-                    value={`Tercetak${sale.printCount && sale.printCount > 1 ? ` (${sale.printCount}x)` : ""}`}
-                    tone="green"
-                  />
-                ) : sale.source === "MJ" ? (
-                  <Badge value="Belum Cetak" tone="slate" />
-                ) : null}
-                <Badge
-                  value={approvalLabel(sale.approvalStatus)}
-                  tone={statusTone(sale.approvalStatus || "approved")}
-                />
-                {stockReleaseBadge(sale)}
-                {sale.doPackingStatus === "sudah" ? (
-                  <Badge value="Packing: Sudah" tone="green" />
-                ) : (
-                  <Badge value="Packing: Belum" tone="slate" />
-                )}
+                {sale.stockReleaseStatus !== "released" && sale.stockReleaseStatus !== "already_released" && stockReleaseBadge(sale)}
+                {!sale.isPrinted && sale.source === "MJ" && <Badge value="Belum Cetak" tone="slate" />}
               </div>
-              <dl className="mt-3 grid gap-2 text-sm text-slate-600">
-                {canViewTransactionNumber && (
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      No Transaksi
-                    </dt>
-                    <dd className="mt-0.5 font-mono text-xs">
-                      {sale.transactionNumber || sale.id}
-                    </dd>
-                  </div>
-                )}
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Status Packing DO
-                  </dt>
-                  <dd className="mt-0.5 font-medium">
-                    {sale.doPackingStatus === "sudah" ? (
-                      <span className="text-emerald-700 font-bold flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Sudah Selesai</span>
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 font-normal">— Belum Selesai</span>
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Lokasi
-                  </dt>
-                  <dd className="mt-0.5">{sale.customerLocation || "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Pembuat
-                  </dt>
-                  <dd className="mt-0.5">
-                    {sale.createdByNameSnapshot || "—"}
-                  </dd>
-                </div>
-              </dl>
-              <div className="mt-4">
-                <ExpandButton
-                  sale={sale}
-                  expanded={expanded}
-                  onToggle={() => toggle(sale.id)}
-                />
-              </div>
-              {expanded && <SalesItemsDetail sale={sale} className="mt-3" productNames={productNames} />}
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Link
-                  className="rounded-md bg-emerald-600 px-2.5 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700 shadow-xs"
-                  href={`/penjualan/${sale.id}`}
+              <p className="mt-1 truncate text-[11px] text-slate-500">
+                {[canViewTransactionNumber ? sale.transactionNumber || sale.id : null, sale.customerLocation, sale.createdByNameSnapshot && `oleh ${sale.createdByNameSnapshot}`].filter(Boolean).join(" · ")}
+              </p>
+              {expanded && <SalesItemsDetail sale={sale} className="mt-2" productNames={productNames} />}
+              <div className="mt-2 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-label={`${expanded ? "Tutup" : "Lihat"} item transaksi ${sale.customerName}`}
+                  onClick={() => toggle(sale.id)}
+                  className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-700"
                 >
+                  {expanded ? "Tutup" : `${sale.items.length} item`}
+                  <span aria-hidden="true" className={`transition-transform ${expanded ? "rotate-180" : ""}`}>⌄</span>
+                </button>
+                <Link className="grid h-9 min-w-0 flex-1 place-items-center rounded-md bg-emerald-600 text-xs font-semibold text-white" href={`/penjualan/${sale.id}`}>
                   Detail
                 </Link>
-                <Link
-                  className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-center text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-xs"
-                  href={`/print/sales/${sale.id}/continuous`}
-                >
+                <Link className="grid h-9 min-w-0 flex-1 place-items-center rounded-md border border-emerald-300 bg-emerald-50 text-xs font-bold text-emerald-800" href={`/print/sales/${sale.id}/continuous`}>
                   Cetak
                 </Link>
-                {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
-                  <Link
-                    className="rounded-md border border-slate-300 bg-white px-2.5 py-2 text-center text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs"
-                    href={`/penjualan/${sale.id}/edit`}
-                  >
-                    Edit
-                  </Link>
-                ) : (
-                  <span className="grid place-items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-center text-xs text-slate-300">—</span>
-                )}
-                {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" ? (
-                  <TransactionCancelButton
-                    id={sale.id}
-                    kind="sales"
-                    transactionLabel={sale.transactionNumber || sale.customerName}
-                    triggerLabel="Batal"
-                    triggerClassName="w-full rounded-md border border-rose-300 bg-rose-50 px-2.5 py-2 text-center text-xs font-bold text-rose-700 hover:bg-rose-100 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                  />
-                ) : (
-                  <span className="grid place-items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-center text-xs text-slate-300">—</span>
+                {canManage && sale.source !== "MJ" && sale.approvalStatus !== "cancelled" && (
+                  <>
+                    <Link className="grid h-9 min-w-0 flex-1 place-items-center rounded-md border border-slate-300 bg-white text-xs font-bold text-slate-700" href={`/penjualan/${sale.id}/edit`}>
+                      Edit
+                    </Link>
+                    <div className="flex-1">
+                      <TransactionCancelButton
+                        id={sale.id}
+                        kind="sales"
+                        transactionLabel={sale.transactionNumber || sale.customerName}
+                        triggerLabel="Batal"
+                        triggerClassName="h-9 w-full rounded-md border border-rose-300 bg-rose-50 px-2 text-xs font-bold text-rose-700 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             </article>
