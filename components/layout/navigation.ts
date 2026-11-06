@@ -200,6 +200,13 @@ export const NAV_LINKS: NavLink[] = [
     category: "INVENTORY GUDANG & TOKO",
   },
   {
+    href: "/inventory/kalkulator",
+    label: "Kalkulator Modal",
+    icon: "∑",
+    permission: "inventory.master",
+    category: "INVENTORY GUDANG & TOKO",
+  },
+  {
     href: "/inventory/lokasi",
     label: "Lokasi Stok",
     icon: "⌂",
@@ -517,7 +524,7 @@ export const NAV_SECTIONS: NavSection[] = [
   { id: "stok", label: "Stok", group: "Stok & Pembelian", hrefs: ["/inventory", "/inventory/permintaan-gudang", "/inventory/mutasi", "/stok-barang/ai-forecast"], home: "/inventory",
     tabs: { "/inventory": "Stok Gudang & Toko", "/inventory/permintaan-gudang": "Permintaan Gudang", "/inventory/mutasi": "Kartu Stok", "/stok-barang/ai-forecast": "Prediksi Stok" } },
   { id: "input-stok", label: "Input Stok", group: "Stok & Pembelian", hrefs: ["/inventory/barang-masuk", "/inventory/transfer", "/inventory/opname", "/inventory/adjustment", "/inventory/import"] },
-  { id: "master-barang", label: "Master Barang", group: "Stok & Pembelian", hrefs: ["/inventory/produk", "/inventory/lokasi"], tabs: { "/inventory/produk": "Barang" } },
+  { id: "master-barang", label: "Master Barang", group: "Stok & Pembelian", hrefs: ["/inventory/produk", "/inventory/kalkulator", "/inventory/lokasi"], tabs: { "/inventory/produk": "Barang", "/inventory/kalkulator": "Kalkulator" } },
   { id: "pembelian", label: "Pembelian", group: "Stok & Pembelian", hrefs: ["/pembelian/pesanan", "/pembelian/invoice", "/pembelian/pembayaran"],
     tabs: { "/pembelian/pesanan": "Pesanan (PO)", "/pembelian/invoice": "Tagihan & Landed Cost", "/pembelian/pembayaran": "Pembayaran" } },
   { id: "laporan", label: "Laporan", group: "Keuangan", hrefs: ["/reports", "/reports/income-statement", "/reports/balance-sheet", "/reports/finance", "/reports/customers", "/reports/products", "/reports/stocks", "/reports/consignment", "/reports/ai-finance", "/reports/cctv"], home: "/reports",

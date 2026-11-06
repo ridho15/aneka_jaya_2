@@ -8,7 +8,7 @@ describe("menu inventory per role", () => {
   it("Super Admin melihat semua menu", () => {
     expect(inventoryMenu("OWNER")).toEqual([
       "Stok Gudang & Toko", "Permintaan Barang Gudang", "Mutasi / Kartu Stok", "Transfer Stok", "Barang Masuk", "Stock Opname",
-      "Import Opname Excel", "Stock Adjustment", "Master Barang", "Lokasi Stok"
+      "Import Opname Excel", "Stock Adjustment", "Master Barang", "Kalkulator Modal", "Lokasi Stok"
     ]);
   });
 

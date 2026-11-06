@@ -30,7 +30,7 @@ export default async function InventoryProductPage({ searchParams }: { searchPar
   ]);
   return (
     <AppShell>
-      <InventoryHeader title="Master Barang" description={<>Atur isi per koli, harga RMB, modal, dan harga jual tiap barang. Barang dari supplier bisa masuk lewat <Link className="text-emerald-800 underline" href="/inventory/packing-list">Import Packing List</Link>.</>} />
+      <InventoryHeader title="Master Barang" description={<>Atur isi per koli, harga RMB, modal, dan harga jual tiap barang. Barang dari supplier bisa masuk lewat <Link className="text-emerald-800 underline" href="/inventory/packing-list">Import Packing List</Link>. Hitung modal cepat di <Link className="text-emerald-800 underline" href="/inventory/kalkulator">Kalkulator</Link>.</>} />
       <RmbRateForm rate={rmb.rate} updatedAt={rmb.updatedAt} updatedBy={rmb.updatedBy} rmbProducts={rmbProducts} canManage={canManage} />
       <CbmRateForm rate={cbm.rate} updatedAt={cbm.updatedAt} updatedBy={cbm.updatedBy} canManage={canManage} />
       <form className="mb-4 flex gap-2">
