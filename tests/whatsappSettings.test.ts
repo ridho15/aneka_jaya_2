@@ -90,7 +90,7 @@ describe("WhatsApp settings storage and sending", () => {
     mocks.sendMeta.mockResolvedValue({ status: "sent", provider: "meta_cloud_api", providerMessageId: "wamid.1" });
     mocks.logUpdate.mockResolvedValue({ id: "log1", recipientId: "r1", recipient: "Owner", messageType: "test", status: "sent", reportType: "test", provider: "meta_cloud_api", recipientNameSnapshot: "Owner", phoneMaskedSnapshot: "62***890", providerMessageId: "wamid.1", errorMessage: null, sentAt: date, createdAt: date });
 
-    await sendWhatsappMessage({ id: "r1", name: "Owner", phoneNumber: "6281234567890", isActive: true, receivesDailyReport: true, receivesStockAlert: true, receivesTempoReminder: true, createdAt: date.toISOString(), updatedAt: date.toISOString() }, "test", "Isi laporan rahasia lengkap");
+    await sendWhatsappMessage({ id: "r1", name: "Owner", phoneNumber: "6281234567890", isActive: true, receivesDailyReport: true, receivesStockAlert: true, receivesTempoReminder: true, receivesPackingReminder: false, createdAt: date.toISOString(), updatedAt: date.toISOString() }, "test", "Isi laporan rahasia lengkap");
 
     expect(mocks.logCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.not.objectContaining({ messageBody: expect.anything() })

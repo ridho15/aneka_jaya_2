@@ -14,6 +14,7 @@ import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { CctvImageModal } from "@/components/cctv/CctvImageModal";
+import { CctvVoicePanel } from "@/components/cctv/CctvVoicePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,8 @@ export default async function CctvReportsMultiTabPage({ searchParams }: Props) {
 
   const params = await searchParams;
   const rawTab = valueOf(params, "tab") || "outbound";
-  const activeTab = rawTab === "anomalies" || rawTab === "cameras" ? rawTab : "outbound";
+  const activeTab = rawTab === "anomalies" || rawTab === "cameras" || rawTab === "voice" ? rawTab : "outbound";
+  const canManageVoice = can(role, "settings.whatsapp.manage");
 
   const page = Math.max(1, Number(valueOf(params, "page")) || 1);
   const from = valueOf(params, "from");
@@ -142,7 +144,27 @@ export default async function CctvReportsMultiTabPage({ searchParams }: Props) {
           </svg>
           <span>3. Kinerja Meja & Kamera</span>
         </Link>
+
+        {canManageVoice && (
+          <Link
+            href={pageHref(params, { tab: "voice", page: 1 })}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+              activeTab === "voice"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5L6 9H3v6h3l5 4V5zm4.5 3.5a5 5 0 010 7m2.5-10a9 9 0 010 13" />
+            </svg>
+            <span>4. Pengumuman Suara</span>
+          </Link>
+        )}
       </div>
+
+      {activeTab === "voice" && (canManageVoice
+        ? <CctvVoicePanel />
+        : <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Hanya pengelola pengaturan yang dapat membuka pengumuman suara.</p>)}
 
       {/* TAB 1: BARANG KELUAR & SKU */}
       {activeTab === "outbound" && outboundData && (

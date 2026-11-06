@@ -2276,6 +2276,35 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/settings/packing-voice:
+    get:
+      summary: Pengaturan, nota terlambat saat ini, dan riwayat pengingat suara packing.
+      description: Permission settings.whatsapp.manage.
+      responses:
+        "200":
+          description: Pengaturan dan riwayat.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      summary: Menyimpan pengaturan pengingat suara packing (aktif, mode uji, hari libur).
+      description: Permission settings.whatsapp.manage.
+      responses:
+        "200":
+          description: Pengaturan tersimpan.
+        "400":
+          description: Pengaturan tidak valid.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Pratinjau suara (audio/wav) atau uji satu kalimat di speaker kamera.
+      description: Permission settings.whatsapp.manage. action preview mengembalikan audio; action test memutar kalimat uji kecuali mode uji.
+      responses:
+        "200":
+          description: Audio pratinjau atau hasil uji.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "502":
+          description: Server CCTV tidak menjawab.
   /api/settings/profit-slm:
     get:
       summary: Membaca setting Profit Operasional.
@@ -2529,6 +2558,17 @@ paths:
       responses:
         "200":
           description: Job selesai.
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/jobs/packing-voice-reminder:
+    post:
+      summary: Cron pengingat suara packing (tiap jam 08:00-15:00 WIB, Senin-Sabtu).
+      description: Mengumumkan nota yang 1,5 jam setelah transaksi belum tercatat dikemas CCTV, lewat speaker kamera packing. Satu pengumuman per jam; hari libur dan jam diperiksa aplikasi.
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: Job selesai (diumumkan, dilewati, atau gagal tercatat).
         "403":
           $ref: "#/components/responses/Forbidden"
   /api/jobs/retry-erp-sync:
