@@ -211,23 +211,23 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
           <div className="grid gap-4 md:grid-cols-2">
             <SummaryPanel title="Hari ini">
               <SummaryRow testId="dashboard-kpi-operational-today-revenue" label="Omset" note={`${operationalProfit.todaySalesCount} transaksi`} value={formatDashboardMoney(operationalProfit.todayRevenue)} />
-              <SummaryRow testId="dashboard-kpi-operational-today-cogs" label="Modal" note="Modal barang yang terjual" value={formatDashboardMoney(operationalProfit.todayCogs)} />
-              <SummaryRow testId="dashboard-kpi-operational-today-gross-profit" label="Laba" note="Omset − modal" value={formatDashboardMoney(operationalProfit.todayGrossProfit)} negative={operationalProfit.todayGrossProfit < 0} />
+              <SummaryRow testId="dashboard-kpi-operational-today-cogs" label="Modal" note="Harga RMB + ongkir CBM, dari Master Barang" value={formatDashboardMoney(operationalProfit.todayCogs)} />
+              <SummaryRow testId="dashboard-kpi-operational-today-gross-profit" label="Gross profit" note="Omset − modal" value={formatDashboardMoney(operationalProfit.todayGrossProfit)} negative={operationalProfit.todayGrossProfit < 0} />
               <SummaryRow testId="dashboard-kpi-operational-today-expenses" label="Pengeluaran" note="Disetujui hari ini" value={formatDashboardMoney(operationalProfit.todayExpenses)} />
-              <SummaryRow testId="dashboard-kpi-operational-today-nett-profit" label="Nett profit" note="Laba − pengeluaran" value={formatDashboardMoney(operationalProfit.todayNettProfit)} negative={operationalProfit.todayNettProfit < 0} />
+              <SummaryRow testId="dashboard-kpi-operational-today-nett-profit" label="Nett profit" note="Gross profit − pengeluaran" value={formatDashboardMoney(operationalProfit.todayNettProfit)} negative={operationalProfit.todayNettProfit < 0} />
               {mjStats && <SummaryRow testId="dashboard-mj-today" label="Transaksi MJ" note={`${mjStats.todayCount} transaksi`} value={formatDashboardMoney(mjStats.todayTotal)} />}
             </SummaryPanel>
             <SummaryPanel title="Bulan ini">
-              <SummaryRow testId="dashboard-kpi-operational-month-revenue" label="Omset" note={`${operationalProfit.monthlySalesCount} transaksi`} value={formatDashboardMoney(operationalProfit.monthlyRevenue)} />
+              <SummaryRow testId="dashboard-kpi-operational-month-revenue" label="Omset" note={`${operationalProfit.monthlySalesCount} transaksi${operationalProfit.hasMjSales ? " · MJ tanpa markup 10%" : ""}`} value={formatDashboardMoney(operationalProfit.monthlyRevenue)} />
               <SummaryRow
                 testId="dashboard-kpi-operational-month-cogs"
                 label="Modal"
                 note={operationalProfit.monthlyEstimatedSalesCount ? `${operationalProfit.monthlyEstimatedSalesCount} nota sebagian modalnya estimasi GP ${operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%` : "Modal barang yang terjual"}
                 value={formatDashboardMoney(operationalProfit.monthlyCogs)}
               />
-              <SummaryRow testId="dashboard-kpi-operational-gross-profit" label="Laba" note="Omset − modal" value={formatDashboardMoney(operationalProfit.grossProfit)} negative={operationalProfit.grossProfit < 0} />
+              <SummaryRow testId="dashboard-kpi-operational-gross-profit" label="Gross profit" note="Omset − modal" value={formatDashboardMoney(operationalProfit.grossProfit)} negative={operationalProfit.grossProfit < 0} />
               <SummaryRow testId="dashboard-kpi-operational-month-expenses" label="Pengeluaran" note="Disetujui bulan ini" value={formatDashboardMoney(operationalProfit.monthlyExpenses)} />
-              <SummaryRow testId="dashboard-kpi-operational-nett-profit" label="Nett profit" note="Laba − pengeluaran" value={formatDashboardMoney(operationalProfit.nettProfit)} negative={operationalProfit.nettProfit < 0} />
+              <SummaryRow testId="dashboard-kpi-operational-nett-profit" label="Nett profit" note="Gross profit − pengeluaran" value={formatDashboardMoney(operationalProfit.nettProfit)} negative={operationalProfit.nettProfit < 0} />
               {mjStats && <SummaryRow testId="dashboard-mj-month" label="Transaksi MJ" note={`${mjStats.monthCount} transaksi`} value={formatDashboardMoney(mjStats.monthTotal)} />}
             </SummaryPanel>
           </div>

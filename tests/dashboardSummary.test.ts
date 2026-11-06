@@ -119,7 +119,8 @@ describe("dashboard summaries", () => {
   });
 
   it("aggregates real approved sales and ExpenseRecord expenses by month", () => {
-    const result = buildMonthlyPerformance([sale], [expense], new Date("2026-06-29T00:00:00.000Z"));
+    // Grafik memakai filter yang sama dengan ringkasan: pengeluaran tipe AJ tidak dihitung.
+    const result = buildMonthlyPerformance([sale], [{ ...expense, tipeId: "W", tipeCodeSnapshot: "W" }, { ...expense, id: "aj-exp", amount: 999_000 }], new Date("2026-06-29T00:00:00.000Z"));
     expect(result).toHaveLength(6);
     expect(result.at(-1)).toMatchObject({ key: "2026-06", sales: 200_000, expenses: 50_000 });
   });
@@ -128,7 +129,7 @@ describe("dashboard summaries", () => {
     const result = buildMonthlyPerformance([
       { ...sale, id: "filtered-sale", saleDate: "2026-01-10", total: 100_000 }
     ], [
-      { ...expense, id: "filtered-expense", expenseDate: "2026-03-11", amount: 50_000 }
+      { ...expense, id: "filtered-expense", tipeId: "W", tipeCodeSnapshot: "W", expenseDate: "2026-03-11", amount: 50_000 }
     ], new Date("2026-07-02T00:00:00.000Z"), { from: "2026-01-01", to: "2026-03-31" });
 
     expect(result.map((row) => row.key)).toEqual(["2026-01", "2026-02", "2026-03"]);

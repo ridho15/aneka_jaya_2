@@ -88,7 +88,7 @@ describe("DashboardPage data source notice", () => {
 
     expect(html).toContain("Ringkasan penjualan");
     expect(html).toContain("Omset − modal");
-    expect(html).toContain("Laba − pengeluaran");
+    expect(html).toContain("Gross profit − pengeluaran");
     expect(html).toContain("estimasi GP 20%");
     expect(html).not.toContain("Profit SLM");
   });

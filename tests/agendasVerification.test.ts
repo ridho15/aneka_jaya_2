@@ -147,7 +147,9 @@ describe("Verifikasi 3 Agenda Pekerjaan", () => {
       // s-2 profit: 30.000 (100.000 - 70.000)
       // total gross profit: 40.000
       expect(summary.grossProfit).toBe(40000);
-      expect(summary.monthlyRevenue).toBe(210000);
+      // Omset nota MJ dihitung bagian SLM saja (110.000 ÷ 1,1), supaya Omset − Modal = Gross profit.
+      expect(summary.monthlyRevenue).toBe(200000);
+      expect(summary.monthlyRevenue - summary.monthlyCogs).toBe(summary.grossProfit);
     });
   });
 

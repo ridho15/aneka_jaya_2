@@ -137,7 +137,7 @@ export function PerformanceChart({ data }: Props) {
 
         {/* Gross Profit */}
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-3 shadow-2xs">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Laba (Omset − Modal)</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Gross Profit (Omset − Modal)</p>
           <p className="mt-0.5 text-base font-extrabold text-emerald-950 sm:text-lg">{rupiah(totalGrossProfit)}</p>
           <p className="text-[11px] text-emerald-700/80 font-medium">
             Margin Kotor {grossMargin.toFixed(1)}% (Omset - Modal)
@@ -216,7 +216,7 @@ export function PerformanceChart({ data }: Props) {
                   <b className="text-slate-300 font-semibold">{rupiah(activeItem.cogs || 0)}</b>
                 </div>
                 <div className="flex justify-between gap-3 border-t border-slate-800/80 pt-1">
-                  <span className="text-emerald-400 font-semibold">Laba:</span>
+                  <span className="text-emerald-400 font-semibold">Gross Profit:</span>
                   <b className="text-emerald-300 font-extrabold">
                     {rupiah(activeItem.grossProfit ?? (activeItem.sales || 0) - (activeItem.cogs || 0))}
                   </b>
@@ -425,7 +425,7 @@ export function PerformanceChart({ data }: Props) {
                 <div className="grid grid-cols-2 gap-1 text-slate-600 text-[11px]">
                   <span>Omset: <b className="text-emerald-700">{rupiah(activeItem.sales || 0)}</b></span>
                   <span>HPP Modal: <b className="text-slate-700">{rupiah(activeItem.cogs || 0)}</b></span>
-                  <span>Laba: <b className="text-emerald-700">{rupiah(activeItem.grossProfit || 0)}</b></span>
+                  <span>Gross Profit: <b className="text-emerald-700">{rupiah(activeItem.grossProfit || 0)}</b></span>
                   <span>Beban Operasional: <b className="text-slate-700">{rupiah(activeItem.expenses || 0)}</b></span>
                 </div>
               </div>
@@ -456,7 +456,7 @@ export function PerformanceChart({ data }: Props) {
                   <th className="px-3.5 py-3">Periode</th>
                   <th className="px-3.5 py-3 text-right">Omset Penjualan</th>
                   <th className="px-3.5 py-3 text-right">Modal (HPP)</th>
-                  <th className="px-3.5 py-3 text-right text-emerald-800">Laba</th>
+                  <th className="px-3.5 py-3 text-right text-emerald-800">Gross Profit</th>
                   <th className="px-3.5 py-3 text-right text-slate-700">Beban Operasional</th>
                   <th className="px-3.5 py-3 text-right">Nett Profit (Bersih)</th>
                   <th className="px-3.5 py-3 text-center">Margin Bersih</th>

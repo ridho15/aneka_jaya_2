@@ -88,7 +88,7 @@ export function ProfitDetailView({ data }: { data: DashboardProfitDetails }) {
               </p>
             </div>
             <h3 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">
-              Kalkulasi Laba dan Nett Profit
+              Kalkulasi Gross Profit dan Nett Profit
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -132,7 +132,7 @@ export function ProfitDetailView({ data }: { data: DashboardProfitDetails }) {
           {/* Pillar 3: Gross Profit */}
           <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              3. Laba (Omset − Modal)
+              3. Gross Profit (Omset − Modal)
             </p>
             <p className="mt-2 font-mono text-xl font-extrabold text-emerald-400 sm:text-2xl">
               = {rupiah(data.grossProfit)}
@@ -168,7 +168,7 @@ export function ProfitDetailView({ data }: { data: DashboardProfitDetails }) {
               = {rupiah(data.nettProfit)}
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Laba − Pengeluaran
+              Gross Profit − Pengeluaran
             </p>
           </div>
         </div>
@@ -246,7 +246,7 @@ export function ProfitDetailView({ data }: { data: DashboardProfitDetails }) {
                     <th className="py-3 px-3">Tipe & Pembayaran</th>
                     <th className="py-3 px-3 text-right">Omzet Jual</th>
                     <th className="py-3 px-3 text-right">Modal HPP</th>
-                    <th className="py-3 px-3 text-right">Laba</th>
+                    <th className="py-3 px-3 text-right">Gross Profit</th>
                     <th className="py-3 px-3 text-center">Margin %</th>
                     <th className="py-3 px-3 text-center w-20">Aksi</th>
                   </tr>
@@ -486,7 +486,7 @@ function SaleRowItem({
                   <span>•</span>
                   <span>Total Modal: <strong className="text-amber-700 font-mono">{rupiah(sale.cost)}</strong></span>
                   <span>•</span>
-                  <span>Laba Kotor: <strong className="text-emerald-700 font-mono">{rupiah(sale.grossProfit)}</strong></span>
+                  <span>Gross profit: <strong className="text-emerald-700 font-mono">{rupiah(sale.grossProfit)}</strong></span>
                 </div>
               </div>
 
@@ -506,7 +506,7 @@ function SaleRowItem({
                         <th className="px-3 py-2 text-right">Diskon</th>
                         <th className="px-3 py-2 text-right">Subtotal Jual</th>
                         <th className="px-3 py-2 text-right">Subtotal Modal</th>
-                        <th className="px-3 py-2 text-right">Laba Kotor</th>
+                        <th className="px-3 py-2 text-right">Gross profit</th>
                         <th className="px-3 py-2 text-center">Status HPP</th>
                       </tr>
                     </thead>

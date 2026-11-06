@@ -57,6 +57,8 @@ export type DashboardOperationalProfitSummary = {
   todayNettProfit: number;
   /** Nota yang sebagian modalnya belum ada di Master Barang, jadi modalnya memakai estimasi GP. */
   monthlyEstimatedSalesCount: number;
+  /** Ada nota MJ: omsetnya dihitung bagian SLM (nota ÷ 1,1). */
+  hasMjSales: boolean;
   monthlySalesCount: number;
   todaySalesCount: number;
 };
@@ -272,107 +274,79 @@ function buatPetaHargaModal(daftarProduk: Product[] = []): Map<string, number> {
 // 6. KALKULASI GROSS PROFIT PER NOTA PENJUALAN
 // ============================================================================
 
-/**
- * Menghitung gross profit untuk satu nota penjualan:
- * - Barang dengan harga modal riil (> Rp 1.000): Profit = Omset Item - (Qty * Modal Riil).
- * - Barang tanpa modal (atau modal <= Rp 1.000): Profit = Omset Item * Persentase Estimasi Fallback (misal 10%).
- * - Khusus transaksi sumber MJ (source = 'MJ'):
- *   MJ mengambil markup 10% dari harga dasar SLM (Omset SLM = Omset MJ / 1.10).
- *   Profit SLM dihitung dari Omset SLM dikurangi Modal Riil AJ, atau 10% dari Omset SLM jika modal belum ada.
- * - Sisa omset pembulatan nota: Profit = Sisa Omset Dasar * Persentase Estimasi Fallback.
- */
-function hitungGrossProfitPenjualan(
-  penjualan: Sale,
-  persenEstimasiFallback: number,
-  petaHargaModal: Map<string, number>
-): number {
-  const persen = Number.isFinite(persenEstimasiFallback) ? Math.min(100, Math.max(0, persenEstimasiFallback)) : 0;
-  const totalOmsetNota = Number(penjualan.total) || 0;
-  const isMj = penjualan.source === "MJ" || penjualan.createdByUserId === "integration:mj";
+/** Bagian nota MJ yang menjadi hak SLM: harga MJ sudah termasuk markup 10% milik MJ. */
+const MJ_MARKUP = 1.1;
+/** Modal di atas 2× harga jual per satuan dianggap salah input (biasanya beda satuan pcs/lusin). */
+const MODAL_MAKS_KALI_HARGA = 2;
 
-  // Jika nota tidak memiliki rincian item, hitung seluruh omset dengan persentase estimasi
-  if (!Array.isArray(penjualan.items) || penjualan.items.length === 0) {
-    const omsetDasarNota = isMj ? Math.round(totalOmsetNota / 1.10) : totalOmsetNota;
-    return Math.round((omsetDasarNota * persen) / 100);
-  }
+export type LabaItem = {
+  productRef: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  omset: number;
+  modal: number;
+  laba: number;
+  /** Modal per satuan dari Master Barang; null bila modalnya 0 / tidak masuk akal sehingga memakai estimasi GP. */
+  modalPerSatuan: number | null;
+};
 
-  // Uraikan setiap item barang di dalam nota
-  const daftarItemTerurai = penjualan.items.map((item) => {
-    const jumlah = Number(item.quantity) || 0;
-    const hargaSatuan = Number(item.unitPrice) || 0;
-    const diskon = Number(item.discount) || 0;
-    const omsetPerItem = Math.max(0, jumlah * hargaSatuan - diskon);
+export type LabaNota = { omset: number; modal: number; laba: number; itemEstimasi: number; items: LabaItem[] };
 
-    // Prioritas 1: Cari modal dari input barang manual (hanya jika > Rp 1.000)
-    let modalAktif: number | null = null;
-    const modalManual = Number(item.manualProduct?.costPrice);
-    if (Number.isFinite(modalManual) && modalManual > MINIMUM_REAL_COST_THRESHOLD) {
-      modalAktif = modalManual;
-    } else {
-      // Prioritas 2: Cari modal dari master produk ERP berdasarkan ID atau SKU (hanya jika > Rp 1.000)
-      const kunciIdProduk = item.productId ? item.productId.trim().toLowerCase() : "";
-      const kunciRefProduk = item.productRef ? item.productRef.trim().toLowerCase() : "";
-      if (kunciIdProduk && petaHargaModal.has(kunciIdProduk)) {
-        modalAktif = petaHargaModal.get(kunciIdProduk)!;
-      } else if (kunciRefProduk && petaHargaModal.has(kunciRefProduk)) {
-        modalAktif = petaHargaModal.get(kunciRefProduk)!;
-      }
-    }
-
-    return {
-      jumlah,
-      omsetPerItem,
-      modalAktif: modalAktif !== null && modalAktif > MINIMUM_REAL_COST_THRESHOLD ? modalAktif : null
-    };
-  });
-
-  // Jika sama sekali tidak ada item yang bermodal riil, gunakan estimasi fallback untuk seluruh nota
-  const adaModalRiil = daftarItemTerurai.some((item) => item.modalAktif !== null);
-  if (!adaModalRiil) {
-    const omsetDasarNota = isMj ? Math.round(totalOmsetNota / 1.10) : totalOmsetNota;
-    return Math.round((omsetDasarNota * persen) / 100);
-  }
-
-  let totalProfit = 0;
-  let omsetTerhitung = 0;
-
-  // Akumulasikan profit per item
-  for (const item of daftarItemTerurai) {
-    omsetTerhitung += item.omsetPerItem;
-    // Khusus transaksi MJ: Omset dasar SLM = Omset Item / 1.10 (markup 10% adalah hak MJ)
-    const omsetDasarItem = isMj ? Math.round(item.omsetPerItem / 1.10) : item.omsetPerItem;
-
-    if (item.modalAktif !== null) {
-      // Ada modal riil: Omset dasar dikurangi modal asli AJ
-      const totalBiayaModalItem = item.jumlah * item.modalAktif;
-      totalProfit += omsetDasarItem - totalBiayaModalItem;
-    } else {
-      // Tidak ada modal riil: Gunakan persentase estimasi fallback (misal 10%) dari omset dasar
-      totalProfit += (omsetDasarItem * persen) / 100;
-    }
-  }
-
-  // Jika ada sisa omset nota di luar item (misal pembulatan atau biaya nota tambahan)
-  const omsetSisaTanpaItem = Math.max(0, totalOmsetNota - omsetTerhitung);
-  if (omsetSisaTanpaItem > 0) {
-    const sisaDasar = isMj ? Math.round(omsetSisaTanpaItem / 1.10) : omsetSisaTanpaItem;
-    totalProfit += (sisaDasar * persen) / 100;
-  }
-
-  return Math.round(totalProfit);
+export function isTransaksiMj(penjualan: Pick<Sale, "source" | "createdByUserId">) {
+  return penjualan.source === "MJ" || penjualan.createdByUserId === "integration:mj";
 }
 
-/** true bila ada item nota yang modalnya tidak ditemukan sehingga labanya memakai estimasi GP. */
-function memakaiEstimasiModal(penjualan: Sale, petaHargaModal: Map<string, number>) {
-  if (!Array.isArray(penjualan.items) || penjualan.items.length === 0) return true;
-  return penjualan.items.some((item) => {
-    const manual = Number(item.manualProduct?.costPrice);
-    if (Number.isFinite(manual) && manual > MINIMUM_REAL_COST_THRESHOLD) return false;
-    const id = item.productId?.trim().toLowerCase() ?? "";
-    const ref = item.productRef?.trim().toLowerCase() ?? "";
-    const cost = (id && petaHargaModal.get(id)) || (ref && petaHargaModal.get(ref)) || 0;
-    return !(cost > MINIMUM_REAL_COST_THRESHOLD);
+/** Modal per satuan yang masuk akal dari Master Barang (harga RMB × kurs + ongkir CBM + biaya lain), atau null. */
+function modalWajar(item: NonNullable<Sale["items"]>[number], petaHargaModal: Map<string, number>, hargaBersihPerSatuan: number) {
+  const manual = Number(item.manualProduct?.costPrice);
+  const id = item.productId?.trim().toLowerCase() ?? "";
+  const ref = item.productRef?.trim().toLowerCase() ?? "";
+  const modal = Number.isFinite(manual) && manual > MINIMUM_REAL_COST_THRESHOLD
+    ? manual
+    : (id && petaHargaModal.get(id)) || (ref && petaHargaModal.get(ref)) || 0;
+  if (!(modal > MINIMUM_REAL_COST_THRESHOLD)) return null;
+  if (hargaBersihPerSatuan > 0 && modal > hargaBersihPerSatuan * MODAL_MAKS_KALI_HARGA) return null;
+  return modal;
+}
+
+/**
+ * Laba satu nota: Omset − Modal.
+ * - Omset = nilai nota; untuk transaksi MJ hanya bagian SLM (nota ÷ 1,1).
+ * - Modal per barang dari Master Barang. Bila 0, ≤ Rp 1.000, atau lebih dari 2× harga jual per satuan,
+ *   modal = omset barang × (100% − GP%) sesuai pengaturan estimasi GP.
+ * - Omset nota di luar rincian barang (mis. ongkir yang ditagihkan) memakai aturan GP yang sama.
+ */
+export function hitungLabaNota(penjualan: Sale, persenGp: number, petaHargaModal: Map<string, number>): LabaNota {
+  const gp = Number.isFinite(persenGp) ? Math.min(100, Math.max(0, persenGp)) : 0;
+  const bagianSlm = (n: number) => (isTransaksiMj(penjualan) ? Math.round(n / MJ_MARKUP) : n);
+  const modalEstimasi = (omset: number) => Math.round(omset * (1 - gp / 100));
+  const omsetNota = bagianSlm(Number(penjualan.total) || 0);
+
+  const kotor = (penjualan.items ?? []).map((item) => bagianSlm(Math.max(0, (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0) - (Number(item.discount) || 0))));
+  const totalKotor = kotor.reduce((a, b) => a + b, 0);
+  // Omset mengikuti total nota: bila rincian barang lebih besar (mis. diskon nota), dibagi proporsional.
+  const skala = totalKotor > omsetNota && totalKotor > 0 ? omsetNota / totalKotor : 1;
+  const items: LabaItem[] = (penjualan.items ?? []).map((item, index) => {
+    const quantity = Number(item.quantity) || 0;
+    const unitPrice = Number(item.unitPrice) || 0;
+    const discount = Number(item.discount) || 0;
+    const omset = Math.round(kotor[index] * skala);
+    const modalPerSatuan = quantity > 0 ? modalWajar(item, petaHargaModal, omset / quantity) : null;
+    const modal = modalPerSatuan != null ? Math.round(quantity * modalPerSatuan) : modalEstimasi(omset);
+    return { productRef: item.productRef, quantity, unitPrice, discount, omset, modal, laba: omset - modal, modalPerSatuan };
   });
+
+  const omsetItem = items.reduce((s, i) => s + i.omset, 0);
+  const sisa = Math.max(0, omsetNota - omsetItem);
+  const modal = items.reduce((s, i) => s + i.modal, 0) + modalEstimasi(sisa);
+  // Pembulatan pembagian proporsional tidak boleh membuat omset beda dari total nota.
+  const omset = skala < 1 ? omsetNota : omsetItem + sisa;
+  return { omset, modal, laba: omset - modal, itemEstimasi: items.filter((i) => i.modalPerSatuan == null).length + (sisa > 0 && !items.length ? 1 : 0), items };
+}
+
+function hitungGrossProfitPenjualan(penjualan: Sale, persenGp: number, petaHargaModal: Map<string, number>): number {
+  return hitungLabaNota(penjualan, persenGp, petaHargaModal).laba;
 }
 
 // ============================================================================
@@ -400,30 +374,30 @@ export function buildOperationalProfitSummary(
   const pengeluaranBulanIni = pengeluaranOperasionalApproved.filter((pengeluaran) => pengeluaran.expenseDate?.startsWith(kunciBulanIni));
   const pengeluaranHariIni = pengeluaranOperasionalApproved.filter((pengeluaran) => pengeluaran.expenseDate === kunciHariIni);
 
-  // Hitung total omset dan pengeluaran
-  const omsetBulanIni = penjualanBulanIni.reduce((total, penjualan) => total + (Number(penjualan.total) || 0), 0);
-  const omsetHariIni = penjualanHariIni.reduce((total, penjualan) => total + (Number(penjualan.total) || 0), 0);
-  const totalPengeluaranBulanIni = pengeluaranBulanIni.reduce((total, pengeluaran) => total + (Number(pengeluaran.amount) || 0), 0);
-  const totalPengeluaranHariIni = pengeluaranHariIni.reduce((total, pengeluaran) => total + (Number(pengeluaran.amount) || 0), 0);
+  const total = (daftar: Sale[]) => daftar.reduce((acc, penjualan) => {
+    const nota = hitungLabaNota(penjualan, persen, petaHargaModal);
+    return { omset: acc.omset + nota.omset, modal: acc.modal + nota.modal, estimasi: acc.estimasi + (nota.itemEstimasi > 0 ? 1 : 0) };
+  }, { omset: 0, modal: 0, estimasi: 0 });
+  const bulan = total(penjualanBulanIni);
+  const hari = total(penjualanHariIni);
+  const pengeluaranBulan = pengeluaranBulanIni.reduce((acc, pengeluaran) => acc + (Number(pengeluaran.amount) || 0), 0);
+  const pengeluaranHari = pengeluaranHariIni.reduce((acc, pengeluaran) => acc + (Number(pengeluaran.amount) || 0), 0);
 
-  // Laba = omset − modal. Modal = omset − laba per nota, jadi angka di layar selalu tersambung.
-  const labaBulanIni = penjualanBulanIni.reduce((total, penjualan) => total + hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal), 0);
-  const labaHariIni = penjualanHariIni.reduce((total, penjualan) => total + hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal), 0);
-  const notaEstimasi = penjualanBulanIni.filter((penjualan) => memakaiEstimasiModal(penjualan, petaHargaModal)).length;
-
+  // Gross profit = omset − modal; nett profit = gross profit − pengeluaran.
   return {
     grossProfitPercent: persen,
-    monthlyRevenue: omsetBulanIni,
-    monthlyExpenses: totalPengeluaranBulanIni,
-    todayRevenue: omsetHariIni,
-    todayExpenses: totalPengeluaranHariIni,
-    grossProfit: labaBulanIni,
-    nettProfit: labaBulanIni - totalPengeluaranBulanIni,
-    monthlyCogs: omsetBulanIni - labaBulanIni,
-    todayCogs: omsetHariIni - labaHariIni,
-    todayGrossProfit: labaHariIni,
-    todayNettProfit: labaHariIni - totalPengeluaranHariIni,
-    monthlyEstimatedSalesCount: notaEstimasi,
+    monthlyRevenue: bulan.omset,
+    monthlyExpenses: pengeluaranBulan,
+    todayRevenue: hari.omset,
+    todayExpenses: pengeluaranHari,
+    grossProfit: bulan.omset - bulan.modal,
+    nettProfit: bulan.omset - bulan.modal - pengeluaranBulan,
+    monthlyCogs: bulan.modal,
+    todayCogs: hari.modal,
+    todayGrossProfit: hari.omset - hari.modal,
+    todayNettProfit: hari.omset - hari.modal - pengeluaranHari,
+    monthlyEstimatedSalesCount: bulan.estimasi,
+    hasMjSales: penjualanBulanIni.some(isTransaksiMj),
     monthlySalesCount: penjualanBulanIni.length,
     todaySalesCount: penjualanHariIni.length
   };
@@ -566,22 +540,21 @@ export function buildMonthlyPerformance(
   const petaHargaModal = buatPetaHargaModal(daftarProduk);
 
   // Akumulasikan penjualan per bulan
+  // Aturan & filter sama dengan ringkasan dashboard: penjualan dan pengeluaran operasional saja.
   for (const penjualan of daftarPenjualan) {
-    if (penjualan.approvalStatus !== "approved") continue;
+    if (penjualan.approvalStatus !== "approved" || !apakahPenjualanOperasional(penjualan)) continue;
     const bulan = petaBulan.get(kunciBulan(penjualan.saleDate) || "");
     if (bulan) {
-      const omsetNota = Number(penjualan.total) || 0;
-      const grossNota = hitungGrossProfitPenjualan(penjualan, persen, petaHargaModal);
-      const hppNota = Math.max(0, omsetNota - grossNota);
-      bulan.sales += omsetNota;
-      bulan.grossProfit = (bulan.grossProfit || 0) + grossNota;
-      bulan.cogs = (bulan.cogs || 0) + hppNota;
+      const nota = hitungLabaNota(penjualan, persen, petaHargaModal);
+      bulan.sales += nota.omset;
+      bulan.grossProfit = (bulan.grossProfit || 0) + nota.laba;
+      bulan.cogs = (bulan.cogs || 0) + nota.modal;
     }
   }
 
   // Akumulasikan pengeluaran per bulan
   for (const pengeluaran of daftarPengeluaran) {
-    if (pengeluaran.approvalStatus !== "approved") continue;
+    if (pengeluaran.approvalStatus !== "approved" || !apakahPengeluaranOperasional(pengeluaran)) continue;
     const nominal = Number(pengeluaran.amount);
     if (!Number.isFinite(nominal) || nominal <= 0) continue;
     const bulan = petaBulan.get(kunciBulan(pengeluaran.expenseDate) || "");
@@ -705,98 +678,25 @@ export function buildDashboardProfitDetails(
   const detailSales: ProfitDetailSale[] = [];
 
   for (const sale of operationalSales) {
-    const saleTotal = Number(sale.total) || 0;
-    const isMj = sale.source === "MJ" || sale.createdByUserId === "integration:mj";
-    const items: ProfitDetailItem[] = [];
-
-    let saleRevenue = 0;
-    let saleCost = 0;
-    let saleGrossProfit = 0;
-    let saleRealCostItems = 0;
-
-    for (const it of sale.items || []) {
-      const qty = Number(it.quantity) || 0;
-      const price = Number(it.unitPrice) || 0;
-      const disc = Number(it.discount) || 0;
-      const itemRawOmset = Math.max(0, qty * price - disc);
-      // Jika MJ, omset dasar = itemRawOmset / 1.10
-      const itemRevenue = isMj ? Math.round(itemRawOmset / 1.10) : itemRawOmset;
-
-      // Cari modal riil
-      let modalAktif: number | null = null;
-      const modalManual = Number(it.manualProduct?.costPrice);
-      if (Number.isFinite(modalManual) && modalManual > MINIMUM_REAL_COST_THRESHOLD) {
-        modalAktif = modalManual;
-      } else {
-        const kunciId = it.productId ? it.productId.trim().toLowerCase() : "";
-        const kunciRef = it.productRef ? it.productRef.trim().toLowerCase() : "";
-        if (kunciId && petaHargaModal.has(kunciId)) {
-          modalAktif = petaHargaModal.get(kunciId)!;
-        } else if (kunciRef && petaHargaModal.has(kunciRef)) {
-          modalAktif = petaHargaModal.get(kunciRef)!;
-        }
-      }
-
-      const isReal = modalAktif !== null && modalAktif > MINIMUM_REAL_COST_THRESHOLD;
-      let itemCost = 0;
-      let itemGross = 0;
-
-      if (isReal) {
-        itemCost = qty * modalAktif!;
-        itemGross = itemRevenue - itemCost;
-        saleRealCostItems++;
-      } else {
-        itemGross = Math.round((itemRevenue * persen) / 100);
-        itemCost = Math.max(0, itemRevenue - itemGross);
-      }
-
-      const itemMargin = itemRevenue > 0 ? Number(((itemGross / itemRevenue) * 100).toFixed(1)) : 0;
-
-      items.push({
-        productRef: it.productRef,
-        quantity: qty,
-        unitPrice: price,
-        costPrice: isReal ? modalAktif : null,
-        discount: disc,
-        revenue: itemRevenue,
-        cost: itemCost,
-        grossProfit: itemGross,
-        marginPercent: itemMargin,
-        isRealCost: isReal,
-      });
-
-      saleRevenue += itemRevenue;
-      saleCost += itemCost;
-      saleGrossProfit += itemGross;
-      totalItemsCount++;
-    }
-
-    realCostItemsCount += saleRealCostItems;
-
-    // Sisa omset pembulatan atau jika tidak ada item
-    let finalSaleRevenue = saleRevenue;
-    let finalSaleGrossProfit = saleGrossProfit;
-    let finalSaleCost = saleCost;
-
-    const baseSaleTotal = isMj ? Math.round(saleTotal / 1.10) : saleTotal;
-    if (items.length === 0 || saleRevenue === 0) {
-      finalSaleRevenue = baseSaleTotal;
-      finalSaleGrossProfit = Math.round((baseSaleTotal * persen) / 100);
-      finalSaleCost = Math.max(0, finalSaleRevenue - finalSaleGrossProfit);
-    } else if (baseSaleTotal > saleRevenue) {
-      const extra = baseSaleTotal - saleRevenue;
-      const extraGross = Math.round((extra * persen) / 100);
-      const extraCost = Math.max(0, extra - extraGross);
-      finalSaleRevenue += extra;
-      finalSaleGrossProfit += extraGross;
-      finalSaleCost += extraCost;
-    }
-
-    const saleMargin = finalSaleRevenue > 0 ? Number(((finalSaleGrossProfit / finalSaleRevenue) * 100).toFixed(1)) : 0;
-
-    totalRevenue += finalSaleRevenue;
-    totalCost += finalSaleCost;
-    totalGrossProfit += finalSaleGrossProfit;
+    const nota = hitungLabaNota(sale, persen, petaHargaModal);
+    const items: ProfitDetailItem[] = nota.items.map((i) => ({
+      productRef: i.productRef,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      costPrice: i.modalPerSatuan,
+      discount: i.discount,
+      revenue: i.omset,
+      cost: i.modal,
+      grossProfit: i.laba,
+      marginPercent: i.omset > 0 ? Number(((i.laba / i.omset) * 100).toFixed(1)) : 0,
+      isRealCost: i.modalPerSatuan != null
+    }));
+    const realItems = items.filter((i) => i.isRealCost).length;
+    realCostItemsCount += realItems;
+    totalItemsCount += items.length;
+    totalRevenue += nota.omset;
+    totalCost += nota.modal;
+    totalGrossProfit += nota.laba;
 
     detailSales.push({
       id: sale.id,
@@ -806,11 +706,11 @@ export function buildDashboardProfitDetails(
       paymentMethod: sale.paymentMethod,
       rekeningNameSnapshot: sale.rekeningNameSnapshot,
       tipeCode: kodeTipe(sale),
-      revenue: finalSaleRevenue,
-      cost: finalSaleCost,
-      grossProfit: finalSaleGrossProfit,
-      marginPercent: saleMargin,
-      hasRealCost: saleRealCostItems > 0,
+      revenue: nota.omset,
+      cost: nota.modal,
+      grossProfit: nota.laba,
+      marginPercent: nota.omset > 0 ? Number(((nota.laba / nota.omset) * 100).toFixed(1)) : 0,
+      hasRealCost: realItems > 0,
       items,
     });
   }
