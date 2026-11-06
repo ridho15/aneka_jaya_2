@@ -84,6 +84,14 @@ export function ExpenseJournalPreview({
           memoDebit: `Uang muka pembelian ke ${targetPerson}`,
           note: "Tetap aset sampai barangnya diterima."
         };
+      case "consignment_payment":
+        return {
+          debitCode: "2-1006",
+          debitName: "Utang Barang Titipan",
+          debitType: "Pelunasan ke penitip",
+          memoDebit: `Setoran barang titipan terjual ke ${targetPerson}`,
+          note: "Modal barang titipan sudah dicatat sebagai utang saat terjual; setoran ini melunasinya."
+        };
       case "supplies":
         return {
           debitCode: "6-1008",

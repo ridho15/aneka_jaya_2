@@ -25,6 +25,7 @@ export function expenseDebitAccountFor(
   // Tujuan pembelian menentukan akun; pengguna tidak memilih debit/kredit.
   if (expense.categoryCode === "goods_purchase") return ACCOUNT_ROLES.GOODS_RECEIVED_PAYABLE.code;
   if (expense.categoryCode === "purchase_advance") return ACCOUNT_ROLES.PURCHASE_ADVANCE.code;
+  if (expense.categoryCode === "consignment_payment") return ACCOUNT_ROLES.CONSIGNMENT_PAYABLE.code;
   if (expense.categoryCode === "supplies") return ACCOUNT_ROLES.SUPPLIES_EXPENSE.code;
   if (expense.categoryCode === "equipment") {
     const threshold = options.capitalizationThreshold ?? DEFAULT_POLICY.capitalizationThreshold;

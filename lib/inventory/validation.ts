@@ -40,6 +40,9 @@ export const productSchema = z.object({
   cbmPerUnit: z.coerce.number().min(0).optional().nullable(),
   /** Tarif CBM khusus barang ini (Rp/CBM); kosong = tarif global. */
   cbmRateIdr: z.coerce.number().min(0).optional().nullable(),
+  /** OWN = milik SLM; CONSIGNMENT = barang titipan pihak lain (tidak dinilai sebagai aset SLM). */
+  ownership: z.enum(["OWN", "CONSIGNMENT"]).optional(),
+  consignorName: optionalText(160),
   sellingPrice: z.coerce.number().min(0).default(0),
   erpProductId: z.coerce.number().int().positive().optional().nullable(),
   isActive: z.boolean().default(true),

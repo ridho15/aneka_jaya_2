@@ -47,6 +47,12 @@ suite("purchase purpose & fixed assets (postgres)", () => {
     expect(await debitOf(id)).toBe("2-1005");
   });
 
+  it("paying the consignor reduces the consignment payable (2-1006), not an expense", async () => {
+    const id = await expense(`EXP-TTP-${run}`, "consignment_payment", 150_000);
+    await hooks.postExpenseJournal(id, actor);
+    expect(await debitOf(id)).toBe("2-1006");
+  });
+
   it("equipment ≥ Rp1 juta becomes a fixed asset; below the threshold it is an expense", async () => {
     const big = await expense(`EXP-EQ-${run}`, "equipment", 2_400_000);
     const small = await expense(`EXP-EQS-${run}`, "equipment", 300_000);

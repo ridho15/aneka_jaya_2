@@ -75,6 +75,7 @@ export function InventoryReconciliationView({ report: r, canManage }: { report: 
             <tr className="font-semibold"><td className="px-4 py-2">Belum terjelaskan<span className="block text-xs font-normal text-slate-500">Perlu ditelusuri dengan dokumen (saldo awal, pembelian, retur).</span></td><td className="px-4 py-2 whitespace-nowrap text-right tabular-nums">{rp(r.unexplained)}</td><td className="hidden px-4 py-2 whitespace-nowrap text-right tabular-nums sm:table-cell">{rp(p.unexplained)}</td></tr>
           </tbody>
         </table>
+        {r.stock.consignment > 0 && <p className="border-t border-slate-200 px-4 py-2 text-xs text-slate-600">Barang titipan pihak lain senilai {rp(r.stock.consignment)} tidak termasuk nilai stok SLM.</p>}
         {r.stock.notYetLayeredNoCostProducts > 0 && <p className="border-t border-slate-200 px-4 py-2 text-xs text-amber-700">{r.stock.notYetLayeredNoCostProducts} barang punya stok tetapi modalnya 0, jadi belum bernilai.</p>}
       </section>
 
@@ -181,7 +182,7 @@ export function InventoryReconciliationView({ report: r, canManage }: { report: 
             <li>Penilaian persediaan: <b>FIFO</b> per barang untuk seluruh usaha. Transfer antar lokasi tidak mengubah nilai.</li>
             <li>Biaya barang = harga beli × kurs + ongkir CBM + biaya lain sampai barang siap dijual. Ongkir ke pelanggan adalah biaya operasional.</li>
             <li>HPP diakui saat stok keluar untuk penjualan. Tanpa modal, HPP ditandai belum lengkap.</li>
-            <li>Barang titipan pihak lain tidak dicatat di stok SLM.</li>
+            <li>Barang titipan (diatur di Master Barang) tetap ada di kartu stok tetapi bukan aset SLM; saat terjual modalnya menjadi Utang Barang Titipan (2-1006).</li>
             <li>Aset tetap: ≥ {rp(r.policy.capitalizationThreshold)}, {r.policy.defaultUsefulLifeMonths} bulan, garis lurus. <Link className="underline" href="/akuntansi/aset-tetap">Atur</Link></li>
           </ul>
         </div>

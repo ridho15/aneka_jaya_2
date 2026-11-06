@@ -85,7 +85,7 @@ export default async function DashboardProfitDetailPage({
       <PageHeader
         eyebrow="Audit & Transparansi"
         title="Rincian Sumber Data Profitabilitas"
-        description="Audit detail sumber data dari kalkulasi Omzet, Modal HPP, Gross Profit, Pengeluaran, dan Laba Bersih operasional."
+        description="Audit detail sumber data dari kalkulasi Omzet, Modal, Laba, Pengeluaran, dan Nett Profit."
       />
 
       <ResponsiveFilterPanel

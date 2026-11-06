@@ -218,3 +218,18 @@ Proses ini **tidak dinyatakan selesai** hanya karena neraca saldo seimbang. Krit
 Koreksi diterapkan per baris, setelah backup (`scripts/backup-db.sh`). Pengeluaran yang sudah dijurnal dikoreksi dengan jurnal `CORRECTION` bertanggal hari koreksi dan jurnal asli tetap ada. Kunci jurnal per pengeluaran, jadi koreksi tidak bisa dobel.
 
 Temuan penyebab utama yang perlu dicek di produksi: kategori "Pembelian barang" di form Pengeluaran ditampilkan sebagai Persediaan di pratinjau, tetapi diposting ke 6-1001. Pembelian menjadi beban, sementara HPP penjualan mengurangi 1-1005, sehingga saldo 1-1005 bisa sangat negatif.
+
+## 10. Barang titipan & ringkasan laba (November 2026)
+
+- **Barang titipan:** Master Barang › Kepemilikan = "Titipan pihak lain" (+ nama penitip).
+  - Stoknya tetap tercatat, tetapi tidak dinilai FIFO, tidak masuk 1-1005, dan tidak dijurnal saat barang masuk/opname.
+  - Saat terjual: Dr 5-1001 / Cr 2-1006 Utang Barang Titipan sebesar modal titipan. Retur membalik ke 2-1006.
+  - Setoran ke penitip lewat Pengeluaran tujuan "Bayar penitip barang titipan": Dr 2-1006 / Cr Kas.
+  - Kepemilikan hanya bisa diganti saat stok 0.
+  - Laporan Stok dan rekonsiliasi persediaan menampilkan nilai titipan terpisah.
+- **Dashboard:**
+  - Laba = omset − modal.
+  - Nett profit = laba − pengeluaran.
+  - Modal = modal barang terjual dari Master Barang. Nota yang sebagian modalnya belum ada memakai estimasi GP sesuai pengaturan, dan jumlah notanya ditampilkan.
+  - Pengeluaran tidak termasuk pelunasan barang dagang, uang muka, kasbon, setoran ke penitip, dan aset tetap.
+- **Tipe LRM** tidak dipilih lagi untuk transaksi baru (bersama AJ & ONLINE).

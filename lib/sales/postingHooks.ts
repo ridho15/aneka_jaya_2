@@ -8,6 +8,7 @@ import type { Role } from "@/lib/auth/roles";
 import { parsePaymentSplits } from "@/lib/sales/payments";
 import { reverseStaleCogsJournal, saleStockCost } from "@/lib/accounting/inventoryPosting";
 import { isNonPkpOn } from "@/lib/accounting/taxStatus";
+import { accountForRole } from "@/lib/accounting/accountRoles";
 
 export interface SalesPostingActor {
   id: string;
@@ -415,15 +416,31 @@ export async function postSalesCogsJournal(
       credit: 0,
       memo: `HPP Penjualan ${sale.transactionNumber || sale.id}: ${sale.customerName}`
     },
-    {
+  ];
+  // Barang titipan: modalnya menjadi utang ke penitip, bukan pengurangan persediaan SLM.
+  const consignmentCost = stockCost ? Math.min(totalCogs, Math.round(stockCost.consignmentTotal)) : 0;
+  const ownCost = totalCogs - consignmentCost;
+  if (ownCost > 0) {
+    lines.push({
       accountId: inventoryAccount.id,
       accountCodeSnapshot: inventoryAccount.code,
       accountNameSnapshot: inventoryAccount.name,
       debit: 0,
-      credit: totalCogs,
+      credit: ownCost,
       memo: `Pengurangan Persediaan Barang Dagang (${sale.transactionNumber || sale.id})`
-    }
-  ];
+    });
+  }
+  if (consignmentCost > 0) {
+    const consignmentPayable = await accountForRole("CONSIGNMENT_PAYABLE");
+    lines.push({
+      accountId: consignmentPayable.id,
+      accountCodeSnapshot: consignmentPayable.code,
+      accountNameSnapshot: consignmentPayable.name,
+      debit: 0,
+      credit: consignmentCost,
+      memo: `Hak penitip atas barang titipan terjual (${sale.transactionNumber || sale.id})`
+    });
+  }
 
   const journal = await postJournalEntry(
     {

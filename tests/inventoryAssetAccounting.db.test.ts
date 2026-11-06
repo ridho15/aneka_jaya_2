@@ -143,4 +143,30 @@ suite("inventory as an asset (postgres)", () => {
     const sale = await prisma.salesRecord.findUnique({ where: { id: saleId } });
     expect(sale?.cogsStatus).toBe("INCOMPLETE");
   });
+
+  it("consignment goods stay out of inventory value; when sold their cost becomes a payable to the consignor", async () => {
+    const p = await inv.createProduct({ sku: `TTP-${run}`, name: "Barang Titipan", unit: "Pcs", minimumStock: 0, costPrice: 50000 } as never);
+    await inv.updateProduct(p.id, { ownership: "CONSIGNMENT", consignorName: "Toko Mawar" } as never);
+    const inv0 = await balance("1-1005");
+    await inv.createStockIn({ locationId: gudang.id, idempotencyKey: `ttp-${run}`, items: [{ productId: p.id, quantity: 10, unitCost: 50000 }] } as never);
+    expect(await prisma.inventoryCostLayer.count({ where: { productId: p.id } })).toBe(0);
+    expect(await balance("1-1005")).toBe(inv0);
+
+    const reference = `TTP-REL-${run}`;
+    await inv.releaseSaleStockLocal({ reference, saleDate: new Date().toISOString().slice(0, 10), items: [{ productId: p.id, warehouseId: gudang.id, quantity: 3 }] });
+    const tipe = await prisma.bookkeepingType.findFirst();
+    const saleId = `TTP-SALE-${run}`;
+    await prisma.salesRecord.create({ data: {
+      id: saleId, saleDate: new Date(), tipeId: tipe!.id, tipeCodeSnapshot: tipe!.code, tipeNameSnapshot: tipe!.name,
+      customerName: "Uji", paymentMethod: "Cash", total: 0, approvalStatus: "approved", stockReleaseReference: reference,
+      createdByUserId: "test", createdByNameSnapshot: "Test", createdByRoleSnapshot: "OWNER", createdAt: new Date(),
+      items: { create: [{ id: `${saleId}-item-0`, productRef: `TTP-${run}`, productId: p.id, quantity: 3, unitPrice: 80000, sortOrder: 0 }] }
+    } });
+    const journal = await salesHooks.postSalesCogsJournal(saleId);
+    const lines = await prisma.journalLine.findMany({ where: { journalEntryId: journal!.id }, orderBy: { sortOrder: "asc" } });
+    expect(lines.map((l) => [l.accountCodeSnapshot, Number(l.debit), Number(l.credit)])).toEqual([["5-1001", 150000, 0], ["2-1006", 0, 150000]]);
+    expect(await balance("1-1005")).toBe(inv0);
+
+    await expect(inv.updateProduct(p.id, { ownership: "OWN" } as never)).rejects.toThrow(/stoknya 0/);
+  });
 });

@@ -12,6 +12,7 @@ import { applySalesReturnToTempo } from "@/lib/tempo/store";
 import { isLocalInventory } from "@/lib/inventory/config";
 import { returnSaleStockLocal } from "@/lib/inventory/service";
 import { saleUnitCost } from "@/lib/accounting/inventoryPosting";
+import { accountForRole } from "@/lib/accounting/accountRoles";
 
 export interface ReturnActor {
   id: string;
@@ -203,17 +204,38 @@ export async function postSalesReturn(returnId: string, actor: ReturnActor) {
     });
   }
 
-  // 3. JIKA ADA MODAL RIIL: DEBIT Persediaan (1-1005) vs KREDIT HPP (5-1001)
-  if (totalCostPrice > 0) {
+  // 3. JIKA ADA MODAL RIIL: DEBIT Persediaan (1-1005) vs KREDIT HPP (5-1001).
+  // Barang titipan kembali menjadi milik penitip: utang ke penitip berkurang, persediaan SLM tidak bertambah.
+  const consignmentSkus = new Set(
+    (typeof prisma?.inventoryProduct?.findMany === "function"
+      ? await prisma.inventoryProduct.findMany({ where: { sku: { in: returnRecord.items.map((i) => i.productRef) }, ownership: "CONSIGNMENT" }, select: { sku: true } }).catch(() => [])
+      : [])
+      .map((p) => p.sku)
+  );
+  const consignmentCost = returnRecord.items.filter((i) => consignmentSkus.has(i.productRef)).reduce((sum, i) => sum + Number(i.totalCost), 0);
+  const ownReturnCost = totalCostPrice - consignmentCost;
+  if (consignmentCost > 0) {
+    const consignmentPayable = await accountForRole("CONSIGNMENT_PAYABLE");
+    lines.push({
+      accountId: consignmentPayable.id,
+      accountCodeSnapshot: consignmentPayable.code,
+      accountNameSnapshot: consignmentPayable.name,
+      debit: consignmentCost,
+      credit: 0,
+      memo: `Barang titipan kembali (${returnRecord.returnNumber})`
+    });
+  }
+  if (ownReturnCost > 0) {
     lines.push({
       accountId: inventoryAccount.id,
       accountCodeSnapshot: inventoryAccount.code,
       accountNameSnapshot: inventoryAccount.name,
-      debit: totalCostPrice,
+      debit: ownReturnCost,
       credit: 0,
       memo: `Pengembalian Fisik Barang Retur ke Persediaan (${returnRecord.returnNumber})`
     });
-
+  }
+  if (totalCostPrice > 0) {
     lines.push({
       accountId: cogsAccount.id,
       accountCodeSnapshot: cogsAccount.code,

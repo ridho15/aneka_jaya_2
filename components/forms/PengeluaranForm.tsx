@@ -49,6 +49,7 @@ type CreatedExpense = {
 const PURPOSE_ACCOUNT: Partial<Record<ExpenseCategoryCode, { code: string; label: string }>> = {
   goods_purchase: { code: "2-1005", label: "2-1005 Utang Barang Diterima Belum Dibayar" },
   purchase_advance: { code: "1-1008", label: "1-1008 Uang Muka Pembelian" },
+  consignment_payment: { code: "2-1006", label: "2-1006 Utang Barang Titipan" },
   supplies: { code: "6-1008", label: "6-1008 Beban Perlengkapan & Bahan Kemasan" },
   equipment: { code: "1-2001", label: "1-2001 Peralatan (di bawah Rp 1 jt: 6-1008)" }
 };
@@ -58,7 +59,8 @@ const PURPOSE_HINT: Partial<Record<ExpenseCategoryCode, string>> = {
   equipment: "Rp 1 juta ke atas jadi aset tetap; lengkapi lokasi, tanggal siap pakai, umur dan nilai residu di Akuntansi › Aset Tetap.",
   supplies: "Kantong, lakban, kardus, alat tulis: langsung jadi biaya.",
   operational_expense: "Ongkir ke pelanggan, listrik, sewa, jasa: pilih COA di samping.",
-  purchase_advance: "Dibayar sebelum barang datang. Tercatat sebagai aset sampai barangnya diterima."
+  purchase_advance: "Dibayar sebelum barang datang. Tercatat sebagai aset sampai barangnya diterima.",
+  consignment_payment: "Setoran ke pemilik barang titipan atas barang titipan yang sudah terjual. Mengurangi utang ke penitip, bukan biaya."
 };
 
 export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coaAccounts = [] }: Props) {

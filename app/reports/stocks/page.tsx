@@ -275,7 +275,7 @@ export default async function StockReportsPage({
           <p className="mt-1 hidden text-2xl font-black text-slate-900 sm:block">
             {report.summary.totalCostValuation > 0 ? rupiah(report.summary.totalCostValuation) : "-"}
           </p>
-          <p className="hidden text-xs text-slate-500 sm:block">Berdasarkan harga modal</p>
+          <p className="hidden text-xs text-slate-500 sm:block">{report.summary.consignmentCostValuation > 0 ? `Milik SLM. Titipan ${rupiah(report.summary.consignmentCostValuation)} tidak dihitung` : "Berdasarkan harga modal"}</p>
         </div>
         <div className="min-w-0 p-3 sm:p-5">
           <p className="text-[11px] font-semibold text-slate-500 sm:text-xs">Barang</p>
@@ -346,6 +346,7 @@ export default async function StockReportsPage({
                 <p className="min-w-0 truncate">
                   <span className="font-mono">{item.sku}</span> · {item.warehouse}
                   {item.status === "out_of_stock" ? " · habis" : item.status === "warning" ? " · menipis" : ""}
+                  {item.consignment ? ` · titipan${item.consignorName ? ` ${item.consignorName}` : ""}` : ""}
                 </p>
                 <p className="shrink-0">{item.totalCostValuation > 0 ? rupiah(item.totalCostValuation) : "-"}</p>
               </div>
@@ -386,6 +387,7 @@ export default async function StockReportsPage({
                   </td>
                   <td className="px-5 py-4 font-medium text-slate-900">
                     {item.hasName === false ? <span className="text-sm font-normal italic text-slate-600">Nama belum diisi</span> : item.productName}
+                    {item.consignment && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">Titipan{item.consignorName ? ` · ${item.consignorName}` : ""}</span>}
                     {item.category && <div className="text-xs font-normal text-slate-500">{item.category}</div>}
                   </td>
                   <td className="px-5 py-4 text-xs text-slate-600">

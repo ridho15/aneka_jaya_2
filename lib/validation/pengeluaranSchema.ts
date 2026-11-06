@@ -7,6 +7,7 @@ export const EXPENSE_CATEGORIES = [
   { code: "supplies", label: "Bahan kemasan / perlengkapan" },
   { code: "operational_expense", label: "Jasa / biaya operasional" },
   { code: "purchase_advance", label: "Uang muka pembelian" },
+  { code: "consignment_payment", label: "Bayar penitip barang titipan" },
   { code: "employee_loan", label: "Kasbon pribadi" },
   { code: "operational_advance", label: "Uang muka operasional" },
   { code: "salary", label: "Gaji" }
@@ -29,7 +30,7 @@ export const pengeluaranSchema = z.object({
   coaId: z.string().trim().min(1, "COA wajib dipilih").default("Kas"),
   coaNameSnapshot: z.string().trim().min(1, "COA wajib dipilih").default("Kas"),
   category: z.string().trim().max(100).default("Beban operasional"),
-  categoryCode: z.enum(["operational_expense", "goods_purchase", "equipment", "supplies", "purchase_advance", "employee_loan", "operational_advance", "salary"]).default("operational_expense"),
+  categoryCode: z.enum(["operational_expense", "goods_purchase", "equipment", "supplies", "purchase_advance", "consignment_payment", "employee_loan", "operational_advance", "salary"]).default("operational_expense"),
   employeeId: z.string().trim().nullish().or(z.literal("")),
   salaryPeriod: z.string().trim().regex(/^\d{4}-\d{2}$/, "Format periode gaji harus YYYY-MM").nullish().or(z.literal("")),
   salaryPaymentType: z.enum(["EXPENSE", "PAYABLE"]).default("EXPENSE"),

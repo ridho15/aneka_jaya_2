@@ -11,6 +11,7 @@ export type ProductRow = {
   id: string; sku: string; name: string; category: string | null; brand: string | null; unit: string;
   unitsPerKoli: number | null; minimumStock: number; costPrice: number; priceRmb: number | null; extraCostIdr: number; sellingPrice: number;
   cbmPerUnit?: number | null; cbmRateIdr?: number | null; pcsPerUnit?: number | null;
+  ownership?: string; consignorName?: string | null;
   totalQuantity: number; totalKoliText: string; erpProductId: number | null;
 };
 
@@ -45,7 +46,7 @@ export function ProductTable({ rows, rate, cbmRate = null, canManage, initialEdi
           {rows.map((x) => (
               <tr key={x.id} className={`border-t border-slate-100 ${editing === x.id ? "bg-emerald-50" : ""}`}>
                 <td className="px-3 py-2 font-mono text-xs font-semibold">{x.sku}</td>
-                <td className="px-3 py-2"><Link className="hover:text-emerald-800" href={`/inventory/mutasi?productId=${x.id}`}>{x.name}</Link><div className="text-xs text-slate-600">{[x.category, x.brand].filter(Boolean).join(" / ")}</div></td>
+                <td className="px-3 py-2"><Link className="hover:text-emerald-800" href={`/inventory/mutasi?productId=${x.id}`}>{x.name}</Link><div className="text-xs text-slate-600">{x.ownership === "CONSIGNMENT" && <span className="mr-1 rounded bg-amber-50 px-1 font-semibold text-amber-800">Titipan{x.consignorName ? ` · ${x.consignorName}` : ""}</span>}{[x.category, x.brand].filter(Boolean).join(" / ")}</div></td>
                 <td className="px-3 py-2">{x.unit}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{x.unitsPerKoli ? `${fmt(x.unitsPerKoli)} ${x.unit}` : "-"}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{x.priceRmb != null ? `¥ ${fmt(x.priceRmb, 4)}` : "-"}{x.priceRmb != null && x.cbmPerUnit ? <div className="text-xs text-slate-600">{fmt(x.cbmPerUnit, 6)} CBM</div> : null}{x.priceRmb != null && x.extraCostIdr ? <div className="text-xs text-slate-600">+ Rp {fmt(x.extraCostIdr)}</div> : null}</td>
@@ -75,7 +76,7 @@ function ProductEditor({ row, rate, cbmRate, onDone }: { row: ProductRow; rate: 
   const router = useRouter();
   const { showToast } = useToast();
   const s = (n: number | null | undefined) => (n == null ? "" : String(n));
-  const [f, setF] = useState({ name: row.name, unit: row.unit, unitsPerKoli: s(row.unitsPerKoli), priceRmb: s(row.priceRmb), extraCostIdr: s(row.extraCostIdr || null), costPrice: s(row.costPrice), sellingPrice: s(row.sellingPrice), minimumStock: s(row.minimumStock), cbmPerUnit: s(row.cbmPerUnit), cbmRateIdr: s(row.cbmRateIdr) });
+  const [f, setF] = useState({ name: row.name, unit: row.unit, unitsPerKoli: s(row.unitsPerKoli), priceRmb: s(row.priceRmb), extraCostIdr: s(row.extraCostIdr || null), costPrice: s(row.costPrice), sellingPrice: s(row.sellingPrice), minimumStock: s(row.minimumStock), cbmPerUnit: s(row.cbmPerUnit), cbmRateIdr: s(row.cbmRateIdr), ownership: row.ownership ?? "OWN", consignorName: row.consignorName ?? "" });
   const [busy, setBusy] = useState(false);
   const rmb = f.priceRmb.trim() === "" ? null : Number(f.priceRmb);
   const cbm = Number(f.cbmPerUnit) || 0;
@@ -94,6 +95,8 @@ function ProductEditor({ row, rate, cbmRate, onDone }: { row: ProductRow; rate: 
         extraCostIdr: Number(f.extraCostIdr) || 0,
         cbmPerUnit: f.cbmPerUnit.trim() === "" ? null : Number(f.cbmPerUnit),
         cbmRateIdr: f.cbmRateIdr.trim() === "" ? null : Number(f.cbmRateIdr),
+        ...(f.ownership !== (row.ownership ?? "OWN") ? { ownership: f.ownership } : {}),
+        consignorName: f.ownership === "CONSIGNMENT" ? f.consignorName.trim() || undefined : undefined,
         costPrice: Number(f.costPrice) || 0,
         sellingPrice: Number(f.sellingPrice) || 0,
         minimumStock: Number(f.minimumStock) || 0
@@ -124,7 +127,17 @@ function ProductEditor({ row, rate, cbmRate, onDone }: { row: ProductRow; rate: 
         {field(`Biaya lain per ${f.unit || "Lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "0" })}
         {field(`Modal per ${f.unit || "Lusin"} (Rp)`, "costPrice", { inputMode: "decimal", disabled: previewCost != null })}
         {field(`Harga Jual per ${f.unit || "Lusin"} (Rp)`, "sellingPrice", { inputMode: "decimal" })}
+        <label className="space-y-1 text-xs font-semibold text-slate-700"><span>Kepemilikan</span>
+          <select className={input} value={f.ownership} onChange={(e) => setF({ ...f, ownership: e.target.value })}>
+            <option value="OWN">Milik SLM</option>
+            <option value="CONSIGNMENT">Titipan pihak lain</option>
+          </select>
+        </label>
+        {f.ownership === "CONSIGNMENT" && field("Nama penitip", "consignorName", { placeholder: "mis. Toko Mawar" })}
       </div>
+      {f.ownership === "CONSIGNMENT" && (
+        <p className="text-xs text-slate-600">Barang titipan tidak dihitung sebagai aset SLM. Saat terjual, modalnya dicatat sebagai utang ke penitip. Kepemilikan hanya bisa diganti saat stoknya 0.</p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
         <span>{previewCost != null ? <>Modal otomatis: ¥{rmb} × Rp {rate?.toLocaleString("id-ID")}{freight ? ` + ongkir CBM Rp ${freight.toLocaleString("id-ID")}` : ""}{Number(f.extraCostIdr) ? ` + Rp ${Number(f.extraCostIdr).toLocaleString("id-ID")}` : ""} = <b>Rp {previewCost.toLocaleString("id-ID")}</b>{markup != null ? <> · mark-up <b>{markup.toLocaleString("id-ID")}%</b></> : null}</> : rmb != null ? "Kurs RMB belum diatur, jadi modal belum dihitung otomatis." : "Isi Harga RMB agar modal ikut berubah saat kurs RMB diganti."}</span>
         <div className="flex gap-2"><Button variant="secondary" className="min-h-11" onClick={onDone}>Batal</Button><Button className="min-h-11" onClick={save} disabled={busy}>{busy ? "Menyimpan..." : "Simpan"}</Button></div>

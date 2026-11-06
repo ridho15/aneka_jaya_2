@@ -133,21 +133,29 @@ export async function postInventoryDocumentJournalSafely(referenceType: Journale
 // HPP penjualan dari pergerakan stok
 // ---------------------------------------------------------------------
 
-/** Biaya FIFO barang yang keluar untuk satu penjualan (per referensi pelepasan stok). */
+/**
+ * Biaya barang yang keluar untuk satu penjualan (per referensi pelepasan stok).
+ * Milik SLM: biaya FIFO (mengurangi persediaan). Titipan: modal titipan yang menjadi hak penitip.
+ */
 export async function saleStockCost(releaseReference: string | null | undefined) {
   if (!releaseReference) return null;
   const rows = await prisma.inventoryMovement.findMany({
     where: { referenceType: "SALE", referenceNumber: releaseReference, type: "SALE_OUT" },
-    select: { productId: true, quantity: true, totalCost: true, costComplete: true, costNote: true, product: { select: { sku: true } } }
+    select: { productId: true, quantity: true, totalCost: true, costComplete: true, costNote: true, product: { select: { sku: true, ownership: true, costPrice: true, consignorName: true } } }
   });
-  if (!rows.length || rows.some((r) => r.totalCost == null)) return null;
-  const notes = rows.filter((r) => !r.costComplete).map((r) => `${r.product.sku}: ${r.costNote ?? "modal belum lengkap"}`);
-  return {
-    total: r2(rows.reduce((s, r) => s - Number(r.totalCost), 0)),
-    complete: notes.length === 0,
-    notes,
-    byProduct: rows.map((r) => ({ productId: r.productId, quantity: -Number(r.quantity), cost: -Number(r.totalCost) }))
-  };
+  if (!rows.length) return null;
+  const own = rows.filter((r) => r.product.ownership !== "CONSIGNMENT");
+  if (own.some((r) => r.totalCost == null)) return null;
+  const notes = own.filter((r) => !r.costComplete).map((r) => `${r.product.sku}: ${r.costNote ?? "modal belum lengkap"}`);
+  const byProduct = rows.map((r) => {
+    const qty = -Number(r.quantity);
+    const consignment = r.product.ownership === "CONSIGNMENT";
+    if (consignment && !(Number(r.product.costPrice) > 0)) notes.push(`${r.product.sku}: modal titipan belum diisi`);
+    return { productId: r.productId, quantity: qty, consignment, cost: consignment ? r2(qty * Number(r.product.costPrice)) : -Number(r.totalCost) };
+  });
+  const ownTotal = r2(byProduct.filter((p) => !p.consignment).reduce((s, p) => s + p.cost, 0));
+  const consignmentTotal = r2(byProduct.filter((p) => p.consignment).reduce((s, p) => s + p.cost, 0));
+  return { total: r2(ownTotal + consignmentTotal), ownTotal, consignmentTotal, complete: notes.length === 0, notes, byProduct };
 }
 
 /** Modal per satuan barang saat dijual (FIFO), untuk retur supaya barang kembali dengan nilai yang sama. */

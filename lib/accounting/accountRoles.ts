@@ -15,6 +15,7 @@ export type AccountRole =
   | "EQUIPMENT"
   | "ACCUMULATED_DEPRECIATION"
   | "GOODS_RECEIVED_PAYABLE"
+  | "CONSIGNMENT_PAYABLE"
   | "ACCOUNTS_PAYABLE"
   | "INVENTORY_VARIANCE"
   | "DEPRECIATION_EXPENSE"
@@ -40,6 +41,7 @@ export const ACCOUNT_ROLES: Record<AccountRole, RoleDef> = {
   ACCUMULATED_DEPRECIATION: { code: "1-2002", name: "Akumulasi Penyusutan Peralatan", category: "ASSET", normalBalance: "CREDIT", reportGroup: "CONTRA_FIXED_ASSET", description: "Kontra aset peralatan.", keywords: ["akumulasi penyusutan"], sortOrder: 85 },
   ACCOUNTS_PAYABLE: { code: "2-1001", name: "Utang Usaha", category: "LIABILITY", normalBalance: "CREDIT", reportGroup: "CURRENT_LIABILITY", description: "Kewajiban kepada supplier dari invoice pembelian.", keywords: ["utang usaha", "utang"], sortOrder: 110 },
   GOODS_RECEIVED_PAYABLE: { code: "2-1005", name: "Utang Barang Diterima Belum Dibayar", category: "LIABILITY", normalBalance: "CREDIT", reportGroup: "CURRENT_LIABILITY", description: "Barang dagang sudah masuk stok (Barang Masuk / packing list) tetapi belum dibayar.", keywords: ["barang diterima"], sortOrder: 140 },
+  CONSIGNMENT_PAYABLE: { code: "2-1006", name: "Utang Barang Titipan", category: "LIABILITY", normalBalance: "CREDIT", reportGroup: "CURRENT_LIABILITY", description: "Hak penitip atas barang titipan yang sudah terjual (sebesar modal titipan).", keywords: ["titipan"], sortOrder: 145 },
   COGS: { code: "5-1001", name: "Harga Pokok Penjualan (HPP)", category: "EXPENSE", normalBalance: "DEBIT", reportGroup: null, description: "Beban pokok barang yang terjual.", keywords: ["pokok"], sortOrder: 410 },
   INVENTORY_VARIANCE: { code: "5-1002", name: "Selisih & Penyesuaian Persediaan", category: "EXPENSE", normalBalance: "DEBIT", reportGroup: null, description: "Selisih opname dan penyesuaian stok (hilang, rusak, temuan).", keywords: ["selisih", "penyesuaian persediaan"], sortOrder: 420 },
   DEPRECIATION_EXPENSE: { code: "6-1007", name: "Beban Penyusutan Peralatan", category: "EXPENSE", normalBalance: "DEBIT", reportGroup: null, description: "Penyusutan bulanan aset tetap.", keywords: ["penyusutan"], sortOrder: 570 },

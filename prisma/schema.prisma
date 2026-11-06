@@ -1327,6 +1327,9 @@ model InventoryProduct {
   erpProductId Int?     @unique
   /// Foto barang (path /uploads/products/...), diunggah dari Master Barang / Stok.
   photoUrl     String?
+  /// OWN = milik SLM (aset persediaan); CONSIGNMENT = barang titipan pihak lain (bukan aset SLM).
+  ownership     String  @default("OWN")
+  consignorName String?
   isActive     Boolean  @default(true)
   notes        String?
   createdAt    DateTime @default(now())

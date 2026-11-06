@@ -1,3 +1,4 @@
+import { prisma } from "@/lib/db/prisma";
 import { listBalances, listLocations } from "@/lib/inventory/service";
 import { hasRealName } from "@/lib/inventory/math";
 
@@ -37,6 +38,9 @@ export type StockReportItem = {
   totalCostValuation: number;
   totalSellValuation: number;
   status: "safe" | "warning" | "out_of_stock";
+  /** Barang titipan pihak lain: bukan aset SLM, tidak ikut nilai stok. */
+  consignment?: boolean;
+  consignorName?: string | null;
 };
 
 export type StockReportResult = {
@@ -47,8 +51,11 @@ export type StockReportResult = {
     totalQuantity: number;
     /** Total qty per satuan (Lusin, Pack, …): satuan berbeda tidak dijumlah jadi satu angka. */
     unitTotals: { unit: string; quantity: number }[];
+    /** Nilai stok milik SLM (barang titipan tidak termasuk). */
     totalCostValuation: number;
     totalSellValuation: number;
+    /** Nilai barang titipan pihak lain menurut modal titipan. */
+    consignmentCostValuation: number;
     warningCount: number;
     outOfStockCount: number;
     safeCount: number;
@@ -75,7 +82,7 @@ export function compareStockItems(a: StockReportItem, b: StockReportItem) {
 }
 
 export async function getStockInventoryReport(filter: StockReportFilter = {}): Promise<StockReportResult> {
-  const [locations, balances] = await Promise.all([
+  const [locations, balances, consignmentRows] = await Promise.all([
     listLocations({ type: filter.locationType }),
     listBalances({
       locationType: filter.locationType,
@@ -84,8 +91,12 @@ export async function getStockInventoryReport(filter: StockReportFilter = {}): P
       keyword: filter.productKeyword || undefined,
       includeZero: true,
       all: true
-    })
+    }),
+    typeof prisma?.inventoryProduct?.findMany === "function"
+      ? prisma.inventoryProduct.findMany({ where: { ownership: "CONSIGNMENT" }, select: { id: true, consignorName: true } }).catch(() => [])
+      : Promise.resolve([] as Array<{ id: string; consignorName: string | null }>)
   ]);
+  const consignors = new Map(consignmentRows.map((r) => [r.id, r.consignorName]));
 
   const wanted = filter.warehouse?.trim().toLowerCase();
   const items: StockReportItem[] = [];
@@ -112,7 +123,9 @@ export async function getStockInventoryReport(filter: StockReportFilter = {}): P
       sellPrice: row.sellingPrice,
       totalCostValuation: Math.round(row.quantity * row.costPrice * 100) / 100,
       totalSellValuation: Math.round(row.quantity * row.sellingPrice * 100) / 100,
-      status
+      status,
+      consignment: consignors.has(row.productId),
+      consignorName: consignors.get(row.productId) ?? null
     });
   }
   items.sort(compareStockItems);
@@ -128,8 +141,9 @@ export async function getStockInventoryReport(filter: StockReportFilter = {}): P
         .map(([unit, quantity]) => ({ unit, quantity: Math.round(quantity * 100) / 100 }))
         .filter((u) => u.quantity !== 0)
         .sort((a, b) => b.quantity - a.quantity),
-      totalCostValuation: sum((i) => i.totalCostValuation),
-      totalSellValuation: sum((i) => i.totalSellValuation),
+      totalCostValuation: sum((i) => (i.consignment ? 0 : i.totalCostValuation)),
+      totalSellValuation: sum((i) => (i.consignment ? 0 : i.totalSellValuation)),
+      consignmentCostValuation: sum((i) => (i.consignment ? i.totalCostValuation : 0)),
       warningCount: items.filter((i) => i.status === "warning").length,
       outOfStockCount: items.filter((i) => i.status === "out_of_stock").length,
       safeCount: items.filter((i) => i.status === "safe").length

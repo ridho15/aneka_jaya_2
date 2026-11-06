@@ -84,7 +84,9 @@ export async function postMovement(tx: Tx, line: MovementLine, actor?: Inventory
       { productId: line.productId, sku: product?.sku, locationId: line.locationId, available: balance.quantity, requested: Math.abs(line.delta) }
     );
   }
-  const valued = line.type !== "TRANSFER_IN" && line.type !== "TRANSFER_OUT";
+  // Barang titipan bukan aset SLM: stoknya dicatat, nilainya tidak masuk lapisan FIFO / buku besar.
+  const ownership = (await tx.inventoryProduct.findUnique({ where: { id: line.productId }, select: { ownership: true } }))?.ownership;
+  const valued = line.type !== "TRANSFER_IN" && line.type !== "TRANSFER_OUT" && ownership !== "CONSIGNMENT";
   // Lapisan saldo awal dibuat dari stok sebelum pergerakan ini, jadi harus sebelum saldo diperbarui.
   const hadLayersBefore = valued ? (await ensureOpeningLayer(tx, line.productId)) || (await productHasLayers(tx, line.productId)) : true;
   await tx.inventoryBalance.update({ where: { id: balance.id }, data: { quantity: next.quantity, avgCost: next.avgCost } });
@@ -281,13 +283,24 @@ export async function createProduct(input: ProductInput, actor?: InventoryActor)
 export async function updateProduct(idOrSku: string, input: Partial<Omit<ProductInput, "initialStock">>) {
   const product = await prisma.inventoryProduct.findFirst({ where: { OR: [{ id: idOrSku }, { sku: idOrSku }] } });
   if (!product) throw new InventoryError("NOT_FOUND", "Produk tidak ditemukan.", 404);
+  if (input.ownership && input.ownership !== product.ownership) {
+    // Ganti kepemilikan saat masih ada stok akan memindahkan nilai keluar/masuk persediaan tanpa dokumen.
+    const onHand = await prisma.inventoryBalance.aggregate({ where: { productId: product.id }, _sum: { quantity: true } });
+    if (num(onHand._sum.quantity) !== 0) {
+      throw new InventoryError("INVALID_STATE", `Kepemilikan ${product.sku} hanya bisa diganti saat stoknya 0 (sekarang ${num(onHand._sum.quantity)}).`, 409);
+    }
+  }
+  if (input.ownership === "OWN") input = { ...input, consignorName: undefined };
   const data = await applyRmbCost(input, {
     priceRmb: product.priceRmb == null ? null : num(product.priceRmb),
     extraCostIdr: num(product.extraCostIdr),
     cbmPerUnit: product.cbmPerUnit == null ? null : num(product.cbmPerUnit),
     cbmRateIdr: product.cbmRateIdr == null ? null : num(product.cbmRateIdr)
   });
-  return serializeProduct(await prisma.inventoryProduct.update({ where: { id: product.id }, data }));
+  return serializeProduct(await prisma.inventoryProduct.update({
+    where: { id: product.id },
+    data: { ...data, ...(input.ownership === "OWN" ? { consignorName: null } : {}) }
+  }));
 }
 
 function serializeProduct<T extends { minimumStock: Prisma.Decimal; costPrice: Prisma.Decimal; sellingPrice: Prisma.Decimal; unitsPerKoli: Prisma.Decimal | null; priceRmb: Prisma.Decimal | null; extraCostIdr: Prisma.Decimal; cbmPerUnit?: Prisma.Decimal | null; cbmRateIdr?: Prisma.Decimal | null }>(p: T) {

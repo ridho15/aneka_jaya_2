@@ -67,11 +67,17 @@ async function stockCardValue() {
   const allLayered = new Set((await prisma.inventoryCostLayer.findMany({ select: { productId: true }, distinct: ["productId"] })).map((r) => r.productId));
   const balances = await prisma.inventoryBalance.findMany({
     where: { quantity: { gt: 0 } },
-    select: { productId: true, quantity: true, avgCost: true, product: { select: { costPrice: true } } }
+    select: { productId: true, quantity: true, avgCost: true, product: { select: { costPrice: true, ownership: true } } }
   });
   let unlayered = 0;
   let unlayeredNoCost = 0;
+  let consignment = 0;
   for (const b of balances) {
+    // Barang titipan bukan aset SLM: dilaporkan terpisah.
+    if (b.product.ownership === "CONSIGNMENT") {
+      consignment += Number(b.quantity) * Number(b.product.costPrice);
+      continue;
+    }
     if (allLayered.has(b.productId)) continue;
     const unit = Number(b.avgCost) > 0 ? Number(b.avgCost) : Number(b.product.costPrice);
     if (unit > 0) unlayered += Number(b.quantity) * unit;
@@ -85,6 +91,7 @@ async function stockCardValue() {
     notYetLayered: r0(unlayered),
     notYetLayeredNoCostProducts: unlayeredNoCost,
     unknownCostQty: Math.round(unknownCostQty * 100) / 100,
+    consignment: r0(consignment),
     total: r0(inLedger + opening + unlayered)
   };
 }
@@ -164,7 +171,7 @@ export type CorrectionCandidate = {
 export async function listCorrectionCandidates(): Promise<CorrectionCandidate[]> {
   const [policy, decisions] = await Promise.all([getFixedAssetPolicy(), readDecisions()]);
   const expenses = await prisma.expenseRecord.findMany({
-    where: { approvalStatus: "approved", categoryCode: { notIn: ["employee_loan", "operational_advance", "salary", "purchase_advance", "supplies"] } },
+    where: { approvalStatus: "approved", categoryCode: { notIn: ["employee_loan", "operational_advance", "salary", "purchase_advance", "supplies", "consignment_payment"] } },
     select: { id: true, expenseDate: true, description: true, vendorName: true, category: true, categoryCode: true, coaId: true, coaNameSnapshot: true, amount: true, attachmentUrl: true, journalEntryId: true },
     orderBy: { expenseDate: "asc" }
   });
