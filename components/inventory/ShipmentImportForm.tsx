@@ -161,26 +161,26 @@ export function ShipmentImportForm({ locations }: { locations: InvLocation[] }) 
             </p>
           )}
           <div className="max-h-[60vh] overflow-auto">
-            <table className="w-full text-xs">
+            <table className="w-full table-fixed text-xs">
               <thead className="sticky top-0 bg-slate-50 text-left text-slate-600">
                 <tr>
-                  <th className="px-3 py-2">Barang</th>
-                  <th className="px-2 py-2 text-right">Isi pcs</th>
-                  <th className="px-2 py-2 text-right">Stok</th>
-                  <th className="hidden px-2 py-2 text-right md:table-cell">RMB/satuan</th>
-                  <th className="hidden px-2 py-2 text-right md:table-cell">CBM/satuan</th>
-                  <th className="px-2 py-2 text-right">Modal</th>
-                  <th className="hidden px-2 py-2 text-right sm:table-cell">Jual</th>
-                  <th className="px-3 py-2 text-right">Mark-up</th>
+                  <th className="w-[46%] px-3 py-2 md:w-auto">Barang</th>
+                  <th className="w-16 px-2 py-2 text-right">Isi pcs</th>
+                  <th className="w-24 px-2 py-2 text-right">Stok</th>
+                  <th className="hidden w-24 px-2 py-2 text-right md:table-cell">RMB/satuan</th>
+                  <th className="hidden w-24 px-2 py-2 text-right md:table-cell">CBM/satuan</th>
+                  <th className="w-28 px-2 py-2 text-right">Modal</th>
+                  <th className="hidden w-28 px-2 py-2 text-right sm:table-cell">Jual</th>
+                  <th className="w-20 px-3 py-2 text-right">Mark-up</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map(({ p, cost, sell, markup }) => (
                   <tr key={p.sku} className={p.warnings.length ? "bg-amber-50/50" : undefined}>
                     <td className="px-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[11px] text-slate-500">{p.sku}</span>
-                        {!p.exists && <span className="rounded bg-emerald-50 px-1 text-[10px] font-semibold text-emerald-800">baru</span>}
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="shrink-0 font-mono text-[11px] text-slate-500">{p.sku}</span>
+                        {!p.exists && <span className="shrink-0 rounded bg-emerald-50 px-1 text-[10px] font-semibold text-emerald-800">baru</span>}
                         <input
                           aria-label={`Nama ${p.sku}`}
                           className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 hover:border-slate-300 focus:border-emerald-600 focus:bg-white focus:outline-none"

@@ -48,6 +48,12 @@ const rupiah = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+/** Ringkas untuk layar HP: Rp 6,01 M / Rp 850 jt. */
+const compactRupiah = (value: number) =>
+  value >= 1e9 ? `Rp ${(value / 1e9).toLocaleString("id-ID", { maximumFractionDigits: 2 })} M`
+  : value >= 1e6 ? `Rp ${(value / 1e6).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`
+  : rupiah(value);
+
 export default async function StockReportsPage({
   searchParams,
 }: {
@@ -259,59 +265,39 @@ export default async function StockReportsPage({
         </div>
       </form>
 
-      {/* KPI Summary Cards */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <section className="aj-surface rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Total Valuasi Aset Stok
+      {/* Ringkasan: satu baris di HP, empat kolom di layar lebar. */}
+      <section className="aj-surface mb-6 grid grid-cols-3 divide-x divide-slate-100 rounded-2xl border border-slate-200 bg-white lg:grid-cols-4">
+        <div className="min-w-0 p-3 sm:p-5">
+          <p className="text-[11px] font-semibold text-slate-500 sm:text-xs">Nilai stok</p>
+          <p className="mt-1 text-sm font-black text-slate-900 sm:hidden" title={rupiah(report.summary.totalCostValuation)}>
+            {report.summary.totalCostValuation > 0 ? compactRupiah(report.summary.totalCostValuation) : "-"}
           </p>
-          <p className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
-            {report.summary.totalCostValuation > 0
-              ? rupiah(report.summary.totalCostValuation)
-              : "-"}
+          <p className="mt-1 hidden text-2xl font-black text-slate-900 sm:block">
+            {report.summary.totalCostValuation > 0 ? rupiah(report.summary.totalCostValuation) : "-"}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Berdasarkan harga modal</p>
-        </section>
-
-        <section className="aj-surface rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Jumlah Fisik per Satuan
+          <p className="hidden text-xs text-slate-500 sm:block">Berdasarkan harga modal</p>
+        </div>
+        <div className="min-w-0 p-3 sm:p-5">
+          <p className="text-[11px] font-semibold text-slate-500 sm:text-xs">Barang</p>
+          <p className="mt-1 text-sm font-black text-slate-900 sm:text-2xl">{report.summary.totalItems.toLocaleString("id-ID")}</p>
+          <p className="hidden text-xs text-slate-500 sm:block">{report.summary.safeCount} aman</p>
+        </div>
+        <div className="min-w-0 p-3 sm:p-5">
+          <p className="text-[11px] font-semibold text-slate-500 sm:text-xs">Perlu perhatian</p>
+          <p className="mt-1 text-sm font-bold sm:text-base">
+            <span className="text-amber-700">{report.summary.warningCount} menipis</span>
+            <span className="text-slate-300"> · </span>
+            <span className="text-rose-700">{report.summary.outOfStockCount} habis</span>
           </p>
-          <p className="mt-2 text-lg font-black leading-snug text-slate-900 sm:text-xl">
+        </div>
+        <div className="hidden min-w-0 p-5 lg:block">
+          <p className="text-xs font-semibold text-slate-500">Jumlah per satuan</p>
+          <p className="mt-1 text-sm font-bold leading-snug text-slate-900">
             {(report.summary.unitTotals ?? []).length ? (report.summary.unitTotals ?? []).map((u) => `${u.quantity.toLocaleString("id-ID")} ${u.unit}`).join(" · ") : "0"}
           </p>
-          <p className="mt-1 text-xs text-slate-500">Satuan berbeda tidak dijumlahkan</p>
-        </section>
-
-        <section className="aj-surface rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Varian Item Stok
-          </p>
-          <p className="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">
-            {report.summary.totalItems.toLocaleString("id-ID")}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Total baris data stok</p>
-        </section>
-
-        <section className="aj-surface rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Status Perhatian Stok
-          </p>
-          <div className="mt-2 flex items-center gap-3">
-            <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-700">
-              <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-              {report.summary.warningCount} Menipis
-            </span>
-            <span className="inline-flex items-center gap-1 text-sm font-bold text-rose-700">
-              <span className="h-2 w-2 rounded-full bg-rose-500"></span>
-              {report.summary.outOfStockCount} Habis
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {report.summary.safeCount} item dalam kondisi aman
-          </p>
-        </section>
-      </div>
+          <p className="text-xs text-slate-500">Satuan berbeda tidak dijumlahkan</p>
+        </div>
+      </section>
 
       {/* Main Data Table */}
       <section className="aj-surface overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -347,56 +333,21 @@ export default async function StockReportsPage({
         {/* Mobile View */}
         <div className="divide-y divide-slate-100 md:hidden">
           {pagedItems.map((item, idx) => (
-            <article key={`${item.sku}-${item.warehouse}-${idx}`} className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
-                      {item.sku}
-                    </span>
-                    {item.status === "out_of_stock" && (
-                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800">
-                        Habis
-                      </span>
-                    )}
-                    {item.status === "warning" && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                        Menipis
-                      </span>
-                    )}
-                    {item.status === "safe" && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                        Aman
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 font-semibold text-slate-900">{item.hasName === false ? <span className="font-normal italic text-slate-600">Nama belum diisi</span> : item.productName}</p>
-                  <p className="text-xs text-slate-500">
-                    {item.warehouse} • {item.locationType === "STORE" ? "Toko" : "Gudang"}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-slate-900">
-                    {item.quantity.toLocaleString("id-ID")} {item.unit}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {item.koliText?.includes("koli") ? item.koliText : `Isi/koli: ${item.unitsPerKoli ?? "-"}`}
-                  </p>
-                </div>
+            <article key={`${item.sku}-${item.warehouse}-${idx}`} className="px-4 py-2.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="min-w-0 truncate text-sm font-semibold text-slate-900">
+                  {item.hasName === false ? <span className="font-normal italic text-slate-600">Nama belum diisi</span> : item.productName}
+                </p>
+                <p className={`shrink-0 text-sm font-black ${item.status === "out_of_stock" ? "text-rose-700" : item.status === "warning" ? "text-amber-700" : "text-slate-900"}`}>
+                  {item.quantity.toLocaleString("id-ID")} {item.unit}
+                </p>
               </div>
-
-              <div className="mt-3 flex items-center justify-between border-t border-slate-50 pt-2 text-xs text-slate-600">
-                <span>
-                  Modal: {item.costPrice > 0 ? rupiah(item.costPrice) : "-"}
-                </span>
-                <span>
-                  Valuasi:{" "}
-                  <b>
-                    {item.totalCostValuation > 0
-                      ? rupiah(item.totalCostValuation)
-                      : "-"}
-                  </b>
-                </span>
+              <div className="flex items-baseline justify-between gap-3 text-xs text-slate-500">
+                <p className="min-w-0 truncate">
+                  <span className="font-mono">{item.sku}</span> · {item.warehouse}
+                  {item.status === "out_of_stock" ? " · habis" : item.status === "warning" ? " · menipis" : ""}
+                </p>
+                <p className="shrink-0">{item.totalCostValuation > 0 ? rupiah(item.totalCostValuation) : "-"}</p>
               </div>
             </article>
           ))}

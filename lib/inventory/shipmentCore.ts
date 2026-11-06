@@ -73,6 +73,13 @@ export function categoryToIndonesian(english: string) {
   return hit ? hit[1] : english.trim();
 }
 
+/** Kategori dari kolom kategori; bila kolom itu kosong atau hanya angka, dari nama barang. */
+function categoryFor(categoryOriginal: string, nameOriginal: string) {
+  if (/[a-z]/i.test(categoryOriginal)) return categoryToIndonesian(categoryOriginal);
+  const hit = CATEGORY_ID.find(([re]) => re.test(nameOriginal));
+  return hit ? hit[1] : "";
+}
+
 /** Kata Mandarin umum di packing list → Indonesia (cadangan bila penerjemah otomatis tidak tersedia). */
 const WORDS_ID: Array<[string, string]> = [
   ["猫眼", "Cat Eye"], ["印花", "Motif"], ["纯色", "Polos"], ["电镀", "Chrome"], ["点钻", "Berlian"], ["玻璃珠", "Manik Kaca"],
@@ -87,8 +94,14 @@ const WORDS_ID: Array<[string, string]> = [
 export function fallbackIndonesianName(nameOriginal: string, category: string) {
   let text = nameOriginal.replace(/\s+/g, " ").trim();
   for (const [cn, id] of WORDS_ID) text = text.split(cn).join(` ${id} `);
-  text = text.replace(/[㐀-鿿]+/g, " ").replace(/\s+/g, " ").trim();
-  const base = categoryToIndonesian(category);
+  // Sebagian file menulis nama dalam bahasa Inggris (mis. FAKE NAIL PACKAGING BOX).
+  for (const [re, id] of CATEGORY_ID) text = text.replace(new RegExp(re.source, "gi"), ` ${id} `);
+  text = text.replace(/[㐀-鿿]+/g, " ").replace(/[，。、；：（）！？【】\uFFFD]/g, " ").replace(/\s+/g, " ").trim();
+  // Sisa tanda baca tanpa kata (mis. "+ ,", "*300") dibuang, lalu dibatasi 8 kata supaya ringkas.
+  text = text.split(" ").filter((w) => /[A-Za-z0-9\u00C0-\u024F]/.test(w) && !/^[*%]/.test(w) && !/^\d+%$/.test(w)).slice(0, 8).join(" ").replace(/[+,#/]+$/, "").trim();
+  // Kata yang sama berulang ("Kemasan Kuku Palsu / Kemasan Kuku Palsu") cukup sekali.
+  text = Array.from(new Set(text.split(" / ").map((t) => t.trim()).filter(Boolean))).join(" / ");
+  const base = /[a-z]/i.test(category) ? categoryToIndonesian(category) : "";
   if (!text) return base;
   return text.toLowerCase().startsWith(base.toLowerCase()) ? text : `${base} ${text}`;
 }
@@ -99,6 +112,7 @@ function guessPcsPerUnit(qtyPerCartonPcs: number): { pcs: number; source: Shipme
   return { pcs: 12, source: "tebakan" };
 }
 
+const isPcs = (unit: string) => /^(pcs|pc|piece|buah|biji)$/i.test(unit.trim());
 const isDozen = (unit: string) => /^(dz|doz|dozen|lusin)$/i.test(unit.trim());
 
 export function computeShipment(
@@ -146,7 +160,7 @@ export function computeShipment(
     let pcs: number;
     let source: ShipmentProduct["pcsPerUnitSource"];
     const override = overrides[sku]?.pcsPerUnit;
-    const fromMaster = m?.pcsPerUnit ?? (m?.unitsPerKoli && fullCarton.qtyPcs % m.unitsPerKoli === 0 ? fullCarton.qtyPcs / m.unitsPerKoli : null);
+    const fromMaster = m?.pcsPerUnit ?? (m && isPcs(m.unit) ? 1 : null) ?? (m?.unitsPerKoli && fullCarton.qtyPcs % m.unitsPerKoli === 0 ? fullCarton.qtyPcs / m.unitsPerKoli : null);
     if (override && override > 0) { pcs = override; source = "manual"; }
     else if (fromMaster && fromMaster > 0) { pcs = fromMaster; source = "master"; }
     else if (fullCarton.dz) { pcs = 12; source = "file-dz"; }
@@ -173,11 +187,11 @@ export function computeShipment(
     const names = Array.from(new Set(rows.map((r) => r.nameOriginal).filter(Boolean)));
     if (names.length > 1) warnings.push(`Satu kode dipakai beberapa nama: ${names.join(" / ")}.`);
 
-    const category = categoryToIndonesian(first.categoryOriginal || "");
+    const category = categoryFor(first.categoryOriginal || "", names.join(" "));
     const proposed = overrides[sku]?.name?.trim()
       || (m?.hasRealName ? m.name : "")
       || options.translatedNames?.[sku]
-      || fallbackIndonesianName(names.join(" "), first.categoryOriginal || "");
+      || fallbackIndonesianName(names.join(" / "), first.categoryOriginal || "");
 
     return {
       sku,

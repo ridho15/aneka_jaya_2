@@ -46,7 +46,7 @@ export async function parseShipmentWorkbook(buffer: ArrayBuffer): Promise<Parsed
     cells.forEach((c, i) => {
       if (!c) return;
       if (c.includes("ITEM NO")) col.sku = i;
-      else if (/PR[UO]+DUCT NAME/.test(c)) col.name = i;
+      else if (/PR[UO]+DUCT NAME/.test(c)) { if (col.name === undefined) col.name = i; }
       else if (c.includes("QTY/CTN")) col.qtyPerCarton = i;
       else if (c.includes("CTNS")) col.cartons = i;
       else if (c.includes("UNIT PRICE")) col.unitPrice = i;

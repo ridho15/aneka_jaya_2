@@ -70,6 +70,32 @@ describe("shipment import rules", () => {
   });
 });
 
+describe("master unit Pcs", () => {
+  it("counts stock in pcs when Master Barang uses Pcs", () => {
+    const master = { x: { sku: "X", name: "Kuku", unit: "PCS", unitsPerKoli: null, pcsPerUnit: null, hasRealName: true } };
+    const [p] = computeShipment([line({ cartons: 2, qtyPerCarton: 720, unitPrice: 1.5 })], { master });
+    expect(p).toMatchObject({ pcsPerUnit: 1, pcsPerUnitSource: "master", quantity: 1440, priceRmb: 1.5, unit: "PCS" });
+  });
+});
+
+describe("packing list header", () => {
+  it("uses the first PRODUCT NAME column for the name and the next one for the category", async () => {
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("S");
+    ws.addRow(["20260826-SLM HDMU4921089"]);
+    ws.addRow(["供货商", "货号\nITEM NO.", "品名 PRUODUCT NAME", "品名 PRUODUCT NAME", "件数\n CTNS", "装箱数量\nQTY/CTN", "单位 \nUNIT", "数量\nTOTAL QTY", "价格 \nUNIT PRICE", "金额", "体积\nCBM/CTN"]);
+    ws.addRow([1, "AJKP49-10", "X-6203", "FAKE NAIL", 29, 720, "pcs", 20880, 1.7, 0, 0.130732]);
+    const buf = await wb.xlsx.writeBuffer();
+    const { parseShipmentWorkbook } = await import("@/lib/inventory/shipmentImport");
+    const parsed = await parseShipmentWorkbook(buf as ArrayBuffer);
+    expect(parsed.lines[0]).toMatchObject({ nameOriginal: "X-6203", categoryOriginal: "FAKE NAIL", cartons: 29, qtyPerCarton: 720 });
+    const [p] = computeShipment(parsed.lines);
+    expect(p.name).toBe("Kuku Palsu X-6203");
+    expect(p.category).toBe("Kuku Palsu");
+  });
+});
+
 const sample = "/root/.claude/uploads/3f464e7c-9d1d-5a48-91f7-ca0499918352/70714bb0-20260826-SLM_______2.xlsx";
 describe.skipIf(!existsSync(sample))("real packing list", () => {
   it("parses every product", async () => {
