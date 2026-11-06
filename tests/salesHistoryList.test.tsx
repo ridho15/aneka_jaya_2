@@ -92,3 +92,12 @@ describe("day separator totals", () => {
     expect(admin).toContain("Rabu, 04 Nov 2026");
   });
 });
+
+describe("empty stock mark", () => {
+  it("marks the sale and the item that sold beyond stock", () => {
+    const html = renderToStaticMarkup(<SalesItemsDetail sale={sale} shortage={{ "erp-001": 2 }} />);
+    expect(html).toContain("Stok kosong: 2");
+    const list = renderToStaticMarkup(<SalesHistoryList sales={[sale]} canManage={false} canViewTransactionNumber stockShortage={{ [sale.id]: { "erp-001": 2 } }} />);
+    expect(list).toContain("Stok kosong");
+  });
+});

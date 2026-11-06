@@ -16,6 +16,8 @@ type Props = {
   productNames?: Record<string, string>;
   /** Jumlah nota & total rupiah per hari di pembatas tanggal (Super Admin saja). */
   showDayTotals?: boolean;
+  /** Qty per barang (kode huruf kecil) per nota yang terjual melebihi stok. */
+  stockShortage?: Record<string, Record<string, number>>;
   /** Total per hari dari seluruh nota yang cocok dengan filter (bukan hanya halaman ini). */
   dayTotals?: Record<string, { count: number; total: number }>;
 };
@@ -324,15 +326,29 @@ function ExpandButton({
   );
 }
 
+/** Tanda barang yang terjual melebihi stok (stok kosong tapi tetap jadi penjualan). */
+function EmptyStockBadge({ shortage }: { shortage?: Record<string, number> }) {
+  const count = shortage ? Object.keys(shortage).length : 0;
+  if (!count) return null;
+  return (
+    <span title={`${count} barang terjual melebihi stok`} className="whitespace-nowrap rounded-full border border-orange-300 bg-orange-50 px-2 py-0.5 text-[11px] font-bold text-orange-800">
+      Stok kosong{count > 1 ? ` · ${count}` : ""}
+    </span>
+  );
+}
+
 export function SalesItemsDetail({
   sale,
   className = "",
   productNames = {},
+  shortage = {},
 }: {
   sale: Sale;
   className?: string;
   /** Nama barang dari Master Barang SLM per kode (huruf kecil). */
   productNames?: Record<string, string>;
+  /** Qty yang melebihi stok per kode barang (huruf kecil). */
+  shortage?: Record<string, number>;
 }) {
   return (
     <div id={`sale-items-${sale.id}`} className={className}>
@@ -368,6 +384,11 @@ export function SalesItemsDetail({
                       </p>
                       {!manualName && productNames[item.productRef.trim().toLowerCase()] && (
                         <p className="mt-0.5 text-xs text-slate-500">{productNames[item.productRef.trim().toLowerCase()]}</p>
+                      )}
+                      {shortage[item.productRef.trim().toLowerCase()] > 0 && (
+                        <p className="mt-1 inline-flex rounded bg-orange-50 px-1.5 py-0.5 text-[11px] font-semibold text-orange-800">
+                          Stok kosong: {shortage[item.productRef.trim().toLowerCase()].toLocaleString("id-ID")} {item.unitSnapshot || ""} tanpa stok
+                        </p>
                       )}
                       {manualName && (
                         <p className="mt-0.5 text-xs text-slate-500">
@@ -405,6 +426,7 @@ export function SalesHistoryList({
   productNames = {},
   showDayTotals = false,
   dayTotals,
+  stockShortage = {},
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const columnCount = canViewTransactionNumber ? 9 : 8;
@@ -452,12 +474,13 @@ export function SalesHistoryList({
                   <Badge value={approvalLabel(sale.approvalStatus)} tone={statusTone(sale.approvalStatus)} />
                 )}
                 {sale.stockReleaseStatus !== "released" && sale.stockReleaseStatus !== "already_released" && stockReleaseBadge(sale)}
+                <EmptyStockBadge shortage={stockShortage[sale.id]} />
                 {!sale.isPrinted && sale.source === "MJ" && <Badge value="Belum Cetak" tone="slate" />}
               </div>
               <p className="mt-1 truncate text-[11px] text-slate-500">
                 {[canViewTransactionNumber ? sale.transactionNumber || sale.id : null, sale.customerLocation, sale.createdByNameSnapshot && `oleh ${sale.createdByNameSnapshot}`].filter(Boolean).join(" · ")}
               </p>
-              {expanded && <SalesItemsDetail sale={sale} className="mt-2" productNames={productNames} />}
+              {expanded && <SalesItemsDetail sale={sale} className="mt-2" productNames={productNames} shortage={stockShortage[sale.id]} />}
               <div className="mt-2 flex items-center gap-1.5">
                 <button
                   type="button"
@@ -613,6 +636,7 @@ export function SalesHistoryList({
                           />
                         )}
                         {stockProblem && stockReleaseBadge(sale)}
+                        <EmptyStockBadge shortage={stockShortage[sale.id]} />
                         <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${delivery.className}`}>{delivery.label}</span>
                         {sale.doPackingStatus === "sudah" && sale.doStatus !== "selesai" && sale.doStatus !== "selesai_setengah" && (
                           <span className="text-xs font-semibold text-emerald-800">Dipacking</span>
@@ -626,7 +650,7 @@ export function SalesHistoryList({
                   {expanded && (
                     <tr className="border-b border-slate-200 bg-slate-50/60">
                       <td colSpan={columnCount} className="whitespace-normal px-5 py-4">
-                        <SalesItemsDetail sale={sale} productNames={productNames} />
+                        <SalesItemsDetail sale={sale} productNames={productNames} shortage={stockShortage[sale.id]} />
                       </td>
                     </tr>
                   )}
