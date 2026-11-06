@@ -84,11 +84,12 @@ describe("SalesHistoryList", () => {
 
 describe("day separator totals", () => {
   const day: Sale = { ...sale, id: "d1", saleDate: "2026-11-04", total: 13_188_000 };
-  it("only Super Admin sees the rupiah total per day", () => {
+  it("no rupiah total per day for anyone; only Super Admin sees the nota count", () => {
     const owner = renderToStaticMarkup(<SalesHistoryList sales={[day]} canManage={false} canViewTransactionNumber showDayTotals />);
     const admin = renderToStaticMarkup(<SalesHistoryList sales={[day]} canManage={false} canViewTransactionNumber />);
-    expect(owner).toMatch(/1 nota · Rp/);
-    expect(admin).not.toMatch(/nota · Rp/);
+    expect(owner).toMatch(/· 1 nota</);
+    expect(owner).not.toMatch(/nota · Rp/);
+    expect(admin).not.toMatch(/nota/);
     expect(admin).toContain("Rabu, 04 Nov 2026");
   });
 });
