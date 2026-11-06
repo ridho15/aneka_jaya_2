@@ -15,7 +15,7 @@ describe("sidebar ringkas per modul", () => {
   it("Super Admin cukup melihat 14 menu, bukan puluhan", () => {
     expect(sectionsOf("OWNER").map((s) => s.label)).toEqual([
       "Dashboard", "Penjualan", "Delivery Order", "Tempo & Piutang", "Pengeluaran",
-      "Stok", "Input Stok", "Master Barang", "Kalkulator Modal", "Pembelian", "Laporan", "Akuntansi", "SDM", "Sistem"
+      "Stok", "Input Stok", "Master Barang", "Pembelian", "Laporan", "Akuntansi", "SDM", "Sistem", "Kalkulator Modal"
     ]);
     expect(visibleNavLinks("OWNER").length).toBeGreaterThan(40);
   });

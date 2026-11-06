@@ -525,7 +525,6 @@ export const NAV_SECTIONS: NavSection[] = [
     tabs: { "/inventory": "Stok Gudang & Toko", "/inventory/permintaan-gudang": "Permintaan Gudang", "/inventory/mutasi": "Kartu Stok", "/stok-barang/ai-forecast": "Prediksi Stok" } },
   { id: "input-stok", label: "Input Stok", group: "Stok & Pembelian", hrefs: ["/inventory/barang-masuk", "/inventory/transfer", "/inventory/opname", "/inventory/adjustment", "/inventory/import"] },
   { id: "master-barang", label: "Master Barang", group: "Stok & Pembelian", hrefs: ["/inventory/produk", "/inventory/lokasi"], tabs: { "/inventory/produk": "Barang" } },
-  { id: "kalkulator", label: "Kalkulator Modal", group: "Stok & Pembelian", hrefs: ["/inventory/kalkulator"] },
   { id: "pembelian", label: "Pembelian", group: "Stok & Pembelian", hrefs: ["/pembelian/pesanan", "/pembelian/invoice", "/pembelian/pembayaran"],
     tabs: { "/pembelian/pesanan": "Pesanan (PO)", "/pembelian/invoice": "Tagihan & Landed Cost", "/pembelian/pembayaran": "Pembayaran" } },
   { id: "laporan", label: "Laporan", group: "Keuangan", hrefs: ["/reports", "/reports/income-statement", "/reports/balance-sheet", "/reports/finance", "/reports/customers", "/reports/products", "/reports/stocks", "/reports/consignment", "/reports/ai-finance", "/reports/cctv"], home: "/reports",
@@ -535,7 +534,8 @@ export const NAV_SECTIONS: NavSection[] = [
   { id: "sdm", label: "SDM", group: "Keuangan", hrefs: ["/sdm/karyawan", "/sdm/organisasi", "/sdm/gaji", "/sdm/kasbon", "/sdm/simpanan", "/sdm/uang-muka"],
     tabs: { "/sdm/karyawan": "Karyawan", "/sdm/organisasi": "Organisasi", "/sdm/gaji": "Gaji", "/sdm/kasbon": "Kasbon", "/sdm/simpanan": "Simpanan", "/sdm/uang-muka": "Uang Muka" } },
   { id: "sistem", label: "Sistem", group: "Sistem", hrefs: ["/settings", "/audit-trail", "/erp-sync", "/cctv-monitoring", "/panduan"],
-    tabs: { "/cctv-monitoring": "Monitoring CCTV" } }
+    tabs: { "/cctv-monitoring": "Monitoring CCTV" } },
+  { id: "kalkulator", label: "Kalkulator Modal", group: "Sistem", hrefs: ["/inventory/kalkulator"] },
 ];
 
 const SECTION_GROUP_ORDER: NavSectionGroup[] = ["Utama", "Penjualan & Kas", "Stok & Pembelian", "Keuangan", "Sistem"];
