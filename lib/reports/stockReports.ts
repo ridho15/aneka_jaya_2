@@ -70,11 +70,28 @@ export function stockStatus(quantity: number, unitsPerKoli: number | null | unde
   return "safe";
 }
 
-/** Urutan sama dengan halaman stok: paling sedikit (dalam koli) di atas, stok 0 paling bawah. */
-export function compareStockItems(a: StockReportItem, b: StockReportItem) {
-  const zeroA = a.quantity <= 0 ? 1 : 0;
-  const zeroB = b.quantity <= 0 ? 1 : 0;
-  if (zeroA !== zeroB) return zeroA - zeroB;
+/** 0 = ada stok di toko, 1 = hanya di gudang, 2 = tidak ada stok sama sekali (dihitung per barang dari semua baris laporan). */
+export function availabilityGroups(items: Pick<StockReportItem, "productId" | "sku" | "quantity" | "locationType">[]) {
+  const groups = new Map<string, number>();
+  for (const item of items) {
+    const key = item.productId ?? item.sku;
+    if (!groups.has(key)) groups.set(key, 2);
+    if (item.quantity > 0) groups.set(key, Math.min(groups.get(key)!, item.locationType === "WAREHOUSE" ? 1 : 0));
+  }
+  return groups;
+}
+
+const STATUS_ORDER: Record<StockReportItem["status"], number> = { warning: 0, safe: 1, out_of_stock: 2 };
+
+/**
+ * Urutan laporan: barang yang ada di toko, lalu yang hanya di gudang, lalu yang stoknya kosong.
+ * Di tiap kelompok yang menipis di atas, lalu stok paling sedikit (dalam koli).
+ */
+export function compareStockItems(a: StockReportItem, b: StockReportItem, groups: Map<string, number> = new Map()) {
+  const groupA = groups.get(a.productId ?? a.sku) ?? (a.quantity > 0 ? 0 : 2);
+  const groupB = groups.get(b.productId ?? b.sku) ?? (b.quantity > 0 ? 0 : 2);
+  if (groupA !== groupB) return groupA - groupB;
+  if (STATUS_ORDER[a.status] !== STATUS_ORDER[b.status]) return STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
   const koliA = a.quantity / (a.unitsPerKoli || 1);
   const koliB = b.quantity / (b.unitsPerKoli || 1);
   if (koliA !== koliB) return koliA - koliB;
@@ -128,7 +145,8 @@ export async function getStockInventoryReport(filter: StockReportFilter = {}): P
       consignorName: consignors.get(row.productId) ?? null
     });
   }
-  items.sort(compareStockItems);
+  const groups = availabilityGroups(items);
+  items.sort((a, b) => compareStockItems(a, b, groups));
 
   const sum = (fn: (i: StockReportItem) => number) => items.reduce((s, i) => s + fn(i), 0);
   return {
