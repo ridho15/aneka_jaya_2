@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { immutablePayloadHash } from "@/lib/integrations/mj/hash";
-import { mjCancelSchema, mjInvoiceSchema, mjTempoPaymentSchema } from "@/lib/integrations/mj/validation";
+import {
+  mjCancelSchema,
+  mjInvoiceSchema,
+  mjStockAdjustmentSchema,
+  mjTempoPaymentSchema
+} from "@/lib/integrations/mj/validation";
 
 const common = {
   source: "MJ" as const,
@@ -92,5 +97,68 @@ describe("MJ processing-mode validation", () => {
   it("includes processing mode in immutable hashing", () => {
     expect(immutablePayloadHash({ b: 2, a: { d: 4, c: 3 } })).toBe(immutablePayloadHash({ a: { c: 3, d: 4 }, b: 2 }));
     expect(immutablePayloadHash(slmProcessAj)).not.toBe(immutablePayloadHash({ ...slmProcessAj, processing_mode: "record_only" }));
+  });
+});
+
+describe("MJ stock adjustment validation", () => {
+  const validAdjustment = {
+    location_id: "loc-01",
+    reason: "Penyesuaian stok berkala",
+    items: [
+      { product_id: "prod-1", quantity: 5, unit_cost: 15000, notes: "Koreksi fisik" }
+    ]
+  };
+
+  it("accepts valid adjustment with snake_case and camelCase fields", () => {
+    expect(mjStockAdjustmentSchema.safeParse(validAdjustment).success).toBe(true);
+
+    const camelCase = {
+      locationId: "loc-01",
+      reason: "Penyesuaian camel case",
+      adjustmentNumber: "ADJ-001",
+      adjustmentDate: "2026-11-06",
+      idempotencyKey: "idem-1",
+      items: [
+        { productId: "prod-1", quantity: -2, unitCost: 10000, notes: "Barang rusak" }
+      ]
+    };
+    expect(mjStockAdjustmentSchema.safeParse(camelCase).success).toBe(true);
+  });
+
+  it("accepts warehouse_id as string or number and external_product_id or sku", () => {
+    const withWarehouse = {
+      warehouse_id: 12,
+      reason: "Penyesuaian dari ERP",
+      items: [
+        { sku: "BRG-01", quantity: 10 },
+        { external_product_id: 99, quantity: -1 }
+      ]
+    };
+    expect(mjStockAdjustmentSchema.safeParse(withWarehouse).success).toBe(true);
+  });
+
+  it("rejects payload without location", () => {
+    const { location_id: _loc, ...withoutLocation } = validAdjustment;
+    expect(mjStockAdjustmentSchema.safeParse(withoutLocation).success).toBe(false);
+  });
+
+  it("rejects reason shorter than 3 characters or missing", () => {
+    expect(mjStockAdjustmentSchema.safeParse({ ...validAdjustment, reason: "ab" }).success).toBe(false);
+    expect(mjStockAdjustmentSchema.safeParse({ ...validAdjustment, reason: "" }).success).toBe(false);
+  });
+
+  it("rejects zero quantity and empty items", () => {
+    expect(mjStockAdjustmentSchema.safeParse({ ...validAdjustment, items: [] }).success).toBe(false);
+    expect(mjStockAdjustmentSchema.safeParse({
+      ...validAdjustment,
+      items: [{ product_id: "prod-1", quantity: 0 }]
+    }).success).toBe(false);
+  });
+
+  it("rejects item without any product identifier", () => {
+    expect(mjStockAdjustmentSchema.safeParse({
+      ...validAdjustment,
+      items: [{ quantity: 5 }]
+    }).success).toBe(false);
   });
 });

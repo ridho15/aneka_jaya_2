@@ -29,6 +29,11 @@ describe("openapi docs", () => {
     expect(document.components?.schemas?.ExpenseInput?.properties).toEqual(expect.objectContaining({ coaId: expect.any(Object), coaNameSnapshot: expect.any(Object) }));
     expect(document.components?.schemas?.MjInvoiceInput).toMatchObject({ discriminator: { propertyName: "processing_mode" } });
     expect(document.components?.schemas?.MjRecordOnlyInput).toBeTruthy();
+    expect(document.components?.schemas?.MjStockAdjustmentInput).toBeTruthy();
+    expect(document.paths?.["/api/integrations/mj/stocks"]).toBeTruthy();
+    expect(document.paths?.["/api/integrations/mj/products"]).toBeTruthy();
+    expect(document.paths?.["/api/integrations/mj/locations"]).toBeTruthy();
+    expect(document.paths?.["/api/integrations/mj/stocks/adjust"]).toBeTruthy();
   });
 
   it("documents every app/api route", async () => {

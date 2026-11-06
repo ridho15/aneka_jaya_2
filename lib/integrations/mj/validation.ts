@@ -135,6 +135,41 @@ export const mjTempoPaymentSchema = z.object({
 
 export const mjCancelSchema = z.object({ reason: z.string().trim().min(3).max(500) }).strict();
 
+export const mjStockAdjustmentItemSchema = z.object({
+  product_id: z.string().trim().min(1).optional(),
+  productId: z.string().trim().min(1).optional(),
+  sku: z.string().trim().min(1).optional(),
+  external_product_id: z.union([z.string().regex(/^\d+$/), z.number().int().positive()]).transform(Number).optional(),
+  erp_product_id: z.union([z.string().regex(/^\d+$/), z.number().int().positive()]).transform(Number).optional(),
+  erpProductId: z.union([z.string().regex(/^\d+$/), z.number().int().positive()]).transform(Number).optional(),
+  quantity: z.number().finite().refine((v) => v !== 0, { message: "quantity tidak boleh 0" }),
+  unit_cost: z.number().finite().nonnegative().optional(),
+  unitCost: z.number().finite().nonnegative().optional(),
+  notes: z.string().trim().max(500).optional()
+}).refine(
+  (item) => Boolean(item.product_id || item.productId || item.sku || item.external_product_id != null || item.erp_product_id != null || item.erpProductId != null),
+  { message: "Setiap item wajib memiliki product_id, sku, atau external_product_id" }
+);
+
+export const mjStockAdjustmentSchema = z.object({
+  adjustment_number: z.string().trim().max(60).optional(),
+  adjustmentNumber: z.string().trim().max(60).optional(),
+  adjustment_date: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Tanggal adjustment_date tidak valid").optional(),
+  adjustmentDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Tanggal adjustmentDate tidak valid").optional(),
+  location_id: z.string().trim().min(1).optional(),
+  locationId: z.string().trim().min(1).optional(),
+  warehouse_id: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  warehouseId: z.union([z.string().trim().min(1), z.number().int().positive().transform(String)]).optional(),
+  reason: z.string().trim().min(3, "Alasan adjustment wajib diisi minimal 3 karakter").max(500),
+  notes: z.string().trim().max(1000).optional(),
+  idempotency_key: z.string().trim().max(120).optional(),
+  idempotencyKey: z.string().trim().max(120).optional(),
+  items: z.array(mjStockAdjustmentItemSchema).min(1, "Minimal satu item barang untuk adjustment")
+}).refine(
+  (data) => Boolean(data.location_id || data.locationId || data.warehouse_id || data.warehouseId),
+  { message: "Lokasi wajib dipilih (location_id atau warehouse_id)", path: ["location_id"] }
+);
+
 export const mjPrintEventSchema = z.object({
   printed_at: z.string().datetime({ offset: true }).or(z.string()).optional(),
   printed_by: z.string().max(200).optional(),
@@ -149,6 +184,7 @@ export type MjInvoiceInput = z.infer<typeof mjInvoiceSchema>;
 export type MjAjInvoiceInput = Extract<MjInvoiceInput, { processing_mode: "slm_process_aj" | "aj_already_processed" }>;
 export type MjTempoPaymentInput = z.infer<typeof mjTempoPaymentSchema>;
 export type MjPrintEventInput = z.infer<typeof mjPrintEventSchema>;
+export type MjStockAdjustmentInput = z.infer<typeof mjStockAdjustmentSchema>;
 
 export function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;

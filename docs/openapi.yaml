@@ -485,6 +485,30 @@ components:
         payment_method: { type: string, enum: [Cash, TF, Other] }
         account: { oneOf: [{ $ref: "#/components/schemas/MjAjAccount" }, { $ref: "#/components/schemas/MjLocalAccount" }] }
         notes: { type: string }
+    MjStockAdjustmentInput:
+      type: object
+      required: [location_id, reason, items]
+      properties:
+        adjustment_number: { type: string, maxLength: 60 }
+        adjustment_date: { type: string, format: date }
+        location_id: { type: string, description: "ID lokasi lokal, kode lokasi, atau ID gudang ERP" }
+        warehouse_id: { type: string, description: "Alias untuk location_id" }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+        notes: { type: string, maxLength: 1000 }
+        idempotency_key: { type: string, maxLength: 120 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [quantity]
+            properties:
+              product_id: { type: string }
+              sku: { type: string }
+              external_product_id: { type: integer }
+              quantity: { type: number, description: "Positif untuk penambahan stok, negatif untuk pengurangan stok" }
+              unit_cost: { type: number, minimum: 0 }
+              notes: { type: string, maxLength: 500 }
     UserInput:
       type: object
       required: [externalId, name, role]
@@ -1102,6 +1126,77 @@ paths:
                 format: { type: string, description: Format cetak (dot_matrix, thermal, prn, browser) }
                 notes: { type: string, description: Catatan cetak }
       responses: { "200": { description: Event cetak berhasil dicatat. }, "400": { description: VALIDATION_FAILED }, "401": { description: AUTH_INVALID }, "404": { description: Invoice tidak ditemukan. } }
+  /api/integrations/mj/stocks:
+    get:
+      summary: Membaca saldo stok per produk per lokasi untuk integrasi MJ.
+      description: Membaca saldo stok inventaris lokal yang dipetakan ke format StockItem untuk frontend dan sistem MJ.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: query, name: keyword, schema: { type: string }, description: "Pencarian nama atau SKU produk" }
+        - { in: query, name: sku, schema: { type: string }, description: "Filter spesifik SKU" }
+        - { in: query, name: warehouse, schema: { type: string }, description: "Filter nama atau kode gudang" }
+        - { in: query, name: product_id, schema: { type: string }, description: "Filter berdasarkan ID produk lokal atau ERP" }
+      responses:
+        "200":
+          description: Daftar stok produk per lokasi.
+        "401":
+          description: AUTH_INVALID
+        "429":
+          description: RATE_LIMITED
+  /api/integrations/mj/products:
+    get:
+      summary: Membaca katalog master produk SLM untuk integrasi MJ.
+      description: Mengambil data master produk termasuk SKU, nama, kategori, unit, harga modal, harga jual, dan total stok.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: query, name: keyword, schema: { type: string }, description: "Pencarian nama, SKU, atau barcode" }
+        - { in: query, name: page, schema: { type: integer, default: 1 }, description: "Halaman data" }
+        - { in: query, name: page_size, schema: { type: integer, default: 50 }, description: "Jumlah data per halaman (maks 200)" }
+        - { in: query, name: include_inactive, schema: { type: boolean, default: false }, description: "Sertakan produk nonaktif" }
+      responses:
+        "200":
+          description: Data katalog master produk beserta metadata pagination.
+        "401":
+          description: AUTH_INVALID
+        "429":
+          description: RATE_LIMITED
+  /api/integrations/mj/locations:
+    get:
+      summary: Membaca daftar master gudang dan toko fisik aktif untuk integrasi MJ.
+      description: Menyediakan daftar lokasi aktif untuk penempatan stok dan transaksi inventaris.
+      security: [{ mjBearer: [] }]
+      parameters:
+        - { in: query, name: type, schema: { type: string, enum: [WAREHOUSE, STORE] }, description: "Tipe lokasi (WAREHOUSE atau STORE)" }
+        - { in: query, name: include_inactive, schema: { type: boolean, default: false }, description: "Sertakan lokasi nonaktif" }
+      responses:
+        "200":
+          description: Daftar lokasi inventaris.
+        "401":
+          description: AUTH_INVALID
+        "429":
+          description: RATE_LIMITED
+  /api/integrations/mj/stocks/adjust:
+    post:
+      summary: Penyesuaian stok manual dari MJ ke inventaris SLM.
+      description: Mencatat penyesuaian stok (InventoryAdjustment) dan pergerakan stok (InventoryMovement) secara idempotent.
+      security: [{ mjBearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MjStockAdjustmentInput"
+      responses:
+        "201":
+          description: Penyesuaian stok berhasil dibuat.
+        "400":
+          description: VALIDATION_FAILED
+        "401":
+          description: AUTH_INVALID
+        "409":
+          description: REFERENCE_CONFLICT atau INSUFFICIENT_STOCK
+        "429":
+          description: RATE_LIMITED
   /api/debug/erp-stock-shape:
     get:
       summary: Audit aman bentuk field ERP produk dan stok.
