@@ -208,29 +208,47 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
               </Link>
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <SummaryPanel title="Hari ini">
-              <SummaryRow testId="dashboard-kpi-operational-today-revenue" label="Omset" note={`${operationalProfit.todaySalesCount} transaksi`} value={formatDashboardMoney(operationalProfit.todayRevenue)} />
-              <SummaryRow testId="dashboard-kpi-operational-today-cogs" label="Modal" note="Harga RMB + ongkir CBM, dari Master Barang" value={formatDashboardMoney(operationalProfit.todayCogs)} />
-              <SummaryRow testId="dashboard-kpi-operational-today-gross-profit" label="Gross profit" note="Omset − modal" value={formatDashboardMoney(operationalProfit.todayGrossProfit)} negative={operationalProfit.todayGrossProfit < 0} />
-              <SummaryRow testId="dashboard-kpi-operational-today-expenses" label="Pengeluaran" note="Disetujui hari ini" value={formatDashboardMoney(operationalProfit.todayExpenses)} />
-              <SummaryRow testId="dashboard-kpi-operational-today-nett-profit" label="Nett profit" note="Gross profit − pengeluaran" value={formatDashboardMoney(operationalProfit.todayNettProfit)} negative={operationalProfit.todayNettProfit < 0} />
-              {mjStats && <SummaryRow testId="dashboard-mj-today" label="Transaksi MJ" note={`${mjStats.todayCount} transaksi`} value={formatDashboardMoney(mjStats.todayTotal)} />}
-            </SummaryPanel>
-            <SummaryPanel title="Bulan ini">
-              <SummaryRow testId="dashboard-kpi-operational-month-revenue" label="Omset" note={`${operationalProfit.monthlySalesCount} transaksi${operationalProfit.hasMjSales ? " · MJ tanpa markup 10%" : ""}`} value={formatDashboardMoney(operationalProfit.monthlyRevenue)} />
-              <SummaryRow
-                testId="dashboard-kpi-operational-month-cogs"
-                label="Modal"
-                note={operationalProfit.monthlyEstimatedSalesCount ? `${operationalProfit.monthlyEstimatedSalesCount} nota sebagian modalnya estimasi GP ${operationalProfit.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%` : "Modal barang yang terjual"}
-                value={formatDashboardMoney(operationalProfit.monthlyCogs)}
-              />
-              <SummaryRow testId="dashboard-kpi-operational-gross-profit" label="Gross profit" note="Omset − modal" value={formatDashboardMoney(operationalProfit.grossProfit)} negative={operationalProfit.grossProfit < 0} />
-              <SummaryRow testId="dashboard-kpi-operational-month-expenses" label="Pengeluaran" note="Disetujui bulan ini" value={formatDashboardMoney(operationalProfit.monthlyExpenses)} />
-              <SummaryRow testId="dashboard-kpi-operational-nett-profit" label="Nett profit" note="Gross profit − pengeluaran" value={formatDashboardMoney(operationalProfit.nettProfit)} negative={operationalProfit.nettProfit < 0} />
-              {mjStats && <SummaryRow testId="dashboard-mj-month" label="Transaksi MJ" note={`${mjStats.monthCount} transaksi`} value={formatDashboardMoney(mjStats.monthTotal)} />}
-            </SummaryPanel>
-          </div>
+          {(() => {
+            const p = operationalProfit;
+            const gp = p.grossProfitPercent.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+            const rows: Array<{ label: string; today: number; month: number; todayId: string; monthId: string; strong?: boolean; sub?: [string, string] }> = [
+              { label: "Omset", today: p.todayRevenue, month: p.monthlyRevenue, todayId: "dashboard-kpi-operational-today-revenue", monthId: "dashboard-kpi-operational-month-revenue", sub: [`${p.todaySalesCount} trx`, `${p.monthlySalesCount} trx`] },
+              { label: "Modal", today: p.todayCogs, month: p.monthlyCogs, todayId: "dashboard-kpi-operational-today-cogs", monthId: "dashboard-kpi-operational-month-cogs" },
+              { label: "Gross profit", today: p.todayGrossProfit, month: p.grossProfit, todayId: "dashboard-kpi-operational-today-gross-profit", monthId: "dashboard-kpi-operational-gross-profit", strong: true },
+              { label: "Pengeluaran", today: p.todayExpenses, month: p.monthlyExpenses, todayId: "dashboard-kpi-operational-today-expenses", monthId: "dashboard-kpi-operational-month-expenses" },
+              { label: "Nett profit", today: p.todayNettProfit, month: p.nettProfit, todayId: "dashboard-kpi-operational-today-nett-profit", monthId: "dashboard-kpi-operational-nett-profit", strong: true },
+              ...(mjStats ? [{ label: "Transaksi MJ", today: mjStats.todayTotal, month: mjStats.monthTotal, todayId: "dashboard-mj-today", monthId: "dashboard-mj-month", sub: [`${mjStats.todayCount} trx`, `${mjStats.monthCount} trx`] as [string, string] }] : [])
+            ];
+            const cell = (value: number, id: string, strong?: boolean, sub?: string) => (
+              <td data-testid={id} className={`whitespace-nowrap px-3 py-2 text-right tabular-nums sm:px-4 ${strong ? "font-bold" : "font-semibold"} ${value < 0 ? "text-red-700" : "text-slate-900"}`}>
+                {formatDashboardMoney(value)}
+                {sub && <span className="block text-[11px] font-normal text-slate-500">{sub}</span>}
+              </td>
+            );
+            return (
+              <div className="aj-surface overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-xs text-slate-500">
+                    <tr><th className="px-3 py-2 text-left font-medium sm:px-4" /><th className="px-3 py-2 text-right font-semibold sm:px-4">Hari ini</th><th className="px-3 py-2 text-right font-semibold sm:px-4">Bulan ini</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {rows.map((r) => (
+                      <tr key={r.label} className={r.label === "Nett profit" ? "bg-emerald-50/40" : undefined}>
+                        <th scope="row" className={`px-3 py-2 text-left sm:px-4 ${r.strong ? "font-semibold text-slate-900" : "font-medium text-slate-700"}`}>{r.label}</th>
+                        {cell(r.today, r.todayId, r.strong, r.sub?.[0])}
+                        {cell(r.month, r.monthId, r.strong, r.sub?.[1])}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p data-testid="dashboard-profit-notes" className="border-t border-slate-100 px-3 py-2 text-[11px] leading-4 text-slate-500 sm:px-4">
+                  Gross profit = Omset − modal · Nett profit = Gross profit − pengeluaran · Modal = harga RMB + ongkir CBM dari Master Barang
+                  {p.monthlyEstimatedSalesCount ? ` · ${p.monthlyEstimatedSalesCount} nota bulan ini sebagian modalnya estimasi GP ${gp}%` : ""}
+                  {p.hasMjSales ? " · MJ tanpa markup 10%" : ""}
+                </p>
+              </div>
+            );
+          })()}
         </section>
       )}
 
@@ -304,23 +322,3 @@ function Status({ label, ok, text }: { label: string; ok: boolean; text: string 
   );
 }
 
-function SummaryPanel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="aj-surface p-4 sm:p-5">
-      <h4 className="text-sm font-semibold text-slate-600">{title}</h4>
-      <dl className="mt-2 divide-y divide-slate-100">{children}</dl>
-    </section>
-  );
-}
-
-function SummaryRow({ label, note, value, testId, negative = false }: { label: string; note: string; value: string; testId?: string; negative?: boolean }) {
-  return (
-    <div data-testid={testId} className="flex items-baseline justify-between gap-3 py-2.5">
-      <dt className="min-w-0">
-        <span className="block text-sm font-medium text-slate-800">{label}</span>
-        <span className="block text-xs text-slate-500">{note}</span>
-      </dt>
-      <dd className={`shrink-0 text-lg font-bold tabular-nums ${negative ? "text-red-700" : "text-slate-900"}`}>{value}</dd>
-    </div>
-  );
-}
