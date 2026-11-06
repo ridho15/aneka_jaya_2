@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/ToastProvider";
+import { RupiahInput } from "@/components/ui/RupiahInput";
 
 export function CbmRateForm({ rate, updatedAt, updatedBy, canManage }: { rate: number | null; updatedAt?: string; updatedBy?: string | null; canManage: boolean }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [value, setValue] = useState(rate ? String(rate) : "");
+  const [value, setValue] = useState(rate ? String(Math.round(rate)) : "");
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const next = Number(value);
@@ -39,8 +40,8 @@ export function CbmRateForm({ rate, updatedAt, updatedBy, canManage }: { rate: n
       </div>
       {canManage && (
         <div className="flex items-end gap-2">
-          <label className="space-y-1 text-sm font-semibold"><span>Tarif (Rp per CBM)</span>
-            <input className="min-h-11 w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="4500000" />
+          <label className="space-y-1 text-sm font-semibold"><span>Tarif per CBM</span>
+            <RupiahInput className="w-56" value={value} onChange={setValue} placeholder="3.500.000" ariaLabel="Tarif per CBM" />
           </label>
           <Button className="min-h-11" onClick={() => (next > 0 ? setConfirmOpen(true) : showToast("Tarif CBM harus lebih dari 0.", "error"))} disabled={busy}>{busy ? "Menyimpan..." : "Simpan Tarif"}</Button>
         </div>

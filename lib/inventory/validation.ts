@@ -132,4 +132,6 @@ export type OpnameInput = z.infer<typeof opnameSchema>;
 export type AdjustmentInput = z.infer<typeof adjustmentSchema>;
 export type StockInInput = z.infer<typeof stockInSchema>;
 
-export const rmbRateSchema = z.object({ rate: z.coerce.number().positive("Kurs RMB harus lebih dari 0").max(100000) });
+export const rmbRateSchema = z.object({ rate: z.coerce.number().positive("Kurs RMB harus lebih dari 0").max(100000, "Kurs RMB maksimal Rp 100.000 per 1 RMB") });
+/** Tarif ongkir laut per CBM dalam rupiah (jutaan rupiah per CBM). */
+export const cbmRateSchema = z.object({ rate: z.coerce.number().positive("Tarif CBM harus lebih dari 0").max(1_000_000_000, "Tarif CBM maksimal Rp 1.000.000.000") });

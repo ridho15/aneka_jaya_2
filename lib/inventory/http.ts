@@ -76,7 +76,7 @@ export function inventoryRoute<P extends Record<string, string> = Record<string,
 export async function parseBody<S extends ZodTypeAny>(request: Request, schema: S): Promise<z.infer<S>> {
   const json = await request.json().catch(() => null);
   const parsed = schema.safeParse(json);
-  if (!parsed.success) throw new InventoryError("VALIDATION", "Data tidak valid.", 400, parsed.error.flatten());
+  if (!parsed.success) throw new InventoryError("VALIDATION", parsed.error.issues[0]?.message || "Data tidak valid.", 400, parsed.error.flatten());
   return parsed.data;
 }
 

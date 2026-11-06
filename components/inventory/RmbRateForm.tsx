@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/ToastProvider";
+import { RupiahInput } from "@/components/ui/RupiahInput";
 
 export function RmbRateForm({ rate, updatedAt, updatedBy, rmbProducts, canManage }: { rate: number | null; updatedAt?: string; updatedBy?: string | null; rmbProducts: number; canManage: boolean }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [value, setValue] = useState(rate ? String(rate) : "");
+  const [value, setValue] = useState(rate ? String(Math.round(rate)) : "");
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const next = Number(value);
@@ -47,7 +48,7 @@ export function RmbRateForm({ rate, updatedAt, updatedBy, rmbProducts, canManage
       {canManage && (
         <div className="flex items-end gap-2">
           <label className="space-y-1 text-sm font-semibold"><span>Kurs (Rp per 1 RMB)</span>
-            <input className="min-h-11 w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} placeholder="2750" />
+            <RupiahInput className="w-48" value={value} onChange={setValue} placeholder="2.750" ariaLabel="Kurs Rp per 1 RMB" />
           </label>
           <Button className="min-h-11" onClick={ask} disabled={busy}>{busy ? "Menyimpan..." : "Simpan Kurs"}</Button>
         </div>
