@@ -868,6 +868,17 @@ async function resolveSaleLocation(tx: Tx, warehouseId?: string) {
   return location;
 }
 
+/** Lokasi untuk penjualan barang yang stoknya kosong di semua lokasi: Ruko (nama atau kode memuat "ruko"). */
+export async function emptyStockLocation(tx: Tx, productId: string, requestedWarehouseId?: string) {
+  if (requestedWarehouseId && requestedWarehouseId !== "1") return null;
+  const onHand = await tx.inventoryBalance.aggregate({ where: { productId, quantity: { gt: 0 } }, _sum: { quantity: true } });
+  if (num(onHand._sum.quantity) > 0) return null;
+  return tx.inventoryLocation.findFirst({
+    where: { isActive: true, OR: [{ name: { contains: "ruko", mode: "insensitive" } }, { code: { contains: "ruko", mode: "insensitive" } }] },
+    orderBy: { createdAt: "asc" }
+  });
+}
+
 export async function releaseSaleStockLocal(input: { reference: string; saleDate: string; sourceNumber?: string; items: SaleStockItem[] }, actor?: InventoryActor) {
   return runInventoryTransaction(async (tx) => {
     const already = await tx.inventoryMovement.findFirst({ where: { referenceType: "SALE", referenceNumber: input.reference } });
@@ -877,8 +888,10 @@ export async function releaseSaleStockLocal(input: { reference: string; saleDate
     for (let i = 0; i < input.items.length; i++) {
       const item = input.items[i];
       const product = await resolveSaleProduct(tx, item);
-      const location = await resolveSaleLocation(tx, item.warehouseId);
-      lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity, allowNegative: item.allowNegative });
+      // Barang tanpa stok di mana pun dan tanpa lokasi pilihan dipotong dari Ruko.
+      const location = (await emptyStockLocation(tx, product.id, item.warehouseId)) ?? (await resolveSaleLocation(tx, item.warehouseId));
+      // Penjualan tidak boleh tertahan karena stok kurang; stok minus tercatat dan muncul di Laporan Consignment.
+      lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity, allowNegative: true });
     }
     // Urutan kunci yang konsisten mencegah deadlock antar penjualan paralel.
     lines.sort((a, b) => `${a.productId}:${a.locationId}`.localeCompare(`${b.productId}:${b.locationId}`));

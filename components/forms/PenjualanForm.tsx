@@ -1683,9 +1683,10 @@ export function PenjualanForm({
                                 { shouldDirty: true, shouldValidate: true },
                               );
                               // Default lokasi potong stok: lokasi dengan stok terbanyak.
-                              const bestStock = [...option.stockRows].sort((x, y) => (y.quantity ?? 0) - (x.quantity ?? 0))[0];
-                              const effectiveWarehouseId = bestStock?.warehouseId ? String(bestStock.warehouseId) : "1";
-                              const effectiveWarehouseName = bestStock?.warehouse || "Gudang Utama";
+                              // Stok kosong di semua lokasi: tetap bisa dijual, server memotong dari Ruko.
+                              const bestStock = [...option.stockRows].filter((row) => (row.quantity ?? 0) > 0).sort((x, y) => (y.quantity ?? 0) - (x.quantity ?? 0))[0];
+                              const effectiveWarehouseId = bestStock?.warehouseId ? String(bestStock.warehouseId) : "";
+                              const effectiveWarehouseName = bestStock?.warehouse || "Ruko";
                               const effectiveRackId = bestStock?.rackId ? String(bestStock.rackId) : undefined;
                               const effectiveRackName = bestStock?.rack || undefined;
                               const effectiveUnit = option.unit || option.product.unit || option.stockRows.find((stock) => Boolean(stock.unit))?.unit || "Pcs";
@@ -2473,7 +2474,9 @@ function ProductSelectionInfo({
         {option.unit ? ` ${option.unit}` : ""}
         {stockByLocation(option) ? ` · ${stockByLocation(option)}` : ""}
       </span>
-      {stockExceeded && <span className="font-semibold text-red-700">· Qty melebihi stok lokasi</span>}
+      {!((option.quantity ?? 0) > 0) ? (
+        <span className="font-semibold text-amber-800">· Stok kosong, tetap bisa dijual (dipotong dari Ruko, masuk Laporan Consignment)</span>
+      ) : stockExceeded && <span className="font-semibold text-amber-800">· Qty melebihi stok lokasi, sisanya masuk Laporan Consignment</span>}
       {stockState.status === "failed" && <span className="font-semibold text-amber-800">· Stok tidak terverifikasi</span>}
       {option.warnings.length > 0 && <span className="font-semibold text-amber-800">· Data barang belum lengkap</span>}
       {(targetsErp || stockOptions.length > 1) && (
