@@ -570,6 +570,23 @@ describe("Regression Testing: Roles & Permissions Integrity", () => {
     );
   });
 
+  it("11a. Returns synced DO items in sales order (Sinkronkan button shows them as-is)", async () => {
+    const { syncDeliveryOrderForSale } = await import("@/lib/deliveryOrders/store");
+    mocks.deliveryOrder.findUnique.mockResolvedValue({ id: "do-o", salesRecordId: "sale-o", status: "belum_selesai", items: [] });
+    mocks.salesRecord.findUnique.mockResolvedValue({ id: "sale-o", items: [{ id: "i-1", productRef: "A", quantity: 1 }] });
+    mocks.deliveryOrderItem.deleteMany.mockResolvedValue({ count: 0 });
+    mocks.deliveryOrderItem.create.mockImplementation(({ data }: any) => ({ id: "x", ...data }));
+
+    await syncDeliveryOrderForSale("sale-o");
+
+    const ordered = { orderBy: [{ salesRecordItem: { sortOrder: "asc" } }, { id: "asc" }] };
+    const doCalls = [...mocks.deliveryOrder.findUnique.mock.calls, ...mocks.deliveryOrder.update.mock.calls]
+      .map(([args]: any[]) => args?.include?.items)
+      .filter(Boolean);
+    expect(doCalls.length).toBeGreaterThan(0);
+    for (const include of doCalls) expect(include).toEqual(ordered);
+  });
+
   it("11b. Keeps shipped status when invoice edit recreates DO items", async () => {
     const { syncDeliveryOrderForSale } = await import("@/lib/deliveryOrders/store");
     const shippedAt = new Date("2026-10-01T03:00:00Z");

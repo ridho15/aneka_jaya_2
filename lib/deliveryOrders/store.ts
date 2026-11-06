@@ -44,6 +44,11 @@ export async function snapshotDeliveryOrderShippedItems(
   return Array.isArray(rows) ? rows : [];
 }
 
+// Item DO selalu mengikuti urutan baris penjualan, termasuk setelah invoice diedit.
+const DO_ITEMS_IN_SALE_ORDER = {
+  orderBy: [{ salesRecordItem: { sortOrder: "asc" as const } }, { id: "asc" as const }]
+};
+
 export async function syncDeliveryOrderForSale(
   saleId: string,
   customTx?: Prisma.TransactionClient,
@@ -126,7 +131,7 @@ export async function syncDeliveryOrderForSale(
 
     const existing = await tx.deliveryOrder.findUnique({
       where: { salesRecordId: saleId },
-      include: { items: true }
+      include: { items: DO_ITEMS_IN_SALE_ORDER }
     });
 
     const doNumber = sale.transactionNumber
@@ -175,7 +180,7 @@ export async function syncDeliveryOrderForSale(
             create: itemsToCreate
           }
         },
-        include: { items: true }
+        include: { items: DO_ITEMS_IN_SALE_ORDER }
       });
     } else {
       // Reconcile items if existing has 0 items or needs synchronization
@@ -223,7 +228,7 @@ export async function syncDeliveryOrderForSale(
         if (tx.deliveryOrder?.findUnique) {
           targetDo = await tx.deliveryOrder.findUnique({
             where: { id: targetDo.id },
-            include: { items: true }
+            include: { items: DO_ITEMS_IN_SALE_ORDER }
           }) || targetDo;
         }
       }
@@ -254,7 +259,7 @@ export async function syncDeliveryOrderForSale(
           status: nextStatus,
           shippingStatus: nextShipping
         },
-        include: { items: true }
+        include: { items: DO_ITEMS_IN_SALE_ORDER }
       });
       if (updatedDo) {
         targetDo = updatedDo;
@@ -606,7 +611,7 @@ export async function assignDeliveryOrder(
         assignedUserName,
         assignedAt: new Date()
       },
-      include: { items: true }
+      include: { items: DO_ITEMS_IN_SALE_ORDER }
     });
 
     await tx.salesRecord.update({
@@ -773,7 +778,7 @@ export async function updateDeliveryOrderPacking(
   return prisma.$transaction(async (tx) => {
     const doRow = await tx.deliveryOrder.findFirst({
       where: { OR: [{ id }, { salesRecordId: id }] },
-      include: { items: true }
+      include: { items: DO_ITEMS_IN_SALE_ORDER }
     });
     if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
 
@@ -791,7 +796,7 @@ export async function updateDeliveryOrderPacking(
         packedByNameSnapshot: actor?.name || "System",
         packedAt: new Date()
       },
-      include: { items: true }
+      include: { items: DO_ITEMS_IN_SALE_ORDER }
     });
 
     await tx.salesRecord.update({
@@ -828,7 +833,7 @@ export async function completeDeliveryOrderShipping(
   return prisma.$transaction(async (tx) => {
     const doRow = await tx.deliveryOrder.findFirst({
       where: { OR: [{ id }, { salesRecordId: id }] },
-      include: { items: true }
+      include: { items: DO_ITEMS_IN_SALE_ORDER }
     });
     if (!doRow) throw new Error("Delivery Order tidak ditemukan.");
 
@@ -881,7 +886,7 @@ export async function completeDeliveryOrderShipping(
         trackingNumber: input.trackingNumber || doRow.trackingNumber,
         notes: input.notes !== undefined ? input.notes : doRow.notes
       },
-      include: { items: true }
+      include: { items: DO_ITEMS_IN_SALE_ORDER }
     });
 
     // Update SalesRecord denormalized DO fields
@@ -937,7 +942,7 @@ export async function updateDeliveryOrderReceiptPhotos(
       data: {
         receiptPhotoUrl: receiptPhotoUrl || null
       },
-      include: { items: true }
+      include: { items: DO_ITEMS_IN_SALE_ORDER }
     });
 
     if (doRow.salesRecordId) {
