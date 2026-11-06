@@ -28,8 +28,39 @@ export function paymentLabel(sale: Pick<Sale, "paymentMethod" | "rekeningNameSna
   return sale.paymentMethod;
 }
 
+/** Kunci tanggal (zona Jakarta) untuk memisahkan transaksi per hari. */
+function saleDayKey(sale: Sale) {
+  if (!sale.transactionAt) return sale.saleDate;
+  const date = new Date(sale.transactionAt);
+  return Number.isNaN(date.getTime()) ? sale.saleDate : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(date);
+}
+
+const dayLabel = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "2-digit", month: "short", year: "numeric" });
+
+/** Ringkasan per hari di halaman ini: jumlah nota dan total (nota batal tidak dihitung). */
+function daySummaries(sales: Sale[]) {
+  const map = new Map<string, { count: number; total: number }>();
+  for (const sale of sales) {
+    if (sale.approvalStatus === "cancelled") continue;
+    const key = saleDayKey(sale);
+    const current = map.get(key) ?? { count: 0, total: 0 };
+    map.set(key, { count: current.count + 1, total: current.total + (Number(sale.total) || 0) });
+  }
+  return map;
+}
+
+function DayHeading({ dayKey, summary }: { dayKey: string; summary?: { count: number; total: number } }) {
+  const date = new Date(`${dayKey}T00:00:00+07:00`);
+  return (
+    <>
+      <span className="font-semibold text-slate-700">{Number.isNaN(date.getTime()) ? dayKey : dayLabel.format(date)}</span>
+      {summary && <span className="text-slate-500"> · {summary.count} nota · {rupiah(summary.total)}</span>}
+    </>
+  );
+}
+
 const rowLink =
-  "inline-flex min-h-9 items-center rounded-md px-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50";
+  "inline-flex min-h-7 items-center rounded-md px-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50";
 
 export function nextExpandedSaleId(
   currentId: string | null,
@@ -371,14 +402,23 @@ export function SalesHistoryList({
   const toggle = (id: string) =>
     setExpandedSaleId((current) => nextExpandedSaleId(current, id));
 
+  const perDay = daySummaries(sales);
+  const startsNewDay = (index: number) => index === 0 || saleDayKey(sales[index]) !== saleDayKey(sales[index - 1]);
+
   return (
     <>
       <div data-testid="sales-mobile-cards" className="space-y-3 p-4 md:hidden">
-        {sales.map((sale) => {
+        {sales.map((sale, index) => {
           const expanded = expandedSaleId === sale.id;
           const isMj =
             sale.source === "MJ" || sale.createdByUserId === "integration:mj";
           return (
+            <Fragment key={sale.id}>
+            {startsNewDay(index) && (
+              <p className={`text-xs ${index > 0 ? "border-t border-slate-300 pt-3" : ""}`}>
+                <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} />
+              </p>
+            )}
             <article
               key={sale.id}
               className={`rounded-lg p-4 shadow-sm transition-all ${isMj ? "border-2 border-amber-300 bg-amber-50/60 ring-1 ring-amber-200" : "border border-slate-200 bg-white"}`}
@@ -519,6 +559,7 @@ export function SalesHistoryList({
                 )}
               </div>
             </article>
+            </Fragment>
           );
         })}
         {sales.length === 0 && (
@@ -548,7 +589,7 @@ export function SalesHistoryList({
             </tr>
           </thead>
           <tbody>
-            {sales.map((sale) => {
+            {sales.map((sale, index) => {
               const expanded = expandedSaleId === sale.id;
               const isMj =
                 sale.source === "MJ" ||
@@ -558,6 +599,13 @@ export function SalesHistoryList({
               const stockProblem = sale.stockReleaseStatus === "pending" || sale.stockReleaseStatus === "failed";
               return (
                 <Fragment key={sale.id}>
+                  {startsNewDay(index) && (
+                    <tr className="border-y border-slate-300 bg-slate-100/80">
+                      <td colSpan={columnCount} className="px-3 py-1.5 text-xs">
+                        <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} />
+                      </td>
+                    </tr>
+                  )}
                   <tr
                     className={`border-b transition-colors ${isMj ? "border-amber-200/90 bg-amber-50/80 hover:bg-amber-100/70" : "border-slate-100 hover:bg-slate-50/80"}`}
                   >
@@ -592,7 +640,7 @@ export function SalesHistoryList({
                             kind="sales"
                             transactionLabel={sale.transactionNumber || sale.customerName}
                             triggerLabel="Batal"
-                            triggerClassName="inline-flex min-h-9 items-center rounded-md px-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            triggerClassName="inline-flex min-h-7 items-center rounded-md px-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                           />
                         )}
                       </div>
