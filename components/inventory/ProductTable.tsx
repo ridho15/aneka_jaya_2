@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { markupPercent } from "@/lib/inventory/shipmentCore";
+import { defaultPcsPerUnit } from "@/lib/inventory/costCalculator";
 
 export type ProductRow = {
   id: string; sku: string; name: string; category: string | null; brand: string | null; unit: string;
@@ -49,7 +50,7 @@ export function ProductTable({ rows, rate, cbmRate = null, canManage, initialEdi
                 <td className="px-3 py-2"><Link className="hover:text-emerald-800" href={`/inventory/mutasi?productId=${x.id}`}>{x.name}</Link><div className="text-xs text-slate-600">{x.ownership === "CONSIGNMENT" && <span className="mr-1 rounded bg-amber-50 px-1 font-semibold text-amber-800">Titipan{x.consignorName ? ` · ${x.consignorName}` : ""}</span>}{[x.category, x.brand].filter(Boolean).join(" / ")}</div></td>
                 <td className="px-3 py-2">{x.unit}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{x.unitsPerKoli ? `${fmt(x.unitsPerKoli)} ${x.unit}` : "-"}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{x.priceRmb != null ? `¥ ${fmt(x.priceRmb, 4)}` : "-"}{x.priceRmb != null && x.cbmPerUnit ? <div className="text-xs text-slate-600">{fmt(x.cbmPerUnit, 6)} CBM</div> : null}{x.priceRmb != null && x.extraCostIdr ? <div className="text-xs text-slate-600">+ Rp {fmt(x.extraCostIdr)}</div> : null}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{x.priceRmb != null ? (defaultPcsPerUnit(x.unit, x.pcsPerUnit) ? <>¥ {fmt(x.priceRmb / defaultPcsPerUnit(x.unit, x.pcsPerUnit)!, 4)}<span className="text-xs text-slate-500">/pcs</span><div className="text-xs text-slate-600">¥ {fmt(x.priceRmb, 4)}/{x.unit}</div></> : `¥ ${fmt(x.priceRmb, 4)}`) : "-"}{x.priceRmb != null && x.cbmPerUnit ? <div className="text-xs text-slate-600">{fmt(x.cbmPerUnit, 6)} CBM</div> : null}{x.priceRmb != null && x.extraCostIdr ? <div className="text-xs text-slate-600">+ Rp {fmt(x.extraCostIdr)}</div> : null}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{fmt(x.costPrice)}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{fmt(x.sellingPrice)}</td>
                 <MarkupCell cost={x.costPrice} sell={x.sellingPrice} />
@@ -76,9 +77,17 @@ function ProductEditor({ row, rate, cbmRate, onDone }: { row: ProductRow; rate: 
   const router = useRouter();
   const { showToast } = useToast();
   const s = (n: number | null | undefined) => (n == null ? "" : String(n));
-  const [f, setF] = useState({ name: row.name, unit: row.unit, unitsPerKoli: s(row.unitsPerKoli), priceRmb: s(row.priceRmb), extraCostIdr: s(row.extraCostIdr || null), costPrice: s(row.costPrice), sellingPrice: s(row.sellingPrice), minimumStock: s(row.minimumStock), cbmPerUnit: s(row.cbmPerUnit), cbmRateIdr: s(row.cbmRateIdr), ownership: row.ownership ?? "OWN", consignorName: row.consignorName ?? "" });
+  const initialPcs = defaultPcsPerUnit(row.unit, row.pcsPerUnit);
+  const [f, setF] = useState({ name: row.name, unit: row.unit, unitsPerKoli: s(row.unitsPerKoli),
+    pcsPerUnit: s(initialPcs),
+    // Harga RMB diisi per pcs; yang disimpan per satuan (per pcs × isi pcs).
+    rmbPerPcs: row.priceRmb != null && initialPcs ? s(Math.round((row.priceRmb / initialPcs) * 10000) / 10000) : "",
+    priceRmb: s(row.priceRmb), extraCostIdr: s(row.extraCostIdr || null), costPrice: s(row.costPrice), sellingPrice: s(row.sellingPrice), minimumStock: s(row.minimumStock), cbmPerUnit: s(row.cbmPerUnit), cbmRateIdr: s(row.cbmRateIdr), ownership: row.ownership ?? "OWN", consignorName: row.consignorName ?? "" });
   const [busy, setBusy] = useState(false);
-  const rmb = f.priceRmb.trim() === "" ? null : Number(f.priceRmb);
+  const pcs = Number(f.pcsPerUnit) > 0 ? Number(f.pcsPerUnit) : null;
+  const rmbPerPcs = f.rmbPerPcs.trim() === "" ? null : Number(f.rmbPerPcs.replace(",", "."));
+  // undefined = harga per pcs diisi tetapi isi pcs belum ada, jadi harga per satuan belum bisa dihitung.
+  const rmb = rmbPerPcs == null ? null : pcs ? Math.round(rmbPerPcs * pcs * 10000) / 10000 : undefined;
   const cbm = Number(f.cbmPerUnit) || 0;
   const cbmTariff = f.cbmRateIdr.trim() === "" ? cbmRate ?? 0 : Number(f.cbmRateIdr) || 0;
   const freight = Math.round(cbm * cbmTariff * 100) / 100;
@@ -86,11 +95,13 @@ function ProductEditor({ row, rate, cbmRate, onDone }: { row: ProductRow; rate: 
   const markup = markupPercent(previewCost ?? (Number(f.costPrice) || 0), Number(f.sellingPrice) || 0);
 
   async function save() {
+    if (rmb === undefined) return showToast(`Isi dulu jumlah pcs per ${f.unit || "satuan"}.`, "error");
     setBusy(true);
     try {
       const payload = {
         name: f.name, unit: f.unit,
         unitsPerKoli: f.unitsPerKoli.trim() === "" ? null : Number(f.unitsPerKoli),
+        pcsPerUnit: pcs ? Math.round(pcs) : null,
         priceRmb: rmb,
         extraCostIdr: Number(f.extraCostIdr) || 0,
         cbmPerUnit: f.cbmPerUnit.trim() === "" ? null : Number(f.cbmPerUnit),
@@ -121,7 +132,8 @@ function ProductEditor({ row, rate, cbmRate, onDone }: { row: ProductRow; rate: 
         <div className="sm:col-span-2">{field("Nama", "name")}</div>
         {field("Satuan", "unit")}
         {field(`Isi per koli (${f.unit || "Lusin"})`, "unitsPerKoli", { inputMode: "decimal", placeholder: "mis. 60" })}
-        {field(`Harga RMB per ${f.unit || "Lusin"}`, "priceRmb", { inputMode: "decimal", placeholder: "kosong = tanpa RMB" })}
+        {field(`Isi pcs per ${f.unit || "Lusin"}`, "pcsPerUnit", { inputMode: "numeric", placeholder: "lusin = 12" })}
+        {field("Harga RMB per pcs", "rmbPerPcs", { inputMode: "decimal", placeholder: "kosong = tanpa RMB" })}
         {field(`CBM per ${f.unit || "Lusin"}`, "cbmPerUnit", { inputMode: "decimal", placeholder: "mis. 0.0021" })}
         {field("Tarif CBM khusus (Rp)", "cbmRateIdr", { inputMode: "decimal", placeholder: cbmRate ? `global ${cbmRate.toLocaleString("id-ID")}` : "pakai tarif global" })}
         {field(`Biaya lain per ${f.unit || "Lusin"} (Rp)`, "extraCostIdr", { inputMode: "decimal", placeholder: "0" })}
@@ -139,7 +151,7 @@ function ProductEditor({ row, rate, cbmRate, onDone }: { row: ProductRow; rate: 
         <p className="text-xs text-slate-600">Barang titipan tidak dihitung sebagai aset SLM. Saat terjual, modalnya dicatat sebagai utang ke penitip. Kepemilikan hanya bisa diganti saat stoknya 0.</p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-        <span>{previewCost != null ? <>Modal otomatis: ¥{rmb} × Rp {rate?.toLocaleString("id-ID")}{freight ? ` + ongkir CBM Rp ${freight.toLocaleString("id-ID")}` : ""}{Number(f.extraCostIdr) ? ` + Rp ${Number(f.extraCostIdr).toLocaleString("id-ID")}` : ""} = <b>Rp {previewCost.toLocaleString("id-ID")}</b>{markup != null ? <> · mark-up <b>{markup.toLocaleString("id-ID")}%</b></> : null}</> : rmb != null ? "Kurs RMB belum diatur, jadi modal belum dihitung otomatis." : "Isi Harga RMB agar modal ikut berubah saat kurs RMB diganti."}</span>
+        <span>{f.rmbPerPcs.trim() !== "" && !pcs ? "Isi dulu jumlah pcs per satuan agar harga per pcs bisa dihitung. " : null}{previewCost != null ? <>Modal otomatis: ¥{f.rmbPerPcs} × {pcs} pcs = ¥{rmb} × Rp {rate?.toLocaleString("id-ID")}{freight ? ` + ongkir CBM Rp ${freight.toLocaleString("id-ID")}` : ""}{Number(f.extraCostIdr) ? ` + Rp ${Number(f.extraCostIdr).toLocaleString("id-ID")}` : ""} = <b>Rp {previewCost.toLocaleString("id-ID")}</b>{markup != null ? <> · mark-up <b>{markup.toLocaleString("id-ID")}%</b></> : null}</> : rmb != null ? "Kurs RMB belum diatur, jadi modal belum dihitung otomatis." : "Isi Harga RMB agar modal ikut berubah saat kurs RMB diganti."}</span>
         <div className="flex gap-2"><Button variant="secondary" className="min-h-11" onClick={onDone}>Batal</Button><Button className="min-h-11" onClick={save} disabled={busy}>{busy ? "Menyimpan..." : "Simpan"}</Button></div>
       </div>
     </div>

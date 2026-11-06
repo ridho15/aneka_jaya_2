@@ -42,3 +42,12 @@ export function calculateCost(i: CostCalculatorInput) {
     markupPercent: sell && costPerUnit > 0 ? round(((sell - costPerUnit) / costPerUnit) * 100, 1) : null
   };
 }
+
+/** Isi pcs bawaan untuk satuan: lusin = 12, pcs = 1, lainnya harus diisi. */
+export function defaultPcsPerUnit(unit: string, pcsPerUnit?: number | null) {
+  if (pcsPerUnit && pcsPerUnit > 0) return pcsPerUnit;
+  const u = unit.trim().toLowerCase();
+  if (u === "lusin" || u === "dz" || u === "dozen") return 12;
+  if (u === "pcs" || u === "pc" || u === "buah") return 1;
+  return null;
+}
