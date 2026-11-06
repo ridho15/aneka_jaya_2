@@ -928,6 +928,42 @@ paths:
       security: [{ localSessionCookie: [] }, { mjBearer: [] }]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [rate], properties: { rate: { type: number, example: 2750 } } } } } }
       responses: { "200": { description: "{ rate, previousRate, updatedProducts }" }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/accounting/inventory-reconciliation:
+    get:
+      tags: [Accounting]
+      summary: Dry run rekonsiliasi persediaan vs buku besar, kandidat koreksi historis, dan pekerjaan yang belum selesai.
+      description: Permission accounting.view. Hanya membaca; tidak ada saldo yang berubah.
+      security: [{ localSessionCookie: [] }]
+      responses: { "200": { description: Laporan rekonsiliasi. } }
+    post:
+      tags: [Accounting]
+      summary: Aksi rekonsiliasi persediaan.
+      description: "Permission accounting.journal.manage. action: post_inventory_docs | apply_correction { expenseId, kind: EQUIPMENT|MERCHANDISE, backupConfirmed: true } | dismiss_correction { expenseId, kind, note } | save_tax_status { status: NON_PKP|PKP, effectiveDate }. Koreksi memakai jurnal baru (sourceType CORRECTION), jurnal asli tetap; aman diulang."
+      security: [{ localSessionCookie: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [action], properties: { action: { type: string } } } } } }
+      responses: { "200": { description: Hasil aksi. }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/accounting/fixed-assets:
+    get:
+      tags: [Accounting]
+      summary: Daftar aset tetap (akumulasi penyusutan, nilai buku, data yang belum lengkap) dan kebijakan.
+      security: [{ localSessionCookie: [] }]
+      responses: { "200": { description: "{ assets, policy }" } }
+    post:
+      tags: [Accounting]
+      summary: Konfirmasi kebijakan aset tetap atau posting penyusutan satu bulan.
+      description: "Permission accounting.journal.manage. action: confirm_policy { capitalizationThreshold, defaultUsefulLifeMonths } | depreciate { period: YYYY-MM }. Penyusutan hanya untuk aset yang datanya lengkap; satu jurnal per aset per bulan."
+      security: [{ localSessionCookie: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [action], properties: { action: { type: string } } } } } }
+      responses: { "200": { description: Hasil aksi. }, "400": { $ref: "#/components/responses/BadRequest" } }
+  /api/accounting/fixed-assets/{id}:
+    patch:
+      tags: [Accounting]
+      summary: Lengkapi data aset (lokasi, tanggal perolehan, tanggal siap pakai, umur manfaat, nilai residu).
+      description: Permission accounting.journal.manage. Biaya perolehan dari pengeluaran yang sudah dijurnal tidak bisa diubah di sini.
+      security: [{ localSessionCookie: [] }]
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses: { "200": { description: Aset tersimpan. }, "400": { $ref: "#/components/responses/BadRequest" } }
   /api/inventory/settings/cbm-rate:
     get:
       tags: [Inventory]

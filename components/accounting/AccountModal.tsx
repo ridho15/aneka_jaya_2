@@ -11,6 +11,7 @@ export type AccountRecord = {
   category: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
   normalBalance: "DEBIT" | "CREDIT";
   description?: string | null;
+  reportGroup?: string | null;
   isSystem: boolean;
   isActive: boolean;
 };
@@ -25,6 +26,11 @@ type Props = {
 type Category = AccountRecord["category"];
 type NormalBalance = AccountRecord["normalBalance"];
 
+const REPORT_GROUPS: Record<string, Array<[string, string]>> = {
+  ASSET: [["CURRENT_ASSET", "Aset lancar"], ["FIXED_ASSET", "Aset tetap"], ["CONTRA_FIXED_ASSET", "Akumulasi penyusutan (kontra aset)"], ["OTHER_ASSET", "Aset lain"]],
+  LIABILITY: [["CURRENT_LIABILITY", "Liabilitas jangka pendek"], ["LONG_TERM_LIABILITY", "Liabilitas jangka panjang"]]
+};
+
 const CATEGORY_LABEL: Record<Category, string> = {
   ASSET: "ASET (Harta)",
   LIABILITY: "LIABILITAS (Kewajiban)",
@@ -36,20 +42,21 @@ const CATEGORY_LABEL: Record<Category, string> = {
 /** Field yang dikirim saat menyimpan: akun sistem hanya nama & keterangan, akun lain hanya yang berubah. */
 export function accountSavePayload(
   account: AccountRecord | null,
-  form: { code: string; name: string; category: Category; normalBalance: NormalBalance; description: string }
+  form: { code: string; name: string; category: Category; normalBalance: NormalBalance; description: string; reportGroup?: string }
 ) {
   const name = form.name.trim();
   const description = form.description.trim();
   if (!account) {
-    return { code: form.code.trim(), name, category: form.category, normalBalance: form.normalBalance, description: description || undefined };
+    return { code: form.code.trim(), name, category: form.category, normalBalance: form.normalBalance, description: description || undefined, reportGroup: form.reportGroup || null };
   }
-  const payload: Record<string, string> = {};
+  const payload: Record<string, string | null> = {};
   if (name !== account.name) payload.name = name;
   if (description !== (account.description || "")) payload.description = description;
   if (!account.isSystem) {
     if (form.code.trim() !== account.code) payload.code = form.code.trim();
     if (form.category !== account.category) payload.category = form.category;
     if (form.normalBalance !== account.normalBalance) payload.normalBalance = form.normalBalance;
+    if ((form.reportGroup || "") !== (account.reportGroup || "")) payload.reportGroup = form.reportGroup || null;
   }
   return payload;
 }
@@ -70,6 +77,7 @@ function AccountForm({ account, onClose, onSuccess }: { account: AccountRecord |
   const [category, setCategory] = useState<Category>(accountToEdit?.category || "EXPENSE");
   const [normalBalance, setNormalBalance] = useState<NormalBalance>(accountToEdit?.normalBalance || "DEBIT");
   const [description, setDescription] = useState(accountToEdit?.description || "");
+  const [reportGroup, setReportGroup] = useState(accountToEdit?.reportGroup || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +96,7 @@ function AccountForm({ account, onClose, onSuccess }: { account: AccountRecord |
       return;
     }
 
-    const payload = accountSavePayload(accountToEdit, { code, name, category, normalBalance, description });
+    const payload = accountSavePayload(accountToEdit, { code, name, category, normalBalance, description, reportGroup });
     if (isEditing && Object.keys(payload).length === 0) {
       onClose();
       return;
@@ -208,6 +216,21 @@ function AccountForm({ account, onClose, onSuccess }: { account: AccountRecord |
               </select>
             </div>
           </div>
+
+          {REPORT_GROUPS[category] && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700">Kelompok neraca</label>
+              <select
+                disabled={isSystem}
+                value={reportGroup}
+                onChange={(e) => setReportGroup(e.target.value)}
+                className="mt-1 block w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs focus:border-emerald-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+              >
+                <option value="">Otomatis dari kode akun</option>
+                {REPORT_GROUPS[category].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-700">Keterangan / Fungsi Akun (Opsional)</label>

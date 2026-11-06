@@ -165,3 +165,56 @@ Proses ini **tidak dinyatakan selesai** hanya karena neraca saldo seimbang. Krit
 7. Konfirmasi AJ/MJ/SLM/LRM = satu wajib pajak.
 8. Setuju menambah akun di bagian 6 (dicocokkan dengan bagan akun produksi).
 9. Setuju menonaktifkan PPN dari catatan nota (karena non-PKP).
+
+### Jawaban pemilik (dicatat)
+
+| # | Keputusan | Status di aplikasi |
+| --- | --- | --- |
+| 1 | FIFO | Diterapkan: lapisan biaya FIFO per barang untuk seluruh usaha. Transfer antar lokasi tidak mengubah nilai. |
+| 2 | Ongkos angkut mengikuti logika CBM (CBM per satuan × tarif CBM) | Diterapkan di Master Barang dan Import Packing List; masuk ke modal barang. |
+| 3 | Aset ≥ Rp 1 juta, umur 1 tahun | Diterapkan sebagai kebijakan bawaan; tombol konfirmasi di Akuntansi › Aset Tetap. |
+| 4 | Kurs valas ditentukan sendiri di Akuntansi › Kurs Valas | Tetap manual. |
+| 5 | Usaha mulai Agustus 2026 (tertulis "20256", dianggap 2026) | Perlu konfirmasi tanggal; saldo awal sebelum itu tetap "belum diketahui". |
+| 6 | Nama usaha: SLM | Diterapkan di tampilan. |
+| 7 | Satu wajib pajak: SLM saja; AJ dan LRM tidak dipakai | Tipe AJ & ONLINE disembunyikan untuk transaksi baru; LRM menyusul. |
+| 8 | Akun ditambah otomatis bila cocok | Diterapkan: akun peran memakai kode yang ada; bila nama tidak cocok, posting berhenti dengan pesan konflik (tidak membuat akun ganda). |
+| 9 | Nonaktifkan PPN dari catatan nota | Diterapkan bila status Non-PKP + tanggal efektif disimpan di Akuntansi › Persediaan & Kebijakan. |
+| - | Tidak memakai PPh sama sekali | PPh tidak dihitung otomatis; PPh 22 impor tetap terpisah dari PPN. |
+
+## 9. Implementasi persediaan & aset (November 2026)
+
+**Akun peran** (dipakai jurnal otomatis, tidak dibuat ganda): 1-1005 Persediaan Barang Dagang, 1-1007 Biaya Dibayar di Muka, 1-1008 Uang Muka Pembelian, 1-2001 Peralatan Toko & Kantor, 1-2002 Akumulasi Penyusutan Peralatan (kontra aset, saldo normal kredit), 2-1005 Utang Barang Diterima Belum Dibayar, 5-1002 Selisih & Penyesuaian Persediaan, 6-1007 Beban Penyusutan Peralatan, 6-1008 Beban Perlengkapan & Bahan Kemasan. Kelompok neraca memakai field `reportGroup` akun (bukan nama).
+
+**Matriks posting yang berjalan**
+
+| Kejadian | Debit | Kredit |
+| --- | --- | --- |
+| Barang Masuk / Import Packing List (barang dagang) | 1-1005 (nilai FIFO) | 2-1005 |
+| Pengeluaran "Barang untuk dijual kembali" (bayar barang/ongkir impor) | 2-1005 | Kas/Bank |
+| Pengeluaran "Uang muka pembelian" | 1-1008 | Kas/Bank |
+| Pengeluaran "Peralatan" ≥ batas kapitalisasi | 1-2001 (+ aset DRAFT) | Kas/Bank |
+| Pengeluaran "Peralatan" < batas, "Bahan kemasan / perlengkapan" | 6-1008 | Kas/Bank |
+| Invoice pembelian (modul Pembelian) | 1-1005 (+ PPN impor bila Non-PKP) | 2-1001 |
+| Pembayaran supplier (modul Pembelian) | 2-1001 | Kas/Bank |
+| Penjualan: stok keluar | 5-1001 (biaya FIFO) | 1-1005 |
+| Pembatalan penjualan | jurnal HPP dibalik; stok kembali dengan biaya yang sama | |
+| Retur penjualan | 1-1005 (biaya saat dijual) | 5-1001 |
+| Opname / penyesuaian lebih | 1-1005 | 5-1002 |
+| Opname / penyesuaian kurang | 5-1002 | 1-1005 |
+| Transfer antar lokasi | tidak dijurnal | |
+| Penyusutan bulanan (aset lengkap saja) | 6-1007 | 1-2002 |
+
+**HPP belum lengkap.** Estimasi 85% harga jual sudah dihapus. Bila modal tidak diketahui, `SalesRecord.cogsStatus = INCOMPLETE` dan alasannya disimpan di `cogsNote`.
+
+**Saldo awal.** Stok yang sudah ada sebelum FIFO dipakai menjadi lapisan `OPENING` dengan `inLedger = false`. Nilainya tidak dijurnal ke modal/pendapatan dan tampil sebagai "saldo awal belum diketahui sumbernya".
+
+**Perbaikan historis (dry run).** Akuntansi › Persediaan & Kebijakan menampilkan:
+- saldo 1-1005 vs nilai kartu stok, dengan rincian asal saldo per sumber jurnal;
+- dokumen stok yang belum dijurnal;
+- kandidat koreksi peralatan dan pembelian barang dagang (alasan + ada/tidaknya bukti);
+- HPP lama yang berbentuk estimasi 85%;
+- penjualan dengan HPP belum lengkap.
+
+Koreksi diterapkan per baris, setelah backup (`scripts/backup-db.sh`). Pengeluaran yang sudah dijurnal dikoreksi dengan jurnal `CORRECTION` bertanggal hari koreksi dan jurnal asli tetap ada. Kunci jurnal per pengeluaran, jadi koreksi tidak bisa dobel.
+
+Temuan penyebab utama yang perlu dicek di produksi: kategori "Pembelian barang" di form Pengeluaran ditampilkan sebagai Persediaan di pratinjau, tetapi diposting ke 6-1001. Pembelian menjadi beban, sementara HPP penjualan mengurangi 1-1005, sehingga saldo 1-1005 bisa sangat negatif.

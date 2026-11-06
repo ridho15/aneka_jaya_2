@@ -1,4 +1,4 @@
-export type ExpenseCategoryCode = "operational_expense" | "goods_purchase" | "employee_loan" | "operational_advance" | "salary";
+export type ExpenseCategoryCode = "operational_expense" | "goods_purchase" | "equipment" | "supplies" | "purchase_advance" | "employee_loan" | "operational_advance" | "salary";
 
 export type Expense = {
   id: string;

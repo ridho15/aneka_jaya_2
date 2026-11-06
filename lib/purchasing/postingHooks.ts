@@ -1,4 +1,5 @@
 import "server-only";
+import { isNonPkpOn } from "@/lib/accounting/taxStatus";
 import { prisma } from "@/lib/db/prisma";
 import { postJournalEntry, type JournalLineInput } from "@/lib/accounting/journalStore";
 import { getAccountByCode, ensureStandardAccounts } from "@/lib/accounting/accountStore";
@@ -65,9 +66,12 @@ export async function postPurchaseInvoiceJournal(
   const cashPaymentsByAccount: Record<string, { accountId: string; accountCode: string; amount: number; name: string }> = {};
   let landedCostPayableToVendor = 0;
 
+  // Non-PKP: PPN impor tidak bisa dikreditkan, jadi ikut menjadi biaya persediaan. PPh 22 diperlakukan terpisah.
+  const nonPkp = await isNonPkpOn(invoice.invoiceDate);
   for (const lc of invoice.landedCosts) {
     const amount = Number(lc.amountIdr);
-    if (lc.isCreditableTax) {
+    const creditable = lc.isCreditableTax && !(nonPkp && lc.costType === "IMPORT_TAX_PPN");
+    if (creditable) {
       creditableTaxTotal += amount;
     } else {
       nonCreditableLandedTotal += amount;

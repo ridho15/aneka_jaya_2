@@ -27,3 +27,12 @@ export function expenseDebitAccountCode(coaId?: string | null) {
   if (code) return code;
   return LEGACY_EXPENSE_COA[value] || "6-1001";
 }
+
+/** Pengeluaran yang bukan biaya laba rugi: pelunasan barang dagang (HPP dicatat saat terjual), uang muka, kasbon, aset tetap. */
+const NOT_PROFIT_EXPENSE = new Set(["goods_purchase", "purchase_advance", "employee_loan", "operational_advance"]);
+
+export function isProfitExpense(expense: { categoryCode?: string | null; amount?: number | null }, capitalizationThreshold = 1_000_000) {
+  if (NOT_PROFIT_EXPENSE.has(expense.categoryCode || "")) return false;
+  if (expense.categoryCode === "equipment") return Number(expense.amount) < capitalizationThreshold;
+  return true;
+}

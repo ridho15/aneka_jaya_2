@@ -7,6 +7,7 @@ import { assertPeriodOpen } from "@/lib/accounting/periodStore";
 import type { Role } from "@/lib/auth/roles";
 import { parsePaymentSplits } from "@/lib/sales/payments";
 import { reverseStaleCogsJournal, saleStockCost } from "@/lib/accounting/inventoryPosting";
+import { isNonPkpOn } from "@/lib/accounting/taxStatus";
 
 export interface SalesPostingActor {
   id: string;
@@ -137,6 +138,8 @@ export async function postSalesInvoiceJournal(
   if (taxAmount >= totalSale) {
     taxAmount = 0; // Guard against abnormal tax
   }
+  // Usaha Non-PKP tidak memungut PPN: seluruh nilai nota adalah pendapatan.
+  if (taxAmount > 0 && (await isNonPkpOn(sale.saleDate))) taxAmount = 0;
 
   const dppAmount = totalSale - taxAmount;
 

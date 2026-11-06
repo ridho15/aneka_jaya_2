@@ -423,6 +423,7 @@ export async function listUnpostedExpenses(limit = 500): Promise<UnpostedExpense
     let blockedReason: string | null = null;
     if (Number(row.amount) <= 0) blockedReason = "Nominal 0, tidak perlu jurnal.";
     else if (needsManualReview(row)) blockedReason = "Perlu review: teks menyebut kasbon/gaji/uang muka. Reklasifikasi dulu di tabel review.";
+    else if (row.categoryCode === "goods_purchase" || row.categoryCode === "equipment") blockedReason = "Pembelian lama: tinjau di Rekonsiliasi Persediaan & Aset (barangnya sudah masuk stok atau peralatan?) sebelum dijurnal.";
     else if (closed.has(periodKey)) blockedReason = `Periode ${periodKey} sudah tutup buku.`;
     else if (!account) blockedReason = `Akun ${accountCode} belum ada di COA.`;
     else if (!account.isActive) blockedReason = `Akun ${accountCode} nonaktif.`;

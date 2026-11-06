@@ -45,6 +45,22 @@ type CreatedExpense = {
   retryable?: boolean;
 };
 
+/** Akun yang dipakai sistem untuk tujuan pembelian (ditampilkan saja, tidak dipilih pengguna). */
+const PURPOSE_ACCOUNT: Partial<Record<ExpenseCategoryCode, { code: string; label: string }>> = {
+  goods_purchase: { code: "2-1005", label: "2-1005 Utang Barang Diterima Belum Dibayar" },
+  purchase_advance: { code: "1-1008", label: "1-1008 Uang Muka Pembelian" },
+  supplies: { code: "6-1008", label: "6-1008 Beban Perlengkapan & Bahan Kemasan" },
+  equipment: { code: "1-2001", label: "1-2001 Peralatan (di bawah Rp 1 jt: 6-1008)" }
+};
+
+const PURPOSE_HINT: Partial<Record<ExpenseCategoryCode, string>> = {
+  goods_purchase: "Bayar barang dagang atau ongkir impornya. Barangnya dicatat di Input Stok › Barang Masuk / Import Packing List; pembayaran ini melunasinya, tidak menambah stok lagi.",
+  equipment: "Rp 1 juta ke atas jadi aset tetap; lengkapi lokasi, tanggal siap pakai, umur dan nilai residu di Akuntansi › Aset Tetap.",
+  supplies: "Kantong, lakban, kardus, alat tulis: langsung jadi biaya.",
+  operational_expense: "Ongkir ke pelanggan, listrik, sewa, jasa: pilih COA di samping.",
+  purchase_advance: "Dibayar sebelum barang datang. Tercatat sebagai aset sampai barangnya diterima."
+};
+
 export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coaAccounts = [] }: Props) {
   const router = useRouter();
   const isEdit = Boolean(expense);
@@ -176,7 +192,10 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coa
     } else if (newCode === "operational_advance") {
       setValue("coaId", "1-1002");
       setValue("coaNameSnapshot", "1-1002 Uang Muka Operasional");
-    } else if (!/^\d+-\d+/.test(getValues("coaId") || "") || ["6-1002", "2-1002", "1-1002", "1-1003"].includes(getValues("coaId"))) {
+    } else if (PURPOSE_ACCOUNT[newCode]) {
+      setValue("coaId", PURPOSE_ACCOUNT[newCode].code);
+      setValue("coaNameSnapshot", PURPOSE_ACCOUNT[newCode].label);
+    } else if (!/^\d+-\d+/.test(getValues("coaId") || "") || ["6-1002", "2-1002", "1-1002", "1-1003", ...Object.values(PURPOSE_ACCOUNT).map((a) => a.code)].includes(getValues("coaId"))) {
       setValue("coaId", DEFAULT_COA.code);
       setValue("coaNameSnapshot", coaLabel(DEFAULT_COA));
     }
@@ -401,7 +420,7 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coa
             )}
           </Field>
           <Field label="COA" error={errors.coaId?.message}>
-            {categoryCode === "operational_expense" || categoryCode === "goods_purchase" ? (
+            {categoryCode === "operational_expense" ? (
               <Select
                 {...register("coaId")}
                 onChange={(event) => {
@@ -420,8 +439,7 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coa
             )}
           </Field>
 
-          {/* Kategori Pengeluaran (5 Stable Standard Options) */}
-          <Field label="Kategori Pengeluaran" error={errors.categoryCode?.message}>
+          <Field label="Tujuan pengeluaran" error={errors.categoryCode?.message}>
             <Select
               value={categoryCode}
               onChange={(e) => handleCategoryChange(e.target.value as ExpenseCategoryCode)}
@@ -432,6 +450,7 @@ export function PengeluaranForm({ tipes, rekenings, expense, employees = [], coa
                 </option>
               ))}
             </Select>
+            {PURPOSE_HINT[categoryCode] && <span className="mt-1 block text-xs font-normal text-slate-600">{PURPOSE_HINT[categoryCode]}</span>}
           </Field>
 
           {/* Dynamic Employee Selector for Kasbon, Advance, and Salary */}

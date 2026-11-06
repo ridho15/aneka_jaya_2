@@ -4,6 +4,10 @@ import { postJournalEntry, reverseJournalEntry } from "@/lib/accounting/journalS
 import { getAccountByCode, ensureStandardAccounts } from "@/lib/accounting/accountStore";
 import type { Role } from "@/lib/auth/roles";
 import { expenseDebitAccountCode } from "@/lib/expenses/coa";
+import { ACCOUNT_ROLES, accountForRole, type AccountRole } from "@/lib/accounting/accountRoles";
+import { createAssetFromExpense, DEFAULT_POLICY, getFixedAssetPolicy } from "@/lib/accounting/fixedAssets";
+
+const ROLE_BY_CODE = new Map(Object.entries(ACCOUNT_ROLES).map(([role, def]) => [def.code, role as AccountRole]));
 
 /**
  * Otomatis mem-posting jurnal untuk Pengeluaran yang disetujui (Approved).
@@ -14,7 +18,18 @@ import { expenseDebitAccountCode } from "@/lib/expenses/coa";
  * - Gaji: Debit Beban Gaji (6-1002) vs Kredit Kas & Bank (1-1001)
  */
 /** Akun debit pengeluaran menurut kategori; dipakai saat posting dan pratinjau rekonsiliasi. */
-export function expenseDebitAccountFor(expense: { categoryCode?: string | null; coaId?: string | null; salaryPaymentType?: string | null }) {
+export function expenseDebitAccountFor(
+  expense: { categoryCode?: string | null; coaId?: string | null; salaryPaymentType?: string | null; amount?: unknown },
+  options: { capitalizationThreshold?: number } = {}
+) {
+  // Tujuan pembelian menentukan akun; pengguna tidak memilih debit/kredit.
+  if (expense.categoryCode === "goods_purchase") return ACCOUNT_ROLES.GOODS_RECEIVED_PAYABLE.code;
+  if (expense.categoryCode === "purchase_advance") return ACCOUNT_ROLES.PURCHASE_ADVANCE.code;
+  if (expense.categoryCode === "supplies") return ACCOUNT_ROLES.SUPPLIES_EXPENSE.code;
+  if (expense.categoryCode === "equipment") {
+    const threshold = options.capitalizationThreshold ?? DEFAULT_POLICY.capitalizationThreshold;
+    return Number(expense.amount) >= threshold ? ACCOUNT_ROLES.EQUIPMENT.code : ACCOUNT_ROLES.SUPPLIES_EXPENSE.code;
+  }
   if (expense.categoryCode === "employee_loan") return "1-1003";
   if (expense.categoryCode === "operational_advance") return "1-1002";
   if (expense.categoryCode === "salary") {
@@ -56,7 +71,8 @@ export async function postExpenseJournal(
   const cashAccount = await getAccountByCode("1-1001");
   if (!cashAccount) throw new Error("Akun perkiraan Kas & Bank (1-1001) tidak ditemukan.");
 
-  const debitAccountCode = expenseDebitAccountFor(expense);
+  const policy = await getFixedAssetPolicy();
+  const debitAccountCode = expenseDebitAccountFor(expense, { capitalizationThreshold: policy.capitalizationThreshold });
   let description = expense.description || `Pengeluaran ${expense.tipeCodeSnapshot || ""}`;
 
   if (expense.categoryCode === "employee_loan") {
@@ -69,7 +85,8 @@ export async function postExpenseJournal(
       : `Pembayaran Gaji: ${expense.employee?.name || expense.vendorName || "Karyawan"} Periode ${expense.salaryPeriod || ""}`;
   }
 
-  const debitAccount = await getAccountByCode(debitAccountCode);
+  const role = ROLE_BY_CODE.get(debitAccountCode);
+  const debitAccount = role ? await accountForRole(role) : await getAccountByCode(debitAccountCode);
   if (!debitAccount) throw new Error(`Akun perkiraan (${debitAccountCode}) tidak ditemukan.`);
 
   const journal = await postJournalEntry(
@@ -112,6 +129,10 @@ export async function postExpenseJournal(
       journalEntryId: journal.id
     }
   });
+
+  if (debitAccountCode === ACCOUNT_ROLES.EQUIPMENT.code) {
+    await createAssetFromExpense(expense);
+  }
 
   return journal;
 }
@@ -182,7 +203,8 @@ export async function postRepaymentJournal(
     debitAccountCode = "2-1002"; // Utang Gaji
   }
 
-  const debitAccount = await getAccountByCode(debitAccountCode);
+  const role = ROLE_BY_CODE.get(debitAccountCode);
+  const debitAccount = role ? await accountForRole(role) : await getAccountByCode(debitAccountCode);
   if (!debitAccount) throw new Error(`Akun perkiraan (${debitAccountCode}) tidak ditemukan.`);
 
   const desc = `Pelunasan Kasbon ${payment.employee.name} via ${payment.paymentMethod}${payment.payrollReference ? ` (${payment.payrollReference})` : ""}`;

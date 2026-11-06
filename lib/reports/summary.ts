@@ -1,3 +1,4 @@
+import { isProfitExpense } from "@/lib/expenses/coa";
 import { isPaidPaymentMethod, salePaymentParts } from "@/lib/sales/payments";
 import type { Expense } from "@/lib/types/expenses";
 import type { Sale } from "@/lib/types/sales";
@@ -126,7 +127,7 @@ export function buildFinanceReportSummary(input: {
 
   const kasbonDisbursed = approvedExpenses.filter((row) => row.categoryCode === "employee_loan" || row.categoryCode === "operational_advance");
   const salaryExpenses = approvedExpenses.filter((row) => row.categoryCode === "salary");
-  const operationalExpenses = approvedExpenses.filter((row) => row.categoryCode !== "employee_loan" && row.categoryCode !== "operational_advance" && row.categoryCode !== "salary");
+  const operationalExpenses = approvedExpenses.filter((row) => row.categoryCode !== "salary" && isProfitExpense(row));
 
   return {
     month: input.month,

@@ -3,6 +3,18 @@ import { LEDGER_JOURNAL_STATUS } from "@/lib/accounting/ledgerStatus";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
 import { listAccounts } from "@/lib/accounting/accountStore";
+
+/** Kelompok neraca dari field reportGroup akun; akun lama tanpa reportGroup memakai pola kode. */
+export function balanceSheetGroup(acc: { code: string; category: string; normalBalance?: string; reportGroup?: string | null }) {
+  if (acc.reportGroup) return acc.reportGroup;
+  if (acc.category === "ASSET") {
+    if (acc.code.startsWith("1-1")) return "CURRENT_ASSET";
+    if (acc.code.startsWith("1-2")) return acc.normalBalance === "CREDIT" ? "CONTRA_FIXED_ASSET" : "FIXED_ASSET";
+    return "OTHER_ASSET";
+  }
+  if (acc.category === "LIABILITY") return acc.code.startsWith("2-2") ? "LONG_TERM_LIABILITY" : "CURRENT_LIABILITY";
+  return null;
+}
 import { jakartaDateKey } from "@/lib/date/jakarta";
 
 export type StatementAccountLine = {
@@ -381,10 +393,11 @@ export async function getBalanceSheet(filters: {
         amount
       };
 
-      if (acc.code.startsWith("1-1") || acc.code === "1-1006") {
+      const group = balanceSheetGroup(acc);
+      if (group === "CURRENT_ASSET") {
         currentAssets.push(line);
         totalCurrentAssets += amount;
-      } else if (acc.code.startsWith("1-2")) {
+      } else if (group === "FIXED_ASSET" || group === "CONTRA_FIXED_ASSET") {
         fixedAssets.push(line);
         totalFixedAssets += amount;
       } else {
@@ -404,7 +417,7 @@ export async function getBalanceSheet(filters: {
         amount
       };
 
-      if (acc.code.startsWith("2-2")) {
+      if (balanceSheetGroup(acc) === "LONG_TERM_LIABILITY") {
         longTermLiabilities.push(line);
         totalLongTermLiabilities += amount;
       } else {

@@ -11,7 +11,7 @@ export type AuditEntityType =
   | "sales" | "expense" | "purchase" | "product" | "stock" | "rekening" | "tipe" | "coa" | "user"
   | "tempo" | "approval" | "erp_sync" | "whatsapp_report" | "stock_alert" | "rekening_reset" | "app_setting" | "delivery_order"
   | "employee" | "employee_loan" | "employee_loan_payment" | "advance_settlement"
-  | "employee_savings";
+  | "employee_savings" | "fixed_asset" | "accounting_correction";
 
 export type AuditAction =
   | "create" | "update" | "approve" | "reject" | "archive" | "disable" | "enable" | "mark_paid"

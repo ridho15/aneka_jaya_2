@@ -171,6 +171,7 @@ export async function updateAccount(
       category: before.isSystem || !input.category ? before.category : input.category,
       normalBalance: before.isSystem || !input.normalBalance ? before.normalBalance : input.normalBalance,
       description: input.description !== undefined ? (input.description || null) : before.description,
+      reportGroup: before.isSystem || input.reportGroup === undefined ? before.reportGroup : input.reportGroup,
       sortOrder: input.sortOrder !== undefined ? input.sortOrder : before.sortOrder,
       isActive: input.isActive !== undefined ? input.isActive : before.isActive
     }

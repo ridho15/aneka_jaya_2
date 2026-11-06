@@ -15,6 +15,7 @@ export const accountSchema = z.object({
     errorMap: () => ({ message: "Saldo normal harus Debit atau Kredit" })
   }),
   description: z.string().trim().max(500).optional().or(z.literal("")),
+  reportGroup: z.enum(["CURRENT_ASSET", "FIXED_ASSET", "CONTRA_FIXED_ASSET", "OTHER_ASSET", "CURRENT_LIABILITY", "LONG_TERM_LIABILITY"]).nullable().optional(),
   sortOrder: z.coerce.number().int().default(0),
   isActive: z.boolean().default(true)
 });

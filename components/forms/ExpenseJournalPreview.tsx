@@ -70,12 +70,44 @@ export function ExpenseJournalPreview({
         };
       case "goods_purchase":
         return {
-          debitCode: "1-1005",
-          debitName: "Persediaan Barang Dagang",
-          debitType: "Aset (Persediaan)",
-          memoDebit: `Pembelian persediaan / barang dari ${targetPerson}`,
-          note: "Pembelian dicatat sebagai penambahan persediaan/utang, bukan beban operasional langsung."
+          debitCode: "2-1005",
+          debitName: "Utang Barang Diterima Belum Dibayar",
+          debitType: "Pelunasan barang dagang",
+          memoDebit: `Bayar barang dagang ke ${targetPerson}`,
+          note: "Persediaan bertambah saat barang dicatat di Barang Masuk. Pembayaran ini hanya melunasi, jadi barang tidak tercatat dua kali."
         };
+      case "purchase_advance":
+        return {
+          debitCode: "1-1008",
+          debitName: "Uang Muka Pembelian",
+          debitType: "Aset lancar",
+          memoDebit: `Uang muka pembelian ke ${targetPerson}`,
+          note: "Tetap aset sampai barangnya diterima."
+        };
+      case "supplies":
+        return {
+          debitCode: "6-1008",
+          debitName: "Beban Perlengkapan & Bahan Kemasan",
+          debitType: "Beban",
+          memoDebit: `Perlengkapan / bahan kemasan dari ${targetPerson}`,
+          note: "Barang habis pakai langsung menjadi biaya."
+        };
+      case "equipment":
+        return amount >= 1_000_000
+          ? {
+              debitCode: "1-2001",
+              debitName: "Peralatan Toko & Kantor",
+              debitType: "Aset tetap",
+              memoDebit: `Peralatan dari ${targetPerson}`,
+              note: "Menjadi aset tetap dan disusutkan setelah datanya lengkap di Akuntansi › Aset Tetap."
+            }
+          : {
+              debitCode: "6-1008",
+              debitName: "Beban Perlengkapan & Bahan Kemasan",
+              debitType: "Beban",
+              memoDebit: `Peralatan kecil dari ${targetPerson}`,
+              note: "Di bawah batas kapitalisasi Rp 1 juta, langsung menjadi biaya."
+            };
       default: {
         const customCode = coaId && /^[0-9]+-[0-9]+/.test(coaId) ? coaId : "6-1001";
         const customName = coaNameSnapshot || "Beban Operasional Umum";
@@ -88,7 +120,7 @@ export function ExpenseJournalPreview({
         };
       }
     }
-  }, [categoryCode, salaryPaymentType, targetPerson, purpose, salaryPeriod, coaId, coaNameSnapshot]);
+  }, [categoryCode, salaryPaymentType, targetPerson, purpose, salaryPeriod, coaId, coaNameSnapshot, amount]);
 
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 shadow-2xs space-y-3">

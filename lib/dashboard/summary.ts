@@ -1,6 +1,7 @@
 import { isPaidPaymentMethod, salePaymentParts } from "@/lib/sales/payments";
 import type { AuditLog } from "@/lib/audit/store";
 import type { Expense } from "@/lib/types/expenses";
+import { isProfitExpense } from "@/lib/expenses/coa";
 import type { Product } from "@/lib/types/product";
 import type { Sale } from "@/lib/types/sales";
 import type { TempoPayment, TempoPaymentReversal } from "@/lib/tempo/store";
@@ -231,8 +232,8 @@ function apakahPenjualanOperasional(baris: Pick<Sale, "tipeId" | "tipeCodeSnapsh
 }
 
 /** Menentukan apakah pengeluaran adalah pengeluaran operasional SLM (bukan AJ) */
-function apakahPengeluaranOperasional(baris: Pick<Expense, "tipeId" | "tipeCodeSnapshot">): boolean {
-  return kodeTipe(baris) !== "AJ";
+function apakahPengeluaranOperasional(baris: Pick<Expense, "tipeId" | "tipeCodeSnapshot" | "categoryCode" | "amount">): boolean {
+  return kodeTipe(baris) !== "AJ" && isProfitExpense(baris);
 }
 
 // ============================================================================
