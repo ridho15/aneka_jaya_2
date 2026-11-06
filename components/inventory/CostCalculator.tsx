@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/ToastProvider";
 import { RupiahInput } from "@/components/ui/RupiahInput";
 import { calculateCost } from "@/lib/inventory/costCalculator";
 
@@ -13,8 +16,34 @@ export function CostCalculator({ defaultRmbRate, defaultCbmRate }: { defaultRmbR
   const [packSize, setPackSize] = useState("10");
   const [unitsPerKoli, setUnitsPerKoli] = useState("60");
   const [cbmPerKoli, setCbmPerKoli] = useState("0.5");
+  const router = useRouter();
+  const { showToast } = useToast();
+  // Kurs & tarif selalu dari Master Barang; diubah di sini = mengubah standar untuk semua barang.
   const [rmbRate, setRmbRate] = useState(defaultRmbRate ? String(Math.round(defaultRmbRate)) : "");
   const [cbmRate, setCbmRate] = useState(defaultCbmRate ? String(Math.round(defaultCbmRate)) : "");
+  const [editingRates, setEditingRates] = useState(!defaultRmbRate || !defaultCbmRate);
+  const [savingRates, setSavingRates] = useState(false);
+
+  async function saveRates() {
+    if (!(num(rmbRate) > 0) || !(num(cbmRate) > 0)) return showToast("Isi kurs RMB dan tarif CBM.", "error");
+    setSavingRates(true);
+    try {
+      const put = async (url: string, rate: number) => {
+        const res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rate }) });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.message || "Gagal menyimpan.");
+      };
+      if (num(rmbRate) !== (defaultRmbRate ?? 0)) await put("/api/inventory/settings/rmb-rate", num(rmbRate));
+      if (num(cbmRate) !== (defaultCbmRate ?? 0)) await put("/api/inventory/settings/cbm-rate", num(cbmRate));
+      showToast("Kurs & tarif standar disimpan. Modal barang ber-harga RMB ikut dihitung ulang.", "success");
+      setEditingRates(false);
+      router.refresh();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal menyimpan.", "error");
+    } finally {
+      setSavingRates(false);
+    }
+  }
   const [sell, setSell] = useState("");
 
   const pcsPerUnit = unitKind === "Lusin" ? 12 : num(packSize);
@@ -51,18 +80,31 @@ export function CostCalculator({ defaultRmbRate, defaultCbmRate }: { defaultRmbR
             <input className={input} inputMode="decimal" value={cbmPerKoli} onChange={(e) => setCbmPerKoli(e.target.value)} placeholder="0.5" />
           </label>
         </div>
-        <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
-          <label className={label}><span>Kurs per 1 RMB {defaultRmbRate ? "(standar, bisa diubah)" : ""}</span>
-            <RupiahInput value={rmbRate} onChange={setRmbRate} placeholder="2.800" ariaLabel="Kurs per 1 RMB" />
-          </label>
-          <label className={label}><span>Tarif per CBM {defaultCbmRate ? "(standar, bisa diubah)" : ""}</span>
-            <RupiahInput value={cbmRate} onChange={setCbmRate} placeholder="3.500.000" ariaLabel="Tarif per CBM" />
-          </label>
+        <div className="border-t border-slate-100 pt-4">
+          {editingRates ? (
+            <div className="space-y-3">
+              <p className="text-xs text-slate-600">{defaultRmbRate && defaultCbmRate ? "Ubah kurs & tarif standar (berlaku untuk semua barang)." : "Kurs & tarif standar belum diatur. Isi sekali, lalu dipakai otomatis di sini dan di Master Barang."}</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className={label}><span>Kurs per 1 RMB</span><RupiahInput value={rmbRate} onChange={setRmbRate} placeholder="2.800" ariaLabel="Kurs per 1 RMB" /></label>
+                <label className={label}><span>Tarif per CBM</span><RupiahInput value={cbmRate} onChange={setCbmRate} placeholder="3.500.000" ariaLabel="Tarif per CBM" /></label>
+              </div>
+              <div className="flex justify-end gap-2">
+                {defaultRmbRate && defaultCbmRate ? <Button variant="secondary" className="min-h-10" onClick={() => { setRmbRate(String(Math.round(defaultRmbRate))); setCbmRate(String(Math.round(defaultCbmRate))); setEditingRates(false); }}>Batal</Button> : null}
+                <Button className="min-h-10" disabled={savingRates} onClick={saveRates}>{savingRates ? "Menyimpan..." : "Simpan sebagai standar"}</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <p>Kurs <b>Rp {num(rmbRate).toLocaleString("id-ID")}</b>/RMB · Tarif <b>Rp {num(cbmRate).toLocaleString("id-ID")}</b>/CBM<span className="block text-xs text-slate-500">Dari Master Barang</span></p>
+              <button type="button" className="min-h-10 shrink-0 rounded-lg px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-50" onClick={() => setEditingRates(true)}>Ubah</button>
+            </div>
+          )}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className={label}><span>Harga jual per {unitKind.toLowerCase()} (opsional)</span>
             <RupiahInput value={sell} onChange={setSell} placeholder="0" ariaLabel="Harga jual" />
           </label>
         </div>
-        <p className="text-xs text-slate-500">Mengubah kurs atau tarif di sini hanya untuk hitungan ini. Kurs & tarif standar diatur di Master Barang.</p>
       </section>
 
       <section className="aj-surface p-4 sm:p-5">
