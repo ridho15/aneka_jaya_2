@@ -24,7 +24,8 @@ describe("SalesHistoryList", () => {
   it("renders collapsed expand controls for desktop and mobile", () => {
     const html = renderToStaticMarkup(<SalesHistoryList sales={[sale]} canManage={false} canViewTransactionNumber />);
 
-    expect(html.match(/Lihat item \(2\)/g)).toHaveLength(1);
+    // Kartu HP: tombol ringkas "2 item" di baris tombol.
+    expect(html).toMatch(/>2 item</);
     expect(html).toContain('aria-label="Lihat item transaksi Toko Contoh"');
     expect(html.match(/aria-expanded="false"/g)).toHaveLength(2);
     expect(html).not.toContain("ERP-001");
@@ -64,10 +65,9 @@ describe("SalesHistoryList", () => {
     const saleNotDetected: Sale = { ...sale, id: "sale-cctv-no", doPackingStatus: "belum" };
 
     const html = renderToStaticMarkup(<SalesHistoryList sales={[saleDetected, saleNotDetected]} canManage={false} canViewTransactionNumber />);
-    expect(html).toContain("Status Packing");
-    expect(html).toContain("Sudah");
-    expect(html).toContain("Belum");
+    // Status packing tampil lewat badge status DO.
     expect(html).toContain("Dipacking");
+    expect(html).toContain("Belum Diproses");
   });
 
   it("renders direct Detail, Cetak, Edit, and Batal buttons without Lainnya dropdown menu", () => {
