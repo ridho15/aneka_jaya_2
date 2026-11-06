@@ -215,7 +215,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
               { label: "Gross profit", today: p.todayGrossProfit, month: p.grossProfit, todayId: "dashboard-kpi-operational-today-gross-profit", monthId: "dashboard-kpi-operational-gross-profit", strong: true },
               { label: "Pengeluaran", today: p.todayExpenses, month: p.monthlyExpenses, todayId: "dashboard-kpi-operational-today-expenses", monthId: "dashboard-kpi-operational-month-expenses" },
               { label: "Nett profit", today: p.todayNettProfit, month: p.nettProfit, todayId: "dashboard-kpi-operational-today-nett-profit", monthId: "dashboard-kpi-operational-nett-profit", strong: true },
-              ...(mjStats ? [{ label: "Transaksi MJ", today: mjStats.todayTotal, month: mjStats.monthTotal, todayId: "dashboard-mj-today", monthId: "dashboard-mj-month", sub: [`${mjStats.todayCount} trx`, `${mjStats.monthCount} trx`] as [string, string] }] : [])
             ];
             const cell = (value: number, id: string, strong?: boolean, sub?: string) => (
               <td data-testid={id} className={`whitespace-nowrap px-3 py-2 text-right tabular-nums sm:px-4 ${strong ? "font-bold" : "font-semibold"} ${value < 0 ? "text-red-700" : "text-slate-900"}`}>
@@ -238,6 +237,22 @@ export default async function DashboardPage({ searchParams }: { searchParams?: P
                       </tr>
                     ))}
                   </tbody>
+                  {mjStats && (
+                    <tfoot className="border-t-2 border-amber-300 bg-amber-50 text-amber-950">
+                      <tr>
+                        <th scope="row" className="px-3 py-2 text-left font-semibold sm:px-4">
+                          <span className="whitespace-nowrap"><span className="mr-1.5 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">MJ</span>Transaksi</span>
+                          <span className="block text-[11px] font-normal text-amber-800">Sudah termasuk di omset</span>
+                        </th>
+                        <td data-testid="dashboard-mj-today" className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums sm:px-4">
+                          {formatDashboardMoney(mjStats.todayTotal)}<span className="block text-[11px] font-normal text-amber-800">{mjStats.todayCount} trx</span>
+                        </td>
+                        <td data-testid="dashboard-mj-month" className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums sm:px-4">
+                          {formatDashboardMoney(mjStats.monthTotal)}<span className="block text-[11px] font-normal text-amber-800">{mjStats.monthCount} trx</span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             );
