@@ -2,16 +2,18 @@ import { AppShell } from "@/components/layout/AppShell";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { listJournalEntries } from "@/lib/accounting/journalStore";
 import { listAccounts, ensureStandardAccounts } from "@/lib/accounting/accountStore";
+import Link from "next/link";
 import { JournalOverviewTable } from "@/components/accounting/JournalOverviewTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function AkuntansiJurnalPage() {
+export default async function AkuntansiJurnalPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   await requirePermission("accounting.view");
   await ensureStandardAccounts();
 
+  const requestedPage = Math.max(1, Math.floor(Number((await searchParams).page)) || 1);
   const [journalResult, rawAccounts] = await Promise.all([
-    listJournalEntries({ pageSize: 200 }),
+    listJournalEntries({ pageSize: 200, page: requestedPage }),
     listAccounts({ isActive: true }),
   ]);
 
@@ -64,6 +66,16 @@ export default async function AkuntansiJurnalPage() {
       </div>
 
       <JournalOverviewTable initialJournals={journals} accounts={accounts} />
+
+      {journalResult.totalPages > 1 && (
+        <nav className="mt-5 flex items-center justify-between text-sm text-slate-600" aria-label="Halaman jurnal">
+          <span>Halaman {journalResult.page} dari {journalResult.totalPages} ({journalResult.total} jurnal)</span>
+          <span className="flex gap-2">
+            {journalResult.page > 1 && <Link className="rounded-lg border px-3 py-1.5 font-semibold hover:bg-slate-50" href={`?page=${journalResult.page - 1}`}>Sebelumnya</Link>}
+            {journalResult.page < journalResult.totalPages && <Link className="rounded-lg border px-3 py-1.5 font-semibold hover:bg-slate-50" href={`?page=${journalResult.page + 1}`}>Berikutnya</Link>}
+          </span>
+        </nav>
+      )}
     </AppShell>
   );
 }

@@ -358,7 +358,7 @@ export async function listJournalEntries(filters: {
   }
 
   const page = Math.max(1, filters.page || 1);
-  const pageSize = Math.max(1, Math.min(100, filters.pageSize || 25));
+  const pageSize = Math.max(1, Math.min(200, filters.pageSize || 25));
   const skip = (page - 1) * pageSize;
 
   const [total, entries] = await Promise.all([
