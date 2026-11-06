@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import type { Sale } from "@/lib/types/sales";
+import { saleDayKey } from "@/lib/sales/dayKey";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 import { formatJakartaDateTime } from "@/lib/date/jakarta";
 import { parseReceiptPhotos } from "@/lib/deliveryOrders/photos";
@@ -15,6 +16,8 @@ type Props = {
   productNames?: Record<string, string>;
   /** Jumlah nota & total rupiah per hari di pembatas tanggal (Super Admin saja). */
   showDayTotals?: boolean;
+  /** Total per hari dari seluruh nota yang cocok dengan filter (bukan hanya halaman ini). */
+  dayTotals?: Record<string, { count: number; total: number }>;
 };
 
 /** "TF BCA - Hery", "Cash + TF BCA" untuk Split, atau nama metode saja. */
@@ -31,11 +34,6 @@ export function paymentLabel(sale: Pick<Sale, "paymentMethod" | "rekeningNameSna
 }
 
 /** Kunci tanggal (zona Jakarta) untuk memisahkan transaksi per hari. */
-function saleDayKey(sale: Sale) {
-  if (!sale.transactionAt) return sale.saleDate;
-  const date = new Date(sale.transactionAt);
-  return Number.isNaN(date.getTime()) ? sale.saleDate : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(date);
-}
 
 const dayLabel = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "2-digit", month: "short", year: "numeric" });
 
@@ -406,13 +404,15 @@ export function SalesHistoryList({
   canViewTransactionNumber,
   productNames = {},
   showDayTotals = false,
+  dayTotals,
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const columnCount = canViewTransactionNumber ? 9 : 8;
   const toggle = (id: string) =>
     setExpandedSaleId((current) => nextExpandedSaleId(current, id));
 
-  const perDay = daySummaries(sales);
+  const pageTotals = daySummaries(sales);
+  const perDay = { get: (key: string) => dayTotals?.[key] ?? pageTotals.get(key) };
   const startsNewDay = (index: number) => index === 0 || saleDayKey(sales[index]) !== saleDayKey(sales[index - 1]);
 
   return (

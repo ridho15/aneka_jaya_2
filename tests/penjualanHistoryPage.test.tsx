@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: mocks.getCurrentUser }));
-vi.mock("@/lib/sales/access", () => ({ listSalesRecordsPageForUser: mocks.listSalesRecordsPageForUser }));
+vi.mock("@/lib/sales/access", () => ({ listSalesRecordsPageForUser: mocks.listSalesRecordsPageForUser, salesRecordScopeForUser: () => undefined }));
+vi.mock("@/lib/sales/store", () => ({ salesDayTotals: async () => ({}) }));
 vi.mock("@/lib/business/masterData", () => ({ listBookkeepingTypes: mocks.listBookkeepingTypes, listRekeningAccounts: mocks.listRekeningAccounts }));
 
 const { default: PenjualanHistoryPage } = await import("@/app/penjualan/page");

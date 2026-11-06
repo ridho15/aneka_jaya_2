@@ -1357,3 +1357,33 @@ export async function recordSalesPrintLog(
   return null;
 }
 
+
+/** Kunci hari Jakarta dari jam transaksi (sama dengan pembatas tanggal di Riwayat Penjualan). */
+function jakartaDayKey(transactionAt: Date | null, saleDate: Date) {
+  const date = transactionAt ?? saleDate;
+  return transactionAt ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(date) : saleDate.toISOString().slice(0, 10);
+}
+
+/**
+ * Jumlah nota dan total per hari untuk seluruh nota yang cocok dengan filter (bukan hanya halaman yang tampil).
+ * Nota batal tidak dihitung.
+ */
+export async function salesDayTotals(filters: SalesRecordFilters, scope: SalesRecordScope | undefined, dayKeys: string[]) {
+  const keys = Array.from(new Set(dayKeys.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)))).sort();
+  if (!keys.length || typeof prisma?.salesRecord?.findMany !== "function") return {};
+  const dayMs = 86_400_000;
+  const from = new Date(new Date(`${keys[0]}T00:00:00Z`).getTime() - dayMs);
+  const to = new Date(new Date(`${keys[keys.length - 1]}T00:00:00Z`).getTime() + 2 * dayMs);
+  const where = buildSalesWhere(filters, scope);
+  appendSalesWhereAnd(where, { saleDate: { gte: from, lt: to }, approvalStatus: { not: "cancelled" } });
+  const rows = await prisma.salesRecord.findMany({ where, select: { transactionAt: true, saleDate: true, total: true } });
+  const wanted = new Set(keys);
+  const totals: Record<string, { count: number; total: number }> = {};
+  for (const row of rows) {
+    const key = jakartaDayKey(row.transactionAt, row.saleDate);
+    if (!wanted.has(key)) continue;
+    const current = totals[key] ?? { count: 0, total: 0 };
+    totals[key] = { count: current.count + 1, total: current.total + Number(row.total) };
+  }
+  return totals;
+}

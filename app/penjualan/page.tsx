@@ -7,7 +7,9 @@ import { Select } from "@/components/ui/Select";
 import { can } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { SalesRecordFilters } from "@/lib/sales/store";
-import { listSalesRecordsPageForUser } from "@/lib/sales/access";
+import { listSalesRecordsPageForUser, salesRecordScopeForUser } from "@/lib/sales/access";
+import { salesDayTotals } from "@/lib/sales/store";
+import { saleDayKey } from "@/lib/sales/dayKey";
 import { listBookkeepingTypes, listRekeningAccounts, type RekeningAccount } from "@/lib/business/masterData";
 import type { Sale } from "@/lib/types/sales";
 import { SalesHistoryList } from "@/components/transactions/SalesHistoryList";
@@ -103,7 +105,13 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
   const activeRekeningOptions = rekeningOptions
     .filter((item) => item.isActive !== false)
     .sort((a, b) => rekeningLabel(a).localeCompare(rekeningLabel(b)));
-  const productNames = await productNamesBySku(paged.flatMap((sale) => sale.items.map((item) => item.productRef)));
+  const showDayTotals = role === "OWNER";
+  const [productNames, dayTotals] = await Promise.all([
+    productNamesBySku(paged.flatMap((sale) => sale.items.map((item) => item.productRef))),
+    showDayTotals
+      ? salesDayTotals(filtersFromParams(params), salesRecordScopeForUser(user), paged.map(saleDayKey)).catch(() => undefined)
+      : Promise.resolve(undefined)
+  ]);
   const totalPages = meta.totalPages;
   const activeFilters = activeFilterLabels(params, activeRekeningOptions);
 
@@ -146,7 +154,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
 
       <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} transaksi.</div>
-        <SalesHistoryList sales={paged} canManage={canManage} canViewTransactionNumber={canViewTransactionNumber} productNames={productNames} showDayTotals={role === "OWNER"} />
+        <SalesHistoryList sales={paged} canManage={canManage} canViewTransactionNumber={canViewTransactionNumber} productNames={productNames} showDayTotals={showDayTotals} dayTotals={dayTotals} />
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
           <span className="text-slate-500">Halaman {page} dari {totalPages}</span>
           <div className="flex gap-2">
