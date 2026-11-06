@@ -1,0 +1,56 @@
+plugins {
+    id "com.android.application"
+}
+
+def keystoreProps = new Properties()
+def keystoreFile = rootProject.file("keystore/keystore.properties")
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it) }
+
+android {
+    namespace "id.playgo.slm"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "id.playgo.slm"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+        buildConfigField "String", "SLM_URL", "\"${project.findProperty("slmUrl") ?: "https://slm.playgo.id"}\""
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreProps["storeFile"]) {
+                storeFile rootProject.file("keystore/" + keystoreProps["storeFile"])
+                storePassword keystoreProps["storePassword"]
+                keyAlias keystoreProps["keyAlias"]
+                keyPassword keystoreProps["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystoreProps["storeFile"] ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Samakan versi kotlin-stdlib (jdk7/jdk8 lama bentrok dengan stdlib baru).
+    implementation platform("org.jetbrains.kotlin:kotlin-bom:1.8.22")
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.activity:activity:1.9.3"
+    implementation "androidx.webkit:webkit:1.12.1"
+}
