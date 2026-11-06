@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { listAccounts, createAccount } from "@/lib/accounting/accountStore";
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: account }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Gagal membuat akun." },
+      { success: false, message: error instanceof ZodError ? error.issues[0]?.message || "Data akun tidak valid." : error instanceof Error ? error.message : "Gagal membuat akun." },
       { status: 400 }
     );
   }

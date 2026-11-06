@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { getAccountById, updateAccount, deleteAccount } from "@/lib/accounting/accountStore";
@@ -43,7 +44,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : "Gagal memperbarui akun." },
+      { success: false, message: error instanceof ZodError ? error.issues[0]?.message || "Data akun tidak valid." : error instanceof Error ? error.message : "Gagal memperbarui akun." },
       { status: 400 }
     );
   }
