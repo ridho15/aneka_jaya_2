@@ -88,13 +88,14 @@ suite("inventory service (postgres)", () => {
     expect(await qty(gudang.id)).toBe(65);
   });
 
-  it("penjualan paralel tidak membuat stok minus", async () => {
-    // toko punya 35; 10 penjualan @5 paralel → maksimal 7 berhasil
+  it("penjualan paralel tidak hilang walau stok kurang (kekurangan masuk Laporan Consignment)", async () => {
+    // Toko punya 35; 10 penjualan @5 paralel. Penjualan tidak ditolak karena stok kurang,
+    // dan saldo tetap konsisten: 35 − 50 = −15 (tidak ada update yang hilang).
     const results = await Promise.allSettled(Array.from({ length: 10 }, (_, i) =>
       svc.releaseSaleStockLocal({ reference: `SALE-${sku}-${i}`, saleDate: new Date().toISOString(), items: [{ productRef: sku, warehouseId: toko.id, quantity: 5 }] })
     ));
-    expect(results.filter((r) => r.status === "fulfilled").length).toBe(7);
-    expect(await qty(toko.id)).toBe(0);
+    expect(results.filter((r) => r.status === "fulfilled").length).toBe(10);
+    expect(await qty(toko.id)).toBe(-15);
   });
 
   it("release penjualan idempotent dan pembatalan mengembalikan stok", async () => {
@@ -102,7 +103,7 @@ suite("inventory service (postgres)", () => {
     expect((await svc.releaseSaleStockLocal({ reference: ref, saleDate: new Date().toISOString(), items: [{ productRef: sku, warehouseId: toko.id, quantity: 5 }] })).status).toBe("already_released");
     await svc.cancelSaleStockLocal({ reference: ref, reason: "batal" });
     await svc.cancelSaleStockLocal({ reference: ref, reason: "batal" });
-    expect(await qty(toko.id)).toBe(5);
+    expect(await qty(toko.id)).toBe(-10);
   });
 
   it("kartu stok mencatat saldo berjalan", async () => {
@@ -119,7 +120,7 @@ suite("inventory service (postgres)", () => {
     const m = await svc.stockMatrix({ keyword: sku });
     const row = m.data.find((r) => r.sku === sku)!;
     expect(row.perLocation[gudang.id]).toBe(65);
-    expect(row.perLocation[toko.id]).toBe(5);
+    expect(row.perLocation[toko.id]).toBe(-10);
     expect(row.warehouseTotal).toBeGreaterThanOrEqual(65);
   });
 

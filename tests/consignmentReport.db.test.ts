@@ -65,4 +65,16 @@ suite("sales without stock & consignment report (postgres)", () => {
     const r = await report.getConsignmentReport({ from: day, to: day, keyword: run });
     expect(r.sales.flatMap((s) => s.lines).some((l) => l.sku === `NOSTK-${run}`)).toBe(false);
   });
+
+  it("sales taken from a warehouse appear in Permintaan Barang Gudang; store sales do not", async () => {
+    const { getWarehouseRequests } = await import("@/lib/reports/warehouseRequests");
+    const gudang = await inv.createLocation({ code: `GDC${run}`, name: `Gudang C ${run}`, type: "WAREHOUSE", allowNegative: false, isDefault: false, isActive: true });
+    const p = await inv.createProduct({ sku: `GDG-${run}`, name: "Di Gudang", unit: "Lusin", minimumStock: 0, costPrice: 0 } as never);
+    await inv.createStockIn({ locationId: gudang.id, items: [{ productId: p.id, quantity: 10, unitCost: 10_000 }] } as never);
+    await inv.releaseSaleStockLocal({ reference: `R3-${run}`, saleDate: day, items: [{ productId: p.id, warehouseId: gudang.id, quantity: 4 }] });
+    await sale(`R3-${run}`, p.id, p.sku, 4, 20_000);
+    const r = await getWarehouseRequests({ from: day, to: day });
+    expect(r.products.find((x) => x.sku === `GDG-${run}`)).toMatchObject({ quantity: 4, warehouse: `Gudang C ${run}`, notaCount: 1 });
+    expect(r.products.some((x) => x.sku === `PART-${run}`)).toBe(false);
+  });
 });

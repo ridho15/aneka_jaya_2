@@ -6,6 +6,8 @@ export type StockItem = {
   warehouse: string | null;
   warehouseId?: string;
   warehouseCode?: string;
+  /** STORE = toko, WAREHOUSE = gudang (inventory SLM). */
+  locationType?: "WAREHOUSE" | "STORE";
   quantity: number | null;
   reservedQuantity?: number | null;
   freeQuantity?: number | null;
