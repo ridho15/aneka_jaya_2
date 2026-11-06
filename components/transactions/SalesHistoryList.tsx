@@ -14,7 +14,7 @@ type Props = {
   canManage: boolean;
   canViewTransactionNumber: boolean;
   productNames?: Record<string, string>;
-  /** Jumlah nota per hari di pembatas tanggal (Super Admin saja). */
+  /** Jumlah nota & total rupiah per hari di pembatas tanggal (Super Admin saja). */
   showDayTotals?: boolean;
   /** Total per hari dari seluruh nota yang cocok dengan filter (bukan hanya halaman ini). */
   dayTotals?: Record<string, { count: number; total: number }>;
@@ -49,13 +49,13 @@ function daySummaries(sales: Sale[]) {
   return map;
 }
 
-/** Pembatas tanggal tanpa angka rupiah. Jumlah nota per hari hanya untuk Super Admin. */
+/** Jumlah nota & total rupiah per hari hanya untuk Super Admin; peran lain cukup tanggal. */
 function DayHeading({ dayKey, summary, showTotal }: { dayKey: string; summary?: { count: number; total: number }; showTotal: boolean }) {
   const date = new Date(`${dayKey}T00:00:00+07:00`);
   return (
     <>
       <span className="font-semibold text-slate-700">{Number.isNaN(date.getTime()) ? dayKey : dayLabel.format(date)}</span>
-      {summary && showTotal && <span className="text-slate-500"> · {summary.count} nota</span>}
+      {summary && showTotal && <span className="text-slate-500"> · {summary.count} nota · {rupiah(summary.total)}</span>}
     </>
   );
 }
