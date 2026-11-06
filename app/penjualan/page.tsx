@@ -146,7 +146,7 @@ export default async function PenjualanHistoryPage({ searchParams }: { searchPar
 
       <section className="aj-surface">
         <div className="border-b border-slate-200 px-5 py-4 text-sm text-slate-600">Menampilkan {paged.length} dari {meta.total} transaksi.</div>
-        <SalesHistoryList sales={paged} canManage={canManage} canViewTransactionNumber={canViewTransactionNumber} productNames={productNames} />
+        <SalesHistoryList sales={paged} canManage={canManage} canViewTransactionNumber={canViewTransactionNumber} productNames={productNames} showDayTotals={role === "OWNER"} />
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm">
           <span className="text-slate-500">Halaman {page} dari {totalPages}</span>
           <div className="flex gap-2">

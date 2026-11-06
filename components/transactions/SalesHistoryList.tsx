@@ -13,6 +13,8 @@ type Props = {
   canManage: boolean;
   canViewTransactionNumber: boolean;
   productNames?: Record<string, string>;
+  /** Jumlah nota & total rupiah per hari di pembatas tanggal (Super Admin saja). */
+  showDayTotals?: boolean;
 };
 
 /** "TF BCA - Hery", "Cash + TF BCA" untuk Split, atau nama metode saja. */
@@ -49,12 +51,13 @@ function daySummaries(sales: Sale[]) {
   return map;
 }
 
-function DayHeading({ dayKey, summary }: { dayKey: string; summary?: { count: number; total: number } }) {
+/** Total rupiah per hari hanya untuk Super Admin; peran lain cukup melihat pembatas tanggal. */
+function DayHeading({ dayKey, summary, showTotal }: { dayKey: string; summary?: { count: number; total: number }; showTotal: boolean }) {
   const date = new Date(`${dayKey}T00:00:00+07:00`);
   return (
     <>
       <span className="font-semibold text-slate-700">{Number.isNaN(date.getTime()) ? dayKey : dayLabel.format(date)}</span>
-      {summary && <span className="text-slate-500"> · {summary.count} nota · {rupiah(summary.total)}</span>}
+      {summary && showTotal && <span className="text-slate-500"> · {summary.count} nota · {rupiah(summary.total)}</span>}
     </>
   );
 }
@@ -402,6 +405,7 @@ export function SalesHistoryList({
   canManage,
   canViewTransactionNumber,
   productNames = {},
+  showDayTotals = false,
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const columnCount = canViewTransactionNumber ? 9 : 8;
@@ -422,7 +426,7 @@ export function SalesHistoryList({
             <Fragment key={sale.id}>
             {startsNewDay(index) && (
               <p className={`text-xs ${index > 0 ? "border-t border-slate-300 pt-3" : ""}`}>
-                <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} />
+                <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} showTotal={showDayTotals} />
               </p>
             )}
             <article
@@ -532,7 +536,7 @@ export function SalesHistoryList({
                   {startsNewDay(index) && (
                     <tr className="border-y border-slate-300 bg-slate-100/80">
                       <td colSpan={columnCount} className="px-3 py-1.5 text-xs">
-                        <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} />
+                        <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} showTotal={showDayTotals} />
                       </td>
                     </tr>
                   )}
