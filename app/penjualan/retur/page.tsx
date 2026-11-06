@@ -27,7 +27,8 @@ export default async function SalesReturnListPage() {
     !can(user.role, "penjualan.manage") &&
     !can(user.role, "penjualan.create") &&
     !can(user.role, "accounting.view") &&
-    !can(user.role, "tempo.view")
+    !can(user.role, "tempo.view") &&
+    !can(user.role, "tempo.view_due")
   ) {
     redirect("/");
   }

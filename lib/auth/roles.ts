@@ -63,7 +63,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage", "purchasing.payment.manage"
   ],
   MANAGER: [
-    "pengeluaran.view", "approval.view", "approval.approve", "tempo.view",
+    "pengeluaran.view", "approval.view", "approval.approve",
+    // Sama seperti Admin: hanya daftar jatuh tempo hari ini s/d 3 hari ke depan, tanpa rangkuman nominal.
+    "tempo.view_due",
     "master_data.view",
     ...MANAGER_SDM_SYSTEM,
     "purchasing.view", "purchasing.order.manage", "purchasing.invoice.manage",

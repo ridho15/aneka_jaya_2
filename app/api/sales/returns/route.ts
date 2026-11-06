@@ -11,7 +11,8 @@ export async function GET(request: Request) {
     !can(user.role, "penjualan.manage") &&
     !can(user.role, "penjualan.create") &&
     !can(user.role, "accounting.view") &&
-    !can(user.role, "tempo.view")
+    !can(user.role, "tempo.view") &&
+    !can(user.role, "tempo.view_due")
   ) {
     return NextResponse.json({ success: false, message: "Akses ditolak." }, { status: 403 });
   }
