@@ -126,7 +126,7 @@ export default async function StockReportsPage({
             Laporan Persediaan Stok Barang
           </h2>
           <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-            Sama dengan halaman Stok Gudang &amp; Toko. Stok paling sedikit di atas, stok habis di bawah.
+            Urutan: barang yang ada di toko, lalu yang hanya ada di gudang, lalu yang stoknya kosong. Di tiap kelompok, yang menipis paling atas.
             Menipis = sisa 1 koli atau kurang. Nilai stok = jumlah × harga modal.
           </p>
         </div>

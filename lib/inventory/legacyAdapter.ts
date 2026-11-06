@@ -26,6 +26,7 @@ export async function listLocalStockItems(filter: { productId?: string; sku?: st
       warehouse: row.locationName,
       warehouseId: row.erpWarehouseId != null ? String(row.erpWarehouseId) : row.locationId,
       warehouseCode: row.locationCode,
+      locationType: row.locationType,
       quantity: row.quantity,
       freeQuantity: row.quantity,
       onHandQuantity: row.quantity,

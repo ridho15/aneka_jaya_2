@@ -51,7 +51,7 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
         <button className={filterButton}>Tampilkan</button>
       </form>
       <p className="mb-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-        <span>Urut dari stok paling sedikit. Barang yang stoknya habis ada di paling bawah.</span>
+        <span>Urut dari stok paling sedikit; yang habis di paling bawah. Angka = koli (bila isi per koli diisi) dengan total satuannya, atau langsung dalam satuan barang.</span>
         <LowChip /> <span>= sisa 1 koli atau kurang</span>
       </p>
       <ul className="aj-surface divide-y divide-slate-100 md:hidden" aria-label="Daftar stok">
@@ -133,8 +133,9 @@ export default async function InventoryStockPage({ searchParams }: { searchParam
 /** Stok 0 tampil "–" (bukan angka pucat); barang ber-koli tampil "N koli" dengan qty satuan di bawahnya. */
 function QtyCell({ qty, koli, unit, hasKoli }: { qty: number; koli: string; unit: string; hasKoli: boolean }) {
   if (qty === 0) return <span className="text-slate-500" aria-label="0">–</span>;
-  if (!hasKoli) return <>{fmtQty(qty)}</>;
-  return <>{koli}{koli.includes("koli") && <div className="text-xs font-normal text-slate-600">{fmtQty(qty)} {unit}</div>}</>;
+  // Satuan selalu ditulis; bila ada isi per koli, total dalam satuan barang ditampilkan di bawahnya.
+  if (!hasKoli || !koli.includes("koli")) return <>{fmtQty(qty)} <span className="text-xs font-normal text-slate-600">{unit}</span></>;
+  return <>{koli}<div className="text-xs font-normal text-slate-600">= {fmtQty(qty)} {unit}</div></>;
 }
 
 function LowChip() {

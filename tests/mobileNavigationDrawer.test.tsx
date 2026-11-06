@@ -26,6 +26,7 @@ describe("global navigation", () => {
       ["/delivery-orders", "Delivery Order (DO)"],
       ["/tempo", "Tempo & Piutang"],
       ["/inventory", "Stok Gudang & Toko"],
+      ["/inventory/permintaan-gudang", "Permintaan Barang Gudang"],
       ["/inventory/transfer", "Transfer Stok"],
       ["/inventory/opname", "Stock Opname"],
     ]);
@@ -35,6 +36,7 @@ describe("global navigation", () => {
     expect(visibleNavLinks("DELIVERY_DRIVER").map((link) => [link.href, link.label])).toEqual([
       ["/delivery-orders", "Delivery Order (DO)"],
       ["/inventory", "Stok Gudang & Toko"],
+      ["/inventory/permintaan-gudang", "Permintaan Barang Gudang"],
       ["/inventory/mutasi", "Mutasi / Kartu Stok"],
     ]);
   });

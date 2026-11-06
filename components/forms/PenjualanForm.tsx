@@ -21,7 +21,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Product } from "@/lib/types/product";
 import type { StockItem } from "@/lib/types/stock";
 import type { Sale } from "@/lib/types/sales";
@@ -1683,9 +1683,13 @@ export function PenjualanForm({
                                 { shouldDirty: true, shouldValidate: true },
                               );
                               // Default lokasi potong stok: lokasi dengan stok terbanyak.
-                              const bestStock = [...option.stockRows].sort((x, y) => (y.quantity ?? 0) - (x.quantity ?? 0))[0];
-                              const effectiveWarehouseId = bestStock?.warehouseId ? String(bestStock.warehouseId) : "1";
-                              const effectiveWarehouseName = bestStock?.warehouse || "Gudang Utama";
+                              // Stok kosong di semua lokasi: tetap bisa dijual, server memotong dari Ruko.
+                              // Prioritas toko yang punya stok, baru gudang; stok terbanyak lebih dulu.
+                              const bestStock = [...option.stockRows]
+                                .filter((row) => (row.quantity ?? 0) > 0)
+                                .sort((x, y) => Number(x.locationType === "WAREHOUSE") - Number(y.locationType === "WAREHOUSE") || (y.quantity ?? 0) - (x.quantity ?? 0))[0];
+                              const effectiveWarehouseId = bestStock?.warehouseId ? String(bestStock.warehouseId) : "";
+                              const effectiveWarehouseName = bestStock?.warehouse || "Ruko";
                               const effectiveRackId = bestStock?.rackId ? String(bestStock.rackId) : undefined;
                               const effectiveRackName = bestStock?.rack || undefined;
                               const effectiveUnit = option.unit || option.product.unit || option.stockRows.find((stock) => Boolean(stock.unit))?.unit || "Pcs";
@@ -2322,7 +2326,12 @@ function ProductSearchSelect({
           .includes(normalized),
       )
       : options;
-    return rows.slice(0, 12);
+    // Urutan: ada stok di toko, lalu hanya di gudang, lalu tidak ada stok.
+    return rows
+      .map((option, index) => ({ option, index, rank: availabilityRank(option) }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .slice(0, 12)
+      .map((row) => row.option);
   }, [options, query]);
 
   useEffect(() => {
@@ -2390,8 +2399,11 @@ function ProductSearchSelect({
           className="absolute z-[100] mt-1 max-h-72 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-xl"
         >
           {filtered.map((option, index) => (
+            <Fragment key={option.product.id || option.product.code}>
+            {(index === 0 || availabilityRank(filtered[index - 1]) !== availabilityRank(option)) && (
+              <p className="px-3 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{AVAILABILITY_LABEL[availabilityRank(option)]}</p>
+            )}
             <button
-              key={option.product.id || option.product.code}
               type="button"
               role="option"
               aria-selected={
@@ -2410,6 +2422,7 @@ function ProductSearchSelect({
                 {" "}· Harga {rupiah(option.product.sellingPrice ?? 0)}
               </span>
             </button>
+            </Fragment>
           ))}
           {filtered.length === 0 && (
             <p className="px-3 py-4 text-center text-sm text-slate-500">
@@ -2423,6 +2436,16 @@ function ProductSearchSelect({
 }
 
 /** Rincian stok per gudang/toko, mis. "Gudang Utama 80 · Toko 40 · +2 lokasi". */
+const AVAILABILITY_LABEL = ["Ada di toko", "Hanya di gudang (perlu diambil)", "Stok kosong"];
+
+/** 0 = ada stok di toko, 1 = hanya di gudang, 2 = tidak ada stok. */
+function availabilityRank(option: ProductOption) {
+  const positive = option.stockRows.filter((row) => (row.quantity ?? 0) > 0);
+  if (positive.some((row) => row.locationType !== "WAREHOUSE")) return 0;
+  if (positive.length) return 1;
+  return 2;
+}
+
 function stockByLocation(option: ProductOption) {
   const byLocation = new Map<string, number>();
   for (const row of option.stockRows) {
@@ -2473,7 +2496,9 @@ function ProductSelectionInfo({
         {option.unit ? ` ${option.unit}` : ""}
         {stockByLocation(option) ? ` · ${stockByLocation(option)}` : ""}
       </span>
-      {stockExceeded && <span className="font-semibold text-red-700">· Qty melebihi stok lokasi</span>}
+      {!((option.quantity ?? 0) > 0) ? (
+        <span className="font-semibold text-amber-800">· Stok kosong, tetap bisa dijual (dipotong dari Ruko, masuk Laporan Consignment)</span>
+      ) : stockExceeded && <span className="font-semibold text-amber-800">· Qty melebihi stok lokasi, sisanya masuk Laporan Consignment</span>}
       {stockState.status === "failed" && <span className="font-semibold text-amber-800">· Stok tidak terverifikasi</span>}
       {option.warnings.length > 0 && <span className="font-semibold text-amber-800">· Data barang belum lengkap</span>}
       {(targetsErp || stockOptions.length > 1) && (

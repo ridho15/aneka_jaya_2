@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import type { Sale } from "@/lib/types/sales";
+import { saleDayKey } from "@/lib/sales/dayKey";
 import { TransactionCancelButton } from "@/components/transactions/TransactionCancelButton";
 import { formatJakartaDateTime } from "@/lib/date/jakarta";
 import { parseReceiptPhotos } from "@/lib/deliveryOrders/photos";
@@ -13,6 +14,10 @@ type Props = {
   canManage: boolean;
   canViewTransactionNumber: boolean;
   productNames?: Record<string, string>;
+  /** Jumlah nota & total rupiah per hari di pembatas tanggal (Super Admin saja). */
+  showDayTotals?: boolean;
+  /** Total per hari dari seluruh nota yang cocok dengan filter (bukan hanya halaman ini). */
+  dayTotals?: Record<string, { count: number; total: number }>;
 };
 
 /** "TF BCA - Hery", "Cash + TF BCA" untuk Split, atau nama metode saja. */
@@ -29,11 +34,6 @@ export function paymentLabel(sale: Pick<Sale, "paymentMethod" | "rekeningNameSna
 }
 
 /** Kunci tanggal (zona Jakarta) untuk memisahkan transaksi per hari. */
-function saleDayKey(sale: Sale) {
-  if (!sale.transactionAt) return sale.saleDate;
-  const date = new Date(sale.transactionAt);
-  return Number.isNaN(date.getTime()) ? sale.saleDate : new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(date);
-}
 
 const dayLabel = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "2-digit", month: "short", year: "numeric" });
 
@@ -49,12 +49,13 @@ function daySummaries(sales: Sale[]) {
   return map;
 }
 
-function DayHeading({ dayKey, summary }: { dayKey: string; summary?: { count: number; total: number } }) {
+/** Jumlah nota & total rupiah per hari hanya untuk Super Admin; peran lain cukup tanggal. */
+function DayHeading({ dayKey, summary, showTotal }: { dayKey: string; summary?: { count: number; total: number }; showTotal: boolean }) {
   const date = new Date(`${dayKey}T00:00:00+07:00`);
   return (
     <>
       <span className="font-semibold text-slate-700">{Number.isNaN(date.getTime()) ? dayKey : dayLabel.format(date)}</span>
-      {summary && <span className="text-slate-500"> · {summary.count} nota · {rupiah(summary.total)}</span>}
+      {summary && showTotal && <span className="text-slate-500"> · {summary.count} nota · {rupiah(summary.total)}</span>}
     </>
   );
 }
@@ -402,13 +403,16 @@ export function SalesHistoryList({
   canManage,
   canViewTransactionNumber,
   productNames = {},
+  showDayTotals = false,
+  dayTotals,
 }: Props) {
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null);
   const columnCount = canViewTransactionNumber ? 9 : 8;
   const toggle = (id: string) =>
     setExpandedSaleId((current) => nextExpandedSaleId(current, id));
 
-  const perDay = daySummaries(sales);
+  const pageTotals = daySummaries(sales);
+  const perDay = { get: (key: string) => dayTotals?.[key] ?? pageTotals.get(key) };
   const startsNewDay = (index: number) => index === 0 || saleDayKey(sales[index]) !== saleDayKey(sales[index - 1]);
 
   return (
@@ -422,7 +426,7 @@ export function SalesHistoryList({
             <Fragment key={sale.id}>
             {startsNewDay(index) && (
               <p className={`text-xs ${index > 0 ? "border-t border-slate-300 pt-3" : ""}`}>
-                <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} />
+                <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} showTotal={showDayTotals} />
               </p>
             )}
             <article
@@ -532,7 +536,7 @@ export function SalesHistoryList({
                   {startsNewDay(index) && (
                     <tr className="border-y border-slate-300 bg-slate-100/80">
                       <td colSpan={columnCount} className="px-3 py-1.5 text-xs">
-                        <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} />
+                        <DayHeading dayKey={saleDayKey(sale)} summary={perDay.get(saleDayKey(sale))} showTotal={showDayTotals} />
                       </td>
                     </tr>
                   )}

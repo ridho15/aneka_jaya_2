@@ -59,3 +59,22 @@ describe("laporan stok (sumber inventory SLM)", () => {
     expect((await getStockInventoryReport({ status: "out_of_stock" })).items.map((i) => i.sku)).toEqual(["B"]);
   });
 });
+
+describe("stock report order: toko → gudang only → empty, menipis first", () => {
+  it("groups by availability per product and puts low stock on top of each group", async () => {
+    const { availabilityGroups, compareStockItems } = await import("@/lib/reports/stockReports");
+    const row = (sku: string, locationType: "STORE" | "WAREHOUSE", quantity: number, status: "safe" | "warning" | "out_of_stock") =>
+      ({ productId: sku, sku, productName: sku, warehouse: locationType, locationType, quantity, unitsPerKoli: 10, status } as never);
+    const items = [
+      row("KOSONG", "STORE", 0, "out_of_stock"),
+      row("GUDANG", "WAREHOUSE", 40, "safe"),
+      row("GUDANG", "STORE", 0, "out_of_stock"),
+      row("TOKO-AMAN", "STORE", 50, "safe"),
+      row("TOKO-TIPIS", "STORE", 5, "warning"),
+      row("GUDANG-TIPIS", "WAREHOUSE", 3, "warning")
+    ];
+    const groups = availabilityGroups(items);
+    const order = [...items].sort((a, b) => compareStockItems(a, b, groups)).map((i: { sku: string; locationType: string }) => `${i.sku}@${i.locationType}`);
+    expect(order).toEqual(["TOKO-TIPIS@STORE", "TOKO-AMAN@STORE", "GUDANG-TIPIS@WAREHOUSE", "GUDANG@WAREHOUSE", "GUDANG@STORE", "KOSONG@STORE"]);
+  });
+});
