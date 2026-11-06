@@ -89,11 +89,11 @@ export async function parseShipmentWorkbook(buffer: ArrayBuffer): Promise<Parsed
 async function masterHints(skus: string[]): Promise<Record<string, MasterHint>> {
   const rows = await prisma.inventoryProduct.findMany({
     where: { sku: { in: skus, mode: "insensitive" } },
-    select: { sku: true, name: true, unit: true, unitsPerKoli: true, pcsPerUnit: true }
+    select: { sku: true, name: true, unit: true, unitsPerKoli: true, pcsPerUnit: true, sellingPrice: true }
   });
   return Object.fromEntries(rows.map((r) => [r.sku.toLowerCase(), {
     sku: r.sku, name: r.name, unit: r.unit, unitsPerKoli: r.unitsPerKoli == null ? null : Number(r.unitsPerKoli),
-    pcsPerUnit: r.pcsPerUnit, hasRealName: hasRealName(r.name, r.sku)
+    pcsPerUnit: r.pcsPerUnit, hasRealName: hasRealName(r.name, r.sku), sellingPrice: Number(r.sellingPrice) || 0
   }]));
 }
 

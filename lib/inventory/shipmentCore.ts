@@ -24,7 +24,7 @@ export type ShipmentLine = {
   cbmPerCarton: number | null;
 };
 
-export type MasterHint = { sku: string; name: string; unit: string; unitsPerKoli: number | null; pcsPerUnit: number | null; hasRealName: boolean };
+export type MasterHint = { sku: string; name: string; unit: string; unitsPerKoli: number | null; pcsPerUnit: number | null; hasRealName: boolean; sellingPrice?: number };
 
 export type ShipmentOverride = { pcsPerUnit?: number; name?: string };
 
@@ -204,4 +204,10 @@ export function computeShipment(
 export function shipmentUnitCost(p: Pick<ShipmentProduct, "priceRmb" | "cbmPerUnit">, rmbRate: number | null, cbmRate: number | null) {
   if (p.priceRmb == null || !rmbRate) return null;
   return Math.round((p.priceRmb * rmbRate + (p.cbmPerUnit ?? 0) * (cbmRate ?? 0)) * 100) / 100;
+}
+
+/** Mark-up = (harga jual − modal) ÷ modal, dalam persen. null bila modal atau harga jual belum ada. */
+export function markupPercent(cost: number | null | undefined, sellingPrice: number | null | undefined) {
+  if (!cost || cost <= 0 || !sellingPrice || sellingPrice <= 0) return null;
+  return Math.round(((sellingPrice - cost) / cost) * 1000) / 10;
 }
