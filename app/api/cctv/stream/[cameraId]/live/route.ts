@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CCTV_BASE_URL, CCTV_TOKEN } from "@/lib/cctv/client";
+import { CCTV_BASE_URL, CCTV_TOKEN, matchesToken } from "@/lib/cctv/client";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export async function GET(
   const user = await getCurrentUser();
   const tokenHeader = req.headers.get("x-cctv-token");
   const isAuthorized =
-    tokenHeader === CCTV_TOKEN ||
+    matchesToken(tokenHeader) ||
     user.id !== "unauthenticated";
 
   if (!isAuthorized) {

@@ -13,7 +13,7 @@ import { prisma } from "@/lib/db/prisma";
 const TOKEN =
   process.env.SLM_API_TOKEN ||
   process.env.CCTV_INTEGRATION_TOKEN ||
-  "cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b";
+  "test-cctv-token";
 
 describe("CCTV Events Webhook Receiver (app/api/cctv/events/route.ts)", () => {
   let sampleSales: any;
@@ -192,7 +192,7 @@ describe("CCTV Events Webhook Receiver (app/api/cctv/events/route.ts)", () => {
       message: "Invoice #101026-31 (ARI BOGOR) selesai dibungkus di Meja Packing 1 dan siap dikirim.",
       occurred_at: "2026-10-13T22:00:00+07:00",
       evidence_url:
-        "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/28?token=cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b",
+        "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/28?token=test-cctv-token",
       camera: {
         id: 1,
         name: "Meja Packing 1",
@@ -206,7 +206,7 @@ describe("CCTV Events Webhook Receiver (app/api/cctv/events/route.ts)", () => {
         slm_reference: "SO-101026-31",
         packing_completed_at: "2026-10-13T22:00:00+07:00",
         evidence_url:
-          "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/28?token=cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b",
+          "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/28?token=test-cctv-token",
       },
     };
 
@@ -246,9 +246,9 @@ describe("CCTV Events Webhook Receiver (app/api/cctv/events/route.ts)", () => {
         "Barang dikeluarkan dari area meja packing tanpa melalui rute packing resmi pada Meja Packing 1.",
       occurred_at: "2026-10-13T22:05:00+07:00",
       evidence_url:
-        "http://31.97.51.194:8000/api/v1/slm/evidence/incident-snapshot/12?token=cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b",
+        "http://203.0.113.10:8000/api/v1/slm/evidence/incident-snapshot/12?token=test-cctv-token",
       clip_url:
-        "http://31.97.51.194:8000/api/v1/slm/evidence/incident-clip/12?token=cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b",
+        "http://203.0.113.10:8000/api/v1/slm/evidence/incident-clip/12?token=test-cctv-token",
       camera: {
         id: 1,
         name: "Meja Packing 1",
@@ -259,9 +259,9 @@ describe("CCTV Events Webhook Receiver (app/api/cctv/events/route.ts)", () => {
         item_count: 1,
         reason: "Barang dikeluarkan tanpa rute packing resmi",
         evidence_url:
-          "http://31.97.51.194:8000/api/v1/slm/evidence/incident-snapshot/12?token=cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b",
+          "http://203.0.113.10:8000/api/v1/slm/evidence/incident-snapshot/12?token=test-cctv-token",
         clip_url:
-          "http://31.97.51.194:8000/api/v1/slm/evidence/incident-clip/12?token=cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b",
+          "http://203.0.113.10:8000/api/v1/slm/evidence/incident-clip/12?token=test-cctv-token",
       },
     };
 

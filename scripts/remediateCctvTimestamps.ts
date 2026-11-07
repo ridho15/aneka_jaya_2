@@ -2,12 +2,12 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const CCTV_BASE_URL = process.env.CCTV_BASE_URL || "http://31.97.51.194:8000";
-const CCTV_TOKEN =
-  process.env.SLM_API_TOKEN ||
-  process.env.CCTV_API_TOKEN ||
-  process.env.CCTV_INTEGRATION_TOKEN ||
-  "cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b";
+const CCTV_BASE_URL = process.env.CCTV_BASE_URL || "";
+const CCTV_TOKEN = process.env.SLM_API_TOKEN || process.env.CCTV_API_TOKEN || process.env.CCTV_INTEGRATION_TOKEN || "";
+if (!CCTV_BASE_URL || !CCTV_TOKEN) {
+  console.error("Isi CCTV_BASE_URL dan CCTV_API_TOKEN di .env sebelum menjalankan skrip ini.");
+  process.exit(1);
+}
 
 async function fetchSnapshotCaptureDateStandalone(
   evidenceUrl?: string | null,

@@ -1,13 +1,27 @@
 import "server-only";
 
-export const CCTV_BASE_URL =
-  process.env.CCTV_BASE_URL || "http://31.97.51.194:8000";
+import { timingSafeEqual } from "node:crypto";
 
-export const CCTV_TOKEN =
+/** Alamat server CCTV dan tokennya hanya dari env server (.env), tidak pernah ditulis di kode. */
+export const CCTV_BASE_URL = (process.env.CCTV_BASE_URL || "").trim();
+
+export const CCTV_TOKEN = (
   process.env.SLM_API_TOKEN ||
   process.env.CCTV_API_TOKEN ||
   process.env.CCTV_INTEGRATION_TOKEN ||
-  "cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b";
+  ""
+).trim();
+
+/** Token label CCTV (sinkron/lookup label); bila tidak diatur, sama dengan token CCTV utama. */
+export const CCTV_LABEL_TOKEN = (process.env.CCTV_INTEGRATION_TOKEN || CCTV_TOKEN).trim();
+
+/** Bandingkan token dari permintaan. Token kosong (env belum diisi) selalu ditolak. */
+export function matchesToken(candidate: string | null | undefined, expected: string = CCTV_TOKEN): boolean {
+  if (!expected || !candidate) return false;
+  const a = Buffer.from(candidate);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 export interface CctvInvoiceResponse {
   found: boolean;

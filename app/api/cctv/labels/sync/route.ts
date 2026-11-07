@@ -7,13 +7,13 @@ import crypto from "node:crypto";
 import { fetchSnapshotCaptureDate } from "@/lib/cctv/client";
 import { sanitizeReceiptPhotoUrl } from "@/lib/deliveryOrders/photos";
 
-const CCTV_TOKEN = process.env.CCTV_INTEGRATION_TOKEN || "cctv-slm-token-2026";
+import { CCTV_LABEL_TOKEN, matchesToken } from "@/lib/cctv/client";
 
 function verifyToken(request: Request): boolean {
   const authHeader = request.headers.get("authorization") || "";
   const match = authHeader.match(/^Bearer\s+([^\s]+)$/i);
   if (!match) return false;
-  return match[1] === CCTV_TOKEN;
+  return matchesToken(match[1], CCTV_LABEL_TOKEN);
 }
 
 const ALLOWED_MIME_TYPES: Record<string, string> = {

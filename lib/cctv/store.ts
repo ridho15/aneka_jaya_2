@@ -23,12 +23,12 @@ export function sanitizeCctvEvidenceUrl(url: string | null | undefined): string 
     return trimmed;
   }
 
-  // 3. Jika URL adalah URL internal VPS atau localhost (misal http://localhost:8000/..., http://127.0.0.1:8000/..., http://31.97.51.194:8000/...)
+  // 3. Jika URL adalah URL internal server CCTV atau localhost (misal http://localhost:8000/..., http://<ip-server>:8000/labels/...)
   // atau path relatif seperti /labels/34
   if (
     trimmed.includes("localhost:8000") ||
     trimmed.includes("127.0.0.1:8000") ||
-    trimmed.includes("31.97.51.194:8000") ||
+    /^https?:\/\/[^/]+:8000\/(labels|api\/v1\/slm\/evidence)\//.test(trimmed) ||
     trimmed.startsWith("/labels/") ||
     trimmed.startsWith("/api/v1/slm/evidence")
   ) {

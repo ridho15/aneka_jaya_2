@@ -15,8 +15,7 @@ export interface CctvCameraStream {
   lastSeenAt?: string | null;
 }
 
-const DEFAULT_CCTV_BASE_URL =
-  process.env.CCTV_BASE_URL || "http://31.97.51.194:8000";
+const DEFAULT_CCTV_BASE_URL = (process.env.CCTV_BASE_URL || "").trim();
 
 /**
  * Mendeteksi tipe stream berdasarkan ekstensi atau protokol URL

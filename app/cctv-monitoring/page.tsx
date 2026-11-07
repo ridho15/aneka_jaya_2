@@ -12,6 +12,8 @@ import { CctvDetectionsTable } from "@/components/cctv/CctvDetectionsTable";
 
 export const dynamic = "force-dynamic";
 
+const cctvWebUrl = (process.env.CCTV_PUBLIC_URL || process.env.CCTV_BASE_URL || "").trim();
+
 type Props = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
@@ -87,8 +89,9 @@ export default async function CctvMonitoringPage({ searchParams }: Props) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {cctvWebUrl ? (
           <a
-            href="http://31.97.51.194:8000"
+            href={cctvWebUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs inline-flex items-center gap-1.5 transition-colors"
@@ -96,6 +99,7 @@ export default async function CctvMonitoringPage({ searchParams }: Props) {
             <span>Buka Web CCTV SLM</span>
             <span className="text-slate-400">↗</span>
           </a>
+          ) : null}
         </div>
       </div>
 

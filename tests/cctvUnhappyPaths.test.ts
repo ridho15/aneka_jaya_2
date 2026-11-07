@@ -15,7 +15,7 @@ import { prisma } from "@/lib/db/prisma";
 const TOKEN =
   process.env.SLM_API_TOKEN ||
   process.env.CCTV_INTEGRATION_TOKEN ||
-  "cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b";
+  "test-cctv-token";
 
 describe("CCTV Integration - UNHAPPY PATH Deep Verification", () => {
   describe("1. Authentication & Signature Unhappy Paths", () => {
@@ -294,7 +294,7 @@ describe("CCTV Integration - UNHAPPY PATH Deep Verification", () => {
 
     it("should return null gracefully on network failure or DNS rejection", async () => {
       const originalFetch = global.fetch;
-      global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED 31.97.51.194:8000"));
+      global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED 203.0.113.10:8000"));
 
       try {
         const sys = await getCctvSystemStatus();

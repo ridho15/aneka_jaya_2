@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CCTV_BASE_URL, CCTV_TOKEN } from "@/lib/cctv/client";
+import { CCTV_BASE_URL, CCTV_TOKEN, matchesToken } from "@/lib/cctv/client";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,6 @@ function isAllowedHost(hostname: string): boolean {
   const allowed = new Set([
     "localhost",
     "127.0.0.1",
-    "31.97.51.194",
     "cctvslm.playgo.id",
   ]);
 
@@ -30,8 +29,8 @@ export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   const tokenHeader = req.headers.get("x-cctv-token");
   const isTokenValid =
-    tokenHeader === CCTV_TOKEN ||
-    req.nextUrl.searchParams.get("token") === CCTV_TOKEN;
+    matchesToken(tokenHeader) ||
+    matchesToken(req.nextUrl.searchParams.get("token"));
   const isAuthenticated = user.id !== "unauthenticated";
 
   if (!isAuthenticated && !isTokenValid) {

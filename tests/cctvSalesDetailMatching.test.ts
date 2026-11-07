@@ -29,8 +29,8 @@ describe("CCTV Transaction Detail Matching & Image Proxy Sanitization", () => {
         id: "log-1",
         salesRecordId: "sale-123",
         invoiceNumber: "INV-2026-001",
-        evidenceUrl: "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/32?token=secret",
-        screenshotPhotoUrl: "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/32?token=secret",
+        evidenceUrl: "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/32?token=secret",
+        screenshotPhotoUrl: "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/32?token=secret",
         cameraName: "Camera 14",
         packingStatus: "completed",
         cctvLabelId: 32,
@@ -51,7 +51,7 @@ describe("CCTV Transaction Detail Matching & Image Proxy Sanitization", () => {
       // Verify that URLs are proxied
       expect(result?.evidenceUrl).toContain("/api/cctv/evidence?url=");
       expect(result?.screenshotPhotoUrl).toContain("/api/cctv/evidence?url=");
-      expect(result?.evidenceUrl).not.toContain("http://31.97.51.194:8000");
+      expect(result?.evidenceUrl).not.toContain("http://203.0.113.10:8000");
     });
 
     it("falls back to invoiceNumber only when salesRecordId search yields null and invoice length >= 3", async () => {
@@ -110,7 +110,7 @@ describe("CCTV Transaction Detail Matching & Image Proxy Sanitization", () => {
 
   describe("2. sanitizeReceiptPhotoUrl & parseReceiptPhotos", () => {
     it("converts direct CCTV VPS URL into internal HTTPS proxy URL", () => {
-      const rawUrl = "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/32?token=abc";
+      const rawUrl = "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/32?token=abc";
       const sanitized = sanitizeReceiptPhotoUrl(rawUrl);
 
       expect(sanitized).toBe(
@@ -134,7 +134,7 @@ describe("CCTV Transaction Detail Matching & Image Proxy Sanitization", () => {
     });
 
     it("parseReceiptPhotos automatically sanitizes CCTV VPS URLs in single or JSON array formats", () => {
-      const rawVpsUrl = "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/32";
+      const rawVpsUrl = "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/32";
       const localUrl = "/uploads/receipts/proof.jpg";
 
       // Test single URL
