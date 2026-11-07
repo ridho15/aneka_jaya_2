@@ -40,8 +40,6 @@ fi
 # 4. Build image Docker
 echo ""
 echo "🔨 [4/6] Membangun image Docker (slm-app:local)..."
-# Hapus cache buildkit lama sebelum build untuk menjamin ruang disk aman
-docker builder prune -f || true
 docker compose build slm-app
 
 # 5. Jalankan deploy migrasi Prisma
