@@ -41,8 +41,8 @@ describe("CCTV HTTPS Proxy & Evidence Relay Integration", () => {
       );
     });
 
-    it("rewrites VPS direct IP http://31.97.51.194:8000/labels/16 to proxy URL", () => {
-      const rawUrl = "http://31.97.51.194:8000/labels/16";
+    it("rewrites VPS direct IP http://203.0.113.10:8000/labels/16 to proxy URL", () => {
+      const rawUrl = "http://203.0.113.10:8000/labels/16";
       const sanitized = sanitizeCctvEvidenceUrl(rawUrl);
 
       expect(sanitized).toBe(
@@ -183,7 +183,7 @@ describe("CCTV HTTPS Proxy & Evidence Relay Integration", () => {
     it("returns 503 error when upstream camera feed is unreachable", async () => {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
-        .mockRejectedValueOnce(new Error("connect ECONNREFUSED 31.97.51.194:8000"));
+        .mockRejectedValueOnce(new Error("connect ECONNREFUSED 203.0.113.10:8000"));
 
       const req = new NextRequest(
         "http://localhost:3000/api/cctv/stream/1/live"

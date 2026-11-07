@@ -162,7 +162,7 @@ describe("CCTV Physical Timestamp Accuracy & Date Filtering Audit", () => {
       global.fetch = mockFetch;
 
       const snapshotDate = await fetchSnapshotCaptureDate(
-        "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/34"
+        "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/34"
       );
 
       expect(snapshotDate).not.toBeNull();
@@ -177,7 +177,7 @@ describe("CCTV Physical Timestamp Accuracy & Date Filtering Audit", () => {
       global.fetch = vi.fn().mockRejectedValue(new Error("Network timeout"));
 
       const snapshotDate = await fetchSnapshotCaptureDate(
-        "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/999"
+        "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/999"
       );
       expect(snapshotDate).toBeNull();
     });
@@ -197,7 +197,7 @@ describe("CCTV Physical Timestamp Accuracy & Date Filtering Audit", () => {
         event_id: "cctv_pack_34",
         event_type: "packing_completed",
         occurred_at: "2026-10-16T03:05:07+00:00", // Delayed queue sent on 16 Oct
-        evidence_url: "http://31.97.51.194:8000/api/v1/slm/evidence/label-snapshot/34",
+        evidence_url: "http://203.0.113.10:8000/api/v1/slm/evidence/label-snapshot/34",
         camera: { id: 1, name: "Camera 14" },
         data: {
           label_id: 34,
@@ -210,7 +210,7 @@ describe("CCTV Physical Timestamp Accuracy & Date Filtering Audit", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cctv-token": "cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b",
+          "x-cctv-token": "test-cctv-token",
         },
         body: JSON.stringify(payload),
       });

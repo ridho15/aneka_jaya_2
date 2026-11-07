@@ -151,7 +151,7 @@ async function main() {
 
   // 2.3 POST /api/cctv/events with valid token but MALFORMED empty body
   try {
-    const token = process.env.CCTV_API_TOKEN || "cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b";
+    const token = process.env.CCTV_API_TOKEN || "";
     const res = await fetch(`${BASE_URL}/api/cctv/events`, {
       method: "POST",
       headers: {

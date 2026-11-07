@@ -16,7 +16,7 @@ export function sanitizeReceiptPhotoUrl(url: string | null | undefined): string 
   if (
     trimmed.includes("localhost:8000") ||
     trimmed.includes("127.0.0.1:8000") ||
-    trimmed.includes("31.97.51.194:8000") ||
+    /^https?:\/\/[^/]+:8000\/(labels|api\/v1\/slm\/evidence)\//.test(trimmed) ||
     trimmed.startsWith("/labels/") ||
     trimmed.startsWith("/api/v1/slm/evidence")
   ) {

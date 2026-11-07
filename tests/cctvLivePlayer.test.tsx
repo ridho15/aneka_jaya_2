@@ -25,13 +25,13 @@ describe("CCTV Live Streaming Player & Dashboard Integration", () => {
     });
 
     it("detects MJPEG / video_feed stream format accurately", () => {
-      expect(detectStreamType("http://31.97.51.194:8000/video_feed")).toBe("mjpeg");
+      expect(detectStreamType("http://203.0.113.10:8000/video_feed")).toBe("mjpeg");
       expect(detectStreamType("http://localhost:8000/stream/cam1.mjpg")).toBe("mjpeg");
     });
 
     it("detects iframe embed format accurately", () => {
       expect(detectStreamType("https://cctvslm.playgo.id/live-embed")).toBe("iframe");
-      expect(detectStreamType("http://31.97.51.194:8000/embed/cam1")).toBe("iframe");
+      expect(detectStreamType("http://203.0.113.10:8000/embed/cam1")).toBe("iframe");
     });
 
     it("returns default configured cameras when no dynamic camera list provided", () => {
@@ -90,7 +90,7 @@ describe("CCTV Live Streaming Player & Dashboard Integration", () => {
         name: "Meja Packing 2",
         location: "Meja Sekunder Gudang",
         streamType: "mjpeg",
-        streamUrl: "http://31.97.51.194:8000/video_feed",
+        streamUrl: "http://203.0.113.10:8000/video_feed",
         embedUrl: "https://cctvslm.playgo.id/live-embed",
         isOnline: false,
         fps: 15,

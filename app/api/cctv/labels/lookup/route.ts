@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
-const CCTV_TOKEN = process.env.CCTV_INTEGRATION_TOKEN || "cctv-slm-token-2026";
+import { CCTV_LABEL_TOKEN, matchesToken } from "@/lib/cctv/client";
 
 function verifyToken(request: Request): boolean {
   const authHeader = request.headers.get("authorization") || "";
   const match = authHeader.match(/^Bearer\s+([^\s]+)$/i);
   if (!match) return false;
-  return match[1] === CCTV_TOKEN;
+  return matchesToken(match[1], CCTV_LABEL_TOKEN);
 }
 
 export async function POST(request: Request) {

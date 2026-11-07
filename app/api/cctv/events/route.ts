@@ -1,31 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import crypto from "node:crypto";
-import { fetchSnapshotCaptureDate } from "@/lib/cctv/client";
-
-const CCTV_TOKEN =
-  process.env.SLM_API_TOKEN ||
-  process.env.CCTV_API_TOKEN ||
-  process.env.CCTV_INTEGRATION_TOKEN ||
-  "cctv_slm_8e119688c48b1880da69c9ab632b6c415ddc5f4d94467ea50305b951c5a0d04b";
+import { CCTV_TOKEN, fetchSnapshotCaptureDate, matchesToken } from "@/lib/cctv/client";
 
 function verifyToken(request: Request, rawBody?: string): boolean {
   // 1. Cek Header X-CCTV-Token
   const customHeader = request.headers.get("x-cctv-token");
-  if (customHeader && customHeader === CCTV_TOKEN) {
+  if (matchesToken(customHeader)) {
     return true;
   }
 
   // 2. Cek Header Authorization: Bearer <token>
   const authHeader = request.headers.get("authorization") || "";
   const match = authHeader.match(/^Bearer\s+([^\s]+)$/i);
-  if (match && match[1] === CCTV_TOKEN) {
+  if (match && matchesToken(match[1])) {
     return true;
   }
 
   // 3. Cek Opsional HMAC-SHA256 Signature jika ada
   const signatureHeader = request.headers.get("x-cctv-signature");
-  if (signatureHeader && rawBody) {
+  if (signatureHeader && rawBody && CCTV_TOKEN) {
     try {
       const expectedSig =
         "sha256=" +
