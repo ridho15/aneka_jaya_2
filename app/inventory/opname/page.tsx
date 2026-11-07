@@ -16,7 +16,7 @@ export default async function OpnamePage({ searchParams }: { searchParams: Promi
   return (
     <AppShell>
       <InventoryHeader title="Stock Opname" description={<>Hitung fisik barang, lalu isi jumlah sebenarnya. Stok sistem akan <b>diganti</b> dengan hasil hitung, dan selisihnya tercatat di kartu stok.</>} />
-      {can(role, "inventory.opname") && <div className="mb-8"><InventoryDocumentForm mode="opname" locations={locations} products={products} /></div>}
+      {can(role, "inventory.opname") && <div className="mb-8"><InventoryDocumentForm mode="opname" canSetKoli={can(role, "inventory.master")} locations={locations} products={products} /></div>}
       <div className="aj-surface overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">

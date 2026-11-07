@@ -17,3 +17,6 @@ audit-output
 scratch
 *.dump
 *.sql
+graphify-out
+android
+.claude

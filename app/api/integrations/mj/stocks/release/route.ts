@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       productRef: item.sku || item.productRef || item.product_ref,
       warehouseId: item.warehouseId || item.warehouse_id || item.locationId || item.location_id || defaultWarehouseId,
       quantity: item.quantity,
-      allowNegative: false,
+      allowNegative: true,
     }));
 
     const saleDate = data.saleDate || data.sale_date || new Date().toISOString().slice(0, 10);

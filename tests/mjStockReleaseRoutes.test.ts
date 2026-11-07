@@ -130,7 +130,7 @@ describe("MJ Stock Release & Cancel Routes", () => {
               productRef: "CAT-001",
               warehouseId: "1",
               quantity: 2,
-              allowNegative: false
+              allowNegative: true
             }
           ]
         },
@@ -283,12 +283,12 @@ describe("MJ Stock Release & Cancel Routes", () => {
       expect((await call({ ...payload, old_reference: undefined })).status).toBe(400);
     });
 
-    it("replaces with allowNegative false", async () => {
+    it("replaces with allowNegative true (stok minus tercatat di consignment)", async () => {
       mocks.replaceSaleStockLocal.mockResolvedValueOnce({ status: "replaced" });
       const res = await call(payload);
       expect(res.status).toBe(200);
       expect(mocks.replaceSaleStockLocal).toHaveBeenCalledWith(
-        expect.objectContaining({ oldReference: "MJ-1-STOCK", reference: "MJ-1-STOCK-REV1", items: [expect.objectContaining({ productRef: "CAT-001", quantity: 3, allowNegative: false })] }),
+        expect.objectContaining({ oldReference: "MJ-1-STOCK", reference: "MJ-1-STOCK-REV1", items: [expect.objectContaining({ productRef: "CAT-001", quantity: 3, allowNegative: true })] }),
         expect.objectContaining({ id: "client-mj-1" })
       );
     });

@@ -48,7 +48,7 @@ export function inventoryRoute<P extends Record<string, string> = Record<string,
         if (!can(user.role, permission)) {
           return NextResponse.json({ success: false, message: "Tidak punya akses ke modul inventory ini.", code: "FORBIDDEN" }, { status: 403 });
         }
-        ctx = { actor: { id: user.id, name: user.name }, source: "session", canSeeCost: can(user.role, "inventory.master") || can(user.role, "inventory.receive") };
+        ctx = { actor: { id: user.id, name: user.name, canEditMaster: can(user.role, "inventory.master") }, source: "session", canSeeCost: can(user.role, "inventory.master") || can(user.role, "inventory.receive") };
       }
       const raw = await handler(request, ctx, params);
       const data = ctx.canSeeCost || raw instanceof Response ? raw : withoutCost(raw);

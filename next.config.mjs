@@ -9,6 +9,9 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
   typedRoutes: false,
+  experimental: {
+    cpus: 1,
+  },
   async headers() { return [{ source: "/:path*", headers: securityHeaders }]; }
 };
 

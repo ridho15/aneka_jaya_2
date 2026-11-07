@@ -42,7 +42,7 @@ export default async function BarangMasukPage() {
       </section>
 
       <h3 className="mb-3 font-bold text-slate-800">Barang masuk manual (tanpa PO)</h3>
-      <InventoryDocumentForm mode="stock-in" locations={locations} products={products} />
+      <InventoryDocumentForm mode="stock-in" canSetKoli={can(role, "inventory.master")} locations={locations} products={products} />
 
       <section className="mt-8">
         <h3 className="mb-3 font-bold text-slate-800">Riwayat Barang Masuk</h3>

@@ -6,7 +6,10 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npx prisma generate
-RUN npm run build && rm -rf .next/cache
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+# cache webpack ada di mount BuildKit, jadi tidak masuk image dan bertahan antar build
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 RUN npm prune --omit=dev --no-audit --no-fund
 
 FROM base AS production

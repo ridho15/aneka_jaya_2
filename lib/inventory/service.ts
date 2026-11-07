@@ -20,7 +20,7 @@ import type {
 } from "./validation";
 
 export type Tx = Prisma.TransactionClient;
-export type InventoryActor = { id?: string; name?: string };
+export type InventoryActor = { id?: string; name?: string; canEditMaster?: boolean };
 
 type MovementLine = {
   productId: string;
@@ -172,7 +172,7 @@ async function nextNumber(tx: Tx, prefix: string, date: Date, lastNumber: (start
   return `${start}${String(seq + 1).padStart(4, "0")}`;
 }
 
-export async function resolveProduct(tx: Tx, ref: ProductRefInput) {
+export async function resolveProduct(tx: Tx, ref: ProductRefInput & { unitsPerKoli?: number | null }, actor?: InventoryActor) {
   const product = ref.productId
     ? await tx.inventoryProduct.findUnique({ where: { id: ref.productId } })
     : ref.sku
@@ -180,6 +180,14 @@ export async function resolveProduct(tx: Tx, ref: ProductRefInput) {
       : await tx.inventoryProduct.findUnique({ where: { erpProductId: ref.erpProductId } });
   if (!product) {
     throw new InventoryError("NOT_FOUND", `Produk ${ref.sku || ref.productId || `ERP #${ref.erpProductId}`} tidak ditemukan di master inventory.`, 404, ref);
+  }
+  // Isi per koli yang masih kosong boleh diisi dari dokumen stok, hanya oleh yang berhak mengubah Master Barang.
+  // Yang sudah terisi tidak diubah di sini (itemQuantity menolak nilai yang berbeda).
+  if (ref.unitsPerKoli != null && product.unitsPerKoli == null) {
+    if (!actor?.canEditMaster) {
+      throw new InventoryError("VALIDATION", `Isi per koli ${product.sku} belum diatur. Hanya yang punya akses Master Barang yang boleh mengisinya; isi jumlah di kolom Lepas atau minta Super Admin mengisinya.`, 403, { sku: product.sku });
+    }
+    return tx.inventoryProduct.update({ where: { id: product.id }, data: { unitsPerKoli: ref.unitsPerKoli } });
   }
   return product;
 }
@@ -561,7 +569,7 @@ export async function createTransfer(input: TransferInput, actor?: InventoryActo
     const date = parseDate(input.transferDate);
     const transferNumber = input.transferNumber || await nextNumber(tx, "TRF", date, async (s) => (await tx.inventoryTransfer.findFirst({ where: { transferNumber: { startsWith: s } }, orderBy: { transferNumber: "desc" }, select: { transferNumber: true } }))?.transferNumber);
     const products: Awaited<ReturnType<typeof resolveProduct>>[] = [];
-    for (const item of input.items) products.push(await resolveProduct(tx, item));
+    for (const item of input.items) products.push(await resolveProduct(tx, item, actor));
     const quantities = input.items.map((item, i) => itemQuantity(products[i], item));
     const badQty = quantities.findIndex((q) => !(q > 0));
     if (badQty >= 0) throw new InventoryError("VALIDATION", `Qty transfer ${products[badQty].sku} harus lebih dari 0.`);
@@ -678,7 +686,7 @@ async function createOpnameRecord(input: OpnameInput, actor?: InventoryActor) {
     const lines = [];
     const seen = new Set<string>();
     for (const item of input.items) {
-      const product = await resolveProduct(tx, item);
+      const product = await resolveProduct(tx, item, actor);
       if (seen.has(product.id)) throw new InventoryError("VALIDATION", `Produk ${product.sku} tercantum lebih dari sekali dalam opname.`);
       seen.add(product.id);
       const systemQty = await currentQuantity(tx, product.id, location.id);
@@ -737,7 +745,7 @@ async function createAdjustmentRecord(input: AdjustmentInput, actor?: InventoryA
     const date = parseDate(input.adjustmentDate);
     const adjustmentNumber = input.adjustmentNumber || await nextNumber(tx, "ADJ", date, async (s) => (await tx.inventoryAdjustment.findFirst({ where: { adjustmentNumber: { startsWith: s } }, orderBy: { adjustmentNumber: "desc" }, select: { adjustmentNumber: true } }))?.adjustmentNumber);
     const products: Awaited<ReturnType<typeof resolveProduct>>[] = [];
-    for (const item of input.items) products.push(await resolveProduct(tx, item));
+    for (const item of input.items) products.push(await resolveProduct(tx, item, actor));
     const quantities = input.items.map((item, i) => itemQuantity(products[i], item));
     const zero = quantities.findIndex((q) => q === 0);
     if (zero >= 0) throw new InventoryError("VALIDATION", `Qty adjustment ${products[zero].sku} tidak boleh 0.`);
@@ -787,7 +795,7 @@ export async function createStockIn(input: StockInInput, actor?: InventoryActor)
     const movements = [];
     for (let i = 0, list = input.items; i < list.length; i++) {
       const item = list[i];
-      const product = await resolveProduct(tx, item);
+      const product = await resolveProduct(tx, item, actor);
       const quantity = itemQuantity(product, item);
       if (!(quantity > 0)) throw new InventoryError("VALIDATION", `Qty masuk ${product.sku} harus lebih dari 0.`);
       movements.push(await postMovement(tx, {
@@ -894,7 +902,7 @@ async function releaseSaleInTx(tx: Tx, input: SaleReleaseInput, actor?: Inventor
     const product = await resolveSaleProduct(tx, item);
     // Barang tanpa stok di mana pun dan tanpa lokasi pilihan dipotong dari Ruko.
     const location = (await emptyStockLocation(tx, product.id, item.warehouseId)) ?? (await resolveSaleLocation(tx, item.warehouseId));
-    // Penjualan di SLM tidak tertahan karena stok kurang (stok minus muncul di Laporan Consignment); integrasi MJ meminta allowNegative: false.
+    // Penjualan di SLM tidak tertahan karena stok kurang (stok minus muncul di Laporan Consignment).
     lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity, allowNegative: item.allowNegative ?? true });
   }
   // Urutan kunci yang konsisten mencegah deadlock antar penjualan paralel.

@@ -1179,7 +1179,7 @@ paths:
   /api/integrations/mj/stocks/release:
     post:
       summary: Pelepasan stok penjualan MJ dari SLM.
-      description: "Mengurangi stok SLM untuk satu referensi. Idempotent: referensi yang sama menjawab already_released. Stok kurang ditolak (STOCK_INSUFFICIENT)."
+      description: "Mengurangi stok SLM untuk satu referensi. Idempotent: referensi yang sama menjawab already_released. Stok kurang tidak ditolak: stok lokasi menjadi minus dan muncul di Laporan Consignment."
       security: [{ mjBearer: [] }]
       requestBody:
         required: true
@@ -1213,7 +1213,7 @@ paths:
         "404":
           description: PRODUCT_INVALID atau referensi tidak ditemukan
         "409":
-          description: STOCK_INSUFFICIENT atau REFERENCE_CONFLICT
+          description: REFERENCE_CONFLICT
         "429":
           description: RATE_LIMITED
   /api/integrations/mj/stocks/cancel:
@@ -1241,7 +1241,7 @@ paths:
         "404":
           description: PRODUCT_INVALID atau referensi tidak ditemukan
         "409":
-          description: STOCK_INSUFFICIENT atau REFERENCE_CONFLICT
+          description: REFERENCE_CONFLICT
         "429":
           description: RATE_LIMITED
   /api/integrations/mj/stocks/replace:
@@ -1282,7 +1282,7 @@ paths:
         "404":
           description: PRODUCT_INVALID atau referensi tidak ditemukan
         "409":
-          description: STOCK_INSUFFICIENT atau REFERENCE_CONFLICT
+          description: REFERENCE_CONFLICT
         "429":
           description: RATE_LIMITED
   /api/integrations/mj/stocks/adjust:
