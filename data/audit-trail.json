@@ -1,5 +1,39 @@
 [
   {
+    "id": "d0ffca68-b018-4de1-a2b4-15b7b3fac61a",
+    "createdAt": "2026-11-07T07:56:27.486Z",
+    "userId": "uat-slm-owner",
+    "userNameSnapshot": "UAT SLM Owner",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "curl/8.7.1",
+    "entityType": "stock",
+    "entityId": "cmw640kwh000akohqmz3tlkm5",
+    "action": "create",
+    "afterValue": {
+      "status": "RECEIVED",
+      "items": 1
+    },
+    "reason": "Transfer stok TRF-202611-0002 oleh UAT SLM Owner"
+  },
+  {
+    "id": "ba3d68ad-8cbb-4797-a3e4-1838cc1b3fcb",
+    "createdAt": "2026-11-07T07:56:15.046Z",
+    "userId": "uat-slm-owner",
+    "userNameSnapshot": "UAT SLM Owner",
+    "userRoleSnapshot": "OWNER",
+    "ipAddress": "::1",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Claude/4.16336.0 Chrome/152.0.7977.167 Safari/537.36",
+    "entityType": "stock",
+    "entityId": "cmw640bak0000kohqvqyh4djo",
+    "action": "create",
+    "afterValue": {
+      "status": "RECEIVED",
+      "items": 1
+    },
+    "reason": "Transfer stok TRF-202611-0001 oleh UAT SLM Owner"
+  },
+  {
     "id": "e09f778f-0a2a-45bf-9d42-8211d5ff16b2",
     "createdAt": "2026-11-06T16:09:49.148Z",
     "userId": "unauthenticated",

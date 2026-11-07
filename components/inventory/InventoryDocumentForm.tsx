@@ -10,7 +10,7 @@ import { koliText, koliToQty, locationLabel, qtyToKoliFields, type InvLocation, 
 import { useRememberedLocation } from "./rememberedLocation";
 
 type Mode = "transfer" | "opname" | "adjustment" | "stock-in";
-type Row = { productId: string; koli: string; loose: string; unitCost: string; notes: string };
+type Row = { productId: string; koli: string; loose: string; perKoli: string; unitCost: string; notes: string };
 type Snapshot = { locationId: string; status: "loading" | "ready" | "error"; qty: Record<string, number> };
 
 const ENDPOINT: Record<Mode, string> = {
@@ -37,16 +37,16 @@ const SUBMIT_LABEL: Record<Mode, string> = {
 export const fieldClass =
   "min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1";
 
-type Props = { mode: Mode; locations: InvLocation[]; products: InvProduct[]; initialLocationId?: string; initialProductId?: string };
+type Props = { mode: Mode; locations: InvLocation[]; products: InvProduct[]; initialLocationId?: string; initialProductId?: string; canSetKoli?: boolean };
 
-const emptyRow = (productId: string): Row => ({ productId, koli: "", loose: "", unitCost: "", notes: "" });
+const emptyRow = (productId: string): Row => ({ productId, koli: "", loose: "", perKoli: "", unitCost: "", notes: "" });
 
 const qtyField = fieldClass.replace("w-full ", "");
 // Satu baris per barang di layar lebar; kelas ditulis utuh agar terbaca Tailwind.
 const GRID = "md:grid-cols-[minmax(160px,1.4fr)_minmax(90px,0.6fr)_auto_minmax(110px,0.6fr)_minmax(120px,1fr)_auto]";
 const GRID_COST = "md:grid-cols-[minmax(160px,1.4fr)_minmax(90px,0.6fr)_auto_minmax(90px,0.5fr)_minmax(100px,0.6fr)_minmax(110px,0.8fr)_auto]";
 
-export function InventoryDocumentForm({ mode, locations, products, initialLocationId, initialProductId }: Props) {
+export function InventoryDocumentForm({ mode, locations, products, initialLocationId, initialProductId, canSetKoli = false }: Props) {
   const router = useRouter();
   const { showToast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
@@ -135,9 +135,16 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
   }
 
   const numOrNull = (v: string) => (v.trim() === "" ? null : Number(v));
+  /** Isi per koli dari Master Barang; bila kosong dan pengguna berhak, pakai isian di baris (disimpan ke Master Barang saat simpan). */
+  const rowPerKoli = (row: Row) => {
+    const master = productMap.get(row.productId)?.unitsPerKoli ?? null;
+    if (master) return master;
+    const typed = numOrNull(row.perKoli);
+    return canSetKoli && typed != null && Number.isFinite(typed) && typed > 0 ? typed : null;
+  };
   const rowQty = (row: Row) => {
     const koli = numOrNull(row.koli);
-    const perKoli = productMap.get(row.productId)?.unitsPerKoli ?? null;
+    const perKoli = rowPerKoli(row);
     if (koli == null && numOrNull(row.loose) == null) return NaN;
     if (koli && !(perKoli && perKoli > 0)) return NaN;
     return koliToQty(row.koli, row.loose, perKoli);
@@ -153,7 +160,7 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
     const bad = rows.find((r) => !Number.isFinite(rowQty(r)));
     if (bad) {
       const sku = productMap.get(bad.productId)?.sku ?? "";
-      return numOrNull(bad.koli) && !productMap.get(bad.productId)?.unitsPerKoli ? `Isi per koli ${sku} belum diatur di Master Barang. Isi jumlahnya di kolom lepas.` : `Jumlah ${sku} wajib diisi (koli dan/atau lepas).`;
+      return numOrNull(bad.koli) && !rowPerKoli(bad) ? (canSetKoli ? `Isi "isi per koli" untuk ${sku}, atau isi jumlahnya di kolom lepas.` : `Isi per koli ${sku} belum diatur di Master Barang. Isi jumlahnya di kolom lepas.`) : `Jumlah ${sku} wajib diisi (koli dan/atau lepas).`;
     }
     if (mode === "opname" && stockStatus !== "ready") return "Stok sistem belum termuat. Tunggu sebentar atau muat ulang sebelum menyimpan opname.";
     return null;
@@ -173,7 +180,8 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
         productId: r.productId,
         notes: r.notes || undefined,
         koli: numOrNull(r.koli) ?? undefined,
-        loose: numOrNull(r.loose) ?? undefined
+        loose: numOrNull(r.loose) ?? undefined,
+        ...(canSetKoli && !productMap.get(r.productId)?.unitsPerKoli && numOrNull(r.koli) && rowPerKoli(r) ? { unitsPerKoli: rowPerKoli(r)! } : {})
       };
       return mode === "opname" ? base : { ...base, unitCost: r.unitCost ? Number(r.unitCost) : undefined };
     });
@@ -319,6 +327,7 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
               const unit = p?.unit ?? "";
               const perKoli = p?.unitsPerKoli ?? null;
               const q = rowQty(row);
+              const koliEditable = Boolean(perKoli) || canSetKoli;
               const sys = systemQty[row.productId] ?? 0;
               const diff = stockStatus === "ready" && Number.isFinite(q) ? Math.round((q - sys) * 100) / 100 : null;
               const name = p?.name ?? row.productId;
@@ -334,14 +343,28 @@ export function InventoryDocumentForm({ mode, locations, products, initialLocati
                     </div>
                   </div>
                   <div className="hidden whitespace-nowrap text-right text-sm tabular-nums md:block">{stockCell(row.productId, perKoli, unit)}</div>
-                  <div className="col-span-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-slate-700 md:col-span-1 md:flex-nowrap">
+                  <div className={`col-span-2 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-slate-700 md:col-span-1 ${!perKoli && canSetKoli ? "md:max-w-[17rem]" : "md:flex-nowrap"}`}>
+                    {!perKoli && canSetKoli && (
+                      <>
+                        <input
+                          aria-label={`Isi per koli ${p?.sku ?? ""} (${unit})`}
+                          className={`${qtyField} w-24`}
+                          inputMode="decimal"
+                          placeholder="isi/koli"
+                          title="Isi per koli belum diatur. Nilai ini akan disimpan ke Master Barang."
+                          value={row.perKoli}
+                          onChange={(e) => updateRow(i, { perKoli: e.target.value })}
+                        />
+                        <span className="basis-full text-xs text-slate-600 md:basis-auto">{unit}/koli, simpan ke Master Barang</span>
+                      </>
+                    )}
                     <input
                       aria-label={`Koli ${p?.sku ?? ""}`}
                       className={`${qtyField} w-16 disabled:bg-slate-100`}
                       inputMode="decimal"
-                      placeholder={perKoli ? "0" : "–"}
-                      disabled={!perKoli}
-                      title={perKoli ? undefined : "Isi per koli belum diatur di Master Barang"}
+                      placeholder={koliEditable ? "0" : "–"}
+                      disabled={!koliEditable}
+                      title={koliEditable ? undefined : "Isi per koli belum diatur di Master Barang. Minta Super Admin mengisinya."}
                       value={row.koli}
                       onChange={(e) => updateRow(i, { koli: e.target.value })}
                     />

@@ -21,7 +21,7 @@ export default async function TransferPage({ searchParams }: { searchParams: SP 
   return (
     <AppShell>
       <InventoryHeader title="Transfer Stok" description="Pindahkan stok antar gudang dan toko. Transfer bisa langsung diterima, atau berstatus Dalam Perjalanan sampai dikonfirmasi diterima." />
-      {canTransfer && <div className="mb-8"><InventoryDocumentForm mode="transfer" locations={locations} products={products} /></div>}
+      {canTransfer && <div className="mb-8"><InventoryDocumentForm mode="transfer" canSetKoli={can(role, "inventory.master")} locations={locations} products={products} /></div>}
       <form className="mb-3 flex gap-2">
         <select name="status" defaultValue={status ?? ""} className={filterInput}>
           <option value="">Semua status</option>

@@ -215,6 +215,19 @@ suite("inventory service (postgres)", () => {
     expect(p.stocks.find((s) => s.locationId === gudang.id)?.koliText).toBe("2 koli + 4 Lusin");
   });
 
+  it("isi per koli yang kosong boleh diisi dari dokumen stok, hanya oleh yang berhak Master Barang", async () => {
+    const newSku = `ISK-${sku}`;
+    await svc.createProduct({ sku: newSku, name: "Isi Koli Dari Dokumen", unit: "Lusin", minimumStock: 0, costPrice: 0, sellingPrice: 0, isActive: true });
+    await expect(svc.createStockIn({ locationId: gudang.id, items: [{ sku: newSku, koli: 2, unitsPerKoli: 12 }] }, { id: "u1", canEditMaster: false })).rejects.toThrow(/Master Barang/);
+    expect((await svc.getProduct(newSku)).unitsPerKoli).toBeNull();
+    await svc.createStockIn({ locationId: gudang.id, items: [{ sku: newSku, koli: 2, loose: 3, unitsPerKoli: 12 }] }, { id: "u1", canEditMaster: true });
+    const p = await svc.getProduct(newSku);
+    expect(p.unitsPerKoli).toBe(12);
+    expect(p.totalQuantity).toBe(27);
+    // Sudah terisi: nilai lain tetap ditolak walau berhak.
+    await expect(svc.createStockIn({ locationId: gudang.id, items: [{ sku: newSku, koli: 1, unitsPerKoli: 24 }] }, { id: "u1", canEditMaster: true })).rejects.toThrow(/Master Barang/);
+  });
+
   it("retur penjualan mengembalikan stok ke lokasi asal (aman diulang)", async () => {
     const retSku = `RET-${sku}`;
     await svc.createProduct({ sku: retSku, name: "Barang Retur", unit: "Lusin", minimumStock: 0, costPrice: 0, sellingPrice: 0, isActive: true, initialStock: [{ locationId: toko.id, quantity: 10 }] });
