@@ -107,6 +107,17 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Hanya endpoint bukti foto CCTV yang boleh diproxy (dicek setelah URL dinormalisasi, jadi ../ tidak lolos).
+  let upstreamPath = "";
+  try {
+    upstreamPath = new URL(upstreamUrl).pathname;
+  } catch {
+    return NextResponse.json({ error: "Format URL tidak valid." }, { status: 400 });
+  }
+  if (!upstreamPath.startsWith("/api/v1/slm/evidence/")) {
+    return NextResponse.json({ error: "Path CCTV ini tidak diizinkan untuk diproxy." }, { status: 403 });
+  }
+
   try {
     const response = await fetch(upstreamUrl, {
       headers: {
@@ -134,12 +145,12 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Cache-Control": "private, max-age=86400",
         "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error: any) {
-    console.warn(`[CCTV Evidence Proxy Error] Gagal fetch ${upstreamUrl}:`, error?.message);
+    console.warn(`[CCTV Evidence Proxy Error] Gagal fetch ${upstreamPath}:`, error?.message);
     return new NextResponse(null, {
       status: 504,
       statusText: "Gateway Timeout",

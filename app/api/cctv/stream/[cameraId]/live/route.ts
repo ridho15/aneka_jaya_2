@@ -8,19 +8,21 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ cameraId: string }> }
 ) {
-  // Autentikasi: pastikan user terautentikasi (atau token internal)
+  // Siaran langsung hanya untuk Super Admin (Owner) atau pemanggil dengan token CCTV, sama dengan route metadata.
   const user = await getCurrentUser();
-  const tokenHeader = req.headers.get("x-cctv-token");
-  const isAuthorized =
-    matchesToken(tokenHeader) ||
-    user.id !== "unauthenticated";
-
-  if (!isAuthorized) {
+  const tokenOk = matchesToken(req.headers.get("x-cctv-token"));
+  if (!tokenOk && user.id === "unauthenticated") {
     return new NextResponse("Unauthorized", { status: 401 });
+  }
+  if (!tokenOk && user.role !== "OWNER") {
+    return new NextResponse("Akses siaran langsung CCTV terbatas untuk Super Admin (Owner).", { status: 403 });
   }
 
   const { cameraId } = await params;
   const cleanId = cameraId.replace(/^cam-?/i, "");
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(cleanId)) {
+    return new NextResponse("Kamera tidak dikenal.", { status: 404 });
+  }
   const baseClean = CCTV_BASE_URL.replace(/\/+$/, "");
 
   // Tentukan target URL upstream kamera

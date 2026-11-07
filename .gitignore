@@ -27,3 +27,11 @@ scratch/
 .e2e/videos/
 public/uploads/products/
 backups/
+
+# Data produksi, backup database, dan file upload tidak boleh masuk repo (repo mirror bersifat publik).
+backup_*.sql
+*.dump
+*.sql.gz
+data/*.json
+public/uploads/
+audit-output/

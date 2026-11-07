@@ -147,7 +147,7 @@ describe("CCTV HTTPS Proxy & Evidence Relay Integration", () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toBe("image/jpeg");
-      expect(res.headers.get("cache-control")).toContain("public");
+      expect(res.headers.get("cache-control")).toContain("private");
 
       expect(fetchSpy).toHaveBeenCalledWith(
         expect.stringContaining("label-snapshot/34"),

@@ -181,6 +181,8 @@ export async function loginWithAnikaErp(input: unknown) {
   const name = typeof userData.name === "string" && userData.name.trim() ? userData.name.trim() : issuedEmail;
   const role = roleFromAnika(userData.roles, (userData as { posisi?: unknown }).posisi);
   const existing = await prisma.user.findFirst({ where: { OR: [{ externalId }, { email: issuedEmail }] } });
+  // User yang dinonaktifkan Super Admin di SLM tetap tidak bisa masuk walau akun ERP-nya masih aktif.
+  if (existing && !existing.isActive) throw new Error("Akun ini dinonaktifkan oleh Super Admin.");
   const user = existing
     ? await prisma.user.update({
         where: { id: existing.id },

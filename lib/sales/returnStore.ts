@@ -57,6 +57,33 @@ export async function createSalesReturn(input: SalesReturnInput, actor: ReturnAc
     throw new Error(`Retur hanya dapat dibuat untuk transaksi approved. Status saat ini: ${sale.approvalStatus}`);
   }
 
+  // Batas retur ditentukan server: tiap baris harus baris nota asal, qty tidak melebihi sisa yang belum diretur, harga = harga jual.
+  const origins = input.items.map((item) => {
+    const origin = (item.salesRecordItemId ? sale.items.find((s) => s.id === item.salesRecordItemId) : undefined)
+      ?? sale.items.find((s) => s.productRef === item.productRef);
+    if (!origin) throw new Error(`Barang ${item.productRef} tidak ada di nota asal.`);
+    return origin;
+  });
+  const previous = await prisma.salesReturnItem.findMany({
+    where: { salesReturn: { salesRecordId: sale.id, status: { not: "CANCELLED" } } },
+    select: { salesRecordItemId: true, productRef: true, quantity: true }
+  });
+  const used = new Map<string, number>();
+  for (const prev of previous) {
+    const origin = (prev.salesRecordItemId ? sale.items.find((s) => s.id === prev.salesRecordItemId) : undefined)
+      ?? sale.items.find((s) => s.productRef === prev.productRef);
+    if (origin) used.set(origin.id, (used.get(origin.id) ?? 0) + Number(prev.quantity));
+  }
+  input.items.forEach((item, index) => {
+    const origin = origins[index];
+    const next = (used.get(origin.id) ?? 0) + Number(item.quantity);
+    if (next > Number(origin.quantity) + 1e-9) {
+      const left = Math.max(0, Number(origin.quantity) - (used.get(origin.id) ?? 0));
+      throw new Error(`Qty retur ${item.productRef} melebihi sisa yang bisa diretur (${left}).`);
+    }
+    used.set(origin.id, next);
+  });
+
   const returnNumber = input.returnNumber?.trim() || (await generateReturnNumber());
 
   // Hitung total nilai retur penjualan & total nilai modal riil barang kembali
@@ -64,15 +91,16 @@ export async function createSalesReturn(input: SalesReturnInput, actor: ReturnAc
   let totalCostPrice = 0;
 
   // Modal retur bawaan = modal FIFO saat barang itu dijual, supaya persediaan & HPP kembali dengan nilai yang sama.
-  const saleCosts = await Promise.all(input.items.map(async (item) => {
-    if (Number(item.unitCostPrice) > 0) return Number(item.unitCostPrice);
-    const origin = sale.items.find((s) => s.id === item.salesRecordItemId) ?? sale.items.find((s) => s.productRef === item.productRef);
-    return (await saleUnitCost(sale.stockReleaseReference, { productId: origin?.productId, sku: item.productRef }).catch(() => null)) ?? 0;
+  // Modal dari FIFO penjualan; nilai dari body hanya dipakai bila FIFO tidak tersedia.
+  const saleCosts = await Promise.all(input.items.map(async (item, index) => {
+    const fifo = await saleUnitCost(sale.stockReleaseReference, { productId: origins[index].productId, sku: origins[index].productRef }).catch(() => null);
+    return fifo ?? (Number(item.unitCostPrice) > 0 ? Number(item.unitCostPrice) : 0);
   }));
 
   const itemsData = input.items.map((item, index) => {
+    const origin = origins[index];
     const qty = Number(item.quantity);
-    const unitPrice = Number(item.unitPrice);
+    const unitPrice = Number(origin.unitPrice);
     const unitCost = saleCosts[index];
 
     const totalAmount = Math.round(qty * unitPrice);
@@ -82,8 +110,8 @@ export async function createSalesReturn(input: SalesReturnInput, actor: ReturnAc
     totalCostPrice += totalCost;
 
     return {
-      salesRecordItemId: item.salesRecordItemId || null,
-      productRef: item.productRef,
+      salesRecordItemId: origin.id,
+      productRef: origin.productRef,
       productName: item.productName,
       unit: item.unit || "PCS",
       quantity: qty,
@@ -283,13 +311,14 @@ export async function postSalesReturn(returnId: string, actor: ReturnActor) {
     actor
   );
 
-  // Update Status Retur ke POSTED & tautkan Jurnal
-  const updatedReturn = await prisma.salesReturn.update({
+  // DRAFT -> POSTED hanya sekali; posting ganda yang bersamaan tidak memotong piutang dua kali.
+  const claimed = await prisma.salesReturn.updateMany({
+    where: { id: returnRecord.id, status: "DRAFT" },
+    data: { status: "POSTED", journalEntryId: journal.id }
+  });
+  if (claimed.count === 0) throw new Error("Retur penjualan sudah di-post oleh proses lain.");
+  const updatedReturn = await prisma.salesReturn.findUniqueOrThrow({
     where: { id: returnRecord.id },
-    data: {
-      status: "POSTED",
-      journalEntryId: journal.id
-    },
     include: {
       salesRecord: true,
       rekeningAccount: true,

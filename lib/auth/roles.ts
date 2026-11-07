@@ -37,8 +37,8 @@ const INVENTORY_MANAGER: Permission[] = [
   "inventory.stock.view", "inventory.movement.view", "inventory.transfer", "inventory.receive", "inventory.opname", "inventory.adjust"
 ];
 
-/** Akuntansi & Buku Besar serta Pusat Laporan: hanya Super Admin. */
-const OWNER_ONLY = (p: Permission) => p.startsWith("accounting.") || p === "reports.view" || p === "reports.finance_view";
+/** Akuntansi & Buku Besar, Pusat Laporan, dan Kelola User: hanya Super Admin. */
+const OWNER_ONLY = (p: Permission) => p.startsWith("accounting.") || p === "reports.view" || p === "reports.finance_view" || p === "users.manage";
 
 /** SDM & Personalia dan Sistem & Monitoring yang terlihat oleh Manager (dan Supervisor). */
 const MANAGER_SDM_SYSTEM: Permission[] = [

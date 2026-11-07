@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { z, ZodTypeAny } from "zod";
 import { can, type Permission } from "@/lib/auth/roles";
 import { getCurrentUser } from "@/lib/auth/session";
+import { withoutCost } from "@/lib/inventory/costFields";
 import { recordAudit } from "@/lib/audit/store";
 import { authenticateMjRequest } from "@/lib/integrations/mj/auth";
 import { MjIntegrationError } from "@/lib/integrations/mj/errors";
@@ -19,16 +20,7 @@ const BEARER_PERMISSIONS: Permission[] = [
   "inventory.stock.view", "inventory.movement.view", "inventory.transfer", "inventory.receive", "inventory.opname", "inventory.adjust"
 ];
 
-/** Field harga modal yang hanya boleh dilihat role yang mengurus modal/barang masuk. */
-const COST_FIELDS = new Set(["costPrice", "priceRmb", "extraCostIdr", "cbmPerUnit", "cbmRateIdr", "avgCost", "stockValue", "unitCost", "totalValue"]);
 
-function withoutCost(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(withoutCost);
-  if (value && typeof value === "object" && !(value instanceof Date)) {
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([k]) => !COST_FIELDS.has(k)).map(([k, v]) => [k, withoutCost(v)]));
-  }
-  return value;
-}
 
 /**
  * Bungkus route inventory. Mendukung dua jenis pemanggil:

@@ -112,8 +112,10 @@ export async function listUsers(): Promise<ManagedUser[]> {
 }
 
 export async function createUser(input: UserInput | null): Promise<ManagedUser> {
-  await assertCanManageUsers();
+  const actor = await assertCanManageUsers();
   const data = normalizeUserInput(input || {}, { requireExternalId: true, requireRole: true });
+  // Hanya Super Admin yang boleh membuat akun Super Admin.
+  if (actor.role !== "OWNER" && data.role === "OWNER") throw new UserForbiddenError();
   const password = normalizePasswordInput(input?.password);
   if (!password) throw new Error("Password awal wajib diisi.");
   assertPasswordStrength(password, "Password awal");
@@ -147,6 +149,10 @@ export async function updateUser(id: string, input: UserInput | null): Promise<M
   if (password) assertPasswordStrength(password, "Password baru");
   const nextIsActive = typeof body.isActive === "boolean" ? body.isActive : before.isActive;
   const nextRole = body.role ? data.role : before.role;
+  // Selain Super Admin: tidak boleh memberi role Super Admin, mengubah akun Super Admin, atau mengubah role sendiri.
+  if (actor.role !== "OWNER" && (nextRole === "OWNER" || before.role === "OWNER" || (before.externalId === actor.id && nextRole !== before.role))) {
+    throw new UserForbiddenError();
+  }
   if (before.externalId === actor.id && before.isActive && !nextIsActive) throw new Error("User tidak boleh menonaktifkan dirinya sendiri.");
   if (before.role === "OWNER" && before.isActive && (!nextIsActive || nextRole !== "OWNER")) {
     const remainingOwners = await ownerCountExcluding(before.id);

@@ -21,36 +21,35 @@ const PETUGAS_DO_LIST = [
     email: "agus.do@slm.test",
     externalId: "driver-agus-02",
     role: "DELIVERY_DRIVER",
-    password: "password123"
   },
   {
     name: "Joko Prasetyo",
     email: "joko.do@slm.test",
     externalId: "driver-joko-03",
     role: "DELIVERY_DRIVER",
-    password: "password123"
   },
   {
     name: "Dedi Supriyadi",
     email: "dedi.do@slm.test",
     externalId: "driver-dedi-04",
     role: "DELIVERY_DRIVER",
-    password: "password123"
   },
   {
     name: "Wahyu Hidayat",
     email: "wahyu.do@slm.test",
     externalId: "driver-wahyu-05",
     role: "DELIVERY_DRIVER",
-    password: "password123"
   }
 ];
 
 async function main() {
+  // Password awal dari env, tidak pernah ditulis di repo. Akun yang sudah ada tidak direset password-nya.
+  const initialPassword = process.env.PETUGAS_DO_PASSWORD || "";
+  if (!initialPassword) throw new Error("Isi PETUGAS_DO_PASSWORD (password awal Petugas DO) di env sebelum menjalankan seed ini.");
   console.log("Menambahkan data user Petugas DO...");
 
   for (const item of PETUGAS_DO_LIST) {
-    const passwordHash = hashPassword(item.password);
+    const passwordHash = hashPassword(initialPassword);
 
     const user = await prisma.user.upsert({
       where: { externalId: item.externalId },
@@ -58,11 +57,7 @@ async function main() {
         name: item.name,
         email: item.email,
         role: item.role,
-        isActive: true,
-        passwordHash,
-        passwordUpdatedAt: new Date(),
-        failedLoginCount: 0,
-        lockedUntil: null
+        isActive: true
       },
       create: {
         id: crypto.randomUUID(),
