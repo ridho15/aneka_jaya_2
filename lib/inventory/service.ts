@@ -894,7 +894,7 @@ async function releaseSaleInTx(tx: Tx, input: SaleReleaseInput, actor?: Inventor
     const product = await resolveSaleProduct(tx, item);
     // Barang tanpa stok di mana pun dan tanpa lokasi pilihan dipotong dari Ruko.
     const location = (await emptyStockLocation(tx, product.id, item.warehouseId)) ?? (await resolveSaleLocation(tx, item.warehouseId));
-    // Penjualan di SLM tidak tertahan karena stok kurang (stok minus muncul di Laporan Consignment); integrasi MJ meminta allowNegative: false.
+    // Penjualan di SLM tidak tertahan karena stok kurang (stok minus muncul di Laporan Consignment).
     lines.push({ index: i, productId: product.id, locationId: location.id, quantity: item.quantity, allowNegative: item.allowNegative ?? true });
   }
   // Urutan kunci yang konsisten mencegah deadlock antar penjualan paralel.
