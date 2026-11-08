@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { can } from "@/lib/auth/roles";
 import { getCurrentRole } from "@/lib/auth/session";
 import { penjualanSchema } from "@/lib/validation/penjualanSchema";
-import { updateSalesRecord } from "@/lib/sales/store";
+import { getSalesRecord, updateSalesRecord } from "@/lib/sales/store";
+import { findSemanticDuplicateSale } from "@/lib/sales/deduplication";
 import { getErpSyncSetting } from "@/lib/settings/erpSync";
 import { retrySalesErpSync } from "@/lib/erpSync/salesRetry";
 
@@ -16,8 +17,21 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   }
   const { id } = await params;
   try {
+    // Draft dari simpan otomatis difinalkan lewat PUT, jadi cek transaksi serupa yang biasanya ada di POST dijalankan di sini.
+    if (parsed.data.isDraft !== true && (await getSalesRecord(id))?.approvalStatus === "draft") {
+      const duplicate = await findSemanticDuplicateSale(parsed.data);
+      if (duplicate) {
+        const reference = duplicate.transactionNumber || duplicate.id;
+        return NextResponse.json({
+          success: false,
+          code: "DUPLICATE_SUSPECTED",
+          message: `Transaksi serupa terdeteksi baru saja dibuat (${reference}). Apakah Anda yakin ingin membuat transaksi baru lagi?`,
+          details: { existingSaleId: duplicate.id, existingTransactionNumber: reference, existingCreatedAt: duplicate.createdAt, existingTotal: duplicate.total }
+        }, { status: 409 });
+      }
+    }
     const data = await updateSalesRecord(id, parsed.data);
-    if (data.syncTarget === "erp" && data.syncStatus === "pending") {
+    if (data.approvalStatus !== "draft" && data.syncTarget === "erp" && data.syncStatus === "pending") {
       const setting = await getErpSyncSetting();
       if (setting.autoSyncAfterSalesEdit) {
         const autoSync = await retrySalesErpSync(id);
@@ -30,6 +44,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const name = error instanceof Error ? error.name : "";
     if (code === "SALES_NOT_FOUND" || code === "P2025") {
       return NextResponse.json({ success: false, code: "SALES_NOT_FOUND", message: "Transaksi penjualan tidak ditemukan." }, { status: 404 });
+    }
+    if (code === "NOT_A_DRAFT") {
+      return NextResponse.json({ success: false, code, message: "Transaksi ini sudah final, simpan otomatis dihentikan." }, { status: 409 });
     }
     if (code === "P2022") {
       return NextResponse.json({ success: false, code: "DATABASE_MIGRATION_REQUIRED", message: "Database belum memakai struktur penjualan terbaru. Jalankan migration lalu coba kembali." }, { status: 503 });

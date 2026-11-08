@@ -557,7 +557,8 @@ export async function getSalesRecord(id: string): Promise<Sale | undefined> {
 
 export async function saveSalesRecord(sale: Sale, options?: { tempo?: TempoCreationInput }): Promise<void> {
   await saveSalesRecordInner(sale, options);
-  if (sale.approvalStatus !== "cancelled") await rememberCustomerFromSale(sale, { countOrder: true });
+  // Draft belum jadi order; nama pelanggan dicatat saat draft difinalkan.
+  if (sale.approvalStatus !== "cancelled" && sale.approvalStatus !== "draft") await rememberCustomerFromSale(sale, { countOrder: true });
 }
 
 async function saveSalesRecordInner(sale: Sale, options?: { tempo?: TempoCreationInput }): Promise<void> {
@@ -1018,10 +1019,12 @@ async function assertNoPostedReturns(saleId: string, action: string) {
 }
 
 export async function updateSalesRecord(id: string, input: PenjualanInput): Promise<Sale> {
-  const previousName = (await getSalesRecord(id))?.customerName;
+  const previous = await getSalesRecord(id);
   const after = await updateSalesRecordInner(id, input);
-  // Edit transaksi lama tidak menambah jumlah order, kecuali customer-nya diganti.
-  await rememberCustomerFromSale(after, { countOrder: customerNameKey(after.customerName) !== customerNameKey(previousName) });
+  if (after.approvalStatus === "draft") return after;
+  // Edit transaksi lama tidak menambah jumlah order, kecuali customer-nya diganti atau draft baru difinalkan.
+  const countOrder = previous?.approvalStatus === "draft" || customerNameKey(after.customerName) !== customerNameKey(previous?.customerName);
+  await rememberCustomerFromSale(after, { countOrder });
   return after;
 }
 
@@ -1034,8 +1037,12 @@ async function updateSalesRecordInner(id: string, input: PenjualanInput): Promis
     throw Object.assign(new Error("Transaksi yang sudah dibatalkan tidak dapat diedit."), { code: "TRANSACTION_CANCELLED" });
   }
 
+  if (input.autoSave && before.approvalStatus !== "draft") {
+    throw Object.assign(new Error("Simpan otomatis hanya berlaku untuk draft penjualan."), { code: "NOT_A_DRAFT" });
+  }
   const isDraft = input.isDraft === true;
   const isKeepingDraft = before.approvalStatus === "draft" && isDraft;
+  const skipAudit = input.autoSave === true && isKeepingDraft;
   if (!isKeepingDraft) await assertNoPostedReturns(id, "diedit");
   const isFinalizingDraft = before.approvalStatus === "draft" && !isDraft;
 
@@ -1120,7 +1127,7 @@ async function updateSalesRecordInner(id: string, input: PenjualanInput): Promis
 
   if (isProductionMode()) {
     const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser, stockOptions);
-    await recordAudit({
+    if (!skipAudit) await recordAudit({
       entityType: "sales",
       entityId: id,
       action: "update",
@@ -1135,7 +1142,7 @@ async function updateSalesRecordInner(id: string, input: PenjualanInput): Promis
   const index = rows.findIndex((row) => row.id === id);
   if (index < 0) {
     const after = await updatePrismaSalesRecord(id, normalizedInput, before, total, tipe, rekening, nextSyncStatus, currentUser, stockOptions);
-    await recordAudit({
+    if (!skipAudit) await recordAudit({
       entityType: "sales",
       entityId: id,
       action: "update",
@@ -1209,7 +1216,7 @@ async function updateSalesRecordInner(id: string, input: PenjualanInput): Promis
       console.error("[DO] Failed to create delivery order on json draft finalization:", err);
     });
   }
-  await recordAudit({
+  if (!skipAudit) await recordAudit({
     entityType: "sales",
     entityId: id,
     action: "update",

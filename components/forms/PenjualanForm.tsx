@@ -89,6 +89,24 @@ export function allocateOrderDiscount(nets: number[], orderDiscount: number) {
   shares[last] += rest;
   return shares;
 }
+/** Bentuk yang diterima server: diskon nota sudah dibagi ke barang sebagai rupiah. */
+function toServerPayload(data: PenjualanInput): PenjualanInput {
+  const nets = data.items.map((item) => itemNetTotal(item));
+  const orderShare = allocateOrderDiscount(nets, discountValue(nets.reduce((a, b) => a + b, 0), data.orderDiscount, data.orderDiscountType));
+  return {
+    ...data,
+    items: data.items.map((item, i) => ({
+      ...item,
+      discount: itemDiscountAmount(item) + orderShare[i],
+      discountType: undefined,
+    })),
+    orderDiscount: undefined,
+    orderDiscountType: undefined,
+    splitCashAmount: data.paymentMethod === "Split" ? data.splitCashAmount : undefined,
+  };
+}
+const AUTO_SAVE_DELAY_MS = 5000;
+const jakartaClock = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const generateManualSku = (tipeCode?: string | null) => {
   const now = new Date();
@@ -451,6 +469,68 @@ export function PenjualanForm({
     (productState.status === "ready" || allItemsManual) && masterDataReady;
 
   const isDraftEdit = isEdit && sale?.approvalStatus === "draft";
+
+  // Simpan otomatis: draft pertama dibuat lewat POST, sesudahnya PUT ke id yang sama sampai difinalkan.
+  const autoSaveEnabled = !isEdit || isDraftEdit;
+  const autoDraftIdRef = useRef<string | undefined>(isDraftEdit ? sale?.id : undefined);
+  const autoSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const lastAutoSavedRef = useRef<string>();
+  const [autoSaveStatus, setAutoSaveStatus] = useState<{ state: "saving" | "saved" | "failed"; at?: string }>();
+
+  const runAutoSave = useCallback(() => {
+    autoSaveQueueRef.current = autoSaveQueueRef.current.then(async () => {
+      if (isSubmittingRef.current) return;
+      const current = getValues();
+      const items = current.items.filter((item) => item.productRef?.trim());
+      if (items.length === 0) return;
+      const payload: PenjualanInput = { ...toServerPayload({ ...current, items }), isDraft: true, autoSave: true, clientRequestId };
+      if (!penjualanSchema.safeParse(payload).success) return;
+      const body = JSON.stringify(payload);
+      if (body === lastAutoSavedRef.current) return;
+      const draftId = autoDraftIdRef.current;
+      setAutoSaveStatus({ state: "saving" });
+      try {
+        const response = await fetch(draftId ? `/api/sales/${encodeURIComponent(draftId)}` : "/api/sales", {
+          method: draftId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.success) throw new Error(result?.message);
+        lastAutoSavedRef.current = body;
+        if (!draftId && result.data?.id) {
+          autoDraftIdRef.current = String(result.data.id);
+          localStorage.removeItem(draftKey);
+          // Refresh atau buka ulang tab langsung melanjutkan draft yang sama.
+          window.history.replaceState(null, "", `/penjualan/${encodeURIComponent(autoDraftIdRef.current)}/edit`);
+        }
+        setAutoSaveStatus({ state: "saved", at: jakartaClock.format(new Date()) });
+      } catch {
+        setAutoSaveStatus({ state: "failed" });
+      }
+    });
+  }, [clientRequestId, getValues]);
+
+  useEffect(() => {
+    if (!autoSaveEnabled) return;
+    const subscription = watch((value) => {
+      // Cadangan di perangkat sampai draft pertama berhasil tersimpan di server.
+      if (!isEdit && !autoDraftIdRef.current) {
+        try {
+          localStorage.setItem(draftKey, JSON.stringify(value));
+        } catch {
+          // Penyimpanan browser penuh atau diblokir; simpan otomatis ke server tetap berjalan.
+        }
+      }
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(runAutoSave, AUTO_SAVE_DELAY_MS);
+    });
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [autoSaveEnabled, isEdit, runAutoSave, watch]);
 
   // Lokasi yang dikenal dari data stok, untuk barang baru yang belum punya stok di mana pun.
   const stockLocations = useMemo(() => {
@@ -864,6 +944,9 @@ export function PenjualanForm({
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     try {
+      // Tunggu simpan otomatis yang sedang jalan agar submit memakai id draft yang sama, bukan membuat transaksi kedua.
+      clearTimeout(autoSaveTimerRef.current);
+      await autoSaveQueueRef.current;
       setNotice(undefined);
       setCreatedSale(undefined);
       if (!dependenciesReady) {
@@ -875,7 +958,8 @@ export function PenjualanForm({
         return;
       }
       const isDraft = submitMode === "draft" || Boolean(data.isDraft);
-      const isFinalizingDraft = isEdit && sale?.approvalStatus === "draft" && !isDraft;
+      const targetId = isEdit && sale ? sale.id : autoDraftIdRef.current;
+      const isFinalizingDraft = Boolean(autoDraftIdRef.current) && !isDraft;
       const finalTransactionAt = isFinalizingDraft
         ? (data.transactionAt && data.transactionAt !== defaultDateTimes.transactionAt ? data.transactionAt : nowJakarta())
         : data.transactionAt;
@@ -884,33 +968,21 @@ export function PenjualanForm({
         ? finalTransactionAt
         : data.deliveryAt;
       const payload: PenjualanInput = {
-        ...data,
+        ...toServerPayload(data),
         isDraft,
+        autoSave: undefined,
         transactionAt: finalTransactionAt,
         saleDate: finalSaleDate,
         deliveryAt: finalDeliveryAt,
         clientRequestId: data.clientRequestId || clientRequestId,
         allowDuplicate: Boolean(data.allowDuplicate),
-        items: (() => {
-          // Server menerima diskon rupiah per barang; diskon nota dibagi ke barang.
-          const nets = data.items.map((item) => itemNetTotal(item));
-          const orderShare = allocateOrderDiscount(nets, discountValue(nets.reduce((a, b) => a + b, 0), data.orderDiscount, data.orderDiscountType));
-          return data.items.map((item, i) => ({
-            ...item,
-            discount: itemDiscountAmount(item) + orderShare[i],
-            discountType: undefined,
-          }));
-        })(),
-        orderDiscount: undefined,
-        orderDiscountType: undefined,
-        splitCashAmount: data.paymentMethod === "Split" ? data.splitCashAmount : undefined,
       };
       const response = await fetch(
-        isEdit && sale
-          ? `/api/sales/${encodeURIComponent(sale.id)}`
+        targetId
+          ? `/api/sales/${encodeURIComponent(targetId)}`
           : "/api/sales",
         {
-          method: isEdit ? "PUT" : "POST",
+          method: targetId ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
@@ -929,7 +1001,7 @@ export function PenjualanForm({
           });
           return;
         }
-        if (!isEdit && !isDraft) localStorage.setItem(draftKey, JSON.stringify(data));
+        if (!targetId && !isDraft) localStorage.setItem(draftKey, JSON.stringify(data));
         setNotice({
           type: "error",
           message:
@@ -956,6 +1028,9 @@ export function PenjualanForm({
         return;
       }
       localStorage.removeItem(draftKey);
+      autoDraftIdRef.current = undefined;
+      lastAutoSavedRef.current = undefined;
+      setAutoSaveStatus(undefined);
       if (isDraft) {
         setNotice({
           type: "success",
@@ -970,7 +1045,8 @@ export function PenjualanForm({
           id: createdId,
           transactionNumber: result.data.transactionNumber,
           approvalStatus: result.data.approvalStatus,
-          target: result.data.target,
+          // Finalisasi draft lewat PUT mengembalikan Sale tanpa "target".
+          target: result.data.target ?? result.data.syncTarget,
           syncStatus: result.data.syncStatus,
           stockReleaseStatus: result.data.stockReleaseStatus,
           stockReleaseError: result.data.stockReleaseError,
@@ -2028,6 +2104,11 @@ export function PenjualanForm({
                 )}
               </Button>
             </div>
+            <p role="status" aria-live="polite" className={`mt-2 text-center text-xs ${autoSaveStatus?.state === "failed" ? "text-amber-800" : "text-slate-500"}`}>
+              {autoSaveStatus?.state === "saving" && "Menyimpan draft otomatis..."}
+              {autoSaveStatus?.state === "saved" && `Draft tersimpan otomatis pukul ${autoSaveStatus.at}. Stok belum dipotong.`}
+              {autoSaveStatus?.state === "failed" && "Simpan otomatis gagal. Isian masih ada di layar ini, tekan Simpan Draft untuk mencoba lagi."}
+            </p>
             {!dependenciesReady && (
               <p className="mt-2 text-center text-xs text-slate-500">
                 Lengkapi konfigurasi master data dan pastikan produk ERP

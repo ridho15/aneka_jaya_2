@@ -45,6 +45,8 @@ export const penjualanSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
   isTestTransaction: z.boolean().optional(),
   isDraft: z.boolean().optional(),
+  /** Simpan otomatis dari form: hanya boleh ke draft dan tidak menulis audit per simpan. */
+  autoSave: z.boolean().optional(),
   clientRequestId: z.string().trim().max(100).optional(),
   allowDuplicate: z.boolean().optional(),
   items: z.array(z.object({

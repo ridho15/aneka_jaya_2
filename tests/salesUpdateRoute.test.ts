@@ -6,13 +6,16 @@ const mocks = vi.hoisted(() => ({
   role: "OWNER",
   updateSalesRecord: vi.fn(),
   getErpSyncSetting: vi.fn(),
-  retrySalesErpSync: vi.fn()
+  retrySalesErpSync: vi.fn(),
+  getSalesRecord: vi.fn(),
+  findSemanticDuplicateSale: vi.fn()
 }));
 
 vi.mock("@/lib/auth/session", () => ({
   getCurrentRole: vi.fn(async () => mocks.role)
 }));
-vi.mock("@/lib/sales/store", () => ({ updateSalesRecord: mocks.updateSalesRecord }));
+vi.mock("@/lib/sales/store", () => ({ updateSalesRecord: mocks.updateSalesRecord, getSalesRecord: mocks.getSalesRecord }));
+vi.mock("@/lib/sales/deduplication", () => ({ findSemanticDuplicateSale: mocks.findSemanticDuplicateSale }));
 vi.mock("@/lib/settings/erpSync", () => ({ getErpSyncSetting: mocks.getErpSyncSetting }));
 vi.mock("@/lib/erpSync/salesRetry", () => ({ retrySalesErpSync: mocks.retrySalesErpSync }));
 
@@ -37,6 +40,40 @@ describe("sales update route ERP auto sync", () => {
     mocks.updateSalesRecord.mockReset();
     mocks.getErpSyncSetting.mockReset();
     mocks.retrySalesErpSync.mockReset();
+    mocks.getSalesRecord.mockReset().mockResolvedValue({ id: "S-1", approvalStatus: "approved" });
+    mocks.findSemanticDuplicateSale.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("finalisasi draft memberi peringatan transaksi serupa seperti input baru", async () => {
+    mocks.getSalesRecord.mockResolvedValue({ id: "DRAFT-1", approvalStatus: "draft" });
+    mocks.findSemanticDuplicateSale.mockResolvedValue({ id: "S-9", transactionNumber: "TRX-9", total: 10000, createdAt: "2026-07-16T03:00:00.000Z" });
+
+    const response = await PUT(new Request("http://local/api/sales/DRAFT-1", { method: "PUT", body: JSON.stringify(payload) }), { params: Promise.resolve({ id: "DRAFT-1" }) });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "DUPLICATE_SUSPECTED", details: { existingSaleId: "S-9", existingTransactionNumber: "TRX-9" } });
+    expect(mocks.updateSalesRecord).not.toHaveBeenCalled();
+  });
+
+  it("simpan draft tidak memicu sinkron ERP otomatis", async () => {
+    mocks.getSalesRecord.mockResolvedValue({ id: "DRAFT-1", approvalStatus: "draft" });
+    mocks.updateSalesRecord.mockResolvedValue({ id: "DRAFT-1", approvalStatus: "draft", syncTarget: "erp", syncStatus: "pending" });
+    mocks.getErpSyncSetting.mockResolvedValue({ autoSyncAfterSalesEdit: true });
+
+    const response = await PUT(new Request("http://local/api/sales/DRAFT-1", { method: "PUT", body: JSON.stringify({ ...payload, isDraft: true, autoSave: true }) }), { params: Promise.resolve({ id: "DRAFT-1" }) });
+
+    expect(response.status).toBe(200);
+    expect(mocks.findSemanticDuplicateSale).not.toHaveBeenCalled();
+    expect(mocks.retrySalesErpSync).not.toHaveBeenCalled();
+  });
+
+  it("menolak simpan otomatis ke transaksi final dengan 409", async () => {
+    mocks.updateSalesRecord.mockRejectedValue(Object.assign(new Error("Simpan otomatis hanya berlaku untuk draft penjualan."), { code: "NOT_A_DRAFT" }));
+
+    const response = await PUT(new Request("http://local/api/sales/S-1", { method: "PUT", body: JSON.stringify({ ...payload, isDraft: true, autoSave: true }) }), { params: Promise.resolve({ id: "S-1" }) });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ success: false, code: "NOT_A_DRAFT" });
   });
 
   it("runs retry automatically when edited ERP sale is pending and setting is enabled", async () => {

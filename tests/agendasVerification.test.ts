@@ -282,6 +282,45 @@ describe("Verifikasi 3 Agenda Pekerjaan", () => {
       expect(mocks.releaseSaleStock).not.toHaveBeenCalled();
     });
 
+    it("simpan otomatis draft tidak menulis audit per simpan", async () => {
+      const draftRow = {
+        id: "DRAFT-1", saleDate: new Date("2026-09-05T00:00:00Z"), transactionAt: new Date("2026-09-05T10:00:00Z"),
+        createdAt: new Date("2026-09-05T10:00:00Z"), tipeId: "tipe-w", tipeCodeSnapshot: "W", tipeNameSnapshot: "Walk In",
+        customerName: "Customer Draft", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash",
+        total: 100000, approvalStatus: "draft", stockReleaseStatus: "not_required", syncStatus: "local", items: []
+      };
+      mocks.prisma.salesRecord.findUnique.mockResolvedValue(draftRow);
+      mocks.prisma.salesRecord.update.mockResolvedValue(draftRow);
+
+      const updated = await updateSalesRecord("DRAFT-1", {
+        saleDate: "2026-09-05", tipeId: "tipe-w", customerName: "Customer Draft", customerLocation: "Toko",
+        shippingMethod: "di Tempat", paymentMethod: "Cash", isDraft: true, autoSave: true,
+        items: [{ productRef: "P-1", quantity: 1, unitPrice: 100000, discount: 0 }]
+      } as never);
+
+      expect(updated.approvalStatus).toBe("draft");
+      expect(mocks.recordAudit).not.toHaveBeenCalled();
+      expect(mocks.releaseSaleStock).not.toHaveBeenCalled();
+    });
+
+    it("simpan otomatis ditolak pada transaksi yang sudah final tanpa menyentuh stok", async () => {
+      mocks.prisma.salesRecord.findUnique.mockResolvedValue({
+        id: "S-FINAL", saleDate: new Date("2026-09-05T00:00:00Z"), transactionAt: new Date("2026-09-05T10:00:00Z"),
+        createdAt: new Date("2026-09-05T10:00:00Z"), tipeId: "tipe-w", tipeCodeSnapshot: "W", tipeNameSnapshot: "Walk In",
+        customerName: "Budi", customerLocation: "Toko", shippingMethod: "di Tempat", paymentMethod: "Cash",
+        total: 100000, approvalStatus: "approved", stockReleaseStatus: "released", syncStatus: "local", items: []
+      });
+
+      await expect(updateSalesRecord("S-FINAL", {
+        saleDate: "2026-09-05", tipeId: "tipe-w", customerName: "Budi", customerLocation: "Toko",
+        shippingMethod: "di Tempat", paymentMethod: "Cash", isDraft: true, autoSave: true,
+        items: [{ productRef: "P-1", quantity: 2, unitPrice: 100000, discount: 0 }]
+      } as never)).rejects.toMatchObject({ code: "NOT_A_DRAFT" });
+      expect(mocks.prisma.salesRecord.update).not.toHaveBeenCalled();
+      expect(mocks.cancelStockRelease).not.toHaveBeenCalled();
+      expect(mocks.releaseSaleStock).not.toHaveBeenCalled();
+    });
+
     it("memfinalkan draft ('Finalkan & Simpan Penjualan') memotong stok gudang ERP dan mengubah status menjadi approved", async () => {
       const existingDraft: Sale = {
         id: "DRAFT-1",
