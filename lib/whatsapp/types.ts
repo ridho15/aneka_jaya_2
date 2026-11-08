@@ -1,5 +1,5 @@
 export type WhatsAppProviderName = "meta_cloud_api" | "third_party";
-export type WhatsAppReportType = "daily_report" | "stock_alert" | "tempo_reminder" | "test";
+export type WhatsAppReportType = "daily_report" | "stock_alert" | "tempo_reminder" | "packing_reminder" | "test";
 
 export type WhatsAppRecipient = {
   id: string;
@@ -9,6 +9,7 @@ export type WhatsAppRecipient = {
   receivesDailyReport: boolean;
   receivesStockAlert: boolean;
   receivesTempoReminder: boolean;
+  receivesPackingReminder: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -20,6 +21,7 @@ export type WhatsAppRecipientInput = {
   receivesDailyReport?: boolean;
   receivesStockAlert?: boolean;
   receivesTempoReminder?: boolean;
+  receivesPackingReminder?: boolean;
 };
 
 export type WhatsAppMessageLog = {

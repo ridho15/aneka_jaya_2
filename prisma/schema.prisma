@@ -622,6 +622,7 @@ model WhatsAppRecipient {
   receivesDailyReport   Boolean  @default(false)
   receivesStockAlert    Boolean  @default(false)
   receivesTempoReminder Boolean  @default(false)
+  receivesPackingReminder Boolean @default(false)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
@@ -1562,4 +1563,20 @@ model FixedAsset {
 
   @@unique([sourceType, sourceId])
   @@index([status])
+}
+
+/// Pengingat suara packing di kamera CCTV: satu baris per slot jam (lib/cctv/packingVoice.ts).
+model CctvVoiceAnnouncement {
+  id             String   @id @default(cuid())
+  slotKey        String   @unique
+  invoiceCount   Int
+  salesRecordIds Json
+  invoices       Json
+  text           String
+  status         String
+  detail         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([createdAt])
 }
