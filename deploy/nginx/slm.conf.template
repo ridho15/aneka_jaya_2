@@ -1,0 +1,81 @@
+# Nginx untuk SLM di belakang Cloudflare (proxy oranye, SSL Full strict).
+# Dipasang otomatis oleh scripts/server/setup-new.sh; __DOMAIN__ diganti dengan domain aplikasi.
+
+# Batas percobaan login per IP asli pengunjung (di atas kunci 5x salah di aplikasi).
+limit_req_zone $binary_remote_addr zone=slm_login:10m rate=10r/m;
+
+# IP asli pengunjung dari header Cloudflare. Daftar resmi: https://www.cloudflare.com/ips/
+set_real_ip_from 173.245.48.0/20;
+set_real_ip_from 103.21.244.0/22;
+set_real_ip_from 103.22.200.0/22;
+set_real_ip_from 103.31.4.0/22;
+set_real_ip_from 141.101.64.0/18;
+set_real_ip_from 108.162.192.0/18;
+set_real_ip_from 190.93.240.0/20;
+set_real_ip_from 188.114.96.0/20;
+set_real_ip_from 197.234.240.0/22;
+set_real_ip_from 198.41.128.0/17;
+set_real_ip_from 162.158.0.0/15;
+set_real_ip_from 104.16.0.0/13;
+set_real_ip_from 104.24.0.0/14;
+set_real_ip_from 172.64.0.0/13;
+set_real_ip_from 131.0.72.0/22;
+set_real_ip_from 2400:cb00::/32;
+set_real_ip_from 2606:4700::/32;
+set_real_ip_from 2803:f800::/32;
+set_real_ip_from 2405:b500::/32;
+set_real_ip_from 2405:8100::/32;
+set_real_ip_from 2a06:98c0::/29;
+set_real_ip_from 2c0f:f248::/32;
+real_ip_header CF-Connecting-IP;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name __DOMAIN__;
+
+    # Cloudflare Origin Certificate (SSL/TLS > Origin Server). Sementara bisa self-signed dengan mode SSL "Full".
+    ssl_certificate     /etc/ssl/slm/origin.pem;
+    ssl_certificate_key /etc/ssl/slm/origin.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Upload foto 5 MB dan import Excel 10 MB.
+    client_max_body_size 15m;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    location = /api/auth/login {
+        limit_req zone=slm_login burst=5 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:3000;
+    }
+
+    # Siaran langsung CCTV: aliran panjang, jangan di-buffer.
+    location /api/cctv/stream/ {
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_pass http://127.0.0.1:3000;
+    }
+
+    # Cron hanya dipanggil dari server ini sendiri.
+    location /api/jobs/ {
+        return 404;
+    }
+
+    location / {
+        proxy_read_timeout 120s;
+        proxy_pass http://127.0.0.1:3000;
+    }
+}

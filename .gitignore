@@ -35,3 +35,8 @@ backup_*.sql
 data/*.json
 public/uploads/
 audit-output/
+
+# Dibuat oleh scripts/server/setup-new.sh di server
+.migrasi/
+.secrets-rotated
+.uploads-restored

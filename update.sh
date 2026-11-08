@@ -37,6 +37,15 @@ else
   echo "⚠️ Container slm-postgres belum menyala. Melanjutkan ke tahap berikutnya..."
 fi
 
+# Sekali saja: foto upload yang masih tersimpan di dalam container lama dipindah ke volume slm_uploads,
+# karena container lama dihapus saat dibuat ulang.
+UPLOADS_SAVE=""
+if ! docker volume ls --format '{{.Name}}' | grep -q '_slm_uploads$' && docker exec slm-app test -d /app/public/uploads 2>/dev/null; then
+  UPLOADS_SAVE="$(mktemp /root/slm-uploads-XXXX.tar.gz)"
+  docker exec slm-app tar -C /app/public -czf - uploads > "$UPLOADS_SAVE"
+  echo "Foto upload lama disimpan sementara di $UPLOADS_SAVE"
+fi
+
 # 4. Build image Docker
 echo ""
 echo "🔨 [4/6] Membangun image Docker (slm-app:local)..."
@@ -51,6 +60,10 @@ docker compose run --rm db-migrate || true
 echo ""
 echo "🔄 [6/6] Menyalakan container aplikasi..."
 docker compose up -d slm-app slm-gateway
+if [ -n "$UPLOADS_SAVE" ]; then
+  docker compose exec -T slm-app tar -C /app/public -xzf - < "$UPLOADS_SAVE"
+  echo "Foto upload dipindah ke volume slm_uploads ($(docker compose exec -T slm-app sh -c 'find /app/public/uploads -type f | wc -l') file). Salinan: $UPLOADS_SAVE"
+fi
 
 # Pembersihan image lama (dangling) yang sudah digantikan
 echo ""

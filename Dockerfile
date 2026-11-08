@@ -22,6 +22,7 @@ COPY --from=build /app/prisma ./prisma
 RUN npx prisma generate
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/docs ./docs
-RUN mkdir -p /app/data
+COPY --from=build /app/public ./public
+RUN mkdir -p /app/data /app/public/uploads
 EXPOSE 3000
 CMD ["npm", "run", "start"]

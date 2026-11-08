@@ -26,18 +26,21 @@ services:
     container_name: slm-app
     image: slm-app:local
     build: .
-    expose:
-      - "3000"
+    # Hanya bisa diakses dari server itu sendiri (Nginx); tidak terbuka ke internet.
+    ports:
+      - "127.0.0.1:3000:3000"
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
+      DATABASE_URL: postgresql://slm:${POSTGRES_PASSWORD:-slm}@slm-postgres:5432/slm?schema=public
     logging: *default-logging
     depends_on:
       slm-postgres:
         condition: service_healthy
     volumes:
       - slm_data:/app/data
+      # Foto resi, DO, produk, dan screenshot CCTV harus bertahan saat container dibuat ulang.
+      - slm_uploads:/app/public/uploads
 
   db-migrate:
     image: slm-app:local
@@ -48,7 +51,7 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
+      DATABASE_URL: postgresql://slm:${POSTGRES_PASSWORD:-slm}@slm-postgres:5432/slm?schema=public
     depends_on:
       slm-postgres:
         condition: service_healthy
@@ -64,7 +67,7 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
+      DATABASE_URL: postgresql://slm:${POSTGRES_PASSWORD:-slm}@slm-postgres:5432/slm?schema=public
     depends_on:
       slm-postgres:
         condition: service_healthy
@@ -78,7 +81,7 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
+      DATABASE_URL: postgresql://slm:${POSTGRES_PASSWORD:-slm}@slm-postgres:5432/slm?schema=public
     depends_on:
       slm-postgres:
         condition: service_healthy
@@ -94,7 +97,7 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: postgresql://slm:slm@slm-postgres:5432/slm?schema=public
+      DATABASE_URL: postgresql://slm:${POSTGRES_PASSWORD:-slm}@slm-postgres:5432/slm?schema=public
     depends_on:
       slm-postgres:
         condition: service_healthy
@@ -105,7 +108,7 @@ services:
     environment:
       POSTGRES_DB: slm
       POSTGRES_USER: slm
-      POSTGRES_PASSWORD: slm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-slm}
     logging: *default-logging
     volumes:
       - slm_postgres:/var/lib/postgresql/data
@@ -117,4 +120,5 @@ services:
 
 volumes:
   slm_data:
+  slm_uploads:
   slm_postgres:
